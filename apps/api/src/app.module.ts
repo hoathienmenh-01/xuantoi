@@ -4,6 +4,7 @@ import { AuthModule } from './modules/auth/auth.module';
 import { CharacterModule } from './modules/character/character.module';
 import { CombatModule } from './modules/combat/combat.module';
 import { InventoryModule } from './modules/inventory/inventory.module';
+import { MarketModule } from './modules/market/market.module';
 import { RealtimeModule } from './modules/realtime/realtime.module';
 import { CultivationModule } from './modules/cultivation/cultivation.module';
 import { RedisModule } from './common/redis.module';
@@ -18,6 +19,7 @@ import { RedisModule } from './common/redis.module';
     CultivationModule,
     CombatModule,
     InventoryModule,
+    MarketModule,
   ],
 })
 export class AppModule {}

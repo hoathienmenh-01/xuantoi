@@ -133,6 +133,29 @@ model InventoryItem {
   @@unique([characterId, equippedSlot])
 }
 
+enum ListingStatus {
+  ACTIVE
+  SOLD
+  CANCELLED
+}
+
+model Listing {
+  id             String        @id @default(cuid())
+  sellerId       String
+  itemKey        String
+  itemKind       String
+  qty            Int
+  pricePerUnit   BigInt
+  status         ListingStatus @default(ACTIVE)
+  buyerId        String?
+  createdAt      DateTime      @default(now())
+  soldAt         DateTime?
+
+  @@index([status, itemKind])
+  @@index([status, itemKey])
+  @@index([sellerId, status])
+}
+
 model Sect {
   id                String      @id @default(cuid())
   name              String      @unique

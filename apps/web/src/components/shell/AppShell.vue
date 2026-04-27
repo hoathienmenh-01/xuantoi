@@ -99,9 +99,13 @@ async function logout(): Promise<void> {
         >
           寶 Linh Bảo Các
         </RouterLink>
-        <a class="px-3 py-2 rounded text-ink-300/60 cursor-not-allowed" title="Phase 5">
+        <RouterLink
+          to="/market"
+          class="px-3 py-2 rounded hover:bg-ink-700/60"
+          active-class="bg-ink-700/60 text-ink-50"
+        >
           坊 Phường Thị
-        </a>
+        </RouterLink>
         <a class="px-3 py-2 rounded text-ink-300/60 cursor-not-allowed" title="Phase 6">
           門 Tông Môn
         </a>
