@@ -114,8 +114,23 @@ model Character {
   sectId           String?
   sect             Sect?    @relation(fields: [sectId], references: [id])
 
+  inventory        InventoryItem[]
+
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
+}
+
+model InventoryItem {
+  id            String     @id @default(cuid())
+  characterId   String
+  character     Character  @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  itemKey       String
+  qty           Int        @default(1)
+  equippedSlot  EquipSlot?
+  createdAt     DateTime   @default(now())
+
+  @@index([characterId, itemKey])
+  @@unique([characterId, equippedSlot])
 }
 
 model Sect {

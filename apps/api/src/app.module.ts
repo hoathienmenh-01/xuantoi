@@ -3,6 +3,7 @@ import { ConfigModule } from '@nestjs/config';
 import { AuthModule } from './modules/auth/auth.module';
 import { CharacterModule } from './modules/character/character.module';
 import { CombatModule } from './modules/combat/combat.module';
+import { InventoryModule } from './modules/inventory/inventory.module';
 import { RealtimeModule } from './modules/realtime/realtime.module';
 import { CultivationModule } from './modules/cultivation/cultivation.module';
 import { RedisModule } from './common/redis.module';
@@ -16,6 +17,7 @@ import { RedisModule } from './common/redis.module';
     CharacterModule,
     CultivationModule,
     CombatModule,
+    InventoryModule,
   ],
 })
 export class AppModule {}

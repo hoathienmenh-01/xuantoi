@@ -5,8 +5,10 @@ import {
   STAMINA_PER_ACTION,
   SKILL_BASIC_ATTACK,
   dungeonByKey,
+  itemByKey,
   monsterByKey,
   rollDamage,
+  rollDungeonLoot,
   skillByKey,
   type DungeonDef,
   type MonsterDef,
@@ -16,6 +18,7 @@ import {
 import { PrismaService } from '../../common/prisma.service';
 import { RealtimeService } from '../realtime/realtime.service';
 import { CharacterService } from '../character/character.service';
+import { InventoryService } from '../inventory/inventory.service';
 
 export interface EncounterState {
   monsterIndex: number;
@@ -28,6 +31,13 @@ export interface EncounterLogLine {
   ts: number;
 }
 
+export interface EncounterRewardLoot {
+  itemKey: string;
+  qty: number;
+  itemName: string;
+  quality: string;
+}
+
 export interface EncounterView {
   id: string;
   dungeon: DungeonDef;
@@ -36,7 +46,7 @@ export interface EncounterView {
   monsterHp: number;
   monsterIndex: number;
   log: EncounterLogLine[];
-  reward: { exp: string; linhThach: string } | null;
+  reward: { exp: string; linhThach: string; loot: EncounterRewardLoot[] } | null;
 }
 
 interface ActionInput {
@@ -65,6 +75,7 @@ export class CombatService {
     private readonly prisma: PrismaService,
     private readonly realtime: RealtimeService,
     private readonly chars: CharacterService,
+    private readonly inventory: InventoryService,
   ) {}
 
   listDungeons() {
@@ -149,12 +160,16 @@ export class CombatService {
     let charMp = char.mp;
     if (charMp < skill.mpCost) throw new CombatError('MP_LOW');
 
+    const equip = await this.inventory.equipBonus(char.id);
+    const effPower = char.power + equip.atk;
+    const effDef = equip.def;
+
     const log: EncounterLogLine[] = [
       ...((enc.log as unknown as EncounterLogLine[]) ?? []),
     ];
 
     // — Player attack
-    const dmg = rollDamage(char.power, monster.def, skill.atkScale);
+    const dmg = rollDamage(effPower, monster.def, skill.atkScale);
     let monsterHp = state.monsterHp - dmg;
     charMp -= skill.mpCost;
     if (skill.selfBloodCost > 0) {
@@ -218,7 +233,7 @@ export class CombatService {
       }
     } else {
       // — Monster counter-attack
-      const reply = rollDamage(monster.atk, char.spirit + char.power * 0.3, 1);
+      const reply = rollDamage(monster.atk, char.spirit + effPower * 0.3 + effDef, 1);
       charHp -= reply;
       log.push({
         side: 'monster',
@@ -257,10 +272,41 @@ export class CombatService {
 
     await this.prisma.character.update({ where: { id: char.id }, data: updateChar });
 
+    const lootView: EncounterRewardLoot[] = [];
+    if (nextStatus === EncounterStatus.WON) {
+      const loot = rollDungeonLoot(dungeon.key, 2);
+      if (loot.length > 0) {
+        await this.inventory.grant(char.id, loot);
+        for (const l of loot) {
+          const def = itemByKey(l.itemKey);
+          if (!def) continue;
+          lootView.push({
+            itemKey: l.itemKey,
+            qty: l.qty,
+            itemName: def.name,
+            quality: def.quality,
+          });
+        }
+        log.push({
+          side: 'system',
+          text: `Đắc thủ chiến lợi: ${lootView
+            .map((l) => `${l.itemName} ×${l.qty}`)
+            .join(', ')}.`,
+          ts: Date.now(),
+        });
+        // Cập nhật log lần nữa với dòng loot.
+        await this.prisma.encounter.update({
+          where: { id: enc.id },
+          data: { log: log as unknown as Prisma.InputJsonValue },
+        });
+      }
+    }
+
     if (nextStatus === EncounterStatus.WON || nextStatus === EncounterStatus.LOST) {
       reward = {
         exp: expGain.toString(),
         linhThach: linhThachGain.toString(),
+        loot: lootView,
       };
     }
 

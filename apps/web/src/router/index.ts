@@ -24,6 +24,11 @@ const routes: RouteRecordRaw[] = [
     component: () => import('@/views/DungeonView.vue'),
   },
   {
+    path: '/inventory',
+    name: 'inventory',
+    component: () => import('@/views/InventoryView.vue'),
+  },
+  {
     path: '/:pathMatch(.*)*',
     name: 'not-found',
     component: () => import('@/views/NotFoundView.vue'),

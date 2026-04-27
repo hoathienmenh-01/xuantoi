@@ -4,3 +4,4 @@ export * from './proverbs';
 export * from './ws-events';
 export * from './api-contracts';
 export * from './combat';
+export * from './items';
