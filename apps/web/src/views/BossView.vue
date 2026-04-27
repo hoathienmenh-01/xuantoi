@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref } from 'vue';
+import { useI18n } from 'vue-i18n';
 import { useRouter } from 'vue-router';
 import {
   SKILL_BASIC_ATTACK,
@@ -25,6 +26,7 @@ const auth = useAuthStore();
 const game = useGameStore();
 const toast = useToastStore();
 const router = useRouter();
+const { t } = useI18n();
 
 const boss = ref<BossView | null>(null);
 const submitting = ref(false);
@@ -99,7 +101,7 @@ onMounted(async () => {
     }>('boss:spawn', () => {
       // Có boss mới — refetch để lấy đầy đủ thông tin.
       void refresh();
-      toast.push({ type: 'system', text: 'Một Boss mới đã hiện thế.' });
+      toast.push({ type: 'system', text: t('boss.spawnToast') });
     }),
   );
   offHandlers.push(
@@ -113,7 +115,7 @@ onMounted(async () => {
         boss.value = { ...boss.value, status: 'DEFEATED', currentHp: '0' };
       }
       lastDefeatedRewards.value = p.rewards;
-      toast.push({ type: 'success', text: `${p.name} đã bị hạ! Nhận thưởng theo BXH.` });
+      toast.push({ type: 'success', text: t('boss.defeatedToast', { name: p.name }) });
       void game.fetchState().catch(() => null);
       // Refresh boss sau ít giây để load boss mới (khi cron spawn).
       setTimeout(() => void refresh(), 3000);
@@ -130,7 +132,7 @@ onMounted(async () => {
         boss.value = { ...boss.value, status: 'EXPIRED' };
       }
       lastDefeatedRewards.value = p.rewards;
-      toast.push({ type: 'system', text: 'Boss đã rút lui (hết hạn).' });
+      toast.push({ type: 'system', text: t('boss.endedToast') });
       void game.fetchState().catch(() => null);
       setTimeout(() => void refresh(), 3000);
     }),
@@ -185,7 +187,10 @@ async function onAttack(): Promise<void> {
     }
     toast.push({
       type: 'success',
-      text: `Đả thương ${r.result.damageDealt} điểm. (BXH #${r.result.myRank})`,
+      text: t('boss.damageToast', {
+        dmg: r.result.damageDealt,
+        rank: r.result.myRank,
+      }),
     });
     await game.fetchState().catch(() => null);
   } catch (e) {
@@ -197,18 +202,11 @@ async function onAttack(): Promise<void> {
 
 function handleErr(e: unknown): void {
   const code = (e as { code?: string })?.code ?? 'UNKNOWN';
-  const map: Record<string, string> = {
-    NO_CHARACTER: 'Chưa có nhân vật.',
-    NO_ACTIVE_BOSS: 'Hiện không có Boss nào.',
-    BOSS_DEFEATED: 'Boss đã bị hạ rồi.',
-    COOLDOWN: 'Gấp gì! Đợi 1.5 giây.',
-    STAMINA_LOW: 'Thể lực không đủ.',
-    MP_LOW: 'Linh khí không đủ.',
-    HP_LOW: 'HP không đủ để dùng huyết tế.',
-    SKILL_NOT_USABLE: 'Tâm pháp không thuộc tông của bạn.',
-    UNKNOWN: 'Có lỗi xảy ra.',
-  };
-  toast.push({ type: 'error', text: map[code] ?? map.UNKNOWN });
+  const text = t(`boss.errors.${code}`, '__missing__');
+  toast.push({
+    type: 'error',
+    text: text === '__missing__' ? t('boss.errors.UNKNOWN') : text,
+  });
 }
 
 function itemName(key: string): string {
@@ -217,7 +215,7 @@ function itemName(key: string): string {
 
 function timeLeftText(iso: string): string {
   const ms = new Date(iso).getTime() - Date.now();
-  if (ms <= 0) return 'sắp hết';
+  if (ms <= 0) return t('boss.almostGone');
   const m = Math.floor(ms / 60000);
   const s = Math.floor((ms % 60000) / 1000);
   return `${m}p${s.toString().padStart(2, '0')}`;
@@ -226,14 +224,14 @@ function timeLeftText(iso: string): string {
 
 <template>
   <AppShell>
-    <h2 class="text-xl tracking-widest mb-4">鬼 Boss Đại Hội</h2>
+    <h2 class="text-xl tracking-widest mb-4">鬼 {{ t('boss.title') }}</h2>
 
     <div v-if="!boss" class="border border-ink-300/40 rounded p-6 bg-ink-700/30 text-center">
-      <p class="text-ink-300">Hiện không có Boss nào trên thế gian.</p>
+      <p class="text-ink-300">{{ t('boss.noneTitle') }}</p>
       <p class="text-xs text-ink-300/70 mt-2">
-        Boss tự sinh sau khoảng vài chục phút sau khi boss trước bị hạ hoặc rút lui.
+        {{ t('boss.noneHint') }}
       </p>
-      <MButton class="mt-4" @click="refresh">Tải lại</MButton>
+      <MButton class="mt-4" @click="refresh">{{ t('common.reload') }}</MButton>
     </div>
 
     <section v-else class="space-y-4">
@@ -248,10 +246,10 @@ function timeLeftText(iso: string): string {
             <div class="text-xs text-ink-300 mt-1">{{ boss.description }}</div>
           </div>
           <div class="text-right">
-            <div class="text-xs text-ink-300">Còn lại</div>
+            <div class="text-xs text-ink-300">{{ t('boss.timeLeft') }}</div>
             <div class="text-amber-300">{{ timeLeftText(boss.expiresAt) }}</div>
             <div class="text-xs text-ink-300 mt-1">
-              {{ boss.participants }} đạo hữu tham chiến
+              {{ t('boss.participants', { n: boss.participants }) }}
             </div>
           </div>
         </div>
@@ -259,7 +257,7 @@ function timeLeftText(iso: string): string {
         <!-- HP bar -->
         <div class="mt-4">
           <div class="flex justify-between text-xs text-ink-300">
-            <span>Khí Huyết</span>
+            <span>{{ t('boss.hp') }}</span>
             <span>{{ boss.currentHp }} / {{ boss.maxHp }} ({{ hpPct }}%)</span>
           </div>
           <div class="h-3 mt-1 rounded bg-ink-900/60 overflow-hidden">
@@ -277,7 +275,7 @@ function timeLeftText(iso: string): string {
         class="border border-ink-300/40 rounded p-4 bg-ink-700/30"
       >
         <div class="flex flex-wrap gap-2 items-center mb-3">
-          <span class="text-xs text-ink-300">Tâm pháp:</span>
+          <span class="text-xs text-ink-300">{{ t('boss.skill') }}</span>
           <select
             v-model="selectedSkill"
             class="bg-ink-900/70 border border-ink-300/30 rounded px-2 py-1 text-sm"
@@ -300,49 +298,49 @@ function timeLeftText(iso: string): string {
             :disabled="cooldownLeft > 0"
             @click="onAttack"
           >
-            Tấn Công
+            {{ t('boss.attack') }}
             <span v-if="cooldownLeft > 0" class="text-xs ml-1">
               ({{ Math.ceil(cooldownLeft / 100) / 10 }}s)
             </span>
           </MButton>
           <span v-if="boss.myRank && boss.myDamage" class="text-xs text-ink-300">
-            Sát thương của bạn: {{ boss.myDamage }} (BXH #{{ boss.myRank }})
+            {{ t('boss.myDamage', { dmg: boss.myDamage, rank: boss.myRank }) }}
           </span>
         </div>
       </div>
 
       <!-- Reward pool hint -->
       <div class="border border-ink-300/40 rounded p-4 bg-ink-700/30">
-        <div class="text-xs text-ink-300 mb-2">Phần thưởng</div>
+        <div class="text-xs text-ink-300 mb-2">{{ t('boss.rewardsTitle') }}</div>
         <div class="text-xs space-y-1 text-ink-100">
-          <div>Top 1: 50% linh thạch + 1 vật phẩm hiếm:
+          <div>{{ t('boss.rewardTop1') }}
             <span class="text-violet-300">
               {{ boss.topDropPool.map(itemName).join(' / ') }}
             </span>
           </div>
-          <div>Top 2-3: 15% mỗi + 1 vật phẩm:
+          <div>{{ t('boss.rewardTop23') }}
             <span class="text-emerald-300">
               {{ boss.midDropPool.map(itemName).join(' / ') }}
             </span>
           </div>
-          <div>Top 4-10: chia đều 18% linh thạch.</div>
-          <div>Top 11+: chia đều 2% linh thạch.</div>
+          <div>{{ t('boss.rewardTop410') }}</div>
+          <div>{{ t('boss.rewardTop11') }}</div>
           <div class="text-ink-300">
-            Boss hết hạn → reward giảm còn 60% pool.
+            {{ t('boss.rewardExpire') }}
           </div>
         </div>
       </div>
 
       <!-- Leaderboard -->
       <div class="border border-ink-300/40 rounded p-4 bg-ink-700/30">
-        <div class="text-sm tracking-widest mb-2">Bảng Sát Thương</div>
+        <div class="text-sm tracking-widest mb-2">{{ t('boss.leaderboard') }}</div>
         <table class="w-full text-sm">
           <thead class="text-xs text-ink-300">
             <tr>
-              <th class="text-left">Hạng</th>
-              <th class="text-left">Đạo hữu</th>
-              <th class="text-right">Sát Thương</th>
-              <th class="text-right">Đòn</th>
+              <th class="text-left">{{ t('boss.col.rank') }}</th>
+              <th class="text-left">{{ t('boss.col.name') }}</th>
+              <th class="text-right">{{ t('boss.col.damage') }}</th>
+              <th class="text-right">{{ t('boss.col.hits') }}</th>
             </tr>
           </thead>
           <tbody>
@@ -358,7 +356,7 @@ function timeLeftText(iso: string): string {
             </tr>
             <tr v-if="boss.leaderboard.length === 0">
               <td colspan="4" class="text-center text-ink-300/70 py-3">
-                Chưa có đạo hữu nào ra tay.
+                {{ t('boss.noAttackers') }}
               </td>
             </tr>
           </tbody>
@@ -371,7 +369,7 @@ function timeLeftText(iso: string): string {
         class="border border-amber-400/40 rounded p-4 bg-amber-900/10"
       >
         <div class="text-sm tracking-widest mb-2 text-amber-300">
-          Phân Thưởng Lượt Trước
+          {{ t('boss.lastRewards') }}
         </div>
         <ul class="text-xs space-y-1">
           <li v-for="r in lastDefeatedRewards.slice(0, 10)" :key="r.characterId">

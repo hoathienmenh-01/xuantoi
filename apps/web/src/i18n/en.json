@@ -1,0 +1,528 @@
+{
+  "app": {
+    "title": "Xuantoi · Dao Mon",
+    "brand": "Dao Mon",
+    "tagline": "Text-based cultivation MUD – Xianxia"
+  },
+  "common": {
+    "loading": "Working…",
+    "back": "Back",
+    "submit": "Confirm",
+    "cancel": "Cancel",
+    "next": "Next",
+    "prev": "Previous",
+    "close": "Close",
+    "confirm": "OK",
+    "skip": "Skip",
+    "yes": "Yes",
+    "no": "No",
+    "reload": "Reload",
+    "search": "Search",
+    "total": "Total",
+    "page": "Page",
+    "pageNext": "Next ›",
+    "pagePrev": "‹ Prev",
+    "all": "All",
+    "loadingData": "Loading…"
+  },
+  "locale": {
+    "label": "Language",
+    "vi": "Tiếng Việt",
+    "en": "English"
+  },
+  "toast": {
+    "title": {
+      "info": "Info",
+      "warning": "Warning",
+      "error": "Error",
+      "success": "Success",
+      "system": "Heavenly Herald"
+    },
+    "offline": "Disconnected, reconnecting…",
+    "online": "Qi reconnected.",
+    "newMail": "You have new mail from the Heavenly Herald!",
+    "bossSpawn": "A boss has appeared!"
+  },
+  "auth": {
+    "tab": {
+      "login": "Sign In",
+      "register": "Register",
+      "change": "Change Password"
+    },
+    "login": {
+      "email": "Account (Email)",
+      "password": "Guardian Rune (Password)",
+      "remember": "Remember email",
+      "note": "Your password is protected per session.",
+      "submit": "Enter Meditation",
+      "success": "Meditation entered."
+    },
+    "register": {
+      "submit": "Open a New Sect",
+      "success": "Sect founded. Please enter meditation, fellow daoist.",
+      "strength": "Strength:",
+      "strengthLevels": {
+        "0": "—",
+        "1": "Weak",
+        "2": "Medium",
+        "3": "Fair",
+        "4": "Strong",
+        "5": "Very strong"
+      }
+    },
+    "change": {
+      "old": "Old Password",
+      "new": "New Password",
+      "submit": "Change",
+      "success": "Password changed."
+    },
+    "errors": {
+      "INVALID_CREDENTIALS": "Account name or password is incorrect.",
+      "EMAIL_TAKEN": "This account is already registered or input is invalid.",
+      "WEAK_PASSWORD": "Password is too weak.",
+      "OLD_PASSWORD_WRONG": "Old password is incorrect or account not found.",
+      "RATE_LIMITED": "Too many attempts. Please try again later.",
+      "UNAUTHENTICATED": "Session expired. Please sign in again.",
+      "UNKNOWN": "Something went wrong, please retry."
+    }
+  },
+  "home": {
+    "logout": "Leave",
+    "wip": "Game shell work in progress — Topbar, Sidebar, ChatDock and GameHome.",
+    "expLabel": "Spiritual Qi (EXP)",
+    "stats": {
+      "title": "Attributes",
+      "power": "POW",
+      "spirit": "SPI",
+      "speed": "SPD",
+      "luck": "LCK"
+    },
+    "cultivate": {
+      "start": "Start Cultivation",
+      "stop": "Stop Cultivation",
+      "startedToast": "Meditation started. Qi flows.",
+      "stoppedToast": "Meditation ended."
+    },
+    "breakthrough": {
+      "submit": "Breakthrough",
+      "successToast": "Breakthrough succeeded — realm advanced.",
+      "notAtPeakToast": "Not enough accumulated qi to break through."
+    },
+    "lastTick": "Last tick: +{gain} EXP · {time}",
+    "loadingChar": "Loading character…"
+  },
+  "notFound": {
+    "title": "404 · Lost in the Void",
+    "desc": "You have wandered into the void."
+  },
+  "onboarding": {
+    "alinhName": "A Linh",
+    "alinhRole": "Spirit Child Guide",
+    "step1": {
+      "title": "Welcome to Dao Mon",
+      "lines": [
+        "I am A Linh, spirit child to the Heavenly Herald.",
+        "You have just crossed from the mortal world; we will start this cultivation journey together.",
+        "First, tell me the dao name you wish to bear."
+      ]
+    },
+    "step2": {
+      "title": "Choose Your Dao Name",
+      "label": "Dao name (3-16 characters, no whitespace)",
+      "placeholder": "e.g. Mac Van Tu",
+      "errors": {
+        "tooShort": "Dao name must be at least 3 characters.",
+        "tooLong": "Dao name must be at most 16 characters.",
+        "invalid": "Only letters, numbers, dot and underscore, no whitespace.",
+        "taken": "This dao name is already taken; please pick another."
+      }
+    },
+    "step3": {
+      "title": "Pick Your Starting Sect",
+      "lines": ["Each sect has a distinct starting technique. Pick the one where you want to settle."],
+      "sects": {
+        "thanh_van": {
+          "name": "Thanh Van Sect",
+          "desc": "Sword masters focused on bursty offense."
+        },
+        "huyen_thuy": {
+          "name": "Huyen Thuy Palace",
+          "desc": "Deep alchemy specialists; defense and healing."
+        },
+        "tu_la": {
+          "name": "Tu La Cult",
+          "desc": "Demonic and savage — blood for power."
+        }
+      }
+    },
+    "step4": {
+      "title": "Set Out",
+      "lines": [
+        "{name}, from this moment you officially enter Qi Refining Stage 1.",
+        "Press ‘Start Cultivation’ to absorb qi. Your realm will grow with time."
+      ],
+      "submit": "Begin"
+    }
+  },
+  "shell": {
+    "stamina": "Stamina",
+    "wsOn": "WS ✓",
+    "wsOff": "WS ×",
+    "nav": {
+      "home": "Home",
+      "dungeon": "Sparring Hall",
+      "inventory": "Inventory",
+      "market": "Market",
+      "sect": "Sect",
+      "boss": "World Boss",
+      "topup": "Top Up",
+      "admin": "Admin"
+    }
+  },
+  "chat": {
+    "title": "Chat",
+    "tab": {
+      "world": "World",
+      "sect": "Sect"
+    },
+    "noSect": "You are not in a sect yet",
+    "noSectShort": "You are not in a sect yet.",
+    "empty": "No messages yet…",
+    "placeholder": {
+      "world": "Send to world…",
+      "sect": "Send to sect…"
+    },
+    "send": "Send",
+    "errors": {
+      "EMPTY_TEXT": "Empty message.",
+      "TEXT_TOO_LONG": "Max 200 characters.",
+      "RATE_LIMITED": "You are sending too fast.",
+      "NO_SECT": "You are not in a sect.",
+      "NO_CHARACTER": "No character yet.",
+      "UNKNOWN": "Could not send, try again."
+    }
+  },
+  "dungeon": {
+    "title": "Sparring Hall",
+    "staminaEntry": "{stam} stamina",
+    "monsterCount": "{n} fights",
+    "inFight": "In fight",
+    "enter": "Enter",
+    "counter": "Fight {cur} / {total}",
+    "logLabel": "Log",
+    "retreat": "Retreat",
+    "ended": "Fight ended. You can enter a new one.",
+    "noFight": "No active fight — pick a dungeon on the left to start.",
+    "rewardToast": "Cleared — +{exp} EXP, +{linh} spirit stones.",
+    "lostToast": "You were defeated — please recover.",
+    "abandonToast": "Retreated from the fight.",
+    "startToast": "Entered {name}.",
+    "errors": {
+      "STAMINA_LOW": "Not enough stamina; wait to recover.",
+      "MP_LOW": "Not enough qi.",
+      "SKILL_NOT_USABLE": "This skill is not from your sect.",
+      "ALREADY_IN_FIGHT": "You are already in another fight.",
+      "NO_CHARACTER": "No character yet.",
+      "DUNGEON_NOT_FOUND": "Dungeon not found.",
+      "ENCOUNTER_NOT_FOUND": "This fight no longer exists.",
+      "ENCOUNTER_ENDED": "Fight has ended.",
+      "UNKNOWN": "Something went wrong, please retry."
+    }
+  },
+  "inventory": {
+    "title": "Inventory",
+    "gearTitle": "Equipped",
+    "empty": "empty",
+    "takeOff": "Unequip",
+    "equip": "Equip",
+    "use": "Use",
+    "emptyAll": "Inventory is empty — go to Sparring Hall to loot.",
+    "loadFailToast": "Failed to load inventory.",
+    "equipToast": "Equipped {name}.",
+    "unequipToast": "Unequipped {slot}.",
+    "useToast": "Used {name}.",
+    "bonus": {
+      "atk": "+{v} ATK",
+      "def": "+{v} DEF",
+      "hpMax": "+{v} HP",
+      "mpMax": "+{v} MP",
+      "spirit": "+{v} SPI"
+    },
+    "errors": {
+      "INVENTORY_ITEM_NOT_FOUND": "Item no longer exists.",
+      "NOT_EQUIPPABLE": "This item cannot be equipped.",
+      "NOT_USABLE": "This item has no effect.",
+      "UNKNOWN": "Something went wrong, please retry."
+    }
+  },
+  "equipSlot": {
+    "WEAPON": "Weapon",
+    "ARMOR": "Armor",
+    "BELT": "Belt",
+    "BOOTS": "Boots",
+    "HAT": "Hat",
+    "TRAM": "Hairpin",
+    "ARTIFACT_1": "Artifact I",
+    "ARTIFACT_2": "Artifact II",
+    "ARTIFACT_3": "Artifact III"
+  },
+  "itemKind": {
+    "WEAPON": "Weapon",
+    "ARMOR": "Armor",
+    "PILL_HP": "HP Pill",
+    "PILL_MP": "MP Pill",
+    "PILL_EXP": "EXP Pill",
+    "ORE": "Ore",
+    "MISC": "Misc"
+  },
+  "market": {
+    "title": "Market",
+    "tab": {
+      "buy": "Buy",
+      "sell": "My Listings"
+    },
+    "feeNote": "Heavenly fee: {pct}%",
+    "filter": "Filter:",
+    "noListings": "No listings yet.",
+    "sellerPosted": "Posted by {name}",
+    "yours": "your listing",
+    "perUnit": "{price} / unit",
+    "buy": "Buy",
+    "newListingTitle": "New listing",
+    "item": "Item",
+    "chooseItem": "— choose —",
+    "qty": "Qty",
+    "price": "Price / unit (spirit stones)",
+    "totalLine": "Total: {total} spirit stones · {fee}",
+    "fee": "Fee: {fee} · You receive: {net}",
+    "post": "List",
+    "myListings": "My listings",
+    "noMine": "No listings.",
+    "takeDown": "Remove",
+    "buyToast": "Bought {name} ×{qty} for {price} spirit stones.",
+    "cancelToast": "Listing removed — item returned to inventory.",
+    "postToast": "Listed successfully.",
+    "errors": {
+      "INSUFFICIENT_LINH_THACH": "Not enough spirit stones.",
+      "LISTING_INACTIVE": "Listing already bought or removed.",
+      "CANNOT_BUY_OWN": "You cannot buy your own listing.",
+      "INVALID_QTY": "Invalid quantity.",
+      "INVALID_PRICE": "Invalid price.",
+      "ITEM_EQUIPPED": "Unequip the item before listing.",
+      "INVENTORY_ITEM_NOT_FOUND": "Item no longer exists.",
+      "LISTING_NOT_FOUND": "Listing not found.",
+      "NOT_OWNER": "This is not your listing.",
+      "UNKNOWN": "Something went wrong, please retry."
+    }
+  },
+  "sect": {
+    "title": "Sect",
+    "tab": {
+      "mine": "My Sect",
+      "all": "All Sects",
+      "create": "Found Sect"
+    },
+    "myStash": "Spirit stones: ⛀ {n}",
+    "level": "Level {lv}",
+    "members": "{n} members",
+    "disciples": "{n} disciples",
+    "leader": "Leader: {name}",
+    "treasury": "Treasury",
+    "contribLabel": "Contribute spirit stones (max 1,000,000 per turn)",
+    "contribHint": "→ +{n} contribution",
+    "contribute": "Contribute",
+    "leave": "Leave Sect",
+    "leaveConfirm": "Leave {name}? Contribution is kept.",
+    "disciplesTitle": "Disciples ({n})",
+    "col": {
+      "name": "Dao Name",
+      "realm": "Realm",
+      "contrib": "Contribution"
+    },
+    "leaderTag": "[Leader]",
+    "you": "(you)",
+    "noneList": "No sect yet — be the first to found one.",
+    "alreadyInOther": "You are already in another sect",
+    "join": "Join",
+    "inOtherSect": "You are in {name} — leave first if you want to found a new sect.",
+    "form": {
+      "name": "Sect Name (2–16 chars)",
+      "desc": "Sect Motto (≤ 200 chars)"
+    },
+    "create": "Found Sect",
+    "joinToast": "Joined {name}.",
+    "leaveToast": "Left the sect.",
+    "createToast": "Sect founded.",
+    "contributeToast": "Contributed.",
+    "invalidNameToast": "Name must be 2–16 chars.",
+    "errors": {
+      "NO_CHARACTER": "No character yet.",
+      "SECT_NOT_FOUND": "Sect not found.",
+      "NOT_IN_SECT": "You are not in a sect.",
+      "ALREADY_IN_SECT": "You are already in a sect — leave it first.",
+      "INVALID_AMOUNT": "Invalid amount (1 – 1,000,000 / turn).",
+      "INVALID_NAME": "Name 2–16 chars (letters/digits/ _-).",
+      "INSUFFICIENT_LINH_THACH": "Not enough spirit stones.",
+      "NAME_TAKEN": "This name is already taken.",
+      "UNKNOWN": "Something went wrong, please retry."
+    }
+  },
+  "boss": {
+    "title": "World Boss",
+    "noneTitle": "No boss is around right now.",
+    "noneHint": "A new boss spawns a few dozen minutes after the previous one is defeated or expired.",
+    "timeLeft": "Time left",
+    "almostGone": "almost gone",
+    "participants": "{n} fellow daoists fighting",
+    "hp": "HP",
+    "skill": "Skill:",
+    "attack": "Attack",
+    "myDamage": "Your damage: {dmg} (rank #{rank})",
+    "rewardsTitle": "Rewards",
+    "rewardTop1": "Top 1: 50% spirit stones + 1 rare item:",
+    "rewardTop23": "Top 2-3: 15% each + 1 item:",
+    "rewardTop410": "Top 4-10: share 18% spirit stones.",
+    "rewardTop11": "Top 11+: share 2% spirit stones.",
+    "rewardExpire": "If the boss expires, rewards drop to 60% of the pool.",
+    "leaderboard": "Damage Leaderboard",
+    "col": {
+      "rank": "Rank",
+      "name": "Daoist",
+      "damage": "Damage",
+      "hits": "Hits"
+    },
+    "noAttackers": "No one has struck yet.",
+    "lastRewards": "Previous Rewards",
+    "spawnToast": "A new boss has appeared.",
+    "defeatedToast": "{name} has fallen! Rewards distributed by rank.",
+    "endedToast": "The boss has retreated (expired).",
+    "damageToast": "Dealt {dmg} damage. (rank #{rank})",
+    "errors": {
+      "NO_CHARACTER": "No character yet.",
+      "NO_ACTIVE_BOSS": "No active boss.",
+      "BOSS_DEFEATED": "The boss has already fallen.",
+      "COOLDOWN": "Too fast! Wait 1.5 seconds.",
+      "STAMINA_LOW": "Not enough stamina.",
+      "MP_LOW": "Not enough qi.",
+      "HP_LOW": "Not enough HP to blood-sacrifice.",
+      "SKILL_NOT_USABLE": "Skill not from your sect.",
+      "UNKNOWN": "Something went wrong."
+    }
+  },
+  "topup": {
+    "title": "Top Up Tien Ngoc",
+    "intro": "Tien Ngoc is used for gacha, VIP perks, and unique skins & items.",
+    "rule1": "⚠ Manual top-up via bank transfer: pick a pack → server issues a transfer code → scan QR / send exact amount + exact memo → admin approves. Each code is single-use.",
+    "rule2": "Max 5 pending orders per user. Wrong memo will be rejected.",
+    "packages": "Packages",
+    "hot": "HOT",
+    "tienNgoc": "Tien Ngoc",
+    "buy": "Buy",
+    "lastOrderTitle": "New order",
+    "transferCode": "Transfer code:",
+    "amount": "Amount: {price} — will credit {ngoc} Tien Ngoc on approval.",
+    "bankLine": "Transfer to: {bank} — {name} — {number}. Memo must match the code exactly.",
+    "history": "Order history",
+    "noOrders": "No orders yet.",
+    "col": {
+      "code": "Code",
+      "package": "Package",
+      "price": "Amount",
+      "tienNgoc": "Tien Ngoc",
+      "status": "Status",
+      "createdAt": "Created",
+      "note": "Note"
+    },
+    "status": {
+      "PENDING": "Pending",
+      "APPROVED": "Credited",
+      "REJECTED": "Rejected"
+    },
+    "orderCreatedToast": "Order {code} created — transfer with the exact memo to get approved.",
+    "errors": {
+      "UNAUTHENTICATED": "Session expired, please sign in again.",
+      "INVALID_PACKAGE": "Invalid package.",
+      "TOO_MANY_PENDING": "Too many pending orders — approve some first.",
+      "UNKNOWN": "Something went wrong."
+    }
+  },
+  "admin": {
+    "title": "Admin",
+    "roleLabel": "Role: {role}",
+    "tab": {
+      "users": "Users",
+      "topups": "Top-ups",
+      "audit": "Audit"
+    },
+    "noPermission": "You do not have access to this area.",
+    "users": {
+      "searchPlaceholder": "Search email or dao name…",
+      "col": {
+        "email": "Email",
+        "name": "Dao Name",
+        "realm": "Realm",
+        "linhThach": "Spirit Stones",
+        "tienNgoc": "Tien Ngoc",
+        "role": "Role",
+        "status": "Status"
+      },
+      "banned": "BANNED",
+      "ok": "OK",
+      "grantBtn": "Grant/Deduct",
+      "unlock": "Unlock",
+      "lock": "Lock",
+      "banConfirm": "{action} account {email}?",
+      "actionLock": "Lock",
+      "actionUnlock": "Unlock",
+      "roleChangeConfirm": "Change role {email} → {role}?",
+      "updatedToast": "Updated.",
+      "roleChangedToast": "Role changed.",
+      "grantedToast": "Currency updated.",
+      "grantTitle": "Grant / Deduct Currency",
+      "grantLinh": "Spirit stones (can be negative)",
+      "grantNgoc": "Tien Ngoc (integer, can be negative)",
+      "grantReason": "Reason (written to audit log)"
+    },
+    "topups": {
+      "notePlaceholder": "Note for approval/rejection…",
+      "col": {
+        "code": "Code",
+        "user": "User",
+        "package": "Package",
+        "price": "Amount",
+        "tienNgoc": "Tien Ngoc",
+        "status": "Status",
+        "createdAt": "Created",
+        "note": "Note"
+      },
+      "approve": "Approve",
+      "reject": "Reject",
+      "filter": {
+        "PENDING": "Pending",
+        "APPROVED": "Approved",
+        "REJECTED": "Rejected"
+      },
+      "approveConfirm": "Approve {code} and credit {ngoc} Tien Ngoc?",
+      "rejectConfirm": "Reject {code}?",
+      "approvedToast": "Approved.",
+      "rejectedToast": "Rejected."
+    },
+    "audit": {
+      "col": {
+        "at": "At",
+        "actor": "Actor",
+        "action": "Action",
+        "meta": "Meta"
+      }
+    },
+    "errors": {
+      "UNAUTHENTICATED": "Session expired, please sign in again.",
+      "FORBIDDEN": "Not enough permissions.",
+      "NOT_FOUND": "Not found.",
+      "ALREADY_PROCESSED": "Order already processed.",
+      "INVALID_INPUT": "Invalid parameters (out of range / too negative).",
+      "CANNOT_TARGET_SELF": "Cannot target yourself.",
+      "UNKNOWN": "Something went wrong."
+    }
+  }
+}

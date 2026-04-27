@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue';
+import { useI18n } from 'vue-i18n';
 import { useRouter } from 'vue-router';
 import { useAuthStore } from '@/stores/auth';
 import { useGameStore } from '@/stores/game';
@@ -19,6 +20,7 @@ const auth = useAuthStore();
 const game = useGameStore();
 const toast = useToastStore();
 const router = useRouter();
+const { t } = useI18n();
 
 const packages = ref<TopupPackage[]>([]);
 const bank = ref<TopupBank | null>(null);
@@ -53,7 +55,7 @@ async function buy(pkg: TopupPackage): Promise<void> {
     orders.value = [order, ...orders.value];
     toast.push({
       type: 'success',
-      text: `Đã tạo đơn ${order.transferCode} — chuyển khoản đúng nội dung để được duyệt.`,
+      text: t('topup.orderCreatedToast', { code: order.transferCode }),
     });
   } catch (e) {
     handleErr(e);
@@ -64,16 +66,15 @@ async function buy(pkg: TopupPackage): Promise<void> {
 
 function handleErr(e: unknown): void {
   const code = (e as { code?: string }).code ?? 'ERR';
-  const msg: Record<string, string> = {
-    UNAUTHENTICATED: 'Hết phiên, hãy đăng nhập lại.',
-    INVALID_PACKAGE: 'Gói nạp không hợp lệ.',
-    TOO_MANY_PENDING: 'Đã có quá nhiều đơn đang chờ — duyệt bớt trước khi tạo mới.',
-  };
-  toast.push({ type: 'error', text: msg[code] ?? `Lỗi: ${code}` });
+  const text = t(`topup.errors.${code}`, '__missing__');
+  toast.push({
+    type: 'error',
+    text: text === '__missing__' ? t('topup.errors.UNKNOWN') : text,
+  });
 }
 
 function statusLabel(s: TopupOrderView['status']): string {
-  return s === 'PENDING' ? 'Chờ duyệt' : s === 'APPROVED' ? 'Đã cộng' : 'Bị từ chối';
+  return s === 'PENDING' ? t('topup.status.PENDING') : s === 'APPROVED' ? t('topup.status.APPROVED') : t('topup.status.REJECTED');
 }
 
 function statusClass(s: TopupOrderView['status']): string {
@@ -93,26 +94,23 @@ function fmtVND(n: number): string {
   <AppShell>
     <div class="max-w-5xl mx-auto space-y-6">
       <header>
-        <h1 class="text-2xl tracking-widest font-bold">Nạp Tiên Ngọc</h1>
+        <h1 class="text-2xl tracking-widest font-bold">{{ t('topup.title') }}</h1>
         <p class="text-ink-300 text-sm mt-1">
-          Tiên ngọc dùng cho gacha tiên duyên, mở đặc quyền VIP, mua skin & item Tiên phẩm độc nhất.
+          {{ t('topup.intro') }}
         </p>
       </header>
 
       <!-- Lưu ý nạp -->
       <section class="rounded border border-amber-300/40 bg-amber-900/20 p-3 text-xs text-amber-100">
-        <p>
-          ⚠ Nạp thủ công qua chuyển khoản: chọn gói → server cấp <b>mã chuyển khoản</b> →
-          quét QR / chuyển đúng số tiền + đúng nội dung → admin duyệt. Mã chỉ dùng 1 lần.
-        </p>
+        <p>{{ t('topup.rule1') }}</p>
         <p class="mt-1 text-amber-200/80">
-          Đơn đang chờ tối đa 5/người. Nếu chuyển sai nội dung, đơn sẽ bị từ chối.
+          {{ t('topup.rule2') }}
         </p>
       </section>
 
       <!-- Packages -->
       <section>
-        <h2 class="text-lg mb-2">Gói Nạp</h2>
+        <h2 class="text-lg mb-2">{{ t('topup.packages') }}</h2>
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
           <article
             v-for="pkg in packages"
@@ -134,10 +132,10 @@ function fmtVND(n: number): string {
               <span>
                 {{ pkg.tienNgoc }}
                 <span v-if="pkg.bonus" class="text-emerald-300">+{{ pkg.bonus }}</span>
-                Tiên Ngọc
+                {{ t('topup.tienNgoc') }}
               </span>
             </div>
-            <MButton :disabled="submitting" @click="buy(pkg)">Mua</MButton>
+            <MButton :disabled="submitting" @click="buy(pkg)">{{ t('topup.buy') }}</MButton>
           </article>
         </div>
       </section>
@@ -147,29 +145,26 @@ function fmtVND(n: number): string {
         v-if="lastOrder"
         class="rounded border border-emerald-300/40 bg-emerald-900/20 p-4 text-sm space-y-2"
       >
-        <h2 class="text-lg text-emerald-200">Đơn vừa tạo</h2>
-        <p>Mã chuyển khoản: <b class="font-mono text-amber-200">{{ lastOrder.transferCode }}</b></p>
-        <p>Số tiền: <b>{{ fmtVND(lastOrder.priceVND) }}</b> — sẽ cộng <b class="text-emerald-200">{{ lastOrder.tienNgocAmount }}</b> tiên ngọc khi duyệt.</p>
-        <p v-if="bank" class="text-xs text-ink-300">
-          Chuyển vào: {{ bank.bankName }} — {{ bank.accountName }} — {{ bank.accountNumber }}.
-          Nội dung phải <b>chính xác</b> mã trên.
-        </p>
+        <h2 class="text-lg text-emerald-200">{{ t('topup.lastOrderTitle') }}</h2>
+        <p>{{ t('topup.transferCode') }} <b class="font-mono text-amber-200">{{ lastOrder.transferCode }}</b></p>
+        <p>{{ t('topup.amount', { price: fmtVND(lastOrder.priceVND), ngoc: lastOrder.tienNgocAmount }) }}</p>
+        <p v-if="bank" class="text-xs text-ink-300">{{ t('topup.bankLine', { bank: bank.bankName, name: bank.accountName, number: bank.accountNumber }) }}</p>
       </section>
 
       <!-- History -->
       <section>
-        <h2 class="text-lg mb-2">Lịch sử đơn nạp</h2>
-        <div v-if="orders.length === 0" class="text-ink-300 text-sm">Chưa có đơn nào.</div>
+        <h2 class="text-lg mb-2">{{ t('topup.history') }}</h2>
+        <div v-if="orders.length === 0" class="text-ink-300 text-sm">{{ t('topup.noOrders') }}</div>
         <table v-else class="w-full text-sm">
           <thead class="text-ink-300 text-xs">
             <tr class="text-left">
-              <th class="py-1">Mã</th>
-              <th>Gói</th>
-              <th>Tiền</th>
-              <th>Tiên ngọc</th>
-              <th>Trạng thái</th>
-              <th>Tạo lúc</th>
-              <th>Ghi chú</th>
+              <th class="py-1">{{ t('topup.col.code') }}</th>
+              <th>{{ t('topup.col.package') }}</th>
+              <th>{{ t('topup.col.price') }}</th>
+              <th>{{ t('topup.col.tienNgoc') }}</th>
+              <th>{{ t('topup.col.status') }}</th>
+              <th>{{ t('topup.col.createdAt') }}</th>
+              <th>{{ t('topup.col.note') }}</th>
             </tr>
           </thead>
           <tbody>

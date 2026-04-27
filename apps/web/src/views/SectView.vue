@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue';
+import { useI18n } from 'vue-i18n';
 import { useRouter } from 'vue-router';
 import { realmByKey, fullRealmName } from '@xuantoi/shared';
 import { useAuthStore } from '@/stores/auth';
@@ -22,6 +23,7 @@ const auth = useAuthStore();
 const game = useGameStore();
 const toast = useToastStore();
 const router = useRouter();
+const { t } = useI18n();
 
 const tab = ref<'mine' | 'all' | 'create'>('mine');
 const submitting = ref(false);
@@ -62,7 +64,7 @@ async function onJoin(s: SectListView): Promise<void> {
   submitting.value = true;
   try {
     me.value = await joinSect(s.id);
-    toast.push({ type: 'success', text: `Đã gia nhập ${s.name}.` });
+    toast.push({ type: 'success', text: t('sect.joinToast', { name: s.name }) });
     tab.value = 'mine';
     await refreshAll();
   } catch (e) {
@@ -74,11 +76,11 @@ async function onJoin(s: SectListView): Promise<void> {
 
 async function onLeave(): Promise<void> {
   if (submitting.value || !me.value) return;
-  if (!confirm(`Rời khỏi ${me.value.name}? Cống hiến vẫn giữ.`)) return;
+  if (!confirm(t('sect.leaveConfirm', { name: me.value.name }))) return;
   submitting.value = true;
   try {
     await leaveSect();
-    toast.push({ type: 'system', text: 'Đã rời tông môn.' });
+    toast.push({ type: 'system', text: t('sect.leaveToast') });
     me.value = null;
     tab.value = 'all';
     await refreshAll();
@@ -92,13 +94,13 @@ async function onLeave(): Promise<void> {
 async function onCreate(): Promise<void> {
   if (submitting.value) return;
   if (!/^[\p{L}\p{N} _-]{2,16}$/u.test(newName.value)) {
-    toast.push({ type: 'error', text: 'Tên 2–16 ký tự.' });
+    toast.push({ type: 'error', text: t('sect.invalidNameToast') });
     return;
   }
   submitting.value = true;
   try {
     me.value = await createSect(newName.value, newDesc.value);
-    toast.push({ type: 'success', text: 'Lập tông thành công.' });
+    toast.push({ type: 'success', text: t('sect.createToast') });
     newName.value = '';
     newDesc.value = '';
     tab.value = 'mine';
@@ -115,7 +117,7 @@ async function onContribute(): Promise<void> {
   submitting.value = true;
   try {
     me.value = await contributeSect(contribAmount.value);
-    toast.push({ type: 'success', text: 'Đã đóng góp.' });
+    toast.push({ type: 'success', text: t('sect.contributeToast') });
     await refreshAll();
   } catch (e) {
     handleErr(e);
@@ -132,18 +134,11 @@ function realmText(key: string, stage: number): string {
 
 function handleErr(e: unknown): void {
   const code = (e as { code?: string })?.code ?? 'UNKNOWN';
-  const map: Record<string, string> = {
-    NO_CHARACTER: 'Chưa có nhân vật.',
-    SECT_NOT_FOUND: 'Tông môn không tồn tại.',
-    NOT_IN_SECT: 'Bạn chưa thuộc tông môn nào.',
-    ALREADY_IN_SECT: 'Bạn đã thuộc tông môn rồi, hãy rời trước.',
-    INVALID_AMOUNT: 'Số linh thạch không hợp lệ (1 – 1.000.000 / lượt).',
-    INVALID_NAME: 'Tên 2–16 ký tự (chữ/số/ _-).',
-    INSUFFICIENT_LINH_THACH: 'Không đủ linh thạch.',
-    NAME_TAKEN: 'Tên này đã có người dùng.',
-    UNKNOWN: 'Có lỗi xảy ra, mời thử lại.',
-  };
-  toast.push({ type: 'error', text: map[code] ?? map.UNKNOWN });
+  const text = t(`sect.errors.${code}`, '__missing__');
+  toast.push({
+    type: 'error',
+    text: text === '__missing__' ? t('sect.errors.UNKNOWN') : text,
+  });
 }
 
 const myStash = computed(() => game.character?.linhThach ?? '0');
@@ -151,7 +146,7 @@ const myStash = computed(() => game.character?.linhThach ?? '0');
 
 <template>
   <AppShell>
-    <h2 class="text-xl tracking-widest mb-4">Tông Môn</h2>
+    <h2 class="text-xl tracking-widest mb-4">{{ t('sect.title') }}</h2>
 
     <div class="flex gap-2 mb-4">
       <MButton
@@ -159,23 +154,23 @@ const myStash = computed(() => game.character?.linhThach ?? '0');
         :disabled="!me"
         @click="tab = 'mine'"
       >
-        Tông Của Tôi
+        {{ t('sect.tab.mine') }}
       </MButton>
       <MButton
         :class="tab === 'all' ? '!bg-ink-50 !text-ink-900' : ''"
         @click="tab = 'all'"
       >
-        Danh Sách
+        {{ t('sect.tab.all') }}
       </MButton>
       <MButton
         :class="tab === 'create' ? '!bg-ink-50 !text-ink-900' : ''"
         :disabled="!!me"
         @click="tab = 'create'"
       >
-        Lập Tông
+        {{ t('sect.tab.create') }}
       </MButton>
       <span class="ml-auto text-xs text-ink-300 self-center">
-        Linh thạch: ⛀ {{ myStash }}
+        {{ t('sect.myStash', { n: myStash }) }}
       </span>
     </div>
 
@@ -186,22 +181,22 @@ const myStash = computed(() => game.character?.linhThach ?? '0');
           <div class="flex-1 min-w-0">
             <div class="text-lg text-ink-50">{{ me.name }}</div>
             <div class="text-xs text-ink-300">
-              Cấp {{ me.level }} · {{ me.memberCount }} thành viên
-              <span v-if="me.leaderName"> · Tông chủ: {{ me.leaderName }}</span>
+              {{ t('sect.level', { lv: me.level }) }} · {{ t('sect.members', { n: me.memberCount }) }}
+              <span v-if="me.leaderName"> · {{ t('sect.leader', { name: me.leaderName }) }}</span>
             </div>
             <p v-if="me.description" class="text-sm text-ink-200 mt-2 whitespace-pre-line">
               {{ me.description }}
             </p>
           </div>
           <div class="text-xs text-right">
-            <div class="text-ink-300">Tông Khố</div>
+            <div class="text-ink-300">{{ t('sect.treasury') }}</div>
             <div class="text-amber-300 text-base">⛀ {{ me.treasuryLinhThach }}</div>
           </div>
         </div>
         <div class="mt-3 flex gap-2 items-end">
           <div class="flex-1">
             <label class="block text-xs text-ink-300 mb-1">
-              Đóng góp linh thạch (tối đa 1.000.000 / lượt)
+              {{ t('sect.contribLabel') }}
             </label>
             <input
               v-model="contribAmount"
@@ -210,29 +205,29 @@ const myStash = computed(() => game.character?.linhThach ?? '0');
               pattern="[0-9]*"
               class="w-40 bg-ink-900/70 border border-ink-300/30 rounded px-2 py-1 text-sm"
             />
-            <span class="text-xs text-ink-300 ml-2">→ +{{ contribAmount }} cống hiến</span>
+            <span class="text-xs text-ink-300 ml-2">{{ t('sect.contribHint', { n: contribAmount }) }}</span>
           </div>
-          <MButton :loading="submitting" @click="onContribute">Đóng Góp</MButton>
+          <MButton :loading="submitting" @click="onContribute">{{ t('sect.contribute') }}</MButton>
           <MButton
             class="!bg-red-900/40 !border-red-400/40"
             :loading="submitting"
             @click="onLeave"
           >
-            Rời Tông
+            {{ t('sect.leave') }}
           </MButton>
         </div>
       </div>
 
       <div class="border border-ink-300/40 rounded">
         <div class="px-4 py-2 text-xs uppercase tracking-widest text-ink-300 border-b border-ink-300/30">
-          Đệ Tử ({{ me.members.length }})
+          {{ t('sect.disciplesTitle', { n: me.members.length }) }}
         </div>
         <table class="w-full text-sm">
           <thead class="text-xs text-ink-300/70">
             <tr>
-              <th class="text-left px-3 py-1">Đạo Hiệu</th>
-              <th class="text-left px-3 py-1">Cảnh Giới</th>
-              <th class="text-right px-3 py-1">Cống Hiến</th>
+              <th class="text-left px-3 py-1">{{ t('sect.col.name') }}</th>
+              <th class="text-left px-3 py-1">{{ t('sect.col.realm') }}</th>
+              <th class="text-right px-3 py-1">{{ t('sect.col.contrib') }}</th>
             </tr>
           </thead>
           <tbody>
@@ -245,8 +240,8 @@ const myStash = computed(() => game.character?.linhThach ?? '0');
                 <span :class="m.isLeader ? 'text-amber-300 font-bold' : ''">
                   {{ m.name }}
                 </span>
-                <span v-if="m.isLeader" class="ml-1 text-xs text-amber-300/70">[Tông chủ]</span>
-                <span v-if="m.isMe" class="ml-1 text-xs text-ink-300/70">(bạn)</span>
+                <span v-if="m.isLeader" class="ml-1 text-xs text-amber-300/70">{{ t('sect.leaderTag') }}</span>
+                <span v-if="m.isMe" class="ml-1 text-xs text-ink-300/70">{{ t('sect.you') }}</span>
               </td>
               <td class="px-3 py-1 text-ink-300">{{ realmText(m.realmKey, m.realmStage) }}</td>
               <td class="px-3 py-1 text-right text-amber-300">{{ m.congHien }}</td>
@@ -259,7 +254,7 @@ const myStash = computed(() => game.character?.linhThach ?? '0');
     <!-- DANH SÁCH -->
     <section v-else-if="tab === 'all'">
       <div v-if="sects.length === 0" class="text-ink-300 text-sm">
-        Chưa có tông môn nào — hãy lập tông đầu tiên.
+        {{ t('sect.noneList') }}
       </div>
       <div v-else class="grid grid-cols-1 md:grid-cols-2 gap-3">
         <div
@@ -271,25 +266,25 @@ const myStash = computed(() => game.character?.linhThach ?? '0');
             <div class="flex-1 min-w-0">
               <div class="text-base text-ink-50">{{ s.name }}</div>
               <div class="text-xs text-ink-300">
-                Cấp {{ s.level }} · {{ s.memberCount }} đệ tử
-                <span v-if="s.leaderName"> · Tông chủ: {{ s.leaderName }}</span>
+                {{ t('sect.level', { lv: s.level }) }} · {{ t('sect.disciples', { n: s.memberCount }) }}
+                <span v-if="s.leaderName"> · {{ t('sect.leader', { name: s.leaderName }) }}</span>
               </div>
               <p v-if="s.description" class="text-xs text-ink-200/80 mt-1 line-clamp-2">
                 {{ s.description }}
               </p>
             </div>
             <div class="text-right text-xs">
-              <div class="text-ink-300">Tông Khố</div>
+              <div class="text-ink-300">{{ t('sect.treasury') }}</div>
               <div class="text-amber-300">⛀ {{ s.treasuryLinhThach }}</div>
             </div>
           </div>
           <div class="mt-2 flex justify-end">
             <MButton
               :disabled="!!me || submitting"
-              :title="me ? 'Bạn đã thuộc tông khác' : ''"
+              :title="me ? t('sect.alreadyInOther') : ''"
               @click="onJoin(s)"
             >
-              Gia Nhập
+              {{ t('sect.join') }}
             </MButton>
           </div>
         </div>
@@ -299,11 +294,11 @@ const myStash = computed(() => game.character?.linhThach ?? '0');
     <!-- LẬP TÔNG -->
     <section v-else-if="tab === 'create'">
       <div v-if="me" class="text-ink-300 text-sm">
-        Bạn đang thuộc {{ me.name }} — hãy rời trước nếu muốn lập tông mới.
+        {{ t('sect.inOtherSect', { name: me.name }) }}
       </div>
       <form v-else class="max-w-lg space-y-3" @submit.prevent="onCreate">
         <div>
-          <label class="block text-xs text-ink-300 mb-1">Tên Tông Môn (2–16 ký tự)</label>
+          <label class="block text-xs text-ink-300 mb-1">{{ t('sect.form.name') }}</label>
           <input
             v-model="newName"
             type="text"
@@ -312,7 +307,7 @@ const myStash = computed(() => game.character?.linhThach ?? '0');
           />
         </div>
         <div>
-          <label class="block text-xs text-ink-300 mb-1">Tông Chỉ (≤ 200 ký tự)</label>
+          <label class="block text-xs text-ink-300 mb-1">{{ t('sect.form.desc') }}</label>
           <textarea
             v-model="newDesc"
             maxlength="200"
@@ -320,7 +315,7 @@ const myStash = computed(() => game.character?.linhThach ?? '0');
             class="w-full bg-ink-900/70 border border-ink-300/30 rounded px-2 py-1 text-sm"
           />
         </div>
-        <MButton type="submit" :loading="submitting">Lập Tông</MButton>
+        <MButton type="submit" :loading="submitting">{{ t('sect.create') }}</MButton>
       </form>
     </section>
   </AppShell>

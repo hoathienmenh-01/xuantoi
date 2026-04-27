@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { onMounted, ref, watch } from 'vue';
+import { useI18n } from 'vue-i18n';
 import { useRouter } from 'vue-router';
 import { useAuthStore } from '@/stores/auth';
 import { useGameStore } from '@/stores/game';
@@ -25,6 +26,7 @@ const auth = useAuthStore();
 const game = useGameStore();
 const toast = useToastStore();
 const router = useRouter();
+const { t } = useI18n();
 
 type Tab = 'users' | 'topups' | 'audit';
 const tab = ref<Tab>('users');
@@ -63,17 +65,17 @@ onMounted(async () => {
   game.bindSocket();
   const role = game.character?.role;
   if (role !== 'ADMIN' && role !== 'MOD') {
-    toast.push({ type: 'error', text: 'Bạn không có quyền vào khu này.' });
+    toast.push({ type: 'error', text: t('admin.noPermission') });
     router.replace('/home');
     return;
   }
   await refreshUsers();
 });
 
-watch(tab, async (t) => {
-  if (t === 'users') await refreshUsers();
-  else if (t === 'topups') await refreshTopups();
-  else if (t === 'audit') await refreshAudit();
+watch(tab, async (curTab) => {
+  if (curTab === 'users') await refreshUsers();
+  else if (curTab === 'topups') await refreshTopups();
+  else if (curTab === 'audit') await refreshAudit();
 });
 
 async function refreshUsers(): Promise<void> {
@@ -116,10 +118,11 @@ async function refreshAudit(): Promise<void> {
 }
 
 async function toggleBan(u: AdminUserRow): Promise<void> {
-  if (!confirm(`${u.banned ? 'Mở khoá' : 'Khoá'} tài khoản ${u.email}?`)) return;
+  const action = u.banned ? t('admin.users.actionUnlock') : t('admin.users.actionLock');
+  if (!confirm(t('admin.users.banConfirm', { action, email: u.email }))) return;
   try {
     await adminBanUser(u.id, !u.banned);
-    toast.push({ type: 'success', text: 'Đã cập nhật.' });
+    toast.push({ type: 'success', text: t('admin.users.updatedToast') });
     await refreshUsers();
   } catch (e) {
     handleErr(e);
@@ -128,10 +131,10 @@ async function toggleBan(u: AdminUserRow): Promise<void> {
 
 async function changeRole(u: AdminUserRow, role: Role): Promise<void> {
   if (u.role === role) return;
-  if (!confirm(`Đổi role ${u.email} → ${role}?`)) return;
+  if (!confirm(t('admin.users.roleChangeConfirm', { email: u.email, role }))) return;
   try {
     await adminSetRole(u.id, role);
-    toast.push({ type: 'success', text: 'Đã đổi role.' });
+    toast.push({ type: 'success', text: t('admin.users.roleChangedToast') });
     await refreshUsers();
   } catch (e) {
     handleErr(e);
@@ -149,7 +152,7 @@ async function submitGrant(): Promise<void> {
   if (!grantOpen.value) return;
   try {
     await adminGrant(grantOpen.value, grantLinhThach.value, grantTienNgoc.value, grantReason.value);
-    toast.push({ type: 'success', text: 'Đã cộng/trừ tài sản.' });
+    toast.push({ type: 'success', text: t('admin.users.grantedToast') });
     grantOpen.value = null;
     await refreshUsers();
   } catch (e) {
@@ -158,10 +161,10 @@ async function submitGrant(): Promise<void> {
 }
 
 async function approveTopup(o: TopupOrderView): Promise<void> {
-  if (!confirm(`Duyệt đơn ${o.transferCode} cộng ${o.tienNgocAmount} tiên ngọc?`)) return;
+  if (!confirm(t('admin.topups.approveConfirm', { code: o.transferCode, ngoc: o.tienNgocAmount }))) return;
   try {
     await adminApproveTopup(o.id, topupNote.value);
-    toast.push({ type: 'success', text: 'Đã duyệt.' });
+    toast.push({ type: 'success', text: t('admin.topups.approvedToast') });
     await refreshTopups();
   } catch (e) {
     handleErr(e);
@@ -169,10 +172,10 @@ async function approveTopup(o: TopupOrderView): Promise<void> {
 }
 
 async function rejectTopup(o: TopupOrderView): Promise<void> {
-  if (!confirm(`Từ chối đơn ${o.transferCode}?`)) return;
+  if (!confirm(t('admin.topups.rejectConfirm', { code: o.transferCode }))) return;
   try {
     await adminRejectTopup(o.id, topupNote.value);
-    toast.push({ type: 'success', text: 'Đã từ chối.' });
+    toast.push({ type: 'success', text: t('admin.topups.rejectedToast') });
     await refreshTopups();
   } catch (e) {
     handleErr(e);
@@ -181,15 +184,11 @@ async function rejectTopup(o: TopupOrderView): Promise<void> {
 
 function handleErr(e: unknown): void {
   const code = (e as { code?: string }).code ?? 'ERR';
-  const msg: Record<string, string> = {
-    UNAUTHENTICATED: 'Hết phiên, hãy đăng nhập lại.',
-    FORBIDDEN: 'Không đủ quyền.',
-    NOT_FOUND: 'Không tìm thấy.',
-    ALREADY_PROCESSED: 'Đơn đã được xử lý.',
-    INVALID_INPUT: 'Tham số không hợp lệ (vượt giới hạn / âm quá mức).',
-    CANNOT_TARGET_SELF: 'Không thể tự thao tác lên bản thân.',
-  };
-  toast.push({ type: 'error', text: msg[code] ?? `Lỗi: ${code}` });
+  const text = t(`admin.errors.${code}`, '__missing__');
+  toast.push({
+    type: 'error',
+    text: text === '__missing__' ? t('admin.errors.UNKNOWN') : text,
+  });
 }
 
 const isAdmin = () => game.character?.role === 'ADMIN';
@@ -199,19 +198,19 @@ const isAdmin = () => game.character?.role === 'ADMIN';
   <AppShell>
     <div class="max-w-6xl mx-auto space-y-4">
       <header class="flex items-center gap-3">
-        <h1 class="text-2xl tracking-widest font-bold">Quản Trị</h1>
-        <span class="text-amber-200 text-xs">Role: {{ game.character?.role ?? '?' }}</span>
+        <h1 class="text-2xl tracking-widest font-bold">{{ t('admin.title') }}</h1>
+        <span class="text-amber-200 text-xs">{{ t('admin.roleLabel', { role: game.character?.role ?? '?' }) }}</span>
       </header>
 
       <nav class="flex gap-1 border-b border-ink-300/30 text-sm">
         <button
-          v-for="t in (['users','topups','audit'] as const)"
-          :key="t"
+          v-for="tk in (['users','topups','audit'] as const)"
+          :key="tk"
           class="px-3 py-2"
-          :class="tab === t ? 'border-b-2 border-amber-300 text-ink-50' : 'text-ink-300'"
-          @click="tab = t"
+          :class="tab === tk ? 'border-b-2 border-amber-300 text-ink-50' : 'text-ink-300'"
+          @click="tab = tk"
         >
-          {{ t === 'users' ? 'Người dùng' : t === 'topups' ? 'Đơn nạp' : 'Audit' }}
+          {{ t(`admin.tab.${tk}`) }}
         </button>
       </nav>
 
@@ -220,23 +219,23 @@ const isAdmin = () => game.character?.role === 'ADMIN';
         <div class="flex gap-2 items-center text-sm">
           <input
             v-model="userQuery"
-            placeholder="Tìm email hoặc đạo hiệu…"
+            :placeholder="t('admin.users.searchPlaceholder')"
             class="px-2 py-1 bg-ink-700/40 border border-ink-300/30 rounded flex-1"
             @keydown.enter="userPage = 0; refreshUsers()"
           />
-          <MButton @click="userPage = 0; refreshUsers()">Tìm</MButton>
+          <MButton @click="userPage = 0; refreshUsers()">{{ t('common.search') }}</MButton>
         </div>
 
         <table class="w-full text-sm">
           <thead class="text-ink-300 text-xs">
             <tr class="text-left">
-              <th class="py-1">Email</th>
-              <th>Đạo Hiệu</th>
-              <th>Cảnh giới</th>
-              <th>Linh Thạch</th>
-              <th>Tiên Ngọc</th>
-              <th>Role</th>
-              <th>Trạng thái</th>
+              <th class="py-1">{{ t('admin.users.col.email') }}</th>
+              <th>{{ t('admin.users.col.name') }}</th>
+              <th>{{ t('admin.users.col.realm') }}</th>
+              <th>{{ t('admin.users.col.linhThach') }}</th>
+              <th>{{ t('admin.users.col.tienNgoc') }}</th>
+              <th>{{ t('admin.users.col.role') }}</th>
+              <th>{{ t('admin.users.col.status') }}</th>
               <th></th>
             </tr>
           </thead>
@@ -264,15 +263,15 @@ const isAdmin = () => game.character?.role === 'ADMIN';
                   class="px-1.5 py-0.5 rounded text-[10px]"
                   :class="u.banned ? 'bg-red-700/40 text-red-200' : 'bg-emerald-700/40 text-emerald-200'"
                 >
-                  {{ u.banned ? 'BANNED' : 'OK' }}
+                  {{ u.banned ? t('admin.users.banned') : t('admin.users.ok') }}
                 </span>
               </td>
               <td class="space-x-1">
                 <button class="text-xs text-amber-200 underline" @click="openGrant(u)">
-                  Cộng/Trừ
+                  {{ t('admin.users.grantBtn') }}
                 </button>
                 <button class="text-xs text-red-200 underline" @click="toggleBan(u)">
-                  {{ u.banned ? 'Mở' : 'Khoá' }}
+                  {{ u.banned ? t('admin.users.unlock') : t('admin.users.lock') }}
                 </button>
               </td>
             </tr>
@@ -280,11 +279,11 @@ const isAdmin = () => game.character?.role === 'ADMIN';
         </table>
 
         <div class="flex justify-between text-xs text-ink-300">
-          <span>Tổng: {{ userTotal }}</span>
+          <span>{{ t('common.total') }}: {{ userTotal }}</span>
           <div class="space-x-2">
-            <button :disabled="userPage === 0" @click="userPage--; refreshUsers()">‹ Trước</button>
-            <span>Trang {{ userPage + 1 }}</span>
-            <button @click="userPage++; refreshUsers()">Sau ›</button>
+            <button :disabled="userPage === 0" @click="userPage--; refreshUsers()">{{ t('common.pagePrev') }}</button>
+            <span>{{ t('common.page') }} {{ userPage + 1 }}</span>
+            <button @click="userPage++; refreshUsers()">{{ t('common.pageNext') }}</button>
           </div>
         </div>
 
@@ -295,16 +294,16 @@ const isAdmin = () => game.character?.role === 'ADMIN';
           @click.self="grantOpen = null"
         >
           <div class="bg-ink-700 border border-ink-300/40 rounded p-4 w-full max-w-md space-y-3">
-            <h3 class="text-lg">Cộng/Trừ tài sản</h3>
+            <h3 class="text-lg">{{ t('admin.users.grantTitle') }}</h3>
             <label class="block text-xs">
-              Linh thạch (có thể âm)
+              {{ t('admin.users.grantLinh') }}
               <input
                 v-model="grantLinhThach"
                 class="w-full px-2 py-1 bg-ink-900/40 border border-ink-300/30 rounded mt-1"
               />
             </label>
             <label class="block text-xs">
-              Tiên ngọc (số nguyên, có thể âm)
+              {{ t('admin.users.grantNgoc') }}
               <input
                 v-model.number="grantTienNgoc"
                 type="number"
@@ -312,15 +311,15 @@ const isAdmin = () => game.character?.role === 'ADMIN';
               />
             </label>
             <label class="block text-xs">
-              Lý do (lưu vào audit log)
+              {{ t('admin.users.grantReason') }}
               <input
                 v-model="grantReason"
                 class="w-full px-2 py-1 bg-ink-900/40 border border-ink-300/30 rounded mt-1"
               />
             </label>
             <div class="flex justify-end gap-2">
-              <button class="text-xs text-ink-300" @click="grantOpen = null">Huỷ</button>
-              <MButton @click="submitGrant">Xác nhận</MButton>
+              <button class="text-xs text-ink-300" @click="grantOpen = null">{{ t('common.cancel') }}</button>
+              <MButton @click="submitGrant">{{ t('common.confirm') }}</MButton>
             </div>
           </div>
         </div>
@@ -334,14 +333,14 @@ const isAdmin = () => game.character?.role === 'ADMIN';
             class="px-2 py-1 bg-ink-700/40 border border-ink-300/30 rounded"
             @change="topupPage = 0; refreshTopups()"
           >
-            <option value="PENDING">Chờ duyệt</option>
-            <option value="APPROVED">Đã duyệt</option>
-            <option value="REJECTED">Bị từ chối</option>
-            <option value="">Tất cả</option>
+            <option value="PENDING">{{ t('admin.topups.filter.PENDING') }}</option>
+            <option value="APPROVED">{{ t('admin.topups.filter.APPROVED') }}</option>
+            <option value="REJECTED">{{ t('admin.topups.filter.REJECTED') }}</option>
+            <option value="">{{ t('common.all') }}</option>
           </select>
           <input
             v-model="topupNote"
-            placeholder="Ghi chú khi duyệt/từ chối…"
+            :placeholder="t('admin.topups.notePlaceholder')"
             class="px-2 py-1 bg-ink-700/40 border border-ink-300/30 rounded flex-1"
           />
         </div>
@@ -349,14 +348,14 @@ const isAdmin = () => game.character?.role === 'ADMIN';
         <table class="w-full text-sm">
           <thead class="text-ink-300 text-xs">
             <tr class="text-left">
-              <th class="py-1">Mã</th>
-              <th>User</th>
-              <th>Gói</th>
-              <th>Tiền</th>
-              <th>Tiên Ngọc</th>
-              <th>Status</th>
-              <th>Tạo lúc</th>
-              <th>Note</th>
+              <th class="py-1">{{ t('admin.topups.col.code') }}</th>
+              <th>{{ t('admin.topups.col.user') }}</th>
+              <th>{{ t('admin.topups.col.package') }}</th>
+              <th>{{ t('admin.topups.col.price') }}</th>
+              <th>{{ t('admin.topups.col.tienNgoc') }}</th>
+              <th>{{ t('admin.topups.col.status') }}</th>
+              <th>{{ t('admin.topups.col.createdAt') }}</th>
+              <th>{{ t('admin.topups.col.note') }}</th>
               <th></th>
             </tr>
           </thead>
@@ -372,10 +371,10 @@ const isAdmin = () => game.character?.role === 'ADMIN';
               <td class="text-ink-300">{{ o.note || '—' }}</td>
               <td v-if="o.status === 'PENDING'" class="space-x-1">
                 <button class="text-xs text-emerald-200 underline" @click="approveTopup(o)">
-                  Duyệt
+                  {{ t('admin.topups.approve') }}
                 </button>
                 <button class="text-xs text-red-200 underline" @click="rejectTopup(o)">
-                  Từ chối
+                  {{ t('admin.topups.reject') }}
                 </button>
               </td>
               <td v-else class="text-ink-300 text-xs">{{ o.approvedByEmail ?? '—' }}</td>
@@ -384,11 +383,11 @@ const isAdmin = () => game.character?.role === 'ADMIN';
         </table>
 
         <div class="flex justify-between text-xs text-ink-300">
-          <span>Tổng: {{ topupTotal }}</span>
+          <span>{{ t('common.total') }}: {{ topupTotal }}</span>
           <div class="space-x-2">
-            <button :disabled="topupPage === 0" @click="topupPage--; refreshTopups()">‹ Trước</button>
-            <span>Trang {{ topupPage + 1 }}</span>
-            <button @click="topupPage++; refreshTopups()">Sau ›</button>
+            <button :disabled="topupPage === 0" @click="topupPage--; refreshTopups()">{{ t('common.pagePrev') }}</button>
+            <span>{{ t('common.page') }} {{ topupPage + 1 }}</span>
+            <button @click="topupPage++; refreshTopups()">{{ t('common.pageNext') }}</button>
           </div>
         </div>
       </section>
@@ -398,10 +397,10 @@ const isAdmin = () => game.character?.role === 'ADMIN';
         <table class="w-full text-sm">
           <thead class="text-ink-300 text-xs">
             <tr class="text-left">
-              <th class="py-1">Lúc</th>
-              <th>Actor</th>
-              <th>Action</th>
-              <th>Meta</th>
+              <th class="py-1">{{ t('admin.audit.col.at') }}</th>
+              <th>{{ t('admin.audit.col.actor') }}</th>
+              <th>{{ t('admin.audit.col.action') }}</th>
+              <th>{{ t('admin.audit.col.meta') }}</th>
             </tr>
           </thead>
           <tbody>
@@ -414,11 +413,11 @@ const isAdmin = () => game.character?.role === 'ADMIN';
           </tbody>
         </table>
         <div class="flex justify-between text-xs text-ink-300">
-          <span>Tổng: {{ auditTotal }}</span>
+          <span>{{ t('common.total') }}: {{ auditTotal }}</span>
           <div class="space-x-2">
-            <button :disabled="auditPage === 0" @click="auditPage--; refreshAudit()">‹ Trước</button>
-            <span>Trang {{ auditPage + 1 }}</span>
-            <button @click="auditPage++; refreshAudit()">Sau ›</button>
+            <button :disabled="auditPage === 0" @click="auditPage--; refreshAudit()">{{ t('common.pagePrev') }}</button>
+            <span>{{ t('common.page') }} {{ auditPage + 1 }}</span>
+            <button @click="auditPage++; refreshAudit()">{{ t('common.pageNext') }}</button>
           </div>
         </div>
       </section>

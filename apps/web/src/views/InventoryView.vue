@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue';
+import { useI18n } from 'vue-i18n';
 import { useRouter } from 'vue-router';
 import {
   EQUIP_SLOTS,
@@ -25,21 +26,14 @@ const auth = useAuthStore();
 const game = useGameStore();
 const toast = useToastStore();
 const router = useRouter();
+const { t } = useI18n();
 
 const items = ref<InventoryView[]>([]);
 const submitting = ref(false);
 
-const SLOT_LABELS: Record<EquipSlot, string> = {
-  WEAPON: 'Vũ Khí',
-  ARMOR: 'Áo',
-  BELT: 'Đai',
-  BOOTS: 'Giày',
-  HAT: 'Mũ',
-  TRAM: 'Trâm',
-  ARTIFACT_1: 'Pháp Bảo I',
-  ARTIFACT_2: 'Pháp Bảo II',
-  ARTIFACT_3: 'Pháp Bảo III',
-};
+function slotLabel(slot: EquipSlot): string {
+  return t(`equipSlot.${slot}`);
+}
 
 const equipped = computed(() => {
   const map = new Map<EquipSlot, InventoryView>();
@@ -54,11 +48,11 @@ const unequipped = computed(() => items.value.filter((i) => !i.equippedSlot));
 function bonusText(item: ItemDef): string {
   if (!item.bonuses) return '';
   const parts: string[] = [];
-  if (item.bonuses.atk) parts.push(`+${item.bonuses.atk} công`);
-  if (item.bonuses.def) parts.push(`+${item.bonuses.def} thủ`);
-  if (item.bonuses.hpMax) parts.push(`+${item.bonuses.hpMax} HP`);
-  if (item.bonuses.mpMax) parts.push(`+${item.bonuses.mpMax} MP`);
-  if (item.bonuses.spirit) parts.push(`+${item.bonuses.spirit} linh`);
+  if (item.bonuses.atk) parts.push(t('inventory.bonus.atk', { v: item.bonuses.atk }));
+  if (item.bonuses.def) parts.push(t('inventory.bonus.def', { v: item.bonuses.def }));
+  if (item.bonuses.hpMax) parts.push(t('inventory.bonus.hpMax', { v: item.bonuses.hpMax }));
+  if (item.bonuses.mpMax) parts.push(t('inventory.bonus.mpMax', { v: item.bonuses.mpMax }));
+  if (item.bonuses.spirit) parts.push(t('inventory.bonus.spirit', { v: item.bonuses.spirit }));
   return parts.join(' · ');
 }
 
@@ -82,7 +76,7 @@ onMounted(async () => {
   try {
     items.value = await listInventory();
   } catch {
-    toast.push({ type: 'error', text: 'Không tải được túi đồ.' });
+    toast.push({ type: 'error', text: t('inventory.loadFailToast') });
   }
 });
 
@@ -91,7 +85,7 @@ async function onEquip(it: InventoryView): Promise<void> {
   submitting.value = true;
   try {
     items.value = await equipItem(it.id);
-    toast.push({ type: 'success', text: `Đã mang ${it.item.name}.` });
+    toast.push({ type: 'success', text: t('inventory.equipToast', { name: it.item.name }) });
   } catch (e) {
     handleErr(e);
   } finally {
@@ -104,7 +98,7 @@ async function onUnequip(slot: EquipSlot): Promise<void> {
   submitting.value = true;
   try {
     items.value = await unequipItem(slot);
-    toast.push({ type: 'system', text: `Đã tháo ${SLOT_LABELS[slot]}.` });
+    toast.push({ type: 'system', text: t('inventory.unequipToast', { slot: slotLabel(slot) }) });
   } catch (e) {
     handleErr(e);
   } finally {
@@ -117,7 +111,7 @@ async function onUse(it: InventoryView): Promise<void> {
   submitting.value = true;
   try {
     items.value = await useItem(it.id);
-    toast.push({ type: 'success', text: `Đã dùng ${it.item.name}.` });
+    toast.push({ type: 'success', text: t('inventory.useToast', { name: it.item.name }) });
   } catch (e) {
     handleErr(e);
   } finally {
@@ -127,40 +121,38 @@ async function onUse(it: InventoryView): Promise<void> {
 
 function handleErr(e: unknown): void {
   const code = (e as { code?: string })?.code ?? 'UNKNOWN';
-  const map: Record<string, string> = {
-    INVENTORY_ITEM_NOT_FOUND: 'Vật phẩm không còn nữa.',
-    NOT_EQUIPPABLE: 'Vật phẩm này không trang bị được.',
-    NOT_USABLE: 'Vật phẩm này không có hiệu ứng.',
-    UNKNOWN: 'Có lỗi xảy ra, mời thử lại.',
-  };
-  toast.push({ type: 'error', text: map[code] ?? map.UNKNOWN });
+  const text = t(`inventory.errors.${code}`, '__missing__');
+  toast.push({
+    type: 'error',
+    text: text === '__missing__' ? t('inventory.errors.UNKNOWN') : text,
+  });
 }
 </script>
 
 <template>
   <AppShell>
-    <h2 class="text-xl tracking-widest mb-4">Linh Bảo Các</h2>
+    <h2 class="text-xl tracking-widest mb-4">{{ t('inventory.title') }}</h2>
 
     <div class="grid gap-6 lg:grid-cols-[20rem_minmax(0,1fr)]">
       <!-- Bộ trang bị -->
       <section class="rounded border border-ink-300/40 bg-ink-700/30 p-4 space-y-2">
-        <h3 class="text-base font-bold mb-2">Bộ Trang Bị</h3>
+        <h3 class="text-base font-bold mb-2">{{ t('inventory.gearTitle') }}</h3>
         <div
           v-for="slot in EQUIP_SLOTS"
           :key="slot"
           class="flex items-center justify-between text-sm border-b border-ink-300/20 last:border-0 py-2"
         >
-          <span class="text-ink-300 w-24">{{ SLOT_LABELS[slot] }}</span>
+          <span class="text-ink-300 w-24">{{ slotLabel(slot) }}</span>
           <span v-if="equipped.get(slot)" :class="QUALITY_COLOR[equipped.get(slot)!.item.quality]">
             {{ equipped.get(slot)!.item.name }}
           </span>
-          <span v-else class="italic text-ink-300/60">trống</span>
+          <span v-else class="italic text-ink-300/60">{{ t('inventory.empty') }}</span>
           <MButton
             v-if="equipped.get(slot)"
             class="ml-auto !px-2 !py-0.5 text-xs"
             @click="onUnequip(slot)"
           >
-            Tháo
+            {{ t('inventory.takeOff') }}
           </MButton>
         </div>
       </section>
@@ -168,7 +160,7 @@ function handleErr(e: unknown): void {
       <!-- Danh sách item chưa đeo -->
       <section class="space-y-3">
         <div v-if="unequipped.length === 0" class="text-ink-300 italic">
-          Túi đồ trống — đi Luyện Khí Đường để nhặt chiến lợi phẩm.
+          {{ t('inventory.emptyAll') }}
         </div>
         <div
           v-for="it in unequipped"
@@ -196,10 +188,10 @@ function handleErr(e: unknown): void {
           </div>
           <div class="flex flex-col gap-1">
             <MButton v-if="it.item.slot" :loading="submitting" @click="onEquip(it)">
-              Mang
+              {{ t('inventory.equip') }}
             </MButton>
             <MButton v-if="it.item.effect" :loading="submitting" @click="onUse(it)">
-              Dùng
+              {{ t('inventory.use') }}
             </MButton>
           </div>
         </div>
