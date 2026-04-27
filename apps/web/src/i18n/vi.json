@@ -1,0 +1,133 @@
+{
+  "app": {
+    "title": "Xuân Tôi · Đạo Môn",
+    "brand": "Đạo Môn",
+    "tagline": "Trải nghiệm tu tiên MUD - Cổ phong"
+  },
+  "common": {
+    "loading": "Đang xử lý…",
+    "back": "Quay về",
+    "submit": "Xác nhận",
+    "cancel": "Huỷ",
+    "next": "Tiếp tục",
+    "prev": "Lùi lại",
+    "close": "Đóng",
+    "confirm": "Đồng ý",
+    "skip": "Bỏ qua",
+    "yes": "Có",
+    "no": "Không"
+  },
+  "toast": {
+    "title": {
+      "info": "Tin tức",
+      "warning": "Cảnh báo",
+      "error": "Lỗi",
+      "success": "Thành công",
+      "system": "Thiên Đạo Sứ Giả"
+    },
+    "offline": "Mất kết nối, đang nối lại…",
+    "online": "Đã kết nối lại linh khí.",
+    "newMail": "Bạn có thư mới từ Thiên Đạo Sứ Giả!",
+    "bossSpawn": "Boss xuất thế!"
+  },
+  "auth": {
+    "tab": {
+      "login": "Đăng Nhập",
+      "register": "Đăng Ký",
+      "change": "Đổi Mật Khẩu"
+    },
+    "login": {
+      "email": "Tài Khoản (Email)",
+      "password": "Huyền Pháp Bảo Hộ (Mật Khẩu)",
+      "remember": "Ghi nhớ email",
+      "note": "Mật khẩu sẽ được bảo vệ theo phiên.",
+      "submit": "Nhập Định Tu Hành",
+      "success": "Nhập định thành công."
+    },
+    "register": {
+      "submit": "Khai Tông Lập Danh",
+      "success": "Khai tông lập danh thành công. Mời đạo hữu nhập định tu hành.",
+      "strength": "Độ mạnh:",
+      "strengthLevels": {
+        "0": "—",
+        "1": "Yếu",
+        "2": "Trung bình",
+        "3": "Khá",
+        "4": "Mạnh",
+        "5": "Rất mạnh"
+      }
+    },
+    "change": {
+      "old": "Huyền Pháp Cũ",
+      "new": "Huyền Pháp Mới",
+      "submit": "Đổi pháp",
+      "success": "Đổi pháp thành công."
+    },
+    "errors": {
+      "INVALID_CREDENTIALS": "Danh hiệu hoặc huyền pháp không chính xác.",
+      "EMAIL_TAKEN": "Danh hiệu đạo đồ đã được khai lập hoặc dữ liệu không hợp lệ.",
+      "WEAK_PASSWORD": "Huyền pháp quá yếu.",
+      "OLD_PASSWORD_WRONG": "Huyền pháp cũ không đúng hoặc không tìm thấy tài khoản.",
+      "RATE_LIMITED": "Đã thử quá nhiều lần. Đạo hữu vui lòng thử lại sau.",
+      "UNAUTHENTICATED": "Phiên đã hết. Mời đạo hữu nhập định lại.",
+      "UNKNOWN": "Có lỗi xảy ra, mời thử lại."
+    }
+  },
+  "home": {
+    "logout": "Xuất Quan",
+    "wip": "Game shell sẽ được thi công ở Phase 2 — bao gồm Topbar, Sidebar, ChatDock và GameHome."
+  },
+  "notFound": {
+    "title": "404 · Lạc Đạo",
+    "desc": "Đạo hữu đã đi nhầm vào hư không."
+  },
+  "onboarding": {
+    "alinhName": "A Linh",
+    "alinhRole": "Linh Đồng Dẫn Lộ",
+    "step1": {
+      "title": "Chào mừng đạo hữu vào Đạo Môn",
+      "lines": [
+        "Ta là A Linh, linh đồng dẫn lộ của Thiên Đạo Sứ Giả.",
+        "Đạo hữu vừa thoát phàm trần, sẽ cùng ta khởi đầu hành trình tu tiên.",
+        "Trước hết, hãy cho ta biết đạo hiệu của đạo hữu."
+      ]
+    },
+    "step2": {
+      "title": "Khai Lập Đạo Hiệu",
+      "label": "Đạo hiệu (3-16 ký tự, không khoảng trắng)",
+      "placeholder": "Ví dụ: Mặc Vân Tử",
+      "errors": {
+        "tooShort": "Đạo hiệu tối thiểu 3 ký tự.",
+        "tooLong": "Đạo hiệu tối đa 16 ký tự.",
+        "invalid": "Đạo hiệu chỉ chứa chữ, số, dấu chấm, gạch dưới, không khoảng trắng.",
+        "taken": "Đạo hiệu đã có người khai lập, mời đạo hữu chọn cái khác."
+      }
+    },
+    "step3": {
+      "title": "Chọn Khởi Tông",
+      "lines": ["Mỗi tông môn có công pháp khởi đầu khác biệt. Chọn nơi đạo hữu muốn an thân."],
+      "sects": {
+        "thanh_van": {
+          "name": "Thanh Vân Môn",
+          "desc": "Tinh thông kiếm pháp, thiên về công kích bộc phát."
+        },
+        "huyen_thuy": {
+          "name": "Huyền Thuỷ Cung",
+          "desc": "Đan đạo thâm sâu, thiên về phòng thủ và hồi phục."
+        },
+        "tu_la": {
+          "name": "Tu La Tông",
+          "desc": "Ma đạo cuồng bạo, lấy sát chứng đạo, hi sinh máu đổi sức mạnh."
+        }
+      }
+    },
+    "step4": {
+      "title": "Khởi đạo",
+      "lines": [
+        "{name}, kể từ giờ phút này đạo hữu chính thức bước vào Luyện Khí Nhất Trọng.",
+        "Hãy nhấn ‘Nhập Định’ để bắt đầu hấp thụ linh khí, tu vi sẽ tự tăng theo thời gian."
+      ],
+      "submit": "Khởi đạo"
+    }
+  }
+}
