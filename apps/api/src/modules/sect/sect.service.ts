@@ -1,8 +1,9 @@
 import { Injectable } from '@nestjs/common';
-import { Prisma } from '@prisma/client';
+import { CurrencyKind, Prisma } from '@prisma/client';
 import { PrismaService } from '../../common/prisma.service';
 import { RealtimeService } from '../realtime/realtime.service';
 import { CharacterService } from '../character/character.service';
+import { CurrencyError, CurrencyService } from '../character/currency.service';
 
 class SectError extends Error {
   constructor(
@@ -55,6 +56,7 @@ export class SectService {
     private readonly prisma: PrismaService,
     private readonly realtime: RealtimeService,
     private readonly chars: CharacterService,
+    private readonly currency: CurrencyService,
   ) {}
 
   async list(): Promise<SectListView[]> {
@@ -244,25 +246,35 @@ export class SectService {
     const congHienGain = Number(amount);
 
     await this.prisma.$transaction(async (tx) => {
-      // Optimistic lock: chỉ trừ linh thạch nếu user vẫn còn thuộc sectId
-      // ban đầu (chống race với leave()).
-      const pay = await tx.character.updateMany({
-        where: { id: char.id, sectId, linhThach: { gte: amount } },
-        data: {
-          linhThach: { decrement: amount },
-          congHien: { increment: congHienGain },
-        },
-      });
-      if (pay.count === 0) {
-        // Phân biệt 2 lý do: nếu vẫn còn trong sect nhưng không đủ linh
-        // thạch → INSUFFICIENT_LINH_THACH; ngược lại → NOT_IN_SECT.
-        const cur = await tx.character.findUnique({
-          where: { id: char.id },
-          select: { sectId: true },
+      // Trừ linh thạch + ghi ledger; guard sectId để chống race với leave().
+      try {
+        await this.currency.applyTx(tx, {
+          characterId: char.id,
+          currency: CurrencyKind.LINH_THACH,
+          delta: -amount,
+          reason: 'SECT_CONTRIBUTE',
+          refType: 'Sect',
+          refId: sectId,
+          extraWhere: { sectId },
+          meta: { congHienGain },
         });
-        if (cur?.sectId !== sectId) throw new SectError('NOT_IN_SECT');
-        throw new SectError('INSUFFICIENT_LINH_THACH');
+      } catch (e) {
+        if (e instanceof CurrencyError && e.code === 'INSUFFICIENT_FUNDS') {
+          // Phân biệt 2 lý do: nếu sect đã đổi → NOT_IN_SECT, không thì
+          // thực sự thiếu linh thạch.
+          const cur = await tx.character.findUnique({
+            where: { id: char.id },
+            select: { sectId: true },
+          });
+          if (cur?.sectId !== sectId) throw new SectError('NOT_IN_SECT');
+          throw new SectError('INSUFFICIENT_LINH_THACH');
+        }
+        throw e;
       }
+      await tx.character.update({
+        where: { id: char.id },
+        data: { congHien: { increment: congHienGain } },
+      });
       await tx.sect.update({
         where: { id: sectId },
         data: { treasuryLinhThach: { increment: amount } },

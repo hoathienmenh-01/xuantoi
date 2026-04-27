@@ -1,7 +1,8 @@
 import { Injectable } from '@nestjs/common';
-import { Prisma, Role, TopupStatus } from '@prisma/client';
+import { CurrencyKind, Prisma, Role, TopupStatus } from '@prisma/client';
 import { PrismaService } from '../../common/prisma.service';
 import { CharacterService } from '../character/character.service';
+import { CurrencyError, CurrencyService } from '../character/currency.service';
 import { TopupService, type TopupOrderView } from '../topup/topup.service';
 import { RealtimeService } from '../realtime/realtime.service';
 
@@ -46,6 +47,7 @@ export class AdminService {
     private readonly chars: CharacterService,
     private readonly topup: TopupService,
     private readonly realtime: RealtimeService,
+    private readonly currency: CurrencyService,
   ) {}
 
   // ---------- users ----------
@@ -169,19 +171,45 @@ export class AdminService {
     });
     if (!target) throw new AdminError('NOT_FOUND');
 
-    // Guard không để âm: dùng updateMany với điều kiện gte |delta| khi trừ.
-    const upd = await this.prisma.character.updateMany({
-      where: {
-        id: target.id,
-        ...(deltaLinhThach < 0n ? { linhThach: { gte: -deltaLinhThach } } : {}),
-        ...(deltaTienNgoc < 0 ? { tienNgoc: { gte: -deltaTienNgoc } } : {}),
-      },
-      data: {
-        linhThach: { increment: deltaLinhThach },
-        tienNgoc: { increment: deltaTienNgoc },
-      },
-    });
-    if (upd.count === 0) throw new AdminError('INVALID_INPUT');
+    // Áp dụng từng đồng tiền qua CurrencyService — mỗi đồng = 1 dòng ledger.
+    // Bao trong $transaction để cả 2 cùng pass hoặc cùng rollback (tránh
+    // tình huống cộng linh thạch ok nhưng tiên ngọc fail → state nửa vời).
+    try {
+      await this.prisma.$transaction(async (tx) => {
+        if (deltaLinhThach !== 0n) {
+          await this.currency.applyTx(tx, {
+            characterId: target.id,
+            currency: CurrencyKind.LINH_THACH,
+            delta: deltaLinhThach,
+            reason: 'ADMIN_GRANT',
+            refType: 'User',
+            refId: targetUserId,
+            actorUserId: actorId,
+            meta: { reason },
+          });
+        }
+        if (deltaTienNgoc !== 0) {
+          await this.currency.applyTx(tx, {
+            characterId: target.id,
+            currency: CurrencyKind.TIEN_NGOC,
+            delta: BigInt(deltaTienNgoc),
+            reason: 'ADMIN_GRANT',
+            refType: 'User',
+            refId: targetUserId,
+            actorUserId: actorId,
+            meta: { reason },
+          });
+        }
+      });
+    } catch (e) {
+      if (
+        e instanceof CurrencyError &&
+        (e.code === 'INSUFFICIENT_FUNDS' || e.code === 'INVALID_INPUT')
+      ) {
+        throw new AdminError('INVALID_INPUT');
+      }
+      throw e;
+    }
 
     await this.audit(actorId, 'user.grant', {
       targetUserId,
@@ -269,9 +297,15 @@ export class AdminService {
       });
       if (flip.count === 0) throw new AdminError('ALREADY_PROCESSED');
 
-      await tx.character.update({
-        where: { id: char.id },
-        data: { tienNgoc: { increment: order.tienNgocAmount } },
+      await this.currency.applyTx(tx, {
+        characterId: char.id,
+        currency: CurrencyKind.TIEN_NGOC,
+        delta: BigInt(order.tienNgocAmount),
+        reason: 'ADMIN_TOPUP_APPROVE',
+        refType: 'TopupOrder',
+        refId: order.id,
+        actorUserId: actorId,
+        meta: { packageKey: order.packageKey, priceVND: order.priceVND },
       });
     });
 

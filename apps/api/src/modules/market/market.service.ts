@@ -1,9 +1,10 @@
 import { Injectable } from '@nestjs/common';
-import { ListingStatus } from '@prisma/client';
+import { CurrencyKind, ListingStatus } from '@prisma/client';
 import { itemByKey, type ItemDef, type ItemKind } from '@xuantoi/shared';
 import { PrismaService } from '../../common/prisma.service';
 import { RealtimeService } from '../realtime/realtime.service';
 import { CharacterService } from '../character/character.service';
+import { CurrencyError, CurrencyService } from '../character/currency.service';
 
 class MarketError extends Error {
   constructor(
@@ -52,6 +53,7 @@ export class MarketService {
     private readonly prisma: PrismaService,
     private readonly realtime: RealtimeService,
     private readonly chars: CharacterService,
+    private readonly currency: CurrencyService,
   ) {}
 
   async listActive(viewerCharacterId: string, kind?: ItemKind): Promise<ListingView[]> {
@@ -233,16 +235,43 @@ export class MarketService {
       });
       if (flip.count === 0) throw new MarketError('LISTING_INACTIVE');
 
-      // Trừ tiền buyer — guard linhThach >= total để không âm khi concurrent.
-      const pay = await tx.character.updateMany({
-        where: { id: buyer.id, linhThach: { gte: total } },
-        data: { linhThach: { decrement: total } },
-      });
-      if (pay.count === 0) throw new MarketError('INSUFFICIENT_LINH_THACH');
-      // Cộng tiền seller
-      await tx.character.update({
-        where: { id: l.sellerId },
-        data: { linhThach: { increment: sellerGain } },
+      // Trừ tiền buyer — atomic guard linhThach >= total qua CurrencyService.
+      try {
+        await this.currency.applyTx(tx, {
+          characterId: buyer.id,
+          currency: CurrencyKind.LINH_THACH,
+          delta: -total,
+          reason: 'MARKET_BUY',
+          refType: 'Listing',
+          refId: l.id,
+          meta: {
+            itemKey: l.itemKey,
+            qty: l.qty,
+            pricePerUnit: l.pricePerUnit.toString(),
+            sellerId: l.sellerId,
+          },
+        });
+      } catch (e) {
+        if (e instanceof CurrencyError && e.code === 'INSUFFICIENT_FUNDS') {
+          throw new MarketError('INSUFFICIENT_LINH_THACH');
+        }
+        throw e;
+      }
+      // Cộng tiền seller (đã trừ phí thiên đạo).
+      await this.currency.applyTx(tx, {
+        characterId: l.sellerId,
+        currency: CurrencyKind.LINH_THACH,
+        delta: sellerGain,
+        reason: 'MARKET_SELL',
+        refType: 'Listing',
+        refId: l.id,
+        meta: {
+          itemKey: l.itemKey,
+          qty: l.qty,
+          buyerId: buyer.id,
+          gross: total.toString(),
+          fee: fee.toString(),
+        },
       });
       // Grant item cho buyer
       if (item.stackable) {

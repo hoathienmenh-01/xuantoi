@@ -1,5 +1,5 @@
 import { Injectable, Logger, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
-import { Prisma, BossStatus } from '@prisma/client';
+import { Prisma, BossStatus, CurrencyKind } from '@prisma/client';
 import {
   BOSSES,
   BOSS_ATTACK_COOLDOWN_MS,
@@ -17,6 +17,7 @@ import {
 import { PrismaService } from '../../common/prisma.service';
 import { RealtimeService } from '../realtime/realtime.service';
 import { CharacterService } from '../character/character.service';
+import { CurrencyService } from '../character/currency.service';
 import { InventoryService } from '../inventory/inventory.service';
 
 export class BossError extends Error {
@@ -100,6 +101,7 @@ export class BossService implements OnModuleInit, OnModuleDestroy {
     private readonly realtime: RealtimeService,
     private readonly chars: CharacterService,
     private readonly inventory: InventoryService,
+    private readonly currency: CurrencyService,
   ) {}
 
   onModuleInit(): void {
@@ -490,11 +492,20 @@ export class BossService implements OnModuleInit, OnModuleDestroy {
       } else {
         linhThach = restEach;
       }
-      // Trao thưởng character (atomic).
+      // Trao thưởng character (atomic + ghi ledger).
       if (linhThach > 0n) {
-        await tx.character.update({
-          where: { id: row.characterId },
-          data: { linhThach: { increment: linhThach } },
+        await this.currency.applyTx(tx, {
+          characterId: row.characterId,
+          currency: CurrencyKind.LINH_THACH,
+          delta: linhThach,
+          reason: 'BOSS_REWARD',
+          refType: 'WorldBoss',
+          refId: bossId,
+          meta: {
+            rank,
+            damage: row.totalDamage.toString(),
+            bossKey: def.key,
+          },
         });
       }
       if (items.length > 0) {
