@@ -114,9 +114,13 @@ async function logout(): Promise<void> {
         >
           門 Tông Môn
         </RouterLink>
-        <a class="px-3 py-2 rounded text-ink-300/60 cursor-not-allowed" title="Phase 7">
+        <RouterLink
+          to="/boss"
+          class="px-3 py-2 rounded hover:bg-ink-700/60"
+          active-class="bg-ink-700/60 text-ink-50"
+        >
           鬼 Boss Đại Hội
-        </a>
+        </RouterLink>
       </aside>
 
       <!-- Main content -->

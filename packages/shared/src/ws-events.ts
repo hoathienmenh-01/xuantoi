@@ -18,6 +18,7 @@ export type WsEventType =
   | 'boss:spawn'
   | 'boss:update'
   | 'boss:end'
+  | 'boss:defeated'
   | 'mail:new'
   | 'pong'
   // client → server

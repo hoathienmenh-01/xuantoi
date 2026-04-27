@@ -5,3 +5,4 @@ export * from './ws-events';
 export * from './api-contracts';
 export * from './combat';
 export * from './items';
+export * from './boss';

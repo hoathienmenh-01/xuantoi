@@ -167,6 +167,40 @@ export const ITEMS: readonly ItemDef[] = [
     stackable: true,
     price: 60,
   },
+
+  // ----- Drop hiếm boss đại hội (Phase 7) -----
+  {
+    key: 'tien_huyen_kiem',
+    name: 'Tiên Huyền Kiếm',
+    description: 'Cổ kiếm rớt từ tay Yêu Vương, sát khí ngút trời.',
+    kind: 'WEAPON',
+    quality: 'TIEN',
+    stackable: false,
+    slot: 'WEAPON',
+    bonuses: { atk: 60, hpMax: 120, spirit: 6 },
+    price: 9000,
+  },
+  {
+    key: 'tien_huyen_giap',
+    name: 'Tiên Huyền Giáp',
+    description: 'Giáp Tiên phẩm, chống đỡ vạn pháp.',
+    kind: 'ARMOR',
+    quality: 'TIEN',
+    stackable: false,
+    slot: 'ARMOR',
+    bonuses: { def: 55, hpMax: 250 },
+    price: 9000,
+  },
+  {
+    key: 'than_dan',
+    name: 'Thần Dược Thượng Đan',
+    description: 'Đan Thần phẩm, hồi 1500 HP và 600 EXP cùng lúc.',
+    kind: 'PILL_HP',
+    quality: 'THAN',
+    stackable: true,
+    effect: { hp: 1500, exp: 600 },
+    price: 4000,
+  },
 ];
 
 export function itemByKey(key: string): ItemDef | undefined {

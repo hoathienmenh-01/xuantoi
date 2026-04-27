@@ -185,6 +185,44 @@ model ChatMessage {
   @@index([channel, scopeKey, createdAt])
 }
 
+enum BossStatus {
+  ACTIVE
+  DEFEATED
+  EXPIRED
+}
+
+model WorldBoss {
+  id           String     @id @default(cuid())
+  bossKey      String
+  name         String
+  level        Int
+  maxHp        BigInt
+  currentHp    BigInt
+  status       BossStatus @default(ACTIVE)
+  spawnedAt    DateTime   @default(now())
+  expiresAt    DateTime
+  defeatedAt   DateTime?
+  rewardTotal  BigInt     @default(0)
+
+  damages      BossDamage[]
+
+  @@index([status, spawnedAt])
+}
+
+model BossDamage {
+  id           String     @id @default(cuid())
+  bossId       String
+  boss         WorldBoss  @relation(fields: [bossId], references: [id], onDelete: Cascade)
+  characterId  String
+  characterName String
+  totalDamage  BigInt     @default(0)
+  hits         Int        @default(0)
+  lastHitAt    DateTime   @default(now())
+
+  @@unique([bossId, characterId])
+  @@index([bossId, totalDamage])
+}
+
 enum EncounterStatus {
   ACTIVE
   WON
