@@ -216,10 +216,13 @@ export class SectService {
           data: { leaderId: null },
         });
       }
-      await tx.character.update({
-        where: { id: char.id },
+      // Optimistic lock: chỉ rời nếu user vẫn thuộc oldSectId (chống race
+      // với leave/join concurrent từ session khác của cùng user).
+      const left = await tx.character.updateMany({
+        where: { id: char.id, sectId: oldSectId },
         data: { sectId: null },
       });
+      if (left.count === 0) throw new SectError('NOT_IN_SECT');
     });
 
     this.realtime.leaveUserFromRoom(userId, `sect:${oldSectId}`);
