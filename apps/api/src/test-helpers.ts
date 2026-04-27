@@ -1,0 +1,107 @@
+import { CurrencyKind } from '@prisma/client';
+import { PrismaService } from './common/prisma.service';
+
+/**
+ * Helpers cho integration test — tạo fixture user/character nhanh, không
+ * đụng tới các module phía trên (Auth/JWT/realtime). Mỗi test file dùng
+ * `beforeEach(wipeAll(prisma))` để bắt đầu sạch.
+ */
+
+let counter = 0;
+
+export function nextSuffix(): string {
+  counter += 1;
+  return `${Date.now().toString(36)}${counter.toString(36)}`;
+}
+
+export interface TestCharacterFixture {
+  userId: string;
+  characterId: string;
+  email: string;
+  name: string;
+}
+
+export async function makeUserChar(
+  prisma: PrismaService,
+  opts?: {
+    linhThach?: bigint;
+    tienNgoc?: number;
+    sectId?: string | null;
+    realmKey?: string;
+    realmStage?: number;
+    exp?: bigint;
+    spirit?: number;
+    stamina?: number;
+    staminaMax?: number;
+    hp?: number;
+    hpMax?: number;
+    mp?: number;
+    mpMax?: number;
+    cultivating?: boolean;
+    role?: 'PLAYER' | 'MOD' | 'ADMIN';
+    power?: number;
+    speed?: number;
+    luck?: number;
+  },
+): Promise<TestCharacterFixture> {
+  const suffix = nextSuffix();
+  const email = `it-${suffix}@xt.local`;
+  const name = `IT_${suffix}`;
+  const user = await prisma.user.create({
+    data: {
+      email,
+      passwordHash: 'x',
+      role: opts?.role ?? 'PLAYER',
+    },
+  });
+  const char = await prisma.character.create({
+    data: {
+      userId: user.id,
+      name,
+      realmKey: opts?.realmKey ?? 'luyenkhi',
+      realmStage: opts?.realmStage ?? 1,
+      exp: opts?.exp ?? 0n,
+      spirit: opts?.spirit ?? 8,
+      linhThach: opts?.linhThach ?? 1000n,
+      tienNgoc: opts?.tienNgoc ?? 0,
+      sectId: opts?.sectId ?? null,
+      cultivating: opts?.cultivating ?? false,
+      stamina: opts?.stamina ?? 100,
+      staminaMax: opts?.staminaMax ?? 100,
+      hp: opts?.hp ?? 100,
+      hpMax: opts?.hpMax ?? 100,
+      mp: opts?.mp ?? 50,
+      mpMax: opts?.mpMax ?? 50,
+      power: opts?.power ?? 10,
+      speed: opts?.speed ?? 10,
+      luck: opts?.luck ?? 5,
+    },
+  });
+  return { userId: user.id, characterId: char.id, email, name };
+}
+
+/** Xoá hết các bảng phụ thuộc Character/User để test bắt đầu sạch. */
+export async function wipeAll(prisma: PrismaService): Promise<void> {
+  // Thứ tự: con trước cha (FK cascade phần lớn rồi nhưng explicit cho rõ).
+  await prisma.currencyLedger.deleteMany({});
+  await prisma.bossDamage.deleteMany({});
+  await prisma.worldBoss.deleteMany({});
+  await prisma.encounter.deleteMany({});
+  await prisma.chatMessage.deleteMany({});
+  await prisma.listing.deleteMany({});
+  await prisma.inventoryItem.deleteMany({});
+  await prisma.topupOrder.deleteMany({});
+  await prisma.adminAuditLog.deleteMany({});
+  await prisma.refreshToken.deleteMany({});
+  await prisma.loginAttempt.deleteMany({});
+  await prisma.character.deleteMany({});
+  await prisma.user.deleteMany({});
+  await prisma.sect.deleteMany({});
+}
+
+export const TEST_DATABASE_URL =
+  process.env.TEST_DATABASE_URL ??
+  process.env.DATABASE_URL ??
+  'postgresql://mtt:mtt@localhost:5432/mtt?schema=public';
+
+export { CurrencyKind };
