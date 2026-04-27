@@ -11,6 +11,7 @@ import {
 import { JwtService } from '@nestjs/jwt';
 import type { Server, Socket } from 'socket.io';
 import type { WsFrame } from '@xuantoi/shared';
+import { PrismaService } from '../../common/prisma.service';
 
 function parseCookie(header: string): Record<string, string> {
   const out: Record<string, string> = {};
@@ -41,6 +42,7 @@ export class RealtimeGateway implements OnGatewayConnection, OnGatewayDisconnect
   constructor(
     private readonly jwt: JwtService,
     private readonly realtime: RealtimeService,
+    private readonly prisma: PrismaService,
   ) {}
 
   async handleConnection(client: Socket): Promise<void> {
@@ -57,6 +59,13 @@ export class RealtimeGateway implements OnGatewayConnection, OnGatewayDisconnect
       client.data.userId = payload.sub;
       this.realtime.bind(this.server);
       this.realtime.attach(payload.sub, client.id);
+      // Auto-join world room cho mọi socket; sect room nếu có sectId.
+      void client.join('world');
+      const char = await this.prisma.character.findUnique({
+        where: { userId: payload.sub },
+        select: { sectId: true },
+      });
+      if (char?.sectId) void client.join(`sect:${char.sectId}`);
       this.logger.log(`ws conn user=${payload.sub} sid=${client.id}`);
     } catch {
       client.emit('error', { code: 'UNAUTHENTICATED' });

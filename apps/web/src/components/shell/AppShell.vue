@@ -4,6 +4,7 @@ import { useI18n } from 'vue-i18n';
 import { useAuthStore } from '@/stores/auth';
 import { useGameStore } from '@/stores/game';
 import { useRouter } from 'vue-router';
+import ChatPanel from './ChatPanel.vue';
 
 const { t } = useI18n();
 const auth = useAuthStore();
@@ -106,9 +107,13 @@ async function logout(): Promise<void> {
         >
           坊 Phường Thị
         </RouterLink>
-        <a class="px-3 py-2 rounded text-ink-300/60 cursor-not-allowed" title="Phase 6">
+        <RouterLink
+          to="/sect"
+          class="px-3 py-2 rounded hover:bg-ink-700/60"
+          active-class="bg-ink-700/60 text-ink-50"
+        >
           門 Tông Môn
-        </a>
+        </RouterLink>
         <a class="px-3 py-2 rounded text-ink-300/60 cursor-not-allowed" title="Phase 7">
           鬼 Boss Đại Hội
         </a>
@@ -119,14 +124,11 @@ async function logout(): Promise<void> {
         <slot />
       </main>
 
-      <!-- ChatDock placeholder -->
+      <!-- ChatDock -->
       <aside
-        class="hidden md:flex flex-col border-l border-ink-300/30 bg-ink-700/30 p-3 gap-2 text-sm"
+        class="hidden md:flex flex-col border-l border-ink-300/30 bg-ink-700/30 p-3 text-sm"
       >
-        <h3 class="text-xs uppercase tracking-widest text-ink-300">Tâm Cảnh Đường</h3>
-        <p class="text-xs text-ink-300/80">
-          Phase 6 — Chat thế giới / tông môn / lân cận sẽ ở đây.
-        </p>
+        <ChatPanel />
       </aside>
     </div>
   </div>

@@ -159,10 +159,30 @@ model Listing {
 model Sect {
   id                String      @id @default(cuid())
   name              String      @unique
+  description       String      @default("")
   level             Int         @default(1)
   treasuryLinhThach BigInt      @default(0)
+  leaderId          String?     @unique
   characters        Character[]
   createdAt         DateTime    @default(now())
+}
+
+enum ChatChannel {
+  WORLD
+  SECT
+}
+
+model ChatMessage {
+  id         String      @id @default(cuid())
+  channel    ChatChannel
+  /// scopeKey: with WORLD = 'world'; with SECT = sectId
+  scopeKey   String
+  senderId   String
+  senderName String
+  text       String
+  createdAt  DateTime    @default(now())
+
+  @@index([channel, scopeKey, createdAt])
 }
 
 enum EncounterStatus {

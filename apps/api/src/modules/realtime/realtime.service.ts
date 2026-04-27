@@ -44,6 +44,30 @@ export class RealtimeService {
     this.server.emit(type, frame);
   }
 
+  emitToRoom<T>(room: string, type: WsEventType, payload: T): void {
+    if (!this.server) return;
+    const frame: WsFrame<T> = { type, payload, ts: Date.now() };
+    this.server.to(room).emit(type, frame);
+  }
+
+  joinUserToRoom(userId: string, room: string): void {
+    if (!this.server) return;
+    const sockets = this.userSockets.get(userId);
+    if (!sockets) return;
+    for (const sid of sockets) {
+      this.server.sockets.sockets.get(sid)?.join(room);
+    }
+  }
+
+  leaveUserFromRoom(userId: string, room: string): void {
+    if (!this.server) return;
+    const sockets = this.userSockets.get(userId);
+    if (!sockets) return;
+    for (const sid of sockets) {
+      void this.server.sockets.sockets.get(sid)?.leave(room);
+    }
+  }
+
   isOnline(userId: string): boolean {
     return (this.userSockets.get(userId)?.size ?? 0) > 0;
   }
