@@ -98,7 +98,7 @@ export class InventoryService {
         if (existing) {
           await this.prisma.inventoryItem.update({
             where: { id: existing.id },
-            data: { qty: existing.qty + l.qty },
+            data: { qty: { increment: l.qty } },
           });
           continue;
         }

@@ -176,7 +176,7 @@ export class MarketService {
         if (existing) {
           await tx.inventoryItem.update({
             where: { id: existing.id },
-            data: { qty: existing.qty + l.qty },
+            data: { qty: { increment: l.qty } },
           });
         } else {
           await tx.inventoryItem.create({
@@ -249,7 +249,7 @@ export class MarketService {
         if (existing) {
           await tx.inventoryItem.update({
             where: { id: existing.id },
-            data: { qty: existing.qty + l.qty },
+            data: { qty: { increment: l.qty } },
           });
         } else {
           await tx.inventoryItem.create({
