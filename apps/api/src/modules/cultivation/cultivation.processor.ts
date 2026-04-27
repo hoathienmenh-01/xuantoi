@@ -3,6 +3,7 @@ import { Logger } from '@nestjs/common';
 import type { Job } from 'bullmq';
 import {
   CULTIVATION_TICK_BASE_EXP,
+  STAMINA_REGEN_PER_TICK,
   expCostForStage,
   type CultivateTickPayload,
 } from '@xuantoi/shared';
@@ -23,6 +24,12 @@ export class CultivationProcessor extends WorkerHost {
 
   async process(job: Job): Promise<void> {
     if (job.name !== 'tick') return;
+
+    // Hồi stamina cho TẤT CẢ character (kể cả không tu luyện): +N mỗi tick, cap = staminaMax.
+    await this.prisma.$executeRawUnsafe(
+      `UPDATE "Character" SET stamina = LEAST("staminaMax", stamina + $1) WHERE stamina < "staminaMax"`,
+      STAMINA_REGEN_PER_TICK,
+    );
 
     const cultivating = await this.prisma.character.findMany({
       where: { cultivating: true },

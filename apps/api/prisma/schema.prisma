@@ -126,3 +126,25 @@ model Sect {
   characters        Character[]
   createdAt         DateTime    @default(now())
 }
+
+enum EncounterStatus {
+  ACTIVE
+  WON
+  LOST
+  ABANDONED
+}
+
+model Encounter {
+  id          String          @id @default(cuid())
+  characterId String
+  dungeonKey  String
+  status      EncounterStatus @default(ACTIVE)
+  /// JSON state: { monsterIndex, monsterHp, lastTurn }
+  state       Json            @default("{}")
+  /// JSON list of log lines [{ side, text, ts }]
+  log         Json            @default("[]")
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  @@index([characterId, status])
+}
