@@ -95,9 +95,20 @@ export class SectService {
       orderBy: [{ congHien: 'desc' }, { name: 'asc' }],
       take: 100,
     });
-    const leaderName = s.leaderId
-      ? (members.find((m) => m.id === s.leaderId)?.name ?? null)
-      : null;
+    // Leader có thể không nằm trong top 100 theo congHien; query riêng nếu thiếu.
+    let leaderName: string | null = null;
+    if (s.leaderId) {
+      const inList = members.find((m) => m.id === s.leaderId);
+      if (inList) {
+        leaderName = inList.name;
+      } else {
+        const leader = await this.prisma.character.findUnique({
+          where: { id: s.leaderId },
+          select: { name: true },
+        });
+        leaderName = leader?.name ?? null;
+      }
+    }
     return {
       id: s.id,
       name: s.name,
@@ -220,14 +231,25 @@ export class SectService {
     const congHienGain = Number(amount);
 
     await this.prisma.$transaction(async (tx) => {
+      // Optimistic lock: chỉ trừ linh thạch nếu user vẫn còn thuộc sectId
+      // ban đầu (chống race với leave()).
       const pay = await tx.character.updateMany({
-        where: { id: char.id, linhThach: { gte: amount } },
+        where: { id: char.id, sectId, linhThach: { gte: amount } },
         data: {
           linhThach: { decrement: amount },
           congHien: { increment: congHienGain },
         },
       });
-      if (pay.count === 0) throw new SectError('INSUFFICIENT_LINH_THACH');
+      if (pay.count === 0) {
+        // Phân biệt 2 lý do: nếu vẫn còn trong sect nhưng không đủ linh
+        // thạch → INSUFFICIENT_LINH_THACH; ngược lại → NOT_IN_SECT.
+        const cur = await tx.character.findUnique({
+          where: { id: char.id },
+          select: { sectId: true },
+        });
+        if (cur?.sectId !== sectId) throw new SectError('NOT_IN_SECT');
+        throw new SectError('INSUFFICIENT_LINH_THACH');
+      }
       await tx.sect.update({
         where: { id: sectId },
         data: { treasuryLinhThach: { increment: amount } },
