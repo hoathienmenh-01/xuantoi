@@ -180,6 +180,7 @@ model Character {
   sect             Sect?    @relation(fields: [sectId], references: [id])
 
   inventory        InventoryItem[]
+  ledger           CurrencyLedger[]
 
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
@@ -293,6 +294,32 @@ enum EncounterStatus {
   WON
   LOST
   ABANDONED
+}
+
+enum CurrencyKind {
+  LINH_THACH
+  TIEN_NGOC
+}
+
+/// Audit trail mọi mutation của linhThach / tienNgoc (Phase 4-8). Một dòng = một
+/// thao tác đổi tiền của 1 character. `delta` có dấu (âm = trừ).
+model CurrencyLedger {
+  id          String       @id @default(cuid())
+  characterId String
+  character   Character    @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  currency    CurrencyKind
+  delta       BigInt
+  reason      String
+  refType     String?
+  refId       String?
+  meta        Json         @default("{}")
+  /// Nếu thao tác do admin/MOD thực hiện (vd ADMIN_GRANT, ADMIN_TOPUP_APPROVE).
+  actorUserId String?
+  createdAt   DateTime     @default(now())
+
+  @@index([characterId, createdAt])
+  @@index([reason, createdAt])
+  @@index([refType, refId])
 }
 
 model Encounter {

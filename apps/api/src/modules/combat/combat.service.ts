@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { Prisma, EncounterStatus } from '@prisma/client';
+import { CurrencyKind, Prisma, EncounterStatus } from '@prisma/client';
 import {
   DUNGEONS,
   STAMINA_PER_ACTION,
@@ -18,6 +18,7 @@ import {
 import { PrismaService } from '../../common/prisma.service';
 import { RealtimeService } from '../realtime/realtime.service';
 import { CharacterService } from '../character/character.service';
+import { CurrencyService } from '../character/currency.service';
 import { InventoryService } from '../inventory/inventory.service';
 
 export interface EncounterState {
@@ -76,6 +77,7 @@ export class CombatService {
     private readonly realtime: RealtimeService,
     private readonly chars: CharacterService,
     private readonly inventory: InventoryService,
+    private readonly currency: CurrencyService,
   ) {}
 
   listDungeons() {
@@ -268,9 +270,25 @@ export class CombatService {
       stamina: newStamina,
     };
     if (expGain > 0n) updateChar.exp = { increment: expGain };
-    if (linhThachGain > 0n) updateChar.linhThach = { increment: linhThachGain };
 
-    await this.prisma.character.update({ where: { id: char.id }, data: updateChar });
+    // Bao trong tx để character.update + ledger row cùng commit/rollback.
+    await this.prisma.$transaction(async (tx) => {
+      await tx.character.update({ where: { id: char.id }, data: updateChar });
+      if (linhThachGain > 0n) {
+        await this.currency.applyTx(tx, {
+          characterId: char.id,
+          currency: CurrencyKind.LINH_THACH,
+          delta: linhThachGain,
+          reason: 'COMBAT_LOOT',
+          refType: 'Encounter',
+          refId: enc.id,
+          meta: {
+            dungeonKey: dungeon.key,
+            status: nextStatus,
+          },
+        });
+      }
+    });
 
     const lootView: EncounterRewardLoot[] = [];
     if (nextStatus === EncounterStatus.WON) {
