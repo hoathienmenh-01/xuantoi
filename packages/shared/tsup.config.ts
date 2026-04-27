@@ -1,0 +1,26 @@
+import { defineConfig } from 'tsup';
+
+export default defineConfig({
+  entry: [
+    'src/index.ts',
+    'src/realms.ts',
+    'src/proverbs.ts',
+    'src/enums.ts',
+    'src/ws-events.ts',
+    'src/api-contracts.ts',
+    'src/combat.ts',
+    'src/items.ts',
+    'src/topup.ts',
+    'src/boss.ts',
+  ],
+  format: ['esm', 'cjs'],
+  dts: true,
+  outDir: 'dist',
+  clean: true,
+  splitting: false,
+  sourcemap: false,
+  target: 'es2022',
+  outExtension({ format }) {
+    return { js: format === 'esm' ? '.js' : '.cjs' };
+  },
+});

@@ -42,6 +42,17 @@ export async function logout(): Promise<void> {
   await apiClient.post('/_auth/logout');
 }
 
+export async function refresh(): Promise<PublicUser | null> {
+  try {
+    const { data } = await apiClient.post<AuthEnvelope<{ user: PublicUser }>>(
+      '/_auth/refresh',
+    );
+    return data.ok && data.data ? data.data.user : null;
+  } catch {
+    return null;
+  }
+}
+
 export async function session(): Promise<PublicUser | null> {
   try {
     const { data } = await apiClient.get<AuthEnvelope<{ user: PublicUser }>>('/_auth/session');

@@ -110,6 +110,35 @@ model User {
   topupOrders     TopupOrder[]    @relation("TopupOrderUser")
   topupApprovals  TopupOrder[]    @relation("TopupOrderApprover")
   auditLogs       AdminAuditLog[] @relation("AdminAuditActor")
+  refreshTokens   RefreshToken[]
+}
+
+model RefreshToken {
+  id              String    @id @default(cuid())
+  jti             String    @unique
+  userId          String
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /// argon2id hash của refresh JWT (không lưu plaintext).
+  hashedToken     String
+  passwordVersion Int
+  expiresAt       DateTime
+  revokedAt       DateTime?
+  rotatedFromId   String?
+  createdAt       DateTime  @default(now())
+
+  @@index([userId, revokedAt])
+  @@index([expiresAt])
+}
+
+model LoginAttempt {
+  id        String   @id @default(cuid())
+  email     String
+  ip        String
+  success   Boolean
+  createdAt DateTime @default(now())
+
+  @@index([email, ip, createdAt])
+  @@index([createdAt])
 }
 
 model Character {
