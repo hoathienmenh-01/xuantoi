@@ -56,7 +56,10 @@ export class MarketService {
 
   async listActive(viewerCharacterId: string, kind?: ItemKind): Promise<ListingView[]> {
     const rows = await this.prisma.listing.findMany({
-      where: { status: ListingStatus.ACTIVE },
+      where: {
+        status: ListingStatus.ACTIVE,
+        ...(kind ? { itemKind: kind } : {}),
+      },
       orderBy: { createdAt: 'desc' },
       take: 100,
     });
@@ -70,7 +73,6 @@ export class MarketService {
     for (const r of rows) {
       const item = itemByKey(r.itemKey);
       if (!item) continue;
-      if (kind && item.kind !== kind) continue;
       out.push(this.toView(r, item, sellerMap.get(r.sellerId) ?? '???', viewerCharacterId));
     }
     return out;
@@ -135,6 +137,7 @@ export class MarketService {
         data: {
           sellerId: char.id,
           itemKey: inv.itemKey,
+          itemKind: itemDef.kind,
           qty: input.qty,
           pricePerUnit: input.pricePerUnit,
         },

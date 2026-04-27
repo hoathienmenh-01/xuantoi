@@ -143,6 +143,7 @@ model Listing {
   id             String        @id @default(cuid())
   sellerId       String
   itemKey        String
+  itemKind       String
   qty            Int
   pricePerUnit   BigInt
   status         ListingStatus @default(ACTIVE)
@@ -150,6 +151,7 @@ model Listing {
   createdAt      DateTime      @default(now())
   soldAt         DateTime?
 
+  @@index([status, itemKind])
   @@index([status, itemKey])
   @@index([sellerId, status])
 }
