@@ -137,7 +137,7 @@ function handleErr(e: unknown): void {
     SECT_NOT_FOUND: 'Tông môn không tồn tại.',
     NOT_IN_SECT: 'Bạn chưa thuộc tông môn nào.',
     ALREADY_IN_SECT: 'Bạn đã thuộc tông môn rồi, hãy rời trước.',
-    INVALID_AMOUNT: 'Số linh thạch không hợp lệ.',
+    INVALID_AMOUNT: 'Số linh thạch không hợp lệ (1 – 1.000.000 / lượt).',
     INVALID_NAME: 'Tên 2–16 ký tự (chữ/số/ _-).',
     INSUFFICIENT_LINH_THACH: 'Không đủ linh thạch.',
     NAME_TAKEN: 'Tên này đã có người dùng.',
@@ -200,7 +200,9 @@ const myStash = computed(() => game.character?.linhThach ?? '0');
         </div>
         <div class="mt-3 flex gap-2 items-end">
           <div class="flex-1">
-            <label class="block text-xs text-ink-300 mb-1">Đóng góp linh thạch</label>
+            <label class="block text-xs text-ink-300 mb-1">
+              Đóng góp linh thạch (tối đa 1.000.000 / lượt)
+            </label>
             <input
               v-model="contribAmount"
               type="text"

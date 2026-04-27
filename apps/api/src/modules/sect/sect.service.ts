@@ -208,14 +208,16 @@ export class SectService {
 
   async contribute(userId: string, amount: bigint): Promise<SectDetailView> {
     if (amount <= 0n) throw new SectError('INVALID_AMOUNT');
+    // Cap 1M/lượt để tránh overflow Int của congHien — reject thẳng để
+    // không trừ linh thạch quá tay mà chỉ cộng cống hiến cap.
+    if (amount > 1_000_000n) throw new SectError('INVALID_AMOUNT');
     const char = await this.prisma.character.findUnique({ where: { userId } });
     if (!char) throw new SectError('NO_CHARACTER');
     if (!char.sectId) throw new SectError('NOT_IN_SECT');
     const sectId = char.sectId;
 
-    // 1 linhThach → 1 điểm cống hiến (cap 1_000_000 mỗi lượt để tránh
-    // overflow Int khi cộng vào congHien).
-    const congHienGain = Number(amount > 1_000_000n ? 1_000_000n : amount);
+    // 1 linhThach → 1 điểm cống hiến.
+    const congHienGain = Number(amount);
 
     await this.prisma.$transaction(async (tx) => {
       const pay = await tx.character.updateMany({
