@@ -1,0 +1,32 @@
+import { Module, OnModuleInit } from '@nestjs/common';
+import { BullModule } from '@nestjs/bullmq';
+import { CultivationProcessor } from './cultivation.processor';
+import { CultivationService } from './cultivation.service';
+import { PrismaService } from '../../common/prisma.service';
+import { RealtimeModule } from '../realtime/realtime.module';
+import { CULTIVATION_QUEUE } from './cultivation.queue';
+
+@Module({
+  imports: [
+    BullModule.forRootAsync({
+      useFactory: () => ({
+        connection: {
+          url: process.env.REDIS_URL ?? 'redis://localhost:6379',
+        },
+      }),
+    }),
+    BullModule.registerQueue({ name: CULTIVATION_QUEUE }),
+    RealtimeModule,
+  ],
+  providers: [CultivationProcessor, CultivationService, PrismaService],
+  exports: [CultivationService],
+})
+export class CultivationModule implements OnModuleInit {
+  constructor(private readonly cultivation: CultivationService) {}
+
+  async onModuleInit(): Promise<void> {
+    await this.cultivation.scheduleRecurring();
+  }
+}
+
+

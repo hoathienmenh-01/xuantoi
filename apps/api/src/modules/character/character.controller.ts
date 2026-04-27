@@ -24,6 +24,10 @@ const OnboardInput = z.object({
   sectKey: z.enum(['thanh_van', 'huyen_thuy', 'tu_la']),
 });
 
+const CultivateInput = z.object({
+  cultivating: z.boolean(),
+});
+
 function fail(code: string, status = HttpStatus.BAD_REQUEST): never {
   throw new HttpException({ ok: false, error: { code, message: code } }, status);
 }
@@ -48,6 +52,14 @@ export class CharacterController {
     return { ok: true, data: { character } };
   }
 
+  @Get('state')
+  async state(@Req() req: Request) {
+    const userId = await this.requireUserId(req);
+    const character = await this.chars.findByUser(userId);
+    if (!character) fail('NO_CHARACTER', HttpStatus.NOT_FOUND);
+    return { ok: true, data: { character } };
+  }
+
   @Post('onboard')
   @HttpCode(200)
   async onboard(@Req() req: Request, @Body() body: unknown) {
@@ -62,6 +74,38 @@ export class CharacterController {
       const code = (e as { code?: string })?.code;
       if (code === 'NAME_TAKEN') fail('NAME_TAKEN', HttpStatus.CONFLICT);
       if (code === 'ALREADY_ONBOARDED') fail('ALREADY_ONBOARDED', HttpStatus.CONFLICT);
+      throw e;
+    }
+  }
+
+  @Post('cultivate')
+  @HttpCode(200)
+  async cultivate(@Req() req: Request, @Body() body: unknown) {
+    const userId = await this.requireUserId(req);
+    const parsed = CultivateInput.safeParse(body);
+    if (!parsed.success) fail('INVALID_INPUT');
+    try {
+      const character = await this.chars.setCultivating(userId, parsed.data.cultivating);
+      return { ok: true, data: { character } };
+    } catch (e) {
+      if ((e as { code?: string })?.code === 'NO_CHARACTER') {
+        fail('NO_CHARACTER', HttpStatus.NOT_FOUND);
+      }
+      throw e;
+    }
+  }
+
+  @Post('breakthrough')
+  @HttpCode(200)
+  async breakthrough(@Req() req: Request) {
+    const userId = await this.requireUserId(req);
+    try {
+      const character = await this.chars.breakthrough(userId);
+      return { ok: true, data: { character } };
+    } catch (e) {
+      const code = (e as { code?: string })?.code;
+      if (code === 'NO_CHARACTER') fail('NO_CHARACTER', HttpStatus.NOT_FOUND);
+      if (code === 'NOT_AT_PEAK') fail('NOT_AT_PEAK', HttpStatus.CONFLICT);
       throw e;
     }
   }

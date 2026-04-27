@@ -1,6 +1,12 @@
 import { Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
+import {
+  expCostForStage,
+  nextRealm,
+  type CharacterStatePayload,
+} from '@xuantoi/shared';
 import { PrismaService } from '../../common/prisma.service';
+import { RealtimeService } from '../realtime/realtime.service';
 
 interface OnboardInput {
   name: string;
@@ -23,19 +29,42 @@ const SECT_STARTING_STATS: Record<
 };
 
 class DomainError extends Error {
-  constructor(public code: 'NAME_TAKEN' | 'ALREADY_ONBOARDED') {
+  constructor(public code: 'NAME_TAKEN' | 'ALREADY_ONBOARDED' | 'NO_CHARACTER' | 'NOT_AT_PEAK') {
     super(code);
   }
 }
 
+type CharRow = Prisma.CharacterGetPayload<{ include: { sect: true; user: true } }>;
+
+const SECT_NAME_TO_KEY: Record<string, OnboardInput['sectKey']> = {
+  'Thanh Vân Môn': 'thanh_van',
+  'Huyền Thuỷ Cung': 'huyen_thuy',
+  'Tu La Tông': 'tu_la',
+};
+
 @Injectable()
 export class CharacterService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly realtime: RealtimeService,
+  ) {}
 
   async findByUser(userId: string) {
-    const c = await this.prisma.character.findUnique({ where: { userId } });
+    const c = await this.prisma.character.findUnique({
+      where: { userId },
+      include: { sect: true, user: true },
+    });
     if (!c) return null;
-    return this.toPublic(c);
+    return this.toState(c);
+  }
+
+  async getStateOrThrow(userId: string): Promise<CharacterStatePayload> {
+    const c = await this.prisma.character.findUnique({
+      where: { userId },
+      include: { sect: true, user: true },
+    });
+    if (!c) throw new DomainError('NO_CHARACTER');
+    return this.toState(c);
   }
 
   async onboard(userId: string, input: OnboardInput) {
@@ -49,7 +78,6 @@ export class CharacterService {
         update: {},
         create: { name: SECT_NAMES[input.sectKey] },
       });
-
       const c = await this.prisma.character.create({
         data: {
           userId,
@@ -62,8 +90,11 @@ export class CharacterService {
           mp: stats.mpMax,
           sectId: sect.id,
         },
+        include: { sect: true, user: true },
       });
-      return this.toPublic(c);
+      const state = this.toState(c);
+      this.realtime.emitToUser(userId, 'state:update', state);
+      return state;
     } catch (e) {
       if (
         e instanceof Prisma.PrismaClientKnownRequestError &&
@@ -75,23 +106,55 @@ export class CharacterService {
     }
   }
 
-  private toPublic(c: {
-    id: string;
-    name: string;
-    realmKey: string;
-    realmStage: number;
-    level: number;
-    exp: bigint;
-    hp: number;
-    hpMax: number;
-    mp: number;
-    mpMax: number;
-    power: number;
-    spirit: number;
-    speed: number;
-    luck: number;
-    sectId: string | null;
-  }) {
+  async setCultivating(userId: string, on: boolean): Promise<CharacterStatePayload> {
+    const c = await this.prisma.character.findUnique({ where: { userId } });
+    if (!c) throw new DomainError('NO_CHARACTER');
+    const updated = await this.prisma.character.update({
+      where: { userId },
+      data: { cultivating: on },
+      include: { sect: true, user: true },
+    });
+    const state = this.toState(updated);
+    this.realtime.emitToUser(userId, 'state:update', state);
+    return state;
+  }
+
+  /**
+   * Đột phá khi đạt đỉnh (trọng 9). Yêu cầu exp >= cost(stage=9).
+   */
+  async breakthrough(userId: string): Promise<CharacterStatePayload> {
+    const c = await this.prisma.character.findUnique({ where: { userId } });
+    if (!c) throw new DomainError('NO_CHARACTER');
+
+    if (c.realmStage < 9) throw new DomainError('NOT_AT_PEAK');
+    const cost = expCostForStage(c.realmKey, 9);
+    if (cost === null || c.exp < cost) throw new DomainError('NOT_AT_PEAK');
+
+    const next = nextRealm(c.realmKey);
+    const newRealm = next ? next.key : c.realmKey;
+    const newStage = next ? 1 : 9;
+
+    const updated = await this.prisma.character.update({
+      where: { userId },
+      data: {
+        realmKey: newRealm,
+        realmStage: newStage,
+        exp: c.exp - cost,
+        // mở rộng dung lượng HP/MP khi vượt cảnh — tăng 20%.
+        hpMax: Math.round(c.hpMax * 1.2),
+        mpMax: Math.round(c.mpMax * 1.2),
+        hp: Math.round(c.hpMax * 1.2),
+        mp: Math.round(c.mpMax * 1.2),
+      },
+      include: { sect: true, user: true },
+    });
+    const state = this.toState(updated);
+    this.realtime.emitToUser(userId, 'state:update', state);
+    return state;
+  }
+
+  private toState(c: CharRow): CharacterStatePayload {
+    const expNext = expCostForStage(c.realmKey, c.realmStage);
     return {
       id: c.id,
       name: c.name,
@@ -99,15 +162,26 @@ export class CharacterService {
       realmStage: c.realmStage,
       level: c.level,
       exp: c.exp.toString(),
+      expNext: (expNext ?? 0n).toString(),
       hp: c.hp,
       hpMax: c.hpMax,
       mp: c.mp,
       mpMax: c.mpMax,
+      stamina: c.stamina,
+      staminaMax: c.staminaMax,
       power: c.power,
       spirit: c.spirit,
       speed: c.speed,
       luck: c.luck,
+      linhThach: c.linhThach.toString(),
+      tienNgoc: c.tienNgoc,
+      cultivating: c.cultivating,
       sectId: c.sectId,
+      sectKey: c.sect ? SECT_NAME_TO_KEY[c.sect.name] ?? null : null,
+      role: c.user.role,
+      banned: c.user.banned,
     };
   }
 }
+
+export { DomainError };

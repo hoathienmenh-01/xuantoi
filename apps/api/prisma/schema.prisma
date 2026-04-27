@@ -63,6 +63,39 @@ enum TopupStatus {
   REJECTED
 }
 
+model TopupOrder {
+  id            String      @id @default(cuid())
+  userId        String
+  user          User        @relation("TopupOrderUser", fields: [userId], references: [id], onDelete: Cascade)
+  packageKey    String
+  tienNgocAmount Int
+  priceVND      Int
+  /// Mã chuyển khoản hiển thị cho user khi quét QR (ví dụ TOPUP-<short>).
+  transferCode  String      @unique
+  status        TopupStatus @default(PENDING)
+  note          String      @default("")
+  approvedById  String?
+  approvedBy    User?       @relation("TopupOrderApprover", fields: [approvedById], references: [id], onDelete: SetNull)
+  approvedAt    DateTime?
+  createdAt     DateTime    @default(now())
+
+  @@index([userId, status, createdAt])
+  @@index([status, createdAt])
+}
+
+model AdminAuditLog {
+  id          String   @id @default(cuid())
+  actorUserId String
+  actor       User     @relation("AdminAuditActor", fields: [actorUserId], references: [id], onDelete: Cascade)
+  action      String
+  /// JSON describing the action target (e.g. user id, amount, reason).
+  meta        Json     @default("{}")
+  createdAt   DateTime @default(now())
+
+  @@index([actorUserId, createdAt])
+  @@index([action, createdAt])
+}
+
 model User {
   id              String    @id @default(cuid())
   email           String    @unique
@@ -74,6 +107,38 @@ model User {
   lastLoginAt     DateTime?
 
   character       Character?
+  topupOrders     TopupOrder[]    @relation("TopupOrderUser")
+  topupApprovals  TopupOrder[]    @relation("TopupOrderApprover")
+  auditLogs       AdminAuditLog[] @relation("AdminAuditActor")
+  refreshTokens   RefreshToken[]
+}
+
+model RefreshToken {
+  id              String    @id @default(cuid())
+  jti             String    @unique
+  userId          String
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /// argon2id hash của refresh JWT (không lưu plaintext).
+  hashedToken     String
+  passwordVersion Int
+  expiresAt       DateTime
+  revokedAt       DateTime?
+  rotatedFromId   String?
+  createdAt       DateTime  @default(now())
+
+  @@index([userId, revokedAt])
+  @@index([expiresAt])
+}
+
+model LoginAttempt {
+  id        String   @id @default(cuid())
+  email     String
+  ip        String
+  success   Boolean
+  createdAt DateTime @default(now())
+
+  @@index([email, ip, createdAt])
+  @@index([createdAt])
 }
 
 model Character {
@@ -114,15 +179,133 @@ model Character {
   sectId           String?
   sect             Sect?    @relation(fields: [sectId], references: [id])
 
+  inventory        InventoryItem[]
+
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
+}
+
+model InventoryItem {
+  id            String     @id @default(cuid())
+  characterId   String
+  character     Character  @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  itemKey       String
+  qty           Int        @default(1)
+  equippedSlot  EquipSlot?
+  createdAt     DateTime   @default(now())
+
+  @@index([characterId, itemKey])
+  @@unique([characterId, equippedSlot])
+}
+
+enum ListingStatus {
+  ACTIVE
+  SOLD
+  CANCELLED
+}
+
+model Listing {
+  id             String        @id @default(cuid())
+  sellerId       String
+  itemKey        String
+  itemKind       String
+  qty            Int
+  pricePerUnit   BigInt
+  status         ListingStatus @default(ACTIVE)
+  buyerId        String?
+  createdAt      DateTime      @default(now())
+  soldAt         DateTime?
+
+  @@index([status, itemKind])
+  @@index([status, itemKey])
+  @@index([sellerId, status])
 }
 
 model Sect {
   id                String      @id @default(cuid())
   name              String      @unique
+  description       String      @default("")
   level             Int         @default(1)
   treasuryLinhThach BigInt      @default(0)
+  leaderId          String?     @unique
   characters        Character[]
   createdAt         DateTime    @default(now())
+}
+
+enum ChatChannel {
+  WORLD
+  SECT
+}
+
+model ChatMessage {
+  id         String      @id @default(cuid())
+  channel    ChatChannel
+  /// scopeKey: with WORLD = 'world'; with SECT = sectId
+  scopeKey   String
+  senderId   String
+  senderName String
+  text       String
+  createdAt  DateTime    @default(now())
+
+  @@index([channel, scopeKey, createdAt])
+}
+
+enum BossStatus {
+  ACTIVE
+  DEFEATED
+  EXPIRED
+}
+
+model WorldBoss {
+  id           String     @id @default(cuid())
+  bossKey      String
+  name         String
+  level        Int
+  maxHp        BigInt
+  currentHp    BigInt
+  status       BossStatus @default(ACTIVE)
+  spawnedAt    DateTime   @default(now())
+  expiresAt    DateTime
+  defeatedAt   DateTime?
+  rewardTotal  BigInt     @default(0)
+
+  damages      BossDamage[]
+
+  @@index([status, spawnedAt])
+}
+
+model BossDamage {
+  id           String     @id @default(cuid())
+  bossId       String
+  boss         WorldBoss  @relation(fields: [bossId], references: [id], onDelete: Cascade)
+  characterId  String
+  characterName String
+  totalDamage  BigInt     @default(0)
+  hits         Int        @default(0)
+  lastHitAt    DateTime   @default(now())
+
+  @@unique([bossId, characterId])
+  @@index([bossId, totalDamage])
+}
+
+enum EncounterStatus {
+  ACTIVE
+  WON
+  LOST
+  ABANDONED
+}
+
+model Encounter {
+  id          String          @id @default(cuid())
+  characterId String
+  dungeonKey  String
+  status      EncounterStatus @default(ACTIVE)
+  /// JSON state: { monsterIndex, monsterHp, lastTurn }
+  state       Json            @default("{}")
+  /// JSON list of log lines [{ side, text, ts }]
+  log         Json            @default("[]")
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  @@index([characterId, status])
 }

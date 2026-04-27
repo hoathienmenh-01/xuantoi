@@ -19,6 +19,41 @@ const routes: RouteRecordRaw[] = [
     component: () => import('@/views/OnboardingView.vue'),
   },
   {
+    path: '/dungeon',
+    name: 'dungeon',
+    component: () => import('@/views/DungeonView.vue'),
+  },
+  {
+    path: '/inventory',
+    name: 'inventory',
+    component: () => import('@/views/InventoryView.vue'),
+  },
+  {
+    path: '/market',
+    name: 'market',
+    component: () => import('@/views/MarketView.vue'),
+  },
+  {
+    path: '/sect',
+    name: 'sect',
+    component: () => import('@/views/SectView.vue'),
+  },
+  {
+    path: '/boss',
+    name: 'boss',
+    component: () => import('@/views/BossView.vue'),
+  },
+  {
+    path: '/topup',
+    name: 'topup',
+    component: () => import('@/views/TopupView.vue'),
+  },
+  {
+    path: '/admin',
+    name: 'admin',
+    component: () => import('@/views/AdminView.vue'),
+  },
+  {
     path: '/:pathMatch(.*)*',
     name: 'not-found',
     component: () => import('@/views/NotFoundView.vue'),
