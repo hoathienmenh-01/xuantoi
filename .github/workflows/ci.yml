@@ -25,6 +25,9 @@ jobs:
         working-directory: apps/api
         run: pnpm prisma:generate
 
+      - name: Build shared (needed for downstream typecheck/lint)
+        run: pnpm --filter @xuantoi/shared build
+
       - name: Typecheck
         run: pnpm typecheck
 
