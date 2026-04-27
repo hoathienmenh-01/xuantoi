@@ -1,4 +1,8 @@
-// Xuân Tôi — schema rút gọn (file 04 §3). Sẽ mở rộng theo từng phase.
+// Xuân Tôi — Prisma schema MVP.
+// Mở rộng theo từng phase. MVP hiện tại bao gồm:
+//   - Auth: User, RefreshToken, LoginAttempt
+//   - Character core: Character, Sect (nguyên skeleton)
+//   - Game systems nền: GameLog, CurrencyLedger, RewardClaimLog, AdminAuditLog
 
 datasource db {
   provider = "postgresql"
@@ -63,6 +67,14 @@ enum TopupStatus {
   REJECTED
 }
 
+enum GameLogType {
+  info
+  success
+  warning
+  error
+  system
+}
+
 model User {
   id              String    @id @default(cuid())
   email           String    @unique
@@ -74,6 +86,34 @@ model User {
   lastLoginAt     DateTime?
 
   character       Character?
+  refreshTokens   RefreshToken[]
+}
+
+model RefreshToken {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /// SHA-256 của refresh token (raw token chỉ tồn tại trong cookie HTTP-only client).
+  tokenHash String    @unique
+  expiresAt DateTime
+  revokedAt DateTime?
+  createdAt DateTime  @default(now())
+  ip        String?
+  userAgent String?
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+model LoginAttempt {
+  id        String   @id @default(cuid())
+  email     String
+  ip        String
+  success   Boolean
+  createdAt DateTime @default(now())
+
+  @@index([email, createdAt])
+  @@index([ip, createdAt])
 }
 
 model Character {
@@ -81,7 +121,7 @@ model Character {
   userId           String   @unique
   user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   name             String   @unique
-  realmKey         String
+  realmKey         String   @default("luyen_khi")
   realmStage       Int      @default(1)
   title            String?
   exp              BigInt   @default(0)
@@ -110,12 +150,20 @@ model Character {
 
   settings         Json     @default("{}")
   cultivating      Boolean  @default(false)
+  /// Thời điểm bắt đầu phiên tu luyện hiện tại (null khi không tu luyện).
+  cultivationStartedAt DateTime?
+  /// Mốc thời gian gần nhất EXP tu luyện đã được flush vào DB.
+  lastCultivationAt    DateTime?
 
   sectId           String?
   sect             Sect?    @relation(fields: [sectId], references: [id])
 
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
+
+  logs             GameLog[]
+  currencyLedger   CurrencyLedger[]
+  rewardClaims     RewardClaimLog[]
 }
 
 model Sect {
@@ -125,4 +173,61 @@ model Sect {
   treasuryLinhThach BigInt      @default(0)
   characters        Character[]
   createdAt         DateTime    @default(now())
+}
+
+model GameLog {
+  id        String      @id @default(cuid())
+  charId    String
+  character Character   @relation(fields: [charId], references: [id], onDelete: Cascade)
+  type      GameLogType
+  text      String
+  createdAt DateTime    @default(now())
+
+  @@index([charId, createdAt])
+}
+
+model CurrencyLedger {
+  id           String    @id @default(cuid())
+  charId       String
+  character    Character @relation(fields: [charId], references: [id], onDelete: Cascade)
+  /// linhThach | tienNgoc | tienNgocKhoa | tienTe | nguyenThach | congHien | congDuc | chienCongTongMon
+  currencyKey  String
+  /// Có dấu: dương = cộng, âm = trừ.
+  amount       BigInt
+  balanceAfter BigInt
+  reason       String
+  refType      String?
+  refId        String?
+  createdAt    DateTime  @default(now())
+
+  @@index([charId, createdAt])
+  @@index([currencyKey, createdAt])
+}
+
+model RewardClaimLog {
+  id         String    @id @default(cuid())
+  charId     String
+  character  Character @relation(fields: [charId], references: [id], onDelete: Cascade)
+  rewardType String
+  rewardKey  String
+  refId      String
+  createdAt  DateTime  @default(now())
+
+  @@unique([charId, rewardType, rewardKey, refId])
+  @@index([charId, createdAt])
+}
+
+model AdminAuditLog {
+  id           String   @id @default(cuid())
+  adminUserId  String
+  targetUserId String?
+  action       String
+  beforeJson   Json?
+  afterJson    Json?
+  reason       String?
+  ip           String?
+  createdAt    DateTime @default(now())
+
+  @@index([adminUserId, createdAt])
+  @@index([targetUserId, createdAt])
 }

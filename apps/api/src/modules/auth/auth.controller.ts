@@ -1,8 +1,8 @@
 import {
   Body,
   Controller,
+  Get,
   HttpCode,
-  HttpException,
   HttpStatus,
   Post,
   Req,
@@ -14,13 +14,30 @@ import {
   LoginInput,
   RegisterInput,
 } from '@xuantoi/shared';
-import { AuthService, type AuthErrorCode } from './auth.service';
-
-const ACCESS_COOKIE = 'xt_access';
-const REFRESH_COOKIE = 'xt_refresh';
+import { ApiException } from '../../common/api-exception';
+import {
+  ACCESS_COOKIE,
+  REFRESH_COOKIE,
+  clearAuthCookies,
+  setAccessCookie,
+  setRefreshCookie,
+} from '../../common/auth-cookies';
+import { ZodBody } from '../../common/zod.pipe';
+import { AuthError, AuthService, type AuthErrorCode } from './auth.service';
 
 function fail(code: AuthErrorCode, status = HttpStatus.BAD_REQUEST): never {
-  throw new HttpException({ ok: false, error: { code, message: code } }, status);
+  throw new ApiException(code, status);
+}
+
+function reqIp(req: Request): string {
+  const xff = req.headers['x-forwarded-for'];
+  if (typeof xff === 'string' && xff.length > 0) return xff.split(',')[0].trim();
+  return req.ip ?? req.socket.remoteAddress ?? 'unknown';
+}
+
+function reqUa(req: Request): string | undefined {
+  const ua = req.headers['user-agent'];
+  return typeof ua === 'string' ? ua : undefined;
 }
 
 @Controller('_auth')
@@ -28,75 +45,97 @@ export class AuthController {
   constructor(private readonly auth: AuthService) {}
 
   @Post('register')
-  async register(@Body() body: unknown, @Res({ passthrough: true }) res: Response) {
-    const parsed = RegisterInput.safeParse(body);
-    if (!parsed.success) fail('WEAK_PASSWORD');
-
+  async register(
+    @Body(new ZodBody(RegisterInput, 'WEAK_PASSWORD')) input: RegisterInput,
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
+  ) {
     try {
-      const out = await this.auth.register(parsed.data);
-      this.setAuthCookies(res, out.accessToken, out.refreshToken);
+      const out = await this.auth.register(input, { ip: reqIp(req), userAgent: reqUa(req) });
+      setAccessCookie(res, out.accessToken, out.accessTtlSeconds);
+      setRefreshCookie(res, out.refreshToken, out.refreshTtlSeconds);
       return { ok: true, data: { user: out.user } };
     } catch (e) {
-      if ((e as { code?: string })?.code === 'EMAIL_TAKEN') fail('EMAIL_TAKEN');
+      if (e instanceof AuthError) fail(e.code);
       throw e;
     }
   }
 
   @Post('login')
   @HttpCode(200)
-  async login(@Body() body: unknown, @Res({ passthrough: true }) res: Response) {
-    const parsed = LoginInput.safeParse(body);
-    if (!parsed.success) fail('INVALID_CREDENTIALS', HttpStatus.UNAUTHORIZED);
-
+  async login(
+    @Body(new ZodBody(LoginInput, 'INVALID_CREDENTIALS')) input: LoginInput,
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
+  ) {
     try {
-      const out = await this.auth.login(parsed.data);
-      this.setAuthCookies(res, out.accessToken, out.refreshToken);
+      const out = await this.auth.login(input, { ip: reqIp(req), userAgent: reqUa(req) });
+      setAccessCookie(res, out.accessToken, out.accessTtlSeconds);
+      setRefreshCookie(res, out.refreshToken, out.refreshTtlSeconds);
       return { ok: true, data: { user: out.user } };
-    } catch {
-      fail('INVALID_CREDENTIALS', HttpStatus.UNAUTHORIZED);
+    } catch (e) {
+      if (e instanceof AuthError) {
+        const status =
+          e.code === 'RATE_LIMITED' ? HttpStatus.TOO_MANY_REQUESTS : HttpStatus.UNAUTHORIZED;
+        fail(e.code, status);
+      }
+      throw e;
     }
   }
 
   @Post('change-password')
   @HttpCode(200)
-  async changePassword(@Body() body: unknown, @Req() req: Request) {
-    const parsed = ChangePasswordInput.safeParse(body);
-    if (!parsed.success) fail('OLD_PASSWORD_WRONG', HttpStatus.UNAUTHORIZED);
-
+  async changePassword(
+    @Body(new ZodBody(ChangePasswordInput, 'OLD_PASSWORD_WRONG')) input: ChangePasswordInput,
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
+  ) {
     const userId = await this.auth.userIdFromAccess(req.cookies?.[ACCESS_COOKIE]);
-    if (!userId) fail('OLD_PASSWORD_WRONG', HttpStatus.UNAUTHORIZED);
+    if (!userId) fail('UNAUTHENTICATED', HttpStatus.UNAUTHORIZED);
 
     try {
-      await this.auth.changePassword(userId, parsed.data);
+      await this.auth.changePassword(userId, input);
+      // sau khi đổi, mọi refresh cũ đã revoke → buộc đăng nhập lại.
+      clearAuthCookies(res);
       return { ok: true, data: { ok: true } };
-    } catch {
-      fail('OLD_PASSWORD_WRONG', HttpStatus.UNAUTHORIZED);
+    } catch (e) {
+      if (e instanceof AuthError) fail(e.code, HttpStatus.UNAUTHORIZED);
+      throw e;
     }
+  }
+
+  @Post('refresh')
+  @HttpCode(200)
+  async refresh(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
+    try {
+      const out = await this.auth.refresh(req.cookies?.[REFRESH_COOKIE], {
+        ip: reqIp(req),
+        userAgent: reqUa(req),
+      });
+      setAccessCookie(res, out.accessToken, out.accessTtlSeconds);
+      setRefreshCookie(res, out.refreshToken, out.refreshTtlSeconds);
+      return { ok: true, data: { user: out.user } };
+    } catch (e) {
+      if (e instanceof AuthError) {
+        clearAuthCookies(res);
+        fail(e.code, HttpStatus.UNAUTHORIZED);
+      }
+      throw e;
+    }
+  }
+
+  @Get('session')
+  async session(@Req() req: Request) {
+    const user = await this.auth.getSession(req.cookies?.[ACCESS_COOKIE]);
+    if (!user) fail('UNAUTHENTICATED', HttpStatus.UNAUTHORIZED);
+    return { ok: true, data: { user } };
   }
 
   @Post('logout')
   @HttpCode(200)
-  logout(@Res({ passthrough: true }) res: Response) {
-    res.clearCookie(ACCESS_COOKIE);
-    res.clearCookie(REFRESH_COOKIE);
+  async logout(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
+    await this.auth.logout(req.cookies?.[REFRESH_COOKIE]);
+    clearAuthCookies(res);
     return { ok: true, data: { ok: true } };
-  }
-
-  private setAuthCookies(res: Response, access: string, refresh: string): void {
-    const isProd = process.env.NODE_ENV === 'production';
-    res.cookie(ACCESS_COOKIE, access, {
-      httpOnly: true,
-      sameSite: 'lax',
-      secure: isProd,
-      maxAge: 15 * 60 * 1000,
-      path: '/',
-    });
-    res.cookie(REFRESH_COOKIE, refresh, {
-      httpOnly: true,
-      sameSite: 'lax',
-      secure: isProd,
-      maxAge: 30 * 24 * 60 * 60 * 1000,
-      path: '/',
-    });
   }
 }

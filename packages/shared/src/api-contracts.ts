@@ -58,7 +58,7 @@ export const AuthErrorCode = z.enum([
 ]);
 export type AuthErrorCode = z.infer<typeof AuthErrorCode>;
 
-/** Map mã lỗi → text Việt (dùng FE). File 02 §3 + file 04 §4.1. */
+/** Map mã lỗi → text Việt (dùng FE). */
 export const AUTH_ERROR_VI: Record<AuthErrorCode, string> = {
   INVALID_CREDENTIALS: 'Danh hiệu hoặc huyền pháp không chính xác.',
   EMAIL_TAKEN: 'Danh hiệu đạo đồ đã được khai lập hoặc dữ liệu không hợp lệ.',
@@ -67,3 +67,82 @@ export const AUTH_ERROR_VI: Record<AuthErrorCode, string> = {
   RATE_LIMITED: 'Đã thử quá nhiều lần. Đạo hữu vui lòng thử lại sau.',
   UNAUTHENTICATED: 'Phiên đã hết. Mời đạo hữu nhập định lại.',
 };
+
+/* ---------------- character ---------------- */
+
+export const CharacterName = z
+  .string()
+  .trim()
+  .min(3, 'Tên đạo đồ tối thiểu 3 ký tự')
+  .max(20, 'Tên đạo đồ tối đa 20 ký tự');
+
+export const CreateCharacterInput = z.object({
+  name: CharacterName,
+});
+export type CreateCharacterInput = z.infer<typeof CreateCharacterInput>;
+
+export const PublicCharacter = z.object({
+  id: z.string(),
+  name: z.string(),
+  realmKey: z.string(),
+  realmStage: z.number().int(),
+  realmName: z.string(),
+  stageName: z.string(),
+  exp: z.string(), // BigInt as string
+  expToBreakthrough: z.string(), // 0 = đã đỉnh
+  cultivating: z.boolean(),
+  cultivationStartedAt: z.string().nullable(),
+  expPerSec: z.number(),
+
+  hp: z.number().int(),
+  hpMax: z.number().int(),
+  mp: z.number().int(),
+  mpMax: z.number().int(),
+  stamina: z.number().int(),
+  staminaMax: z.number().int(),
+  power: z.number().int(),
+  spirit: z.number().int(),
+  speed: z.number().int(),
+  luck: z.number().int(),
+
+  linhThach: z.string(),
+  tienNgoc: z.number().int(),
+
+  createdAt: z.string(),
+  updatedAt: z.string(),
+});
+export type PublicCharacter = z.infer<typeof PublicCharacter>;
+
+export const CharacterErrorCode = z.enum([
+  'CHAR_ALREADY_EXISTS',
+  'CHAR_NAME_TAKEN',
+  'CHAR_NOT_FOUND',
+  'NOT_ENOUGH_EXP',
+  'ALREADY_AT_PEAK',
+  'NOT_CULTIVATING',
+  'ALREADY_CULTIVATING',
+]);
+export type CharacterErrorCode = z.infer<typeof CharacterErrorCode>;
+
+export const CHARACTER_ERROR_VI: Record<CharacterErrorCode, string> = {
+  CHAR_ALREADY_EXISTS: 'Đạo hữu đã có nhân vật, không thể tạo thêm.',
+  CHAR_NAME_TAKEN: 'Tên đạo đồ đã có người dùng, mời chọn tên khác.',
+  CHAR_NOT_FOUND: 'Chưa có nhân vật. Mời khai mở đạo đồ trước.',
+  NOT_ENOUGH_EXP: 'Tu vi chưa đủ để đột phá.',
+  ALREADY_AT_PEAK: 'Đã tới đỉnh phong, không thể đột phá tiếp.',
+  NOT_CULTIVATING: 'Đạo hữu không ở trong trạng thái tu luyện.',
+  ALREADY_CULTIVATING: 'Đạo hữu đã đang tu luyện.',
+};
+
+/* ---------------- game log ---------------- */
+
+export const GameLogType = z.enum(['info', 'success', 'warning', 'error', 'system']);
+export type GameLogType = z.infer<typeof GameLogType>;
+
+export const PublicGameLog = z.object({
+  id: z.string(),
+  type: GameLogType,
+  text: z.string(),
+  createdAt: z.string(),
+});
+export type PublicGameLog = z.infer<typeof PublicGameLog>;

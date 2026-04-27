@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
-import { useRouter } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 import { AUTH_ERROR_VI, randomProverb, type AuthErrorCode } from '@xuantoi/shared';
 import { useAuthStore } from '@/stores/auth';
 import { useToastStore } from '@/stores/toast';
@@ -14,6 +14,13 @@ const proverb = ref(randomProverb());
 const auth = useAuthStore();
 const toast = useToastStore();
 const router = useRouter();
+const route = useRoute();
+
+function redirectAfterLogin(): string {
+  const r = route.query.redirect;
+  if (typeof r === 'string' && r.startsWith('/') && !r.startsWith('//')) return r;
+  return '/home';
+}
 
 // login form
 const lEmail = ref('');
@@ -55,7 +62,7 @@ async function onLogin(): Promise<void> {
   try {
     await auth.login(lEmail.value, lPassword.value, lRemember.value);
     toast.push({ type: 'success', text: 'Nhập định thành công.' });
-    router.push('/home');
+    router.push(redirectAfterLogin());
   } catch (e) {
     showServerError((e as { code?: string })?.code ?? 'INVALID_CREDENTIALS');
   }
@@ -68,8 +75,7 @@ async function onRegister(): Promise<void> {
       type: 'success',
       text: 'Khai tông lập danh thành công. Mời đạo hữu nhập định tu hành.',
     });
-    tab.value = 'login';
-    lEmail.value = rEmail.value;
+    router.push(redirectAfterLogin());
   } catch (e) {
     showServerError((e as { code?: string })?.code ?? 'EMAIL_TAKEN');
   }

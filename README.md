@@ -39,9 +39,12 @@ cp apps/web/.env.example apps/web/.env
 
 # 4. Sinh Prisma client + migrate
 pnpm --filter @xuantoi/api prisma:generate
-pnpm --filter @xuantoi/api prisma:migrate
+pnpm --filter @xuantoi/api exec prisma migrate dev
 
-# 5. Chạy song song web + api
+# 5. Build shared 1 lần (apps/api & apps/web đều consume từ dist/)
+pnpm --filter @xuantoi/shared build
+
+# 6. Chạy song song shared (watch) + api + web
 pnpm dev
 ```
 
@@ -49,6 +52,46 @@ pnpm dev
 - API: http://localhost:3000
 - MailHog UI: http://localhost:8025
 - MinIO console: http://localhost:9001 (admin / admin12345)
+
+## Test thủ công vòng lặp MVP
+
+Sau khi `pnpm dev` lên ổn:
+
+1. Mở http://localhost:5173 → tạo tài khoản (Đăng Ký).
+2. Reload trang → vẫn còn phiên (router guard gọi `/api/_auth/session`, fallback `/_auth/refresh`).
+3. Khai mở đạo đồ (3–20 ký tự) → dashboard hiện thông số.
+4. Bấm **Bắt Đầu Tu Luyện** → đợi 15–30 giây → EXP tăng (hiển thị có pendingExp do server tính).
+5. Reload → EXP vẫn đúng.
+6. Bấm **Dừng Tu Luyện** → EXP được lưu vĩnh viễn.
+7. Khi đủ EXP → bấm **Đột Phá** → cảnh giới tăng + log "thành công".
+8. Thiếu EXP mà bấm Đột Phá → toast "tu vi không đủ" + log "thất bại".
+9. **Xuất Quan** (logout) → quay về `/auth`.
+10. Đăng nhập lại → dữ liệu nhân vật + log còn nguyên.
+11. Sai mật khẩu **5 lần / 15 phút / cùng IP+email** → bị khóa `RATE_LIMITED`.
+
+## API MVP
+
+Tất cả response đều envelope: `{ ok: true, data }` hoặc `{ ok: false, error: { code, message } }`.
+
+| Method & Path                    | Mục đích                                                           |
+| -------------------------------- | ------------------------------------------------------------------ |
+| POST `/api/_auth/register`       | Đăng ký + set cookie `xt_access` + `xt_refresh`                    |
+| POST `/api/_auth/login`          | Đăng nhập (rate-limit 5/15p/IP+email)                              |
+| POST `/api/_auth/logout`         | Thu hồi refresh-token, xoá cookie                                  |
+| POST `/api/_auth/refresh`        | Xoay cặp token (revoke cũ, cấp mới)                                |
+| GET  `/api/_auth/session`        | Lấy `PublicUser` theo access cookie                                |
+| POST `/api/_auth/change-password`| Đổi mật khẩu + revoke toàn bộ session cũ                           |
+| POST `/api/character/create`     | Tạo nhân vật (1/user, tên 3-20 ký tự, unique)                      |
+| GET  `/api/character/me`         | Lấy nhân vật + tu vi hiện tại (có pendingExp khi đang tu luyện)    |
+| POST `/api/cultivation/start`    | Bắt đầu tu luyện                                                   |
+| POST `/api/cultivation/stop`     | Dừng tu luyện, flush EXP                                           |
+| POST `/api/cultivation/tick`     | Snapshot EXP (giữ trạng thái tu luyện)                             |
+| POST `/api/cultivation/breakthrough` | Đột phá (kiểm tra EXP cost từ shared helper)                   |
+| GET  `/api/logs/me`              | 50 log mới nhất của nhân vật                                       |
+
+Hệ cảnh giới MVP — 10 đại × 9 trọng — định nghĩa ở `packages/shared/src/realms.ts`.
+Công thức cost: `cost(realmOrder, stage) = round(100 × 1.45^(stage-1) × 2.2^(realmOrder-1))`.
+Tốc độ tu luyện: `0.2 EXP/giây` ở Luyện Khí, +10% mỗi đại cảnh giới kế tiếp.
 
 ## Scripts
 

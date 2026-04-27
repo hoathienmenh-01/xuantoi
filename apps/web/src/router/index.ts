@@ -1,4 +1,5 @@
 import { createRouter, createWebHistory, type RouteRecordRaw } from 'vue-router';
+import { useAuthStore } from '@/stores/auth';
 
 const routes: RouteRecordRaw[] = [
   { path: '/', redirect: '/home' },
@@ -12,6 +13,7 @@ const routes: RouteRecordRaw[] = [
     path: '/home',
     name: 'home',
     component: () => import('@/views/HomeView.vue'),
+    meta: { requiresAuth: true },
   },
   {
     path: '/:pathMatch(.*)*',
@@ -24,6 +26,20 @@ const routes: RouteRecordRaw[] = [
 const router = createRouter({
   history: createWebHistory(),
   routes,
+});
+
+router.beforeEach(async (to) => {
+  const auth = useAuthStore();
+  if (!auth.hydrated) {
+    await auth.hydrate();
+  }
+  if (to.meta.requiresAuth && !auth.isAuthenticated) {
+    return { name: 'auth', query: { redirect: to.fullPath } };
+  }
+  if (to.name === 'auth' && auth.isAuthenticated) {
+    return { name: 'home' };
+  }
+  return true;
 });
 
 export default router;
