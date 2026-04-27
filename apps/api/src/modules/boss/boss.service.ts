@@ -172,19 +172,21 @@ export class BossService implements OnModuleInit, OnModuleDestroy {
     // Trừ resource trước (cooldown set ngay để chống burst).
     this.cooldowns.set(char.id, now);
 
-    const heal = skill.selfHealRatio > 0 ? Math.floor(char.hpMax * skill.selfHealRatio) : 0;
-    const newHp = Math.max(1, Math.min(char.hpMax, char.hp - bloodCost + heal));
-    const newMp = char.mp - skill.mpCost;
-    const newStamina = char.stamina - BOSS_STAMINA_PER_HIT;
+    const healRatio = skill.selfHealRatio;
 
     let defeated = false;
     let bossHpAfter = boss.currentHp;
     let myDamageTotal = 0n;
     let myRank = 0;
     let rewardSlices: DefeatedRewardSlice[] | null = null;
+    let postHp = char.hp;
+    let postMp = char.mp;
+    let postStamina = char.stamina;
 
     await this.prisma.$transaction(async (tx) => {
-      // Trừ resource character — guard để chống race với combat khác.
+      // Trừ resource character bằng atomic decrement — guard để không
+      // overwrite cập nhật concurrent (potion / cron / dungeon).
+      // bloodCost = 0 cho skill không phải huyết tế.
       const upd = await tx.character.updateMany({
         where: {
           id: char.id,
@@ -192,7 +194,11 @@ export class BossService implements OnModuleInit, OnModuleDestroy {
           stamina: { gte: BOSS_STAMINA_PER_HIT },
           hp: { gt: bloodCost },
         },
-        data: { hp: newHp, mp: newMp, stamina: newStamina },
+        data: {
+          mp: { decrement: skill.mpCost },
+          stamina: { decrement: BOSS_STAMINA_PER_HIT },
+          hp: { decrement: bloodCost },
+        },
       });
       if (upd.count === 0) {
         // Lý do nào? Đọc lại để phân biệt.
@@ -204,6 +210,33 @@ export class BossService implements OnModuleInit, OnModuleDestroy {
         if (cur.mp < skill.mpCost) throw new BossError('MP_LOW');
         if (cur.stamina < BOSS_STAMINA_PER_HIT) throw new BossError('STAMINA_LOW');
         throw new BossError('HP_LOW');
+      }
+
+      // Apply heal (huyền thuỷ): re-read fresh để clamp đúng tại hpMax.
+      if (healRatio > 0) {
+        const cur = await tx.character.findUnique({
+          where: { id: char.id },
+          select: { hp: true, hpMax: true },
+        });
+        if (cur) {
+          const healAmt = Math.floor(cur.hpMax * healRatio);
+          const target = Math.min(cur.hpMax, cur.hp + healAmt);
+          await tx.character.update({
+            where: { id: char.id },
+            data: { hp: target },
+          });
+        }
+      }
+
+      // Đọc lại stat sau atomic update để trả response chính xác.
+      const post = await tx.character.findUnique({
+        where: { id: char.id },
+        select: { hp: true, mp: true, stamina: true },
+      });
+      if (post) {
+        postHp = post.hp;
+        postMp = post.mp;
+        postStamina = post.stamina;
       }
 
       // Trừ HP boss — cap tại 0, atomic.
@@ -238,7 +271,8 @@ export class BossService implements OnModuleInit, OnModuleDestroy {
       });
       myDamageTotal = dmgRow.totalDamage;
 
-      // Nếu bossHp <= 0 → mark DEFEATED, distribute rewards trong tx.
+      // Nếu bossHp <= 0 → mark DEFEATED, distribute rewards trong tx,
+      // và cập nhật bossHpAfter về 0 để response/broadcast nhất quán.
       if (bossHpAfter <= 0n) {
         const flip = await tx.worldBoss.updateMany({
           where: { id: boss.id, status: BossStatus.ACTIVE },
@@ -250,10 +284,15 @@ export class BossService implements OnModuleInit, OnModuleDestroy {
         });
         if (flip.count > 0) {
           defeated = true;
+          bossHpAfter = 0n;
           rewardSlices = await this.distributeRewards(tx, boss.id, def);
         }
       }
     });
+
+    // Đảm bảo response không bao giờ trả HP âm ngay cả khi tx flip
+    // không xảy ra (tránh hiển thị `-95 / 120000` ở client).
+    if (bossHpAfter < 0n) bossHpAfter = 0n;
 
     // Tính rank ngoài tx (read-only, không cần lock).
     const rankRow = await this.prisma.bossDamage.count({
@@ -277,9 +316,9 @@ export class BossService implements OnModuleInit, OnModuleDestroy {
         defeated,
         myDamageTotal: myDamageTotal.toString(),
         myRank,
-        charHp: newHp,
-        charMp: newMp,
-        charStamina: newStamina,
+        charHp: postHp,
+        charMp: postMp,
+        charStamina: postStamina,
       },
       defeated: rewardSlices,
     };
