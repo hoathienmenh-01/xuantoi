@@ -7,6 +7,8 @@ import { InventoryModule } from './modules/inventory/inventory.module';
 import { MarketModule } from './modules/market/market.module';
 import { RealtimeModule } from './modules/realtime/realtime.module';
 import { CultivationModule } from './modules/cultivation/cultivation.module';
+import { ChatModule } from './modules/chat/chat.module';
+import { SectModule } from './modules/sect/sect.module';
 import { RedisModule } from './common/redis.module';
 
 @Module({
@@ -20,6 +22,8 @@ import { RedisModule } from './common/redis.module';
     CombatModule,
     InventoryModule,
     MarketModule,
+    SectModule,
+    ChatModule,
   ],
 })
 export class AppModule {}

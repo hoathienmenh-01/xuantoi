@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { JwtModule } from '@nestjs/jwt';
 import { RealtimeGateway } from './realtime.gateway';
 import { RealtimeService } from './realtime.service';
+import { PrismaService } from '../../common/prisma.service';
 
 @Module({
   imports: [
@@ -11,7 +12,7 @@ import { RealtimeService } from './realtime.service';
       }),
     }),
   ],
-  providers: [RealtimeGateway, RealtimeService],
+  providers: [RealtimeGateway, RealtimeService, PrismaService],
   exports: [RealtimeService],
 })
 export class RealtimeModule {}
