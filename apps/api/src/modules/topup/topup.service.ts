@@ -1,3 +1,4 @@
+import { randomInt } from 'node:crypto';
 import { Injectable } from '@nestjs/common';
 import { Prisma, TopupStatus } from '@prisma/client';
 import { topupPackageByKey, TOPUP_BANK_INFO } from '@xuantoi/shared';
@@ -33,9 +34,15 @@ export interface TopupOrderView {
 
 const MAX_PENDING_PER_USER = 5;
 
+// Alphabet bỏ các ký tự dễ nhầm (0/O, 1/I) để user gõ vào app banking ít sai.
+const TRANSFER_CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+const TRANSFER_CODE_LEN = 6;
 function genTransferCode(): string {
-  const rnd = Math.random().toString(36).slice(2, 8).toUpperCase();
-  return `TOPUP-${rnd}`;
+  let out = '';
+  for (let i = 0; i < TRANSFER_CODE_LEN; i++) {
+    out += TRANSFER_CODE_ALPHABET[randomInt(TRANSFER_CODE_ALPHABET.length)];
+  }
+  return `TOPUP-${out}`;
 }
 
 @Injectable()
