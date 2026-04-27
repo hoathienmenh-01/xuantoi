@@ -1,0 +1,35 @@
+node_modules
+dist
+build
+coverage
+.cache
+.turbo
+
+# logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# env
+.env
+.env.local
+.env.*.local
+!.env.example
+
+# editor
+.vscode
+.idea
+*.swp
+.DS_Store
+
+# build artifacts
+apps/web/dist
+apps/api/dist
+packages/shared/dist
+*.tsbuildinfo
+
+# prisma
+apps/api/prisma/migrations/**/migration.sql.bak
+
+# docker volumes
+infra/data
