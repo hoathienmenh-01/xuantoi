@@ -99,10 +99,19 @@ export class AdminService {
     };
   }
 
-  async setBanned(actorId: string, targetUserId: string, banned: boolean): Promise<void> {
+  async setBanned(
+    actorId: string,
+    actorRole: Role,
+    targetUserId: string,
+    banned: boolean,
+  ): Promise<void> {
     if (actorId === targetUserId) throw new AdminError('CANNOT_TARGET_SELF');
     const target = await this.prisma.user.findUnique({ where: { id: targetUserId } });
     if (!target) throw new AdminError('NOT_FOUND');
+    // Hierarchy: MOD chỉ thao tác lên PLAYER. Chỉ ADMIN mới ban được MOD/ADMIN.
+    if (actorRole !== 'ADMIN' && target.role !== 'PLAYER') {
+      throw new AdminError('FORBIDDEN');
+    }
     await this.prisma.user.update({ where: { id: targetUserId }, data: { banned } });
     await this.audit(actorId, banned ? 'user.ban' : 'user.unban', { targetUserId });
   }
@@ -128,12 +137,21 @@ export class AdminService {
    */
   async grant(
     actorId: string,
+    actorRole: Role,
     targetUserId: string,
     deltaLinhThach: bigint,
     deltaTienNgoc: number,
     reason: string,
   ): Promise<void> {
     if (deltaLinhThach === 0n && deltaTienNgoc === 0) throw new AdminError('INVALID_INPUT');
+    const targetUser = await this.prisma.user.findUnique({
+      where: { id: targetUserId },
+      select: { role: true },
+    });
+    if (!targetUser) throw new AdminError('NOT_FOUND');
+    if (actorRole !== 'ADMIN' && targetUser.role !== 'PLAYER') {
+      throw new AdminError('FORBIDDEN');
+    }
     if (deltaLinhThach > MAX_GRANT_LINH_THACH || deltaLinhThach < -MAX_GRANT_LINH_THACH) {
       throw new AdminError('INVALID_INPUT');
     }
@@ -150,30 +168,19 @@ export class AdminService {
     });
     if (!target) throw new AdminError('NOT_FOUND');
 
-    // Guard không để âm.
-    await this.prisma.$transaction(async (tx) => {
-      // Build WHERE để giữ atomic (nếu trừ thì kiểm tra >= |delta|).
-      const where: Prisma.CharacterWhereUniqueInput & {
-        linhThach?: { gte: bigint };
-        tienNgoc?: { gte: number };
-      } = { id: target.id };
-      if (deltaLinhThach < 0n) {
-        // Phải truyền qua updateMany để có guard điều kiện.
-      }
-      const upd = await tx.character.updateMany({
-        where: {
-          id: target.id,
-          ...(deltaLinhThach < 0n ? { linhThach: { gte: -deltaLinhThach } } : {}),
-          ...(deltaTienNgoc < 0 ? { tienNgoc: { gte: -deltaTienNgoc } } : {}),
-        },
-        data: {
-          linhThach: { increment: deltaLinhThach },
-          tienNgoc: { increment: deltaTienNgoc },
-        },
-      });
-      if (upd.count === 0) throw new AdminError('INVALID_INPUT');
-      void where;
+    // Guard không để âm: dùng updateMany với điều kiện gte |delta| khi trừ.
+    const upd = await this.prisma.character.updateMany({
+      where: {
+        id: target.id,
+        ...(deltaLinhThach < 0n ? { linhThach: { gte: -deltaLinhThach } } : {}),
+        ...(deltaTienNgoc < 0 ? { tienNgoc: { gte: -deltaTienNgoc } } : {}),
+      },
+      data: {
+        linhThach: { increment: deltaLinhThach },
+        tienNgoc: { increment: deltaTienNgoc },
+      },
     });
+    if (upd.count === 0) throw new AdminError('INVALID_INPUT');
 
     await this.audit(actorId, 'user.grant', {
       targetUserId,
@@ -275,6 +282,9 @@ export class AdminService {
   }
 
   async rejectTopup(actorId: string, orderId: string, note: string): Promise<void> {
+    const order = await this.prisma.topupOrder.findUnique({ where: { id: orderId } });
+    if (!order) throw new AdminError('NOT_FOUND');
+    if (order.status !== 'PENDING') throw new AdminError('ALREADY_PROCESSED');
     const flip = await this.prisma.topupOrder.updateMany({
       where: { id: orderId, status: TopupStatus.PENDING },
       data: {

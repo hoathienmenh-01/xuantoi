@@ -59,7 +59,7 @@ export class AdminController {
     const parsed = BanInput.safeParse(body);
     if (!parsed.success) fail('INVALID_INPUT');
     try {
-      await this.admin.setBanned(req.userId, id, parsed.data.banned);
+      await this.admin.setBanned(req.userId, req.role, id, parsed.data.banned);
       return { ok: true, data: { ok: true } };
     } catch (e) {
       this.handleErr(e);
@@ -87,6 +87,7 @@ export class AdminController {
     try {
       await this.admin.grant(
         req.userId,
+        req.role,
         id,
         BigInt(parsed.data.linhThach),
         parsed.data.tienNgoc,
