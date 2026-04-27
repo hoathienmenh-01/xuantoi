@@ -44,9 +44,12 @@ export interface CharacterStatePayload {
   speed: number;
   luck: number;
   linhThach: string;
+  tienNgoc: number;
   cultivating: boolean;
   sectId: string | null;
   sectKey: 'thanh_van' | 'huyen_thuy' | 'tu_la' | null;
+  role: 'PLAYER' | 'MOD' | 'ADMIN';
+  banned: boolean;
 }
 
 export interface CultivateTickPayload {

@@ -9,7 +9,7 @@ import {
 } from '@xuantoi/shared';
 import { PrismaService } from '../../common/prisma.service';
 import { RealtimeService } from '../realtime/realtime.service';
-import { CULTIVATION_QUEUE } from './cultivation.module';
+import { CULTIVATION_QUEUE } from './cultivation.queue';
 
 @Processor(CULTIVATION_QUEUE)
 export class CultivationProcessor extends WorkerHost {

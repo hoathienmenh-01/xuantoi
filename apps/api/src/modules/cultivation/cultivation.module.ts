@@ -4,8 +4,7 @@ import { CultivationProcessor } from './cultivation.processor';
 import { CultivationService } from './cultivation.service';
 import { PrismaService } from '../../common/prisma.service';
 import { RealtimeModule } from '../realtime/realtime.module';
-
-const CULTIVATION_QUEUE = 'cultivation';
+import { CULTIVATION_QUEUE } from './cultivation.queue';
 
 @Module({
   imports: [
@@ -30,4 +29,4 @@ export class CultivationModule implements OnModuleInit {
   }
 }
 
-export { CULTIVATION_QUEUE };
+
