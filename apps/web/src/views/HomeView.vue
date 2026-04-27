@@ -50,7 +50,9 @@ async function toggleCultivate(): Promise<void> {
     await game.setCultivating(!game.character.cultivating);
     toast.push({
       type: 'success',
-      text: game.character.cultivating ? 'Nhập định, linh khí xoay vần.' : 'Xuất định.',
+      text: game.character.cultivating
+        ? t('home.cultivate.startedToast')
+        : t('home.cultivate.stoppedToast'),
     });
   } catch {
     toast.push({ type: 'error', text: t('auth.errors.UNKNOWN') });
@@ -63,11 +65,11 @@ async function onBreakthrough(): Promise<void> {
   submitting.value = true;
   try {
     await game.breakthrough();
-    toast.push({ type: 'system', text: 'Đột phá thành công, cảnh giới đã thăng.' });
+    toast.push({ type: 'system', text: t('home.breakthrough.successToast') });
   } catch (e) {
     const code = (e as { code?: string })?.code;
     if (code === 'NOT_AT_PEAK') {
-      toast.push({ type: 'warning', text: 'Chưa đủ duyên đột phá, mời tích thêm linh khí.' });
+      toast.push({ type: 'warning', text: t('home.breakthrough.notAtPeakToast') });
     } else {
       toast.push({ type: 'error', text: t('auth.errors.UNKNOWN') });
     }
@@ -89,7 +91,7 @@ async function onBreakthrough(): Promise<void> {
         <div class="space-y-3">
           <div>
             <div class="flex justify-between text-xs text-ink-300">
-              <span>Linh Khí (EXP)</span>
+              <span>{{ t('home.expLabel') }}</span>
               <span>{{ expText }}</span>
             </div>
             <div class="h-2 mt-1 rounded bg-ink-900/60 overflow-hidden">
@@ -131,29 +133,31 @@ async function onBreakthrough(): Promise<void> {
 
         <div class="mt-5 flex flex-wrap gap-2">
           <MButton :loading="submitting" @click="toggleCultivate">
-            {{ game.character.cultivating ? 'Xuất Định' : 'Nhập Định' }}
+            {{ game.character.cultivating ? t('home.cultivate.stop') : t('home.cultivate.start') }}
           </MButton>
           <MButton :loading="submitting" :disabled="!atPeak" @click="onBreakthrough">
-            Đột Phá
+            {{ t('home.breakthrough.submit') }}
           </MButton>
         </div>
 
         <p v-if="game.lastTickAt" class="text-xs text-ink-300 mt-3">
-          Tick gần nhất: +{{ game.lastTickGain }} EXP ·
-          {{ new Date(game.lastTickAt).toLocaleTimeString('vi-VN') }}
+          {{ t('home.lastTick', {
+            gain: game.lastTickGain,
+            time: new Date(game.lastTickAt).toLocaleTimeString(),
+          }) }}
         </p>
       </section>
 
       <section class="rounded border border-ink-300/40 bg-ink-700/30 p-5">
-        <h3 class="text-sm tracking-widest text-ink-300 uppercase mb-3">Đạo Cơ</h3>
+        <h3 class="text-sm tracking-widest text-ink-300 uppercase mb-3">{{ t('home.stats.title') }}</h3>
         <dl class="grid grid-cols-2 gap-y-2 text-sm">
-          <dt class="text-ink-300">Lực</dt>
+          <dt class="text-ink-300">{{ t('home.stats.power') }}</dt>
           <dd class="text-right">{{ game.character.power }}</dd>
-          <dt class="text-ink-300">Linh</dt>
+          <dt class="text-ink-300">{{ t('home.stats.spirit') }}</dt>
           <dd class="text-right">{{ game.character.spirit }}</dd>
-          <dt class="text-ink-300">Tốc</dt>
+          <dt class="text-ink-300">{{ t('home.stats.speed') }}</dt>
           <dd class="text-right">{{ game.character.speed }}</dd>
-          <dt class="text-ink-300">May</dt>
+          <dt class="text-ink-300">{{ t('home.stats.luck') }}</dt>
           <dd class="text-right">{{ game.character.luck }}</dd>
         </dl>
         <p class="text-xs text-ink-300 mt-4">
@@ -161,6 +165,6 @@ async function onBreakthrough(): Promise<void> {
         </p>
       </section>
     </div>
-    <div v-else class="text-center text-ink-300">Đang tải đạo cơ…</div>
+    <div v-else class="text-center text-ink-300">{{ t('home.loadingChar') }}</div>
   </AppShell>
 </template>

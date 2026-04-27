@@ -15,7 +15,20 @@
     "confirm": "Đồng ý",
     "skip": "Bỏ qua",
     "yes": "Có",
-    "no": "Không"
+    "no": "Không",
+    "reload": "Tải lại",
+    "search": "Tìm",
+    "total": "Tổng",
+    "page": "Trang",
+    "pageNext": "Sau ›",
+    "pagePrev": "‹ Trước",
+    "all": "Tất cả",
+    "loadingData": "Đang tải dữ liệu…"
+  },
+  "locale": {
+    "label": "Ngôn ngữ",
+    "vi": "Tiếng Việt",
+    "en": "English"
   },
   "toast": {
     "title": {
@@ -75,7 +88,28 @@
   },
   "home": {
     "logout": "Xuất Quan",
-    "wip": "Game shell sẽ được thi công ở Phase 2 — bao gồm Topbar, Sidebar, ChatDock và GameHome."
+    "wip": "Game shell sẽ được thi công ở Phase 2 — bao gồm Topbar, Sidebar, ChatDock và GameHome.",
+    "expLabel": "Linh Khí (EXP)",
+    "stats": {
+      "title": "Đạo Cơ",
+      "power": "Lực",
+      "spirit": "Linh",
+      "speed": "Tốc",
+      "luck": "May"
+    },
+    "cultivate": {
+      "start": "Nhập Định",
+      "stop": "Xuất Định",
+      "startedToast": "Nhập định, linh khí xoay vần.",
+      "stoppedToast": "Xuất định."
+    },
+    "breakthrough": {
+      "submit": "Đột Phá",
+      "successToast": "Đột phá thành công, cảnh giới đã thăng.",
+      "notAtPeakToast": "Chưa đủ duyên đột phá, mời tích thêm linh khí."
+    },
+    "lastTick": "Tick gần nhất: +{gain} EXP · {time}",
+    "loadingChar": "Đang tải đạo cơ…"
   },
   "notFound": {
     "title": "404 · Lạc Đạo",
@@ -128,6 +162,367 @@
         "Hãy nhấn ‘Nhập Định’ để bắt đầu hấp thụ linh khí, tu vi sẽ tự tăng theo thời gian."
       ],
       "submit": "Khởi đạo"
+    }
+  },
+  "shell": {
+    "stamina": "Thể Lực",
+    "wsOn": "WS ✓",
+    "wsOff": "WS ×",
+    "nav": {
+      "home": "Đạo Tràng",
+      "dungeon": "Luyện Khí Đường",
+      "inventory": "Linh Bảo Các",
+      "market": "Phường Thị",
+      "sect": "Tông Môn",
+      "boss": "Boss Đại Hội",
+      "topup": "Nạp Tiên Ngọc",
+      "admin": "Quản Trị"
+    }
+  },
+  "chat": {
+    "title": "Tâm Cảnh Đường",
+    "tab": {
+      "world": "Thế Giới",
+      "sect": "Tông Môn"
+    },
+    "noSect": "Chưa thuộc tông môn nào",
+    "noSectShort": "Chưa thuộc tông môn nào.",
+    "empty": "Chưa có lời nào…",
+    "placeholder": {
+      "world": "Gửi thế giới…",
+      "sect": "Gửi tông môn…"
+    },
+    "send": "Gửi",
+    "errors": {
+      "EMPTY_TEXT": "Nội dung trống.",
+      "TEXT_TOO_LONG": "Tối đa 200 ký tự.",
+      "RATE_LIMITED": "Nói chậm thôi đạo hữu.",
+      "NO_SECT": "Bạn chưa thuộc tông môn nào.",
+      "NO_CHARACTER": "Chưa có nhân vật.",
+      "UNKNOWN": "Không gửi được, thử lại."
+    }
+  },
+  "dungeon": {
+    "title": "Luyện Khí Đường",
+    "staminaEntry": "{stam} thể lực",
+    "monsterCount": "{n} ải",
+    "inFight": "Đang trong ải",
+    "enter": "Khai ải",
+    "counter": "Ải {cur} / {total}",
+    "logLabel": "Nhật ký",
+    "retreat": "Rút Lui",
+    "ended": "Trận chiến đã kết thúc. Có thể khai ải mới.",
+    "noFight": "Chưa có trận chiến — chọn một ải bên trái để bắt đầu.",
+    "rewardToast": "Hoàn tất ải, +{exp} EXP, +{linh} linh thạch.",
+    "lostToast": "Đạo hữu đã bại trận, hãy hồi phục.",
+    "abandonToast": "Đã rút khỏi ải.",
+    "startToast": "Mở quan vào {name}.",
+    "errors": {
+      "STAMINA_LOW": "Thể lực không đủ, đợi tu luyện hồi phục.",
+      "MP_LOW": "Linh khí cạn kiệt.",
+      "SKILL_NOT_USABLE": "Đạo pháp này không thuộc tông môn của đạo hữu.",
+      "ALREADY_IN_FIGHT": "Đạo hữu đã đang trong một trận chiến khác.",
+      "NO_CHARACTER": "Chưa có nhân vật.",
+      "DUNGEON_NOT_FOUND": "Không tìm thấy ải.",
+      "ENCOUNTER_NOT_FOUND": "Trận chiến không còn nữa.",
+      "ENCOUNTER_ENDED": "Trận chiến đã kết thúc.",
+      "UNKNOWN": "Có lỗi xảy ra, mời thử lại."
+    }
+  },
+  "inventory": {
+    "title": "Linh Bảo Các",
+    "gearTitle": "Bộ Trang Bị",
+    "empty": "trống",
+    "takeOff": "Tháo",
+    "equip": "Mang",
+    "use": "Dùng",
+    "emptyAll": "Túi đồ trống — đi Luyện Khí Đường để nhặt chiến lợi phẩm.",
+    "loadFailToast": "Không tải được túi đồ.",
+    "equipToast": "Đã mang {name}.",
+    "unequipToast": "Đã tháo {slot}.",
+    "useToast": "Đã dùng {name}.",
+    "bonus": {
+      "atk": "+{v} công",
+      "def": "+{v} thủ",
+      "hpMax": "+{v} HP",
+      "mpMax": "+{v} MP",
+      "spirit": "+{v} linh"
+    },
+    "errors": {
+      "INVENTORY_ITEM_NOT_FOUND": "Vật phẩm không còn nữa.",
+      "NOT_EQUIPPABLE": "Vật phẩm này không trang bị được.",
+      "NOT_USABLE": "Vật phẩm này không có hiệu ứng.",
+      "UNKNOWN": "Có lỗi xảy ra, mời thử lại."
+    }
+  },
+  "equipSlot": {
+    "WEAPON": "Vũ Khí",
+    "ARMOR": "Áo",
+    "BELT": "Đai",
+    "BOOTS": "Giày",
+    "HAT": "Mũ",
+    "TRAM": "Trâm",
+    "ARTIFACT_1": "Pháp Bảo I",
+    "ARTIFACT_2": "Pháp Bảo II",
+    "ARTIFACT_3": "Pháp Bảo III"
+  },
+  "itemKind": {
+    "WEAPON": "Vũ Khí",
+    "ARMOR": "Áo / Giáp",
+    "PILL_HP": "Đan HP",
+    "PILL_MP": "Đan MP",
+    "PILL_EXP": "Đan EXP",
+    "ORE": "Quặng",
+    "MISC": "Khác"
+  },
+  "market": {
+    "title": "Phường Thị",
+    "tab": {
+      "buy": "Mua Hàng",
+      "sell": "Bán Của Tôi"
+    },
+    "feeNote": "Phí thiên đạo: {pct}%",
+    "filter": "Lọc loại:",
+    "noListings": "Chưa có tin đăng nào.",
+    "sellerPosted": "Đạo hữu {name} đăng",
+    "yours": "tin của bạn",
+    "perUnit": "{price} / chiếc",
+    "buy": "Mua",
+    "newListingTitle": "Đăng bán mới",
+    "item": "Vật phẩm",
+    "chooseItem": "— chọn —",
+    "qty": "Số lượng",
+    "price": "Giá / chiếc (linh thạch)",
+    "totalLine": "Tổng: {total} linh thạch · {fee}",
+    "fee": "Phí thiên đạo: {fee} · Nhận: {net}",
+    "post": "Đăng bán",
+    "myListings": "Tin của tôi",
+    "noMine": "Chưa có tin đăng.",
+    "takeDown": "Gỡ",
+    "buyToast": "Đã mua {name} ×{qty} với giá {price} linh thạch.",
+    "cancelToast": "Đã thu hồi tin đăng — vật phẩm đã trả về túi.",
+    "postToast": "Đăng bán thành công.",
+    "errors": {
+      "INSUFFICIENT_LINH_THACH": "Không đủ linh thạch.",
+      "LISTING_INACTIVE": "Tin đăng đã được mua hoặc gỡ.",
+      "CANNOT_BUY_OWN": "Không thể mua hàng của chính mình.",
+      "INVALID_QTY": "Số lượng không hợp lệ.",
+      "INVALID_PRICE": "Giá không hợp lệ.",
+      "ITEM_EQUIPPED": "Hãy tháo trang bị trước khi đăng bán.",
+      "INVENTORY_ITEM_NOT_FOUND": "Vật phẩm không còn nữa.",
+      "LISTING_NOT_FOUND": "Tin đăng không tồn tại.",
+      "NOT_OWNER": "Đây không phải tin đăng của bạn.",
+      "UNKNOWN": "Có lỗi xảy ra, mời thử lại."
+    }
+  },
+  "sect": {
+    "title": "Tông Môn",
+    "tab": {
+      "mine": "Tông Của Tôi",
+      "all": "Danh Sách",
+      "create": "Lập Tông"
+    },
+    "myStash": "Linh thạch: ⛀ {n}",
+    "level": "Cấp {lv}",
+    "members": "{n} thành viên",
+    "disciples": "{n} đệ tử",
+    "leader": "Tông chủ: {name}",
+    "treasury": "Tông Khố",
+    "contribLabel": "Đóng góp linh thạch (tối đa 1.000.000 / lượt)",
+    "contribHint": "→ +{n} cống hiến",
+    "contribute": "Đóng Góp",
+    "leave": "Rời Tông",
+    "leaveConfirm": "Rời khỏi {name}? Cống hiến vẫn giữ.",
+    "disciplesTitle": "Đệ Tử ({n})",
+    "col": {
+      "name": "Đạo Hiệu",
+      "realm": "Cảnh Giới",
+      "contrib": "Cống Hiến"
+    },
+    "leaderTag": "[Tông chủ]",
+    "you": "(bạn)",
+    "noneList": "Chưa có tông môn nào — hãy lập tông đầu tiên.",
+    "alreadyInOther": "Bạn đã thuộc tông khác",
+    "join": "Gia Nhập",
+    "inOtherSect": "Bạn đang thuộc {name} — hãy rời trước nếu muốn lập tông mới.",
+    "form": {
+      "name": "Tên Tông Môn (2–16 ký tự)",
+      "desc": "Tông Chỉ (≤ 200 ký tự)"
+    },
+    "create": "Lập Tông",
+    "joinToast": "Đã gia nhập {name}.",
+    "leaveToast": "Đã rời tông môn.",
+    "createToast": "Lập tông thành công.",
+    "contributeToast": "Đã đóng góp.",
+    "invalidNameToast": "Tên 2–16 ký tự.",
+    "errors": {
+      "NO_CHARACTER": "Chưa có nhân vật.",
+      "SECT_NOT_FOUND": "Tông môn không tồn tại.",
+      "NOT_IN_SECT": "Bạn chưa thuộc tông môn nào.",
+      "ALREADY_IN_SECT": "Bạn đã thuộc tông môn rồi, hãy rời trước.",
+      "INVALID_AMOUNT": "Số linh thạch không hợp lệ (1 – 1.000.000 / lượt).",
+      "INVALID_NAME": "Tên 2–16 ký tự (chữ/số/ _-).",
+      "INSUFFICIENT_LINH_THACH": "Không đủ linh thạch.",
+      "NAME_TAKEN": "Tên này đã có người dùng.",
+      "UNKNOWN": "Có lỗi xảy ra, mời thử lại."
+    }
+  },
+  "boss": {
+    "title": "Boss Đại Hội",
+    "noneTitle": "Hiện không có Boss nào trên thế gian.",
+    "noneHint": "Boss tự sinh sau khoảng vài chục phút sau khi boss trước bị hạ hoặc rút lui.",
+    "timeLeft": "Còn lại",
+    "almostGone": "sắp hết",
+    "participants": "{n} đạo hữu tham chiến",
+    "hp": "Khí Huyết",
+    "skill": "Tâm pháp:",
+    "attack": "Tấn Công",
+    "myDamage": "Sát thương của bạn: {dmg} (BXH #{rank})",
+    "rewardsTitle": "Phần thưởng",
+    "rewardTop1": "Top 1: 50% linh thạch + 1 vật phẩm hiếm:",
+    "rewardTop23": "Top 2-3: 15% mỗi + 1 vật phẩm:",
+    "rewardTop410": "Top 4-10: chia đều 18% linh thạch.",
+    "rewardTop11": "Top 11+: chia đều 2% linh thạch.",
+    "rewardExpire": "Boss hết hạn → reward giảm còn 60% pool.",
+    "leaderboard": "Bảng Sát Thương",
+    "col": {
+      "rank": "Hạng",
+      "name": "Đạo hữu",
+      "damage": "Sát Thương",
+      "hits": "Đòn"
+    },
+    "noAttackers": "Chưa có đạo hữu nào ra tay.",
+    "lastRewards": "Phân Thưởng Lượt Trước",
+    "spawnToast": "Một Boss mới đã hiện thế.",
+    "defeatedToast": "{name} đã bị hạ! Nhận thưởng theo BXH.",
+    "endedToast": "Boss đã rút lui (hết hạn).",
+    "damageToast": "Đả thương {dmg} điểm. (BXH #{rank})",
+    "errors": {
+      "NO_CHARACTER": "Chưa có nhân vật.",
+      "NO_ACTIVE_BOSS": "Hiện không có Boss nào.",
+      "BOSS_DEFEATED": "Boss đã bị hạ rồi.",
+      "COOLDOWN": "Gấp gì! Đợi 1.5 giây.",
+      "STAMINA_LOW": "Thể lực không đủ.",
+      "MP_LOW": "Linh khí không đủ.",
+      "HP_LOW": "HP không đủ để dùng huyết tế.",
+      "SKILL_NOT_USABLE": "Tâm pháp không thuộc tông của bạn.",
+      "UNKNOWN": "Có lỗi xảy ra."
+    }
+  },
+  "topup": {
+    "title": "Nạp Tiên Ngọc",
+    "intro": "Tiên ngọc dùng cho gacha tiên duyên, mở đặc quyền VIP, mua skin & item Tiên phẩm độc nhất.",
+    "rule1": "⚠ Nạp thủ công qua chuyển khoản: chọn gói → server cấp mã chuyển khoản → quét QR / chuyển đúng số tiền + đúng nội dung → admin duyệt. Mã chỉ dùng 1 lần.",
+    "rule2": "Đơn đang chờ tối đa 5/người. Nếu chuyển sai nội dung, đơn sẽ bị từ chối.",
+    "packages": "Gói Nạp",
+    "hot": "HOT",
+    "tienNgoc": "Tiên Ngọc",
+    "buy": "Mua",
+    "lastOrderTitle": "Đơn vừa tạo",
+    "transferCode": "Mã chuyển khoản:",
+    "amount": "Số tiền: {price} — sẽ cộng {ngoc} tiên ngọc khi duyệt.",
+    "bankLine": "Chuyển vào: {bank} — {name} — {number}. Nội dung phải chính xác mã trên.",
+    "history": "Lịch sử đơn nạp",
+    "noOrders": "Chưa có đơn nào.",
+    "col": {
+      "code": "Mã",
+      "package": "Gói",
+      "price": "Tiền",
+      "tienNgoc": "Tiên ngọc",
+      "status": "Trạng thái",
+      "createdAt": "Tạo lúc",
+      "note": "Ghi chú"
+    },
+    "status": {
+      "PENDING": "Chờ duyệt",
+      "APPROVED": "Đã cộng",
+      "REJECTED": "Bị từ chối"
+    },
+    "orderCreatedToast": "Đã tạo đơn {code} — chuyển khoản đúng nội dung để được duyệt.",
+    "errors": {
+      "UNAUTHENTICATED": "Hết phiên, hãy đăng nhập lại.",
+      "INVALID_PACKAGE": "Gói nạp không hợp lệ.",
+      "TOO_MANY_PENDING": "Đã có quá nhiều đơn đang chờ — duyệt bớt trước khi tạo mới.",
+      "UNKNOWN": "Có lỗi xảy ra."
+    }
+  },
+  "admin": {
+    "title": "Quản Trị",
+    "roleLabel": "Role: {role}",
+    "tab": {
+      "users": "Người dùng",
+      "topups": "Đơn nạp",
+      "audit": "Audit"
+    },
+    "noPermission": "Bạn không có quyền vào khu này.",
+    "users": {
+      "searchPlaceholder": "Tìm email hoặc đạo hiệu…",
+      "col": {
+        "email": "Email",
+        "name": "Đạo Hiệu",
+        "realm": "Cảnh giới",
+        "linhThach": "Linh Thạch",
+        "tienNgoc": "Tiên Ngọc",
+        "role": "Role",
+        "status": "Trạng thái"
+      },
+      "banned": "BANNED",
+      "ok": "OK",
+      "grantBtn": "Cộng/Trừ",
+      "unlock": "Mở",
+      "lock": "Khoá",
+      "banConfirm": "{action} tài khoản {email}?",
+      "actionLock": "Khoá",
+      "actionUnlock": "Mở khoá",
+      "roleChangeConfirm": "Đổi role {email} → {role}?",
+      "updatedToast": "Đã cập nhật.",
+      "roleChangedToast": "Đã đổi role.",
+      "grantedToast": "Đã cộng/trừ tài sản.",
+      "grantTitle": "Cộng/Trừ tài sản",
+      "grantLinh": "Linh thạch (có thể âm)",
+      "grantNgoc": "Tiên ngọc (số nguyên, có thể âm)",
+      "grantReason": "Lý do (lưu vào audit log)"
+    },
+    "topups": {
+      "notePlaceholder": "Ghi chú khi duyệt/từ chối…",
+      "col": {
+        "code": "Mã",
+        "user": "User",
+        "package": "Gói",
+        "price": "Tiền",
+        "tienNgoc": "Tiên Ngọc",
+        "status": "Status",
+        "createdAt": "Tạo lúc",
+        "note": "Note"
+      },
+      "approve": "Duyệt",
+      "reject": "Từ chối",
+      "filter": {
+        "PENDING": "Chờ duyệt",
+        "APPROVED": "Đã duyệt",
+        "REJECTED": "Bị từ chối"
+      },
+      "approveConfirm": "Duyệt đơn {code} cộng {ngoc} tiên ngọc?",
+      "rejectConfirm": "Từ chối đơn {code}?",
+      "approvedToast": "Đã duyệt.",
+      "rejectedToast": "Đã từ chối."
+    },
+    "audit": {
+      "col": {
+        "at": "Lúc",
+        "actor": "Actor",
+        "action": "Action",
+        "meta": "Meta"
+      }
+    },
+    "errors": {
+      "UNAUTHENTICATED": "Hết phiên, hãy đăng nhập lại.",
+      "FORBIDDEN": "Không đủ quyền.",
+      "NOT_FOUND": "Không tìm thấy.",
+      "ALREADY_PROCESSED": "Đơn đã được xử lý.",
+      "INVALID_INPUT": "Tham số không hợp lệ (vượt giới hạn / âm quá mức).",
+      "CANNOT_TARGET_SELF": "Không thể tự thao tác lên bản thân.",
+      "UNKNOWN": "Có lỗi xảy ra."
     }
   }
 }

@@ -5,6 +5,7 @@ import { useAuthStore } from '@/stores/auth';
 import { useGameStore } from '@/stores/game';
 import { useRouter } from 'vue-router';
 import ChatPanel from './ChatPanel.vue';
+import LocaleSwitcher from './LocaleSwitcher.vue';
 
 const { t } = useI18n();
 const auth = useAuthStore();
@@ -54,7 +55,7 @@ async function logout(): Promise<void> {
         </div>
         <div v-if="game.character" class="w-32 hidden md:block">
           <div class="flex justify-between text-[10px] text-ink-300">
-            <span>Thể Lực</span>
+            <span>{{ t('shell.stamina') }}</span>
             <span>{{ game.character.stamina }} / {{ game.character.staminaMax }}</span>
           </div>
           <div class="h-1.5 mt-0.5 rounded bg-ink-900/60 overflow-hidden">
@@ -72,8 +73,9 @@ async function logout(): Promise<void> {
           class="px-2 py-0.5 rounded text-[10px]"
           :class="game.wsConnected ? 'bg-emerald-700/40 text-emerald-200' : 'bg-red-700/40 text-red-200'"
         >
-          {{ game.wsConnected ? 'WS ✓' : 'WS ×' }}
+          {{ game.wsConnected ? t('shell.wsOn') : t('shell.wsOff') }}
         </span>
+        <LocaleSwitcher />
         <button class="text-ink-300 hover:text-ink-50" @click="logout">
           {{ t('home.logout') }}
         </button>
@@ -88,49 +90,49 @@ async function logout(): Promise<void> {
           class="px-3 py-2 rounded hover:bg-ink-700/60"
           active-class="bg-ink-700/60 text-ink-50"
         >
-          道 Đạo Tràng
+          道 {{ t('shell.nav.home') }}
         </RouterLink>
         <RouterLink
           to="/dungeon"
           class="px-3 py-2 rounded hover:bg-ink-700/60"
           active-class="bg-ink-700/60 text-ink-50"
         >
-          劍 Luyện Khí Đường
+          劍 {{ t('shell.nav.dungeon') }}
         </RouterLink>
         <RouterLink
           to="/inventory"
           class="px-3 py-2 rounded hover:bg-ink-700/60"
           active-class="bg-ink-700/60 text-ink-50"
         >
-          寶 Linh Bảo Các
+          寶 {{ t('shell.nav.inventory') }}
         </RouterLink>
         <RouterLink
           to="/market"
           class="px-3 py-2 rounded hover:bg-ink-700/60"
           active-class="bg-ink-700/60 text-ink-50"
         >
-          坊 Phường Thị
+          坊 {{ t('shell.nav.market') }}
         </RouterLink>
         <RouterLink
           to="/sect"
           class="px-3 py-2 rounded hover:bg-ink-700/60"
           active-class="bg-ink-700/60 text-ink-50"
         >
-          門 Tông Môn
+          門 {{ t('shell.nav.sect') }}
         </RouterLink>
         <RouterLink
           to="/boss"
           class="px-3 py-2 rounded hover:bg-ink-700/60"
           active-class="bg-ink-700/60 text-ink-50"
         >
-          鬼 Boss Đại Hội
+          鬼 {{ t('shell.nav.boss') }}
         </RouterLink>
         <RouterLink
           to="/topup"
           class="px-3 py-2 rounded hover:bg-ink-700/60"
           active-class="bg-ink-700/60 text-ink-50"
         >
-          ⛧ Nạp Tiên Ngọc
+          ⛧ {{ t('shell.nav.topup') }}
         </RouterLink>
         <RouterLink
           v-if="isStaff"
@@ -138,7 +140,7 @@ async function logout(): Promise<void> {
           class="px-3 py-2 rounded hover:bg-ink-700/60 text-amber-200"
           active-class="bg-ink-700/60 text-ink-50"
         >
-          官 Quản Trị
+          官 {{ t('shell.nav.admin') }}
         </RouterLink>
       </aside>
 

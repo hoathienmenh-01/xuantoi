@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue';
+import { useI18n } from 'vue-i18n';
 import { useRouter } from 'vue-router';
 import {
   SKILL_BASIC_ATTACK,
@@ -27,6 +28,7 @@ const auth = useAuthStore();
 const game = useGameStore();
 const toast = useToastStore();
 const router = useRouter();
+const { t } = useI18n();
 
 const dungeons = ref<DungeonDef[]>([]);
 const encounter = ref<EncounterView | null>(null);
@@ -72,7 +74,7 @@ async function onStart(d: DungeonDef): Promise<void> {
   submitting.value = true;
   try {
     encounter.value = await startEncounter(d.key);
-    toast.push({ type: 'success', text: `Mở quan vào ${d.name}.` });
+    toast.push({ type: 'success', text: t('dungeon.startToast', { name: d.name }) });
   } catch (e) {
     handleErr(e);
   } finally {
@@ -89,10 +91,13 @@ async function onAction(skill: SkillDef): Promise<void> {
     if (encounter.value.status === 'WON') {
       toast.push({
         type: 'system',
-        text: `Hoàn tất ải, +${encounter.value.reward?.exp ?? 0} EXP, +${encounter.value.reward?.linhThach ?? 0} linh thạch.`,
+        text: t('dungeon.rewardToast', {
+          exp: encounter.value.reward?.exp ?? 0,
+          linh: encounter.value.reward?.linhThach ?? 0,
+        }),
       });
     } else if (encounter.value.status === 'LOST') {
-      toast.push({ type: 'warning', text: 'Đạo hữu đã bại trận, hãy hồi phục.' });
+      toast.push({ type: 'warning', text: t('dungeon.lostToast') });
     }
   } catch (e) {
     handleErr(e);
@@ -106,7 +111,7 @@ async function onAbandon(): Promise<void> {
   submitting.value = true;
   try {
     encounter.value = await abandonEncounter(encounter.value.id);
-    toast.push({ type: 'warning', text: 'Đã rút khỏi ải.' });
+    toast.push({ type: 'warning', text: t('dungeon.abandonToast') });
   } catch (e) {
     handleErr(e);
   } finally {
@@ -116,24 +121,17 @@ async function onAbandon(): Promise<void> {
 
 function handleErr(e: unknown): void {
   const code = (e as { code?: string })?.code ?? 'UNKNOWN';
-  const map: Record<string, string> = {
-    STAMINA_LOW: 'Thể lực không đủ, đợi tu luyện hồi phục.',
-    MP_LOW: 'Linh khí cạn kiệt.',
-    SKILL_NOT_USABLE: 'Đạo pháp này không thuộc tông môn của đạo hữu.',
-    ALREADY_IN_FIGHT: 'Đạo hữu đã đang trong một trận chiến khác.',
-    NO_CHARACTER: 'Chưa có nhân vật.',
-    DUNGEON_NOT_FOUND: 'Không tìm thấy ải.',
-    ENCOUNTER_NOT_FOUND: 'Trận chiến không còn nữa.',
-    ENCOUNTER_ENDED: 'Trận chiến đã kết thúc.',
-    UNKNOWN: 'Có lỗi xảy ra, mời thử lại.',
-  };
-  toast.push({ type: 'error', text: map[code] ?? map.UNKNOWN });
+  const text = t(`dungeon.errors.${code}`, '__missing__');
+  toast.push({
+    type: 'error',
+    text: text === '__missing__' ? t('dungeon.errors.UNKNOWN') : text,
+  });
 }
 </script>
 
 <template>
   <AppShell>
-    <h2 class="text-xl tracking-widest mb-4">Luyện Khí Đường</h2>
+    <h2 class="text-xl tracking-widest mb-4">{{ t('dungeon.title') }}</h2>
 
     <div class="grid gap-6 lg:grid-cols-[1fr_2fr]">
       <!-- Dungeon list -->
@@ -149,14 +147,15 @@ function handleErr(e: unknown): void {
           </header>
           <p class="text-xs text-ink-300">{{ d.description }}</p>
           <p class="text-xs text-ink-300">
-            {{ d.monsters.length }} ải · {{ d.staminaEntry }} thể lực
+            {{ t('dungeon.monsterCount', { n: d.monsters.length }) }} ·
+            {{ t('dungeon.staminaEntry', { stam: d.staminaEntry }) }}
           </p>
           <MButton
             :disabled="isFighting || (game.character?.stamina ?? 0) < d.staminaEntry"
             :loading="submitting"
             @click="onStart(d)"
           >
-            {{ isFighting ? 'Đang trong ải' : 'Khai ải' }}
+            {{ isFighting ? t('dungeon.inFight') : t('dungeon.enter') }}
           </MButton>
         </div>
       </section>
@@ -169,7 +168,10 @@ function handleErr(e: unknown): void {
         <header class="flex items-center justify-between">
           <h3 class="text-lg font-bold">{{ encounter.dungeon.name }}</h3>
           <span class="text-xs text-ink-300">
-            Ải {{ encounter.monsterIndex + 1 }} / {{ encounter.dungeon.monsters.length }}
+            {{ t('dungeon.counter', {
+              cur: encounter.monsterIndex + 1,
+              total: encounter.dungeon.monsters.length,
+            }) }}
           </span>
         </header>
 
@@ -212,14 +214,14 @@ function handleErr(e: unknown): void {
               {{ s.mpCost > 0 ? '-' + s.mpCost + ' MP' : '' }}
             </span>
           </MButton>
-          <MButton :loading="submitting" @click="onAbandon">Rút Lui</MButton>
+          <MButton :loading="submitting" @click="onAbandon">{{ t('dungeon.retreat') }}</MButton>
         </div>
         <div v-else class="text-sm text-ink-300 italic">
-          Trận chiến đã kết thúc. Có thể khai ải mới.
+          {{ t('dungeon.ended') }}
         </div>
       </section>
       <section v-else class="text-ink-300 italic">
-        Chưa có trận chiến — chọn một ải bên trái để bắt đầu.
+        {{ t('dungeon.noFight') }}
       </section>
     </div>
   </AppShell>

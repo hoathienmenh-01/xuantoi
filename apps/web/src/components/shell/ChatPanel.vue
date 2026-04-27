@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
+import { useI18n } from 'vue-i18n';
 import { useGameStore } from '@/stores/game';
 import { useToastStore } from '@/stores/toast';
 import {
@@ -13,6 +14,7 @@ import { on } from '@/ws/client';
 
 const game = useGameStore();
 const toast = useToastStore();
+const { t } = useI18n();
 
 const tab = ref<ChatChannel>('WORLD');
 const worldMsgs = ref<ChatMessageView[]>([]);
@@ -49,14 +51,14 @@ async function scrollToBottom(): Promise<void> {
 }
 
 async function send(): Promise<void> {
-  const t = text.value.trim();
-  if (!t || sending.value) return;
+  const msg = text.value.trim();
+  if (!msg || sending.value) return;
   sending.value = true;
   try {
     if (tab.value === 'WORLD') {
-      await chatSendWorld(t);
+      await chatSendWorld(msg);
     } else if (inSect.value) {
-      await chatSendSect(t);
+      await chatSendSect(msg);
     }
     text.value = '';
   } catch (e) {
@@ -68,15 +70,12 @@ async function send(): Promise<void> {
 
 function handleErr(e: unknown): void {
   const code = (e as { code?: string })?.code ?? 'UNKNOWN';
-  const map: Record<string, string> = {
-    EMPTY_TEXT: 'Nội dung trống.',
-    TEXT_TOO_LONG: 'Tối đa 200 ký tự.',
-    RATE_LIMITED: 'Nói chậm thôi đạo hữu.',
-    NO_SECT: 'Bạn chưa thuộc tông môn nào.',
-    NO_CHARACTER: 'Chưa có nhân vật.',
-    UNKNOWN: 'Không gửi được, thử lại.',
-  };
-  toast.push({ type: 'error', text: map[code] ?? map.UNKNOWN });
+  const key = `chat.errors.${code}`;
+  const text = t(key, '__missing__');
+  toast.push({
+    type: 'error',
+    text: text === '__missing__' ? t('chat.errors.UNKNOWN') : text,
+  });
 }
 
 function fmtTime(iso: string): string {
@@ -124,23 +123,23 @@ watch(currentSectId, async (id, prev) => {
 
 <template>
   <div class="flex flex-col h-full">
-    <h3 class="text-xs uppercase tracking-widest text-ink-300 mb-2">Tâm Cảnh Đường</h3>
+    <h3 class="text-xs uppercase tracking-widest text-ink-300 mb-2">{{ t('chat.title') }}</h3>
     <div class="flex gap-1 mb-2 text-xs">
       <button
         class="px-2 py-1 rounded"
         :class="tab === 'WORLD' ? 'bg-ink-50 text-ink-900' : 'bg-ink-700/60 text-ink-200'"
         @click="tab = 'WORLD'"
       >
-        Thế Giới
+        {{ t('chat.tab.world') }}
       </button>
       <button
         class="px-2 py-1 rounded"
         :class="tab === 'SECT' ? 'bg-ink-50 text-ink-900' : 'bg-ink-700/60 text-ink-200'"
         :disabled="!inSect"
-        :title="inSect ? '' : 'Chưa thuộc tông môn nào'"
+        :title="inSect ? '' : t('chat.noSect')"
         @click="tab = 'SECT'"
       >
-        Tông Môn
+        {{ t('chat.tab.sect') }}
       </button>
     </div>
     <div
@@ -148,8 +147,8 @@ watch(currentSectId, async (id, prev) => {
       class="flex-1 overflow-y-auto bg-ink-900/40 rounded p-2 text-xs space-y-1 min-h-[10rem]"
     >
       <div v-if="visibleMsgs.length === 0" class="text-ink-300/60 text-center py-4">
-        <span v-if="tab === 'SECT' && !inSect">Chưa thuộc tông môn nào.</span>
-        <span v-else>Chưa có lời nào…</span>
+        <span v-if="tab === 'SECT' && !inSect">{{ t('chat.noSectShort') }}</span>
+        <span v-else>{{ t('chat.empty') }}</span>
       </div>
       <div v-for="m in visibleMsgs" :key="m.id" class="leading-tight">
         <span class="text-ink-300/70">[{{ fmtTime(m.createdAt) }}]</span>
@@ -163,7 +162,7 @@ watch(currentSectId, async (id, prev) => {
         type="text"
         maxlength="200"
         class="flex-1 bg-ink-900/70 border border-ink-300/30 rounded px-2 py-1 text-xs"
-        :placeholder="tab === 'WORLD' ? 'Gửi thế giới…' : 'Gửi tông môn…'"
+        :placeholder="tab === 'WORLD' ? t('chat.placeholder.world') : t('chat.placeholder.sect')"
         :disabled="sending || (tab === 'SECT' && !inSect)"
       />
       <button
