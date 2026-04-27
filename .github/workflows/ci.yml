@@ -7,7 +7,27 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: mtt
+          POSTGRES_PASSWORD: mtt
+          POSTGRES_DB: mtt
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U mtt -d mtt"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+
+    env:
+      DATABASE_URL: postgresql://mtt:mtt@localhost:5432/mtt?schema=public
+      TEST_DATABASE_URL: postgresql://mtt:mtt@localhost:5432/mtt?schema=public
+
     steps:
       - uses: actions/checkout@v4
 
@@ -25,7 +45,11 @@ jobs:
         working-directory: apps/api
         run: pnpm prisma:generate
 
-      - name: Build shared (needed for downstream typecheck/lint)
+      - name: Apply migrations (Postgres service)
+        working-directory: apps/api
+        run: pnpm exec prisma migrate deploy
+
+      - name: Build shared (needed for downstream typecheck/lint/test)
         run: pnpm --filter @xuantoi/shared build
 
       - name: Typecheck
@@ -33,6 +57,9 @@ jobs:
 
       - name: Lint
         run: pnpm lint
+
+      - name: Test (shared + api)
+        run: pnpm test
 
       - name: Build
         run: pnpm build
