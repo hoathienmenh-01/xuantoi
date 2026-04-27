@@ -51,7 +51,7 @@ export class TopupService {
     });
     if (pending >= MAX_PENDING_PER_USER) throw new TopupError('TOO_MANY_PENDING');
 
-    // Retry tối đa 3 lần nếu transferCode đụng (xác suất ~ 1/36^6).
+    // Retry tối đa 3 lần nếu transferCode đụng (xác suất ~ 1/36^6 mỗi lần).
     for (let attempt = 0; attempt < 3; attempt++) {
       try {
         const order = await this.prisma.topupOrder.create({
@@ -74,7 +74,9 @@ export class TopupService {
         throw e;
       }
     }
-    throw new TopupError('TOO_MANY_PENDING');
+    // Trường hợp này gần như không xảy ra (P(3 collision) ≈ 1/2.17B^3) nhưng nếu có thì
+    // là lỗi server thật sự, không phải user lỗi → ném 500.
+    throw new Error('Failed to generate unique topup transferCode after 3 attempts');
   }
 
   async listForUser(userId: string): Promise<TopupOrderView[]> {

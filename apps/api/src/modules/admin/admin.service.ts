@@ -245,6 +245,8 @@ export class AdminService {
     const order = await this.prisma.topupOrder.findUnique({ where: { id: orderId } });
     if (!order) throw new AdminError('NOT_FOUND');
     if (order.status !== 'PENDING') throw new AdminError('ALREADY_PROCESSED');
+    // Anti-fraud: admin/mod không được tự duyệt đơn của chính mình.
+    if (order.userId === actorId) throw new AdminError('CANNOT_TARGET_SELF');
 
     await this.prisma.$transaction(async (tx) => {
       // Flip atomic.
@@ -285,6 +287,7 @@ export class AdminService {
     const order = await this.prisma.topupOrder.findUnique({ where: { id: orderId } });
     if (!order) throw new AdminError('NOT_FOUND');
     if (order.status !== 'PENDING') throw new AdminError('ALREADY_PROCESSED');
+    if (order.userId === actorId) throw new AdminError('CANNOT_TARGET_SELF');
     const flip = await this.prisma.topupOrder.updateMany({
       where: { id: orderId, status: TopupStatus.PENDING },
       data: {
