@@ -47,9 +47,8 @@ export class TopupService {
     if (!pkg) throw new TopupError('INVALID_PACKAGE');
 
     // Bọc count + create trong tx Serializable để tránh TOCTOU 2 request đồng
-    // thời cùng vượt MAX_PENDING_PER_USER. Postgres sẽ retry nếu serialization
-    // failure → ta nâng lên TOO_MANY_PENDING / collision tự nhiên.
-    // Retry tối đa 3 lần nếu transferCode đụng (xác suất ~ 1/36^6 mỗi lần).
+    // thời cùng vượt MAX_PENDING_PER_USER. Postgres KHÔNG tự retry serialization
+    // failure (P2034) — ta phải tự retry ở vòng ngoài, cùng với P2002 (transferCode đụng).
     for (let attempt = 0; attempt < 3; attempt++) {
       try {
         const order = await this.prisma.$transaction(
@@ -76,7 +75,7 @@ export class TopupService {
       } catch (e) {
         if (
           e instanceof Prisma.PrismaClientKnownRequestError &&
-          e.code === 'P2002'
+          (e.code === 'P2002' || e.code === 'P2034')
         ) {
           continue;
         }
