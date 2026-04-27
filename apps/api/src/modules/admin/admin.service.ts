@@ -143,6 +143,7 @@ export class AdminService {
     deltaTienNgoc: number,
     reason: string,
   ): Promise<void> {
+    if (actorId === targetUserId) throw new AdminError('CANNOT_TARGET_SELF');
     if (deltaLinhThach === 0n && deltaTienNgoc === 0) throw new AdminError('INVALID_INPUT');
     const targetUser = await this.prisma.user.findUnique({
       where: { id: targetUserId },
