@@ -39,6 +39,21 @@ const routes: RouteRecordRaw[] = [
     component: () => import('@/views/SectView.vue'),
   },
   {
+    path: '/boss',
+    name: 'boss',
+    component: () => import('@/views/BossView.vue'),
+  },
+  {
+    path: '/topup',
+    name: 'topup',
+    component: () => import('@/views/TopupView.vue'),
+  },
+  {
+    path: '/admin',
+    name: 'admin',
+    component: () => import('@/views/AdminView.vue'),
+  },
+  {
     path: '/:pathMatch(.*)*',
     name: 'not-found',
     component: () => import('@/views/NotFoundView.vue'),

@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import type { EquipSlot } from '@prisma/client';
+import type { EquipSlot, Prisma } from '@prisma/client';
 import { itemByKey, type ItemDef, type RolledLoot } from '@xuantoi/shared';
 import { PrismaService } from '../../common/prisma.service';
 import { RealtimeService } from '../realtime/realtime.service';
@@ -89,24 +89,44 @@ export class InventoryService {
   /** Thêm item vào túi: stackable thì gộp qty, không thì tạo row mới. */
   async grant(characterId: string, loot: RolledLoot[]): Promise<void> {
     for (const l of loot) {
-      const def = itemByKey(l.itemKey);
-      if (!def) continue;
-      if (def.stackable) {
-        const existing = await this.prisma.inventoryItem.findFirst({
-          where: { characterId, itemKey: l.itemKey, equippedSlot: null },
-        });
-        if (existing) {
-          await this.prisma.inventoryItem.update({
-            where: { id: existing.id },
-            data: { qty: { increment: l.qty } },
-          });
-          continue;
-        }
-      }
-      await this.prisma.inventoryItem.create({
-        data: { characterId, itemKey: l.itemKey, qty: l.qty },
-      });
+      await this.grantOneTx(this.prisma, characterId, l.itemKey, l.qty);
     }
+  }
+
+  /** Tx-aware grant — dùng trong reward distribution boss/market. */
+  async grantTx(
+    tx: Prisma.TransactionClient,
+    characterId: string,
+    items: { itemKey: string; qty: number }[],
+  ): Promise<void> {
+    for (const it of items) {
+      await this.grantOneTx(tx, characterId, it.itemKey, it.qty);
+    }
+  }
+
+  private async grantOneTx(
+    db: Prisma.TransactionClient | PrismaService,
+    characterId: string,
+    itemKey: string,
+    qty: number,
+  ): Promise<void> {
+    const def = itemByKey(itemKey);
+    if (!def) return;
+    if (def.stackable) {
+      const existing = await db.inventoryItem.findFirst({
+        where: { characterId, itemKey, equippedSlot: null },
+      });
+      if (existing) {
+        await db.inventoryItem.update({
+          where: { id: existing.id },
+          data: { qty: { increment: qty } },
+        });
+        return;
+      }
+    }
+    await db.inventoryItem.create({
+      data: { characterId, itemKey, qty },
+    });
   }
 
   async equip(userId: string, inventoryItemId: string): Promise<InventoryView[]> {

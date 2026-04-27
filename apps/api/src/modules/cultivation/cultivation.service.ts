@@ -2,7 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { InjectQueue } from '@nestjs/bullmq';
 import type { Queue } from 'bullmq';
 import { CULTIVATION_TICK_MS } from '@xuantoi/shared';
-import { CULTIVATION_QUEUE } from './cultivation.module';
+import { CULTIVATION_QUEUE } from './cultivation.queue';
 
 @Injectable()
 export class CultivationService {

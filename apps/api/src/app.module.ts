@@ -9,6 +9,9 @@ import { RealtimeModule } from './modules/realtime/realtime.module';
 import { CultivationModule } from './modules/cultivation/cultivation.module';
 import { ChatModule } from './modules/chat/chat.module';
 import { SectModule } from './modules/sect/sect.module';
+import { BossModule } from './modules/boss/boss.module';
+import { TopupModule } from './modules/topup/topup.module';
+import { AdminModule } from './modules/admin/admin.module';
 import { RedisModule } from './common/redis.module';
 
 @Module({
@@ -24,6 +27,9 @@ import { RedisModule } from './common/redis.module';
     MarketModule,
     SectModule,
     ChatModule,
+    BossModule,
+    TopupModule,
+    AdminModule,
   ],
 })
 export class AppModule {}

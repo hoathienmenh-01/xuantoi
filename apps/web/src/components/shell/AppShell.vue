@@ -14,6 +14,10 @@ const router = useRouter();
 const expPct = computed(() => Math.round(game.expProgress * 100));
 const realmText = computed(() => game.realmFullName || '—');
 const cultivating = computed(() => game.character?.cultivating ?? false);
+const isStaff = computed(() => {
+  const r = game.character?.role;
+  return r === 'ADMIN' || r === 'MOD';
+});
 
 async function logout(): Promise<void> {
   await auth.logout();
@@ -114,9 +118,28 @@ async function logout(): Promise<void> {
         >
           門 Tông Môn
         </RouterLink>
-        <a class="px-3 py-2 rounded text-ink-300/60 cursor-not-allowed" title="Phase 7">
+        <RouterLink
+          to="/boss"
+          class="px-3 py-2 rounded hover:bg-ink-700/60"
+          active-class="bg-ink-700/60 text-ink-50"
+        >
           鬼 Boss Đại Hội
-        </a>
+        </RouterLink>
+        <RouterLink
+          to="/topup"
+          class="px-3 py-2 rounded hover:bg-ink-700/60"
+          active-class="bg-ink-700/60 text-ink-50"
+        >
+          ⛧ Nạp Tiên Ngọc
+        </RouterLink>
+        <RouterLink
+          v-if="isStaff"
+          to="/admin"
+          class="px-3 py-2 rounded hover:bg-ink-700/60 text-amber-200"
+          active-class="bg-ink-700/60 text-ink-50"
+        >
+          官 Quản Trị
+        </RouterLink>
       </aside>
 
       <!-- Main content -->

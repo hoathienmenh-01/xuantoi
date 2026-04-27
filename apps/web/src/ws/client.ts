@@ -50,6 +50,7 @@ export function connect(): Socket {
     'boss:spawn',
     'boss:update',
     'boss:end',
+    'boss:defeated',
     'mail:new',
     'pong',
   ];
