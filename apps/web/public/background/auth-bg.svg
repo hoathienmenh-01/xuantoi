@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1000" preserveAspectRatio="xMidYMid slice" width="1600" height="1000">
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#2a1f10"/>
+      <stop offset="60%" stop-color="#1b150a"/>
+      <stop offset="100%" stop-color="#0e0a04"/>
+    </linearGradient>
+    <radialGradient id="moon" cx="78%" cy="22%" r="12%">
+      <stop offset="0%" stop-color="#efe7d2" stop-opacity="0.85"/>
+      <stop offset="100%" stop-color="#efe7d2" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="ink" x="-20%" y="-20%" width="140%" height="140%">
+      <feTurbulence baseFrequency="0.9" numOctaves="2" seed="3"/>
+      <feDisplacementMap in="SourceGraphic" scale="6"/>
+    </filter>
+  </defs>
+  <rect width="1600" height="1000" fill="url(#sky)"/>
+  <circle cx="1248" cy="220" r="80" fill="url(#moon)"/>
+  <!-- núi xa -->
+  <path d="M0 760 L160 660 L300 720 L460 600 L640 700 L820 580 L1020 700 L1200 620 L1380 720 L1600 640 L1600 1000 L0 1000 Z"
+        fill="#3a2f1c" opacity="0.55" filter="url(#ink)"/>
+  <!-- núi gần -->
+  <path d="M0 860 L200 780 L420 840 L660 740 L900 830 L1140 760 L1380 850 L1600 790 L1600 1000 L0 1000 Z"
+        fill="#1b150a" opacity="0.85" filter="url(#ink)"/>
+  <!-- viền vàng nhẹ -->
+  <path d="M0 760 L160 660 L300 720 L460 600 L640 700 L820 580 L1020 700 L1200 620 L1380 720 L1600 640"
+        stroke="#bfa66a" stroke-width="1" fill="none" opacity="0.25"/>
+</svg>
