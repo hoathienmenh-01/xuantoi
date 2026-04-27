@@ -46,23 +46,32 @@ export class TopupService {
     const pkg = topupPackageByKey(packageKey);
     if (!pkg) throw new TopupError('INVALID_PACKAGE');
 
-    const pending = await this.prisma.topupOrder.count({
-      where: { userId, status: TopupStatus.PENDING },
-    });
-    if (pending >= MAX_PENDING_PER_USER) throw new TopupError('TOO_MANY_PENDING');
-
+    // Bọc count + create trong tx Serializable để tránh TOCTOU 2 request đồng
+    // thời cùng vượt MAX_PENDING_PER_USER. Postgres sẽ retry nếu serialization
+    // failure → ta nâng lên TOO_MANY_PENDING / collision tự nhiên.
     // Retry tối đa 3 lần nếu transferCode đụng (xác suất ~ 1/36^6 mỗi lần).
     for (let attempt = 0; attempt < 3; attempt++) {
       try {
-        const order = await this.prisma.topupOrder.create({
-          data: {
-            userId,
-            packageKey: pkg.key,
-            tienNgocAmount: pkg.tienNgoc + pkg.bonus,
-            priceVND: pkg.priceVND,
-            transferCode: genTransferCode(),
+        const order = await this.prisma.$transaction(
+          async (tx) => {
+            const pending = await tx.topupOrder.count({
+              where: { userId, status: TopupStatus.PENDING },
+            });
+            if (pending >= MAX_PENDING_PER_USER) {
+              throw new TopupError('TOO_MANY_PENDING');
+            }
+            return tx.topupOrder.create({
+              data: {
+                userId,
+                packageKey: pkg.key,
+                tienNgocAmount: pkg.tienNgoc + pkg.bonus,
+                priceVND: pkg.priceVND,
+                transferCode: genTransferCode(),
+              },
+            });
           },
-        });
+          { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
+        );
         return this.toView(order, null);
       } catch (e) {
         if (
