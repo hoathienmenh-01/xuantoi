@@ -148,6 +148,10 @@ export class SectService {
         e instanceof Prisma.PrismaClientKnownRequestError &&
         e.code === 'P2002'
       ) {
+        // P2002 có thể fire trên `name` (trùng tên) HOẶC `leaderId` (cùng
+        // user lập 2 sect đồng thời). Tách 2 case bằng meta.target.
+        const target = (e.meta?.target as string[] | undefined) ?? [];
+        if (target.includes('leaderId')) throw new SectError('ALREADY_IN_SECT');
         throw new SectError('NAME_TAKEN');
       }
       throw e;

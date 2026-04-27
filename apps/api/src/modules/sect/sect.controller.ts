@@ -153,10 +153,12 @@ export class SectController {
         case 'SECT_NOT_FOUND':
           fail(e.code, HttpStatus.NOT_FOUND);
         // eslint-disable-next-line no-fallthrough
-        case 'NOT_IN_SECT':
-        case 'ALREADY_IN_SECT':
         case 'INVALID_AMOUNT':
         case 'INVALID_NAME':
+          fail(e.code, HttpStatus.BAD_REQUEST);
+        // eslint-disable-next-line no-fallthrough
+        case 'NOT_IN_SECT':
+        case 'ALREADY_IN_SECT':
         case 'INSUFFICIENT_LINH_THACH':
         case 'NAME_TAKEN':
           fail(e.code, HttpStatus.CONFLICT);

@@ -26,13 +26,10 @@ function unwrap<T>(env: Envelope<T>): T {
   return env.data;
 }
 
-export async function chatHistory(
-  channel: ChatChannel,
-  scopeKey?: string,
-): Promise<ChatMessageView[]> {
+export async function chatHistory(channel: ChatChannel): Promise<ChatMessageView[]> {
   const { data } = await apiClient.get<Envelope<{ messages: ChatMessageView[] }>>(
     '/chat/history',
-    { params: { channel, scopeKey } },
+    { params: { channel } },
   );
   return unwrap(data).messages;
 }

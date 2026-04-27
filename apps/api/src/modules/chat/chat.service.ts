@@ -41,7 +41,28 @@ export class ChatService {
     private readonly realtime: RealtimeService,
   ) {}
 
-  async history(channel: ChatChannel, scopeKey: string): Promise<ChatMessageView[]> {
+  async historyWorld(): Promise<ChatMessageView[]> {
+    return this.fetchHistory(ChatChannel.WORLD, 'world');
+  }
+
+  /**
+   * Trả lịch sử SECT chat — chỉ cho user thuộc đúng sect đó. Không nhận
+   * scopeKey từ client để tránh user A đọc lén chat sect B.
+   */
+  async historySect(userId: string): Promise<ChatMessageView[]> {
+    const char = await this.prisma.character.findUnique({
+      where: { userId },
+      select: { sectId: true },
+    });
+    if (!char) throw new ChatError('NO_CHARACTER');
+    if (!char.sectId) throw new ChatError('NO_SECT');
+    return this.fetchHistory(ChatChannel.SECT, char.sectId);
+  }
+
+  private async fetchHistory(
+    channel: ChatChannel,
+    scopeKey: string,
+  ): Promise<ChatMessageView[]> {
     const rows = await this.prisma.chatMessage.findMany({
       where: { channel, scopeKey },
       orderBy: { createdAt: 'desc' },

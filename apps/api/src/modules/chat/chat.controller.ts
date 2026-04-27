@@ -10,7 +10,6 @@ import {
   Req,
 } from '@nestjs/common';
 import type { Request } from 'express';
-import { ChatChannel } from '@prisma/client';
 import { z } from 'zod';
 import { ChatError, ChatService } from './chat.service';
 import type { ChatMessageView } from './chat.service';
@@ -39,17 +38,20 @@ export class ChatController {
   async history(
     @Req() req: Request,
     @Query('channel') channelRaw: string,
-    @Query('scopeKey') scopeKeyRaw?: string,
   ): Promise<{ ok: true; data: { messages: ChatMessageView[] } }> {
     const userId = await this.auth.userIdFromAccess(req.cookies?.[ACCESS_COOKIE]);
     if (!userId) fail('UNAUTHENTICATED', HttpStatus.UNAUTHORIZED);
     const ch = ChannelEnum.safeParse(channelRaw);
     if (!ch.success) fail('INVALID_INPUT');
-    const channel = ch.data === 'WORLD' ? ChatChannel.WORLD : ChatChannel.SECT;
-    const scopeKey = channel === ChatChannel.WORLD ? 'world' : (scopeKeyRaw ?? '');
-    if (!scopeKey) fail('INVALID_INPUT');
-    const messages = await this.chat.history(channel, scopeKey);
-    return { ok: true, data: { messages } };
+    try {
+      const messages =
+        ch.data === 'WORLD'
+          ? await this.chat.historyWorld()
+          : await this.chat.historySect(userId);
+      return { ok: true, data: { messages } };
+    } catch (e) {
+      this.handleErr(e);
+    }
   }
 
   @Post('world')

@@ -35,7 +35,7 @@ async function loadHistory(channel: ChatChannel): Promise<void> {
     if (channel === 'WORLD') {
       worldMsgs.value = await chatHistory('WORLD');
     } else if (currentSectId.value) {
-      sectMsgs.value = await chatHistory('SECT', currentSectId.value);
+      sectMsgs.value = await chatHistory('SECT');
     }
     await scrollToBottom();
   } catch {
