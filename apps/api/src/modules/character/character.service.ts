@@ -34,7 +34,7 @@ class DomainError extends Error {
   }
 }
 
-type CharRow = Prisma.CharacterGetPayload<{ include: { sect: true } }>;
+type CharRow = Prisma.CharacterGetPayload<{ include: { sect: true; user: true } }>;
 
 const SECT_NAME_TO_KEY: Record<string, OnboardInput['sectKey']> = {
   'Thanh Vân Môn': 'thanh_van',
@@ -52,7 +52,7 @@ export class CharacterService {
   async findByUser(userId: string) {
     const c = await this.prisma.character.findUnique({
       where: { userId },
-      include: { sect: true },
+      include: { sect: true, user: true },
     });
     if (!c) return null;
     return this.toState(c);
@@ -61,7 +61,7 @@ export class CharacterService {
   async getStateOrThrow(userId: string): Promise<CharacterStatePayload> {
     const c = await this.prisma.character.findUnique({
       where: { userId },
-      include: { sect: true },
+      include: { sect: true, user: true },
     });
     if (!c) throw new DomainError('NO_CHARACTER');
     return this.toState(c);
@@ -90,7 +90,7 @@ export class CharacterService {
           mp: stats.mpMax,
           sectId: sect.id,
         },
-        include: { sect: true },
+        include: { sect: true, user: true },
       });
       const state = this.toState(c);
       this.realtime.emitToUser(userId, 'state:update', state);
@@ -112,7 +112,7 @@ export class CharacterService {
     const updated = await this.prisma.character.update({
       where: { userId },
       data: { cultivating: on },
-      include: { sect: true },
+      include: { sect: true, user: true },
     });
     const state = this.toState(updated);
     this.realtime.emitToUser(userId, 'state:update', state);
@@ -146,7 +146,7 @@ export class CharacterService {
         hp: Math.round(c.hpMax * 1.2),
         mp: Math.round(c.mpMax * 1.2),
       },
-      include: { sect: true },
+      include: { sect: true, user: true },
     });
     const state = this.toState(updated);
     this.realtime.emitToUser(userId, 'state:update', state);
@@ -174,9 +174,12 @@ export class CharacterService {
       speed: c.speed,
       luck: c.luck,
       linhThach: c.linhThach.toString(),
+      tienNgoc: c.tienNgoc,
       cultivating: c.cultivating,
       sectId: c.sectId,
       sectKey: c.sect ? SECT_NAME_TO_KEY[c.sect.name] ?? null : null,
+      role: c.user.role,
+      banned: c.user.banned,
     };
   }
 }

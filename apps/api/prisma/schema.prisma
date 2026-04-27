@@ -63,6 +63,36 @@ enum TopupStatus {
   REJECTED
 }
 
+model TopupOrder {
+  id            String      @id @default(cuid())
+  userId        String
+  packageKey    String
+  tienNgocAmount Int
+  priceVND      Int
+  /// Mã chuyển khoản hiển thị cho user khi quét QR (ví dụ TOPUP-<short>).
+  transferCode  String      @unique
+  status        TopupStatus @default(PENDING)
+  note          String      @default("")
+  approvedById  String?
+  approvedAt    DateTime?
+  createdAt     DateTime    @default(now())
+
+  @@index([userId, status, createdAt])
+  @@index([status, createdAt])
+}
+
+model AdminAuditLog {
+  id          String   @id @default(cuid())
+  actorUserId String
+  action      String
+  /// JSON describing the action target (e.g. user id, amount, reason).
+  meta        Json     @default("{}")
+  createdAt   DateTime @default(now())
+
+  @@index([actorUserId, createdAt])
+  @@index([action, createdAt])
+}
+
 model User {
   id              String    @id @default(cuid())
   email           String    @unique
