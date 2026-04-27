@@ -1,0 +1,128 @@
+// Xuân Tôi — schema rút gọn (file 04 §3). Sẽ mở rộng theo từng phase.
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum Role {
+  PLAYER
+  MOD
+  ADMIN
+}
+
+enum Quality {
+  PHAM
+  LINH
+  HUYEN
+  TIEN
+  THAN
+}
+
+enum ItemType {
+  WEAPON
+  ARMOR
+  BELT
+  BOOTS
+  HAT
+  TRAM
+  PILL
+  HERB
+  ORE
+  KEY
+  ARTIFACT
+  MISC
+}
+
+enum EquipSlot {
+  WEAPON
+  ARMOR
+  BELT
+  BOOTS
+  HAT
+  TRAM
+  ARTIFACT_1
+  ARTIFACT_2
+  ARTIFACT_3
+}
+
+enum Difficulty {
+  THUONG
+  KHO
+  AC_MONG
+  BAO_TAU
+}
+
+enum TopupStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+model User {
+  id              String    @id @default(cuid())
+  email           String    @unique
+  passwordHash    String
+  passwordVersion Int       @default(1)
+  role            Role      @default(PLAYER)
+  banned          Boolean   @default(false)
+  createdAt       DateTime  @default(now())
+  lastLoginAt     DateTime?
+
+  character       Character?
+}
+
+model Character {
+  id               String   @id @default(cuid())
+  userId           String   @unique
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name             String   @unique
+  realmKey         String
+  realmStage       Int      @default(1)
+  title            String?
+  exp              BigInt   @default(0)
+  level            Int      @default(1)
+
+  hp               Int      @default(100)
+  hpMax            Int      @default(100)
+  mp               Int      @default(50)
+  mpMax            Int      @default(50)
+  stamina          Int      @default(100)
+  staminaMax       Int      @default(100)
+  power            Int      @default(10)
+  spirit           Int      @default(10)
+  speed            Int      @default(10)
+  luck             Int      @default(5)
+  daoVan           Int      @default(0)
+
+  linhThach        BigInt   @default(0)
+  tienNgoc         Int      @default(0)
+  tienNgocKhoa     Int      @default(0)
+  tienTe           Int      @default(0)
+  nguyenThach      Int      @default(0)
+  congHien         Int      @default(0)
+  congDuc          Int      @default(0)
+  chienCongTongMon Int      @default(0)
+
+  settings         Json     @default("{}")
+  cultivating      Boolean  @default(false)
+
+  sectId           String?
+  sect             Sect?    @relation(fields: [sectId], references: [id])
+
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+}
+
+model Sect {
+  id                String      @id @default(cuid())
+  name              String      @unique
+  level             Int         @default(1)
+  treasuryLinhThach BigInt      @default(0)
+  characters        Character[]
+  createdAt         DateTime    @default(now())
+}

@@ -1,0 +1,21 @@
+/* Cổ phong thuỷ mặc — design tokens (file 01 §4.2 rút gọn) */
+:root {
+  --m-bg-base: #1b150a;
+  --m-bg-paper: #efe7d2;
+  --m-ink-strong: #1b150a;
+  --m-ink-mid: #3a2f1c;
+  --m-ink-soft: #8a6e34;
+  --m-gold: #bfa66a;
+  --m-gold-soft: #d9c187;
+  --m-danger: #b13a3a;
+  --m-success: #4f7a3a;
+
+  --m-progress-leaf-height: 18px;
+  --m-progress-per-height: 18px;
+  --m-progress-per-width: 18px;
+  --m-progress-width: 100%;
+  --m-progress-height: 18px;
+
+  --m-radius: 6px;
+  --m-blur: 8px;
+}

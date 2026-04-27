@@ -1,0 +1,20 @@
+{
+  "name": "xuantoi",
+  "version": "0.0.1",
+  "private": true,
+  "description": "Xuân Tôi — game tu tiên MUD cổ phong (clone Mộng Tu Tiên). Monorepo pnpm: apps/web (Vue 3 + Vite), apps/api (NestJS), packages/shared.",
+  "scripts": {
+    "dev": "pnpm -r --parallel run dev",
+    "build": "pnpm -r run build",
+    "typecheck": "pnpm -r run typecheck",
+    "lint": "pnpm -r run lint",
+    "test": "pnpm -r run test",
+    "infra:up": "docker compose -f infra/docker-compose.dev.yml up -d",
+    "infra:down": "docker compose -f infra/docker-compose.dev.yml down"
+  },
+  "engines": {
+    "node": ">=20",
+    "pnpm": ">=9"
+  },
+  "packageManager": "pnpm@9.15.1"
+}
