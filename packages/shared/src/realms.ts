@@ -82,8 +82,23 @@ export function fullRealmName(realm: RealmDef, stage: number): string {
 }
 
 /** EXP cần để hoàn thành trọng `stage` của cảnh giới — mỗi trọng × 1.4 so với trọng trước. */
-export function expCostForStage(realm: RealmDef, stage: number): bigint {
+export function expCostForStage(realm: RealmDef, stage: number): bigint;
+export function expCostForStage(realmKey: string, stage: number): bigint | null;
+export function expCostForStage(
+  realmOrKey: RealmDef | string,
+  stage: number,
+): bigint | null {
+  const realm =
+    typeof realmOrKey === 'string' ? realmByKey(realmOrKey) ?? null : realmOrKey;
+  if (!realm) return null;
   const idx = Math.min(Math.max(stage, 1), 9) - 1;
   const f = Number(realm.expCost) * Math.pow(1.4, idx);
   return BigInt(Math.round(f));
+}
+
+/** Cảnh giới ngay sau cảnh giới hiện tại (theo `order`). */
+export function nextRealm(currentKey: string): RealmDef | null {
+  const cur = realmByKey(currentKey);
+  if (!cur) return null;
+  return REALMS.find((r) => r.order === cur.order + 1) ?? null;
 }
