@@ -109,6 +109,18 @@ export class SectService {
         leaderName = leader?.name ?? null;
       }
     }
+    // isMyMember cũng cần check ngoài top 100 (user vừa join có congHien = 0).
+    let isMyMember = false;
+    if (viewerCharId) {
+      if (members.some((m) => m.id === viewerCharId)) {
+        isMyMember = true;
+      } else {
+        const cnt = await this.prisma.character.count({
+          where: { id: viewerCharId, sectId: s.id },
+        });
+        isMyMember = cnt > 0;
+      }
+    }
     return {
       id: s.id,
       name: s.name,
@@ -127,9 +139,7 @@ export class SectService {
         isLeader: m.id === s.leaderId,
         isMe: m.id === viewerCharId,
       })),
-      isMyMember: viewerCharId
-        ? members.some((m) => m.id === viewerCharId)
-        : false,
+      isMyMember,
       isMyLeader: viewerCharId ? viewerCharId === s.leaderId : false,
     };
   }
