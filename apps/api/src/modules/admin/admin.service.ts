@@ -250,6 +250,13 @@ export class AdminService {
     if (order.userId === actorId) throw new AdminError('CANNOT_TARGET_SELF');
 
     await this.prisma.$transaction(async (tx) => {
+      // Yêu cầu user đã onboard — nếu chưa có character thì không thể credit.
+      // Refuse approve để admin không vô tình đánh dấu APPROVED mà không cộng
+      // tiền (đơn vẫn ở PENDING, admin có thể chờ user onboard rồi duyệt lại,
+      // hoặc reject rồi hoàn tiền ngoài hệ thống).
+      const char = await tx.character.findUnique({ where: { userId: order.userId } });
+      if (!char) throw new AdminError('NOT_FOUND');
+
       // Flip atomic.
       const flip = await tx.topupOrder.updateMany({
         where: { id: orderId, status: TopupStatus.PENDING },
@@ -262,12 +269,6 @@ export class AdminService {
       });
       if (flip.count === 0) throw new AdminError('ALREADY_PROCESSED');
 
-      // Cộng tiên ngọc cho character (yêu cầu user đã onboard).
-      const char = await tx.character.findUnique({ where: { userId: order.userId } });
-      if (!char) {
-        // Vẫn approve nhưng note thêm — admin có thể cấp lại tay sau.
-        return;
-      }
       await tx.character.update({
         where: { id: char.id },
         data: { tienNgoc: { increment: order.tienNgocAmount } },
