@@ -47,6 +47,22 @@ async function logout(): Promise<void> {
             />
           </div>
         </div>
+        <div v-if="game.character" class="w-32 hidden md:block">
+          <div class="flex justify-between text-[10px] text-ink-300">
+            <span>Thể Lực</span>
+            <span>{{ game.character.stamina }} / {{ game.character.staminaMax }}</span>
+          </div>
+          <div class="h-1.5 mt-0.5 rounded bg-ink-900/60 overflow-hidden">
+            <div
+              class="h-full bg-amber-400 transition-all"
+              :style="{ width: (game.character.stamina / game.character.staminaMax) * 100 + '%' }"
+            />
+          </div>
+        </div>
+        <div v-if="game.character" class="hidden md:flex items-center gap-1 text-[11px]">
+          <span class="text-amber-300">⛀</span>
+          <span>{{ game.character.linhThach }}</span>
+        </div>
         <span
           class="px-2 py-0.5 rounded text-[10px]"
           :class="game.wsConnected ? 'bg-emerald-700/40 text-emerald-200' : 'bg-red-700/40 text-red-200'"
@@ -69,9 +85,13 @@ async function logout(): Promise<void> {
         >
           道 Đạo Tràng
         </RouterLink>
-        <a class="px-3 py-2 rounded text-ink-300/60 cursor-not-allowed" title="Phase 3">
+        <RouterLink
+          to="/dungeon"
+          class="px-3 py-2 rounded hover:bg-ink-700/60"
+          active-class="bg-ink-700/60 text-ink-50"
+        >
           劍 Luyện Khí Đường
-        </a>
+        </RouterLink>
         <a class="px-3 py-2 rounded text-ink-300/60 cursor-not-allowed" title="Phase 4">
           丹 Đan Phòng
         </a>

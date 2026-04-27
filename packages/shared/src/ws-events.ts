@@ -36,12 +36,16 @@ export interface CharacterStatePayload {
   hpMax: number;
   mp: number;
   mpMax: number;
+  stamina: number;
+  staminaMax: number;
   power: number;
   spirit: number;
   speed: number;
   luck: number;
+  linhThach: string;
   cultivating: boolean;
   sectId: string | null;
+  sectKey: 'thanh_van' | 'huyen_thuy' | 'tu_la' | null;
 }
 
 export interface CultivateTickPayload {
