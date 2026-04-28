@@ -166,6 +166,12 @@ export class AdminController {
     return { ok: true, data: r };
   }
 
+  @Get('stats')
+  async stats() {
+    const r = await this.admin.stats();
+    return { ok: true, data: r };
+  }
+
   @Post('mail/send')
   @HttpCode(200)
   async mailSend(@Req() req: AdminReq, @Body() body: unknown) {

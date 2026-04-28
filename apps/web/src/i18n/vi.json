@@ -17,6 +17,7 @@
     "yes": "Có",
     "no": "Không",
     "reload": "Tải lại",
+    "refresh": "Làm mới",
     "search": "Tìm",
     "total": "Tổng",
     "page": "Trang",
@@ -493,9 +494,28 @@
     "title": "Quản Trị",
     "roleLabel": "Role: {role}",
     "tab": {
+      "stats": "Tổng quan",
       "users": "Người dùng",
       "topups": "Đơn nạp",
       "audit": "Audit"
+    },
+    "stats": {
+      "users": "Người dùng",
+      "characters": "Nhân vật",
+      "economy": "Kinh tế",
+      "activity": "Hoạt động",
+      "total": "Tổng",
+      "admins": "Admin",
+      "banned": "Bị khoá",
+      "cultivating": "Đang tu luyện",
+      "bySect": "Theo Tông Môn",
+      "linhThach": "Linh Thạch lưu thông",
+      "tienNgoc": "Tiên Ngọc lưu thông",
+      "topupPending": "Topup chờ duyệt",
+      "topupApproved": "Topup đã duyệt",
+      "topupRejected": "Topup từ chối",
+      "last24hLogins": "Login 24h qua",
+      "last7dRegistrations": "Đăng ký 7 ngày qua"
     },
     "noPermission": "Bạn không có quyền vào khu này.",
     "users": {
