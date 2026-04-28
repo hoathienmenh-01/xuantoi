@@ -102,3 +102,44 @@ export function nextRealm(currentKey: string): RealmDef | null {
   if (!cur) return null;
   return REALMS.find((r) => r.order === cur.order + 1) ?? null;
 }
+
+/**
+ * EXP base được cộng mỗi tick cultivation cho character đứng ở cảnh giới này,
+ * TRƯỚC khi cộng bonus spirit.
+ *
+ * Công thức: `rate(order) = base * 1.45^order`, clamp tối thiểu `base`.
+ *
+ * Tại base=5 (CULTIVATION_TICK_BASE_EXP):
+ *   - phamnhan (order 0):  5 EXP/tick
+ *   - luyenkhi (order 1):  7
+ *   - kim_dan (order 3):   15
+ *   - hoa_than (order 5):  32
+ *   - nhan_tien (order 10):   205
+ *   - chuan_thanh (order 17): 2768
+ *   - dao_quan (order 20):    8440
+ *   - vo_chung (order 25):    54097
+ *   - hu_khong_chi_ton (27):  113738
+ *
+ * Kết hợp với `expCostForStage` (tăng 1.6^order), thời gian/stage đầu ở realm
+ * cao tăng nhẹ nhưng vẫn reachable:
+ *   - luyenkhi stage 1:          ~1.9h
+ *   - kim_dan stage 1:           ~2.3h
+ *   - hoa_than stage 1:          ~2.7h
+ *   - nhan_tien stage 1:         ~4.5h
+ *   - chuan_thanh stage 1:       ~10h
+ *   - hu_khong_chi_ton stage 1:  ~23.8h
+ * tất cả đều <24h ở default spirit, tick 30s, không multiplier.
+ *
+ * Lưu ý: rate này KHÔNG xét item/sect/event multiplier (phase sau sẽ bổ sung).
+ */
+const CULTIVATION_RATE_REALM_MULT = 1.45;
+
+export function cultivationRateForRealm(
+  realmKey: string,
+  baseRate: number,
+): number {
+  const realm = realmByKey(realmKey);
+  if (!realm || realm.order < 0) return baseRate;
+  const mult = Math.pow(CULTIVATION_RATE_REALM_MULT, realm.order);
+  return Math.max(baseRate, Math.round(baseRate * mult));
+}
