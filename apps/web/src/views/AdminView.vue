@@ -14,7 +14,9 @@ import {
   adminListUsers,
   adminRejectTopup,
   adminSetRole,
+  adminStats,
   type AdminAuditRow,
+  type AdminStats,
   type AdminUserRow,
   type Role,
 } from '@/api/admin';
@@ -28,8 +30,9 @@ const toast = useToastStore();
 const router = useRouter();
 const { t } = useI18n();
 
-type Tab = 'users' | 'topups' | 'audit';
-const tab = ref<Tab>('users');
+type Tab = 'stats' | 'users' | 'topups' | 'audit';
+const tab = ref<Tab>('stats');
+const stats = ref<AdminStats | null>(null);
 
 // Users tab
 const userQuery = ref('');
@@ -69,14 +72,26 @@ onMounted(async () => {
     router.replace('/home');
     return;
   }
-  await refreshUsers();
+  await refreshStats();
 });
 
 watch(tab, async (curTab) => {
-  if (curTab === 'users') await refreshUsers();
+  if (curTab === 'stats') await refreshStats();
+  else if (curTab === 'users') await refreshUsers();
   else if (curTab === 'topups') await refreshTopups();
   else if (curTab === 'audit') await refreshAudit();
 });
+
+async function refreshStats(): Promise<void> {
+  loading.value = true;
+  try {
+    stats.value = await adminStats();
+  } catch (e) {
+    handleErr(e);
+  } finally {
+    loading.value = false;
+  }
+}
 
 async function refreshUsers(): Promise<void> {
   loading.value = true;
@@ -204,7 +219,7 @@ const isAdmin = () => game.character?.role === 'ADMIN';
 
       <nav class="flex gap-1 border-b border-ink-300/30 text-sm">
         <button
-          v-for="tk in (['users','topups','audit'] as const)"
+          v-for="tk in (['stats','users','topups','audit'] as const)"
           :key="tk"
           class="px-3 py-2"
           :class="tab === tk ? 'border-b-2 border-amber-300 text-ink-50' : 'text-ink-300'"
@@ -214,8 +229,55 @@ const isAdmin = () => game.character?.role === 'ADMIN';
         </button>
       </nav>
 
+      <!-- STATS TAB -->
+      <section v-if="tab === 'stats'" class="space-y-4">
+        <div v-if="!stats" class="text-ink-300 text-sm">{{ t('common.loading') }}</div>
+        <div v-else class="grid grid-cols-1 md:grid-cols-3 gap-3">
+          <div class="bg-ink-700/30 border border-ink-300/20 rounded p-3">
+            <h3 class="text-sm text-amber-200">{{ t('admin.stats.users') }}</h3>
+            <dl class="text-sm mt-2 space-y-1">
+              <div class="flex justify-between"><dt class="text-ink-300">{{ t('admin.stats.total') }}</dt><dd>{{ stats.users.total }}</dd></div>
+              <div class="flex justify-between"><dt class="text-ink-300">{{ t('admin.stats.admins') }}</dt><dd>{{ stats.users.admins }}</dd></div>
+              <div class="flex justify-between"><dt class="text-ink-300">{{ t('admin.stats.banned') }}</dt><dd>{{ stats.users.banned }}</dd></div>
+            </dl>
+          </div>
+          <div class="bg-ink-700/30 border border-ink-300/20 rounded p-3">
+            <h3 class="text-sm text-amber-200">{{ t('admin.stats.characters') }}</h3>
+            <dl class="text-sm mt-2 space-y-1">
+              <div class="flex justify-between"><dt class="text-ink-300">{{ t('admin.stats.total') }}</dt><dd>{{ stats.characters.total }}</dd></div>
+              <div class="flex justify-between"><dt class="text-ink-300">{{ t('admin.stats.cultivating') }}</dt><dd>{{ stats.characters.cultivating }}</dd></div>
+            </dl>
+            <h4 class="text-xs text-ink-300 mt-3 mb-1">{{ t('admin.stats.bySect') }}</h4>
+            <ul class="text-xs space-y-0.5">
+              <li v-for="s in stats.characters.bySect" :key="s.sectId ?? 'none'" class="flex justify-between">
+                <span>{{ s.name }}</span>
+                <span>{{ s.count }}</span>
+              </li>
+            </ul>
+          </div>
+          <div class="bg-ink-700/30 border border-ink-300/20 rounded p-3">
+            <h3 class="text-sm text-amber-200">{{ t('admin.stats.economy') }}</h3>
+            <dl class="text-sm mt-2 space-y-1">
+              <div class="flex justify-between"><dt class="text-ink-300">{{ t('admin.stats.linhThach') }}</dt><dd>{{ stats.economy.linhThachCirculating }}</dd></div>
+              <div class="flex justify-between"><dt class="text-ink-300">{{ t('admin.stats.tienNgoc') }}</dt><dd>{{ stats.economy.tienNgocCirculating }}</dd></div>
+              <div class="flex justify-between"><dt class="text-ink-300">{{ t('admin.stats.topupPending') }}</dt><dd>{{ stats.economy.topupPending }}</dd></div>
+              <div class="flex justify-between"><dt class="text-ink-300">{{ t('admin.stats.topupApproved') }}</dt><dd>{{ stats.economy.topupApproved }}</dd></div>
+              <div class="flex justify-between"><dt class="text-ink-300">{{ t('admin.stats.topupRejected') }}</dt><dd>{{ stats.economy.topupRejected }}</dd></div>
+            </dl>
+          </div>
+          <div class="bg-ink-700/30 border border-ink-300/20 rounded p-3 md:col-span-3">
+            <h3 class="text-sm text-amber-200">{{ t('admin.stats.activity') }}</h3>
+            <dl class="text-sm mt-2 grid grid-cols-2 gap-2">
+              <div class="flex justify-between"><dt class="text-ink-300">{{ t('admin.stats.last24hLogins') }}</dt><dd>{{ stats.activity.last24hLogins }}</dd></div>
+              <div class="flex justify-between"><dt class="text-ink-300">{{ t('admin.stats.last7dRegistrations') }}</dt><dd>{{ stats.activity.last7dRegistrations }}</dd></div>
+            </dl>
+          </div>
+        </div>
+        <MButton @click="refreshStats()">{{ t('common.refresh') }}</MButton>
+      </section>
+
       <!-- USERS TAB -->
-      <section v-if="tab === 'users'" class="space-y-3">
+      <section v-else-if="tab === 'users'" class="space-y-3">
         <div class="flex gap-2 items-center text-sm">
           <input
             v-model="userQuery"

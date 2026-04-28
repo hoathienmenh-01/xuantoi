@@ -17,6 +17,7 @@
     "yes": "Yes",
     "no": "No",
     "reload": "Reload",
+    "refresh": "Refresh",
     "search": "Search",
     "total": "Total",
     "page": "Page",
@@ -462,9 +463,28 @@
     "title": "Admin",
     "roleLabel": "Role: {role}",
     "tab": {
+      "stats": "Overview",
       "users": "Users",
       "topups": "Top-ups",
       "audit": "Audit"
+    },
+    "stats": {
+      "users": "Users",
+      "characters": "Characters",
+      "economy": "Economy",
+      "activity": "Activity",
+      "total": "Total",
+      "admins": "Admins",
+      "banned": "Banned",
+      "cultivating": "Cultivating",
+      "bySect": "By Sect",
+      "linhThach": "Spirit Stones in circulation",
+      "tienNgoc": "Tien Ngoc in circulation",
+      "topupPending": "Top-ups pending",
+      "topupApproved": "Top-ups approved",
+      "topupRejected": "Top-ups rejected",
+      "last24hLogins": "Logins last 24h",
+      "last7dRegistrations": "Registrations last 7d"
     },
     "noPermission": "You do not have access to this area.",
     "users": {

@@ -381,6 +381,101 @@ export class AdminService {
     };
   }
 
+  async stats(): Promise<{
+    users: { total: number; banned: number; admins: number };
+    characters: {
+      total: number;
+      cultivating: number;
+      bySect: { sectId: string | null; name: string; count: number }[];
+    };
+    economy: {
+      linhThachCirculating: string;
+      tienNgocCirculating: string;
+      topupPending: number;
+      topupApproved: number;
+      topupRejected: number;
+    };
+    activity: {
+      last24hLogins: number;
+      last7dRegistrations: number;
+    };
+  }> {
+    const now = new Date();
+    const d1 = new Date(now.getTime() - 24 * 3600 * 1000);
+    const d7 = new Date(now.getTime() - 7 * 24 * 3600 * 1000);
+
+    const [
+      usersTotal,
+      usersBanned,
+      usersAdmin,
+      charsTotal,
+      charsCultivating,
+      bySectRaw,
+      sumsRaw,
+      topupPending,
+      topupApproved,
+      topupRejected,
+      last24hLogins,
+      last7dRegistrations,
+    ] = await Promise.all([
+      this.prisma.user.count(),
+      this.prisma.user.count({ where: { banned: true } }),
+      this.prisma.user.count({ where: { role: Role.ADMIN } }),
+      this.prisma.character.count(),
+      this.prisma.character.count({ where: { cultivating: true } }),
+      this.prisma.character.groupBy({
+        by: ['sectId'],
+        _count: { _all: true },
+      }),
+      this.prisma.character.aggregate({
+        _sum: { linhThach: true, tienNgoc: true },
+      }),
+      this.prisma.topupOrder.count({ where: { status: TopupStatus.PENDING } }),
+      this.prisma.topupOrder.count({ where: { status: TopupStatus.APPROVED } }),
+      this.prisma.topupOrder.count({ where: { status: TopupStatus.REJECTED } }),
+      this.prisma.user.count({ where: { lastLoginAt: { gte: d1 } } }),
+      this.prisma.user.count({ where: { createdAt: { gte: d7 } } }),
+    ]);
+
+    const sectIds = bySectRaw
+      .map((r) => r.sectId)
+      .filter((s): s is string => s != null);
+    const sects =
+      sectIds.length > 0
+        ? await this.prisma.sect.findMany({
+            where: { id: { in: sectIds } },
+            select: { id: true, name: true },
+          })
+        : [];
+    const sectMap = new Map(sects.map((s) => [s.id, s.name]));
+    const bySect = bySectRaw
+      .map((r) => ({
+        sectId: r.sectId ?? null,
+        name: r.sectId ? (sectMap.get(r.sectId) ?? 'unknown') : 'none',
+        count: r._count._all,
+      }))
+      .sort((a, b) => b.count - a.count);
+
+    const linhThachSum = sumsRaw._sum.linhThach ?? 0n;
+    const tienNgocSum = sumsRaw._sum.tienNgoc ?? 0;
+
+    return {
+      users: { total: usersTotal, banned: usersBanned, admins: usersAdmin },
+      characters: { total: charsTotal, cultivating: charsCultivating, bySect },
+      economy: {
+        linhThachCirculating: linhThachSum.toString(),
+        tienNgocCirculating: tienNgocSum.toString(),
+        topupPending,
+        topupApproved,
+        topupRejected,
+      },
+      activity: {
+        last24hLogins,
+        last7dRegistrations,
+      },
+    };
+  }
+
   private async audit(actorId: string, action: string, meta: Prisma.InputJsonValue): Promise<void> {
     await this.prisma.adminAuditLog.create({
       data: { actorUserId: actorId, action, meta },

@@ -144,6 +144,12 @@ export class AdminController {
     return { ok: true, data: r };
   }
 
+  @Get('stats')
+  async stats() {
+    const r = await this.admin.stats();
+    return { ok: true, data: r };
+  }
+
   private handleErr(e: unknown): never {
     if (e instanceof AdminError) {
       const status =
