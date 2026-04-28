@@ -128,6 +128,13 @@ async function logout(): Promise<void> {
           鬼 {{ t('shell.nav.boss') }}
         </RouterLink>
         <RouterLink
+          to="/giftcode"
+          class="px-3 py-2 rounded hover:bg-ink-700/60"
+          active-class="bg-ink-700/60 text-ink-50"
+        >
+          禮 {{ t('shell.nav.giftcode') }}
+        </RouterLink>
+        <RouterLink
           to="/topup"
           class="px-3 py-2 rounded hover:bg-ink-700/60"
           active-class="bg-ink-700/60 text-ink-50"

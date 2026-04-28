@@ -175,8 +175,33 @@
       "market": "Phường Thị",
       "sect": "Tông Môn",
       "boss": "Boss Đại Hội",
+      "giftcode": "Lễ Mã",
       "topup": "Nạp Tiên Ngọc",
       "admin": "Quản Trị"
+    }
+  },
+  "giftcode": {
+    "title": "Đổi Mã Quà Tặng",
+    "hint": "Nhập mã quà tặng để nhận thưởng. Mỗi mã chỉ đổi được một lần cho mỗi tài khoản.",
+    "placeholder": "Nhập mã…",
+    "redeem": "Đổi Quà",
+    "successToast": "Đã đổi mã {code}",
+    "lastReward": "Phần thưởng từ {code}",
+    "reward": {
+      "linhThach": "Linh Thạch",
+      "tienNgoc": "Tiên Ngọc",
+      "exp": "EXP"
+    },
+    "errors": {
+      "CODE_NOT_FOUND": "Mã không tồn tại.",
+      "CODE_EXPIRED": "Mã đã hết hạn.",
+      "CODE_REVOKED": "Mã đã bị thu hồi.",
+      "CODE_EXHAUSTED": "Mã đã hết lượt sử dụng.",
+      "ALREADY_REDEEMED": "Tài khoản đã đổi mã này.",
+      "NO_CHARACTER": "Cần tạo nhân vật trước.",
+      "INVALID_INPUT": "Mã không hợp lệ.",
+      "UNAUTHENTICATED": "Phiên đã hết hạn, vui lòng đăng nhập lại.",
+      "UNKNOWN": "Lỗi bất định."
     }
   },
   "chat": {

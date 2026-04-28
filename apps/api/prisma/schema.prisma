@@ -336,3 +336,38 @@ model Encounter {
 
   @@index([characterId, status])
 }
+
+model GiftCode {
+  id               String            @id @default(cuid())
+  /// Normalized upper-case, unique trên toàn hệ.
+  code             String            @unique
+  rewardLinhThach  BigInt            @default(0)
+  rewardTienNgoc   Int               @default(0)
+  rewardExp        BigInt            @default(0)
+  /// JSON [{ itemKey, qty }]
+  rewardItems      Json              @default("[]")
+  /// null = không giới hạn số lần redeem toàn server (vẫn chặn 1 user 1 lần).
+  maxRedeems       Int?
+  redeemCount      Int               @default(0)
+  expiresAt        DateTime?
+  revokedAt        DateTime?
+  createdByAdminId String?
+  createdAt        DateTime          @default(now())
+  redemptions      GiftCodeRedemption[]
+
+  @@index([expiresAt])
+  @@index([revokedAt])
+}
+
+model GiftCodeRedemption {
+  id          String   @id @default(cuid())
+  giftCodeId  String
+  giftCode    GiftCode @relation(fields: [giftCodeId], references: [id], onDelete: Cascade)
+  userId      String
+  characterId String
+  redeemedAt  DateTime @default(now())
+
+  @@unique([giftCodeId, userId])
+  @@index([userId])
+  @@index([characterId])
+}

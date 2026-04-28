@@ -175,8 +175,33 @@
       "market": "Market",
       "sect": "Sect",
       "boss": "World Boss",
+      "giftcode": "Gift Code",
       "topup": "Top Up",
       "admin": "Admin"
+    }
+  },
+  "giftcode": {
+    "title": "Redeem Gift Code",
+    "hint": "Enter a gift code to claim rewards. Each code can be used once per account.",
+    "placeholder": "Enter code…",
+    "redeem": "Redeem",
+    "successToast": "Redeemed code {code}",
+    "lastReward": "Rewards from {code}",
+    "reward": {
+      "linhThach": "Spirit Stones",
+      "tienNgoc": "Jade",
+      "exp": "EXP"
+    },
+    "errors": {
+      "CODE_NOT_FOUND": "Code not found.",
+      "CODE_EXPIRED": "Code has expired.",
+      "CODE_REVOKED": "Code has been revoked.",
+      "CODE_EXHAUSTED": "Code has been fully claimed.",
+      "ALREADY_REDEEMED": "You have already redeemed this code.",
+      "NO_CHARACTER": "Create a character first.",
+      "INVALID_INPUT": "Invalid code.",
+      "UNAUTHENTICATED": "Session expired. Please log in again.",
+      "UNKNOWN": "Unknown error."
     }
   },
   "chat": {
