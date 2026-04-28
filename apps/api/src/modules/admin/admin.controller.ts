@@ -15,6 +15,7 @@ import type { Request } from 'express';
 import { Role, TopupStatus } from '@prisma/client';
 import { z } from 'zod';
 import { AdminGuard } from './admin.guard';
+import { RequireAdmin } from './require-admin.decorator';
 import { AdminError, AdminService } from './admin.service';
 import { GiftCodeError, GiftCodeService } from '../giftcode/giftcode.service';
 import { MailError, MailService } from '../mail/mail.service';
@@ -106,6 +107,7 @@ export class AdminController {
 
   @Post('users/:id/role')
   @HttpCode(200)
+  @RequireAdmin()
   async role(@Req() req: AdminReq, @Param('id') id: string, @Body() body: unknown) {
     const parsed = RoleInput.safeParse(body);
     if (!parsed.success) fail('INVALID_INPUT');
@@ -119,6 +121,7 @@ export class AdminController {
 
   @Post('users/:id/grant')
   @HttpCode(200)
+  @RequireAdmin()
   async grant(@Req() req: AdminReq, @Param('id') id: string, @Body() body: unknown) {
     const parsed = GrantInput.safeParse(body);
     if (!parsed.success) fail('INVALID_INPUT');
@@ -151,6 +154,7 @@ export class AdminController {
 
   @Post('topups/:id/approve')
   @HttpCode(200)
+  @RequireAdmin()
   async approveTopup(@Req() req: AdminReq, @Param('id') id: string, @Body() body: unknown) {
     const parsed = TopupActionInput.safeParse(body);
     if (!parsed.success) fail('INVALID_INPUT');
@@ -164,6 +168,7 @@ export class AdminController {
 
   @Post('topups/:id/reject')
   @HttpCode(200)
+  @RequireAdmin()
   async rejectTopup(@Req() req: AdminReq, @Param('id') id: string, @Body() body: unknown) {
     const parsed = TopupActionInput.safeParse(body);
     if (!parsed.success) fail('INVALID_INPUT');
@@ -197,6 +202,7 @@ export class AdminController {
 
   @Post('giftcodes')
   @HttpCode(200)
+  @RequireAdmin()
   async giftCreate(@Req() req: AdminReq, @Body() body: unknown) {
     const parsed = GiftCreateZ.safeParse(body);
     if (!parsed.success) fail('INVALID_INPUT');
@@ -219,6 +225,7 @@ export class AdminController {
 
   @Post('giftcodes/:code/revoke')
   @HttpCode(200)
+  @RequireAdmin()
   async giftRevoke(@Param('code') code: string) {
     try {
       const r = await this.giftCodes.revoke(code);
@@ -230,6 +237,7 @@ export class AdminController {
 
   @Post('mail/send')
   @HttpCode(200)
+  @RequireAdmin()
   async mailSend(@Req() req: AdminReq, @Body() body: unknown) {
     const parsed = MailSendZ.safeParse(body);
     if (!parsed.success) fail('INVALID_INPUT');
@@ -254,6 +262,7 @@ export class AdminController {
 
   @Post('mail/broadcast')
   @HttpCode(200)
+  @RequireAdmin()
   async mailBroadcast(@Req() req: AdminReq, @Body() body: unknown) {
     const parsed = MailBaseZ.safeParse(body);
     if (!parsed.success) fail('INVALID_INPUT');

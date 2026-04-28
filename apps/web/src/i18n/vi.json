@@ -734,6 +734,7 @@
     "errors": {
       "UNAUTHENTICATED": "Hết phiên, hãy đăng nhập lại.",
       "FORBIDDEN": "Không đủ quyền.",
+      "ADMIN_ONLY": "Hành động này chỉ ADMIN mới được thực hiện.",
       "NOT_FOUND": "Không tìm thấy.",
       "ALREADY_PROCESSED": "Đơn đã được xử lý.",
       "INVALID_INPUT": "Tham số không hợp lệ (vượt giới hạn / âm quá mức).",

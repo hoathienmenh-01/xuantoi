@@ -734,6 +734,7 @@
     "errors": {
       "UNAUTHENTICATED": "Session expired, please sign in again.",
       "FORBIDDEN": "Not enough permissions.",
+      "ADMIN_ONLY": "ADMIN role required for this action.",
       "NOT_FOUND": "Not found.",
       "ALREADY_PROCESSED": "Order already processed.",
       "INVALID_INPUT": "Invalid parameters (out of range / too negative).",

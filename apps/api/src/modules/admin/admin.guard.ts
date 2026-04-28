@@ -5,14 +5,21 @@ import {
   HttpStatus,
   Injectable,
 } from '@nestjs/common';
+import { Reflector } from '@nestjs/core';
 import type { Request } from 'express';
 import { AuthService } from '../auth/auth.service';
 import { PrismaService } from '../../common/prisma.service';
+import { REQUIRE_ADMIN_KEY } from './require-admin.decorator';
 
 const ACCESS_COOKIE = 'xt_access';
 
 /**
  * Guard yêu cầu user đã đăng nhập và có role ADMIN/MOD.
+ *
+ * Khi route/method được đánh dấu `@RequireAdmin()` (M8 — admin guard split),
+ * MOD bị reject ngay với `FORBIDDEN` để tránh MOD gọi action có ảnh hưởng
+ * tài sản (grant/approve topup/broadcast mail/spawn boss/đổi role/giftcode).
+ *
  * Gắn `userId` + `role` vào `req` cho controller dùng.
  */
 @Injectable()
@@ -20,6 +27,7 @@ export class AdminGuard implements CanActivate {
   constructor(
     private readonly auth: AuthService,
     private readonly prisma: PrismaService,
+    private readonly reflector: Reflector,
   ) {}
 
   async canActivate(ctx: ExecutionContext): Promise<boolean> {
@@ -48,6 +56,16 @@ export class AdminGuard implements CanActivate {
     if (u.role !== 'ADMIN' && u.role !== 'MOD') {
       throw new HttpException(
         { ok: false, error: { code: 'FORBIDDEN', message: 'FORBIDDEN' } },
+        HttpStatus.FORBIDDEN,
+      );
+    }
+    const requireAdmin = this.reflector.getAllAndOverride<boolean>(REQUIRE_ADMIN_KEY, [
+      ctx.getHandler(),
+      ctx.getClass(),
+    ]);
+    if (requireAdmin && u.role !== 'ADMIN') {
+      throw new HttpException(
+        { ok: false, error: { code: 'ADMIN_ONLY', message: 'ADMIN_ONLY' } },
         HttpStatus.FORBIDDEN,
       );
     }
