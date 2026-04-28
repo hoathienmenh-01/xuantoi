@@ -21,3 +21,9 @@ export const OPS_PRUNE_INTERVAL_MS = 24 * 60 * 60 * 1000;
  */
 export const LOGIN_ATTEMPT_TTL_DAYS = 90;
 export const REFRESH_TOKEN_STALE_TTL_DAYS = 30;
+
+/**
+ * Mail đã claim: giữ 90 ngày để người chơi tra lịch sử; sau đó xoá.
+ * Mail hết hạn không có reward: xoá ngay (service tự cover).
+ */
+export const MAIL_CLAIMED_TTL_DAYS = 90;

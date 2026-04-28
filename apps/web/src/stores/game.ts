@@ -10,11 +10,20 @@ interface Envelope<T> {
   error?: { code: string; message: string };
 }
 
+interface MailNewEvent {
+  mailId?: string;
+  subject: string;
+  senderName: string;
+  hasReward: boolean;
+}
+
 export const useGameStore = defineStore('game', () => {
   const character = ref<CharacterStatePayload | null>(null);
   const lastTickAt = ref<number | null>(null);
   const lastTickGain = ref<string | null>(null);
   const wsConnected = ref(false);
+  const unreadMail = ref(0);
+  const lastMailEvent = ref<MailNewEvent | null>(null);
 
   const realmFullName = computed(() => {
     if (!character.value) return '';
@@ -85,6 +94,15 @@ export const useGameStore = defineStore('game', () => {
         };
       }
     });
+
+    on<MailNewEvent>('mail:new', (frame) => {
+      unreadMail.value += 1;
+      lastMailEvent.value = frame.payload;
+    });
+  }
+
+  function clearMailBadge(): void {
+    unreadMail.value = 0;
   }
 
   return {
@@ -92,11 +110,14 @@ export const useGameStore = defineStore('game', () => {
     lastTickAt,
     lastTickGain,
     wsConnected,
+    unreadMail,
+    lastMailEvent,
     realmFullName,
     expProgress,
     fetchState,
     setCultivating,
     breakthrough,
     bindSocket,
+    clearMailBadge,
   };
 });

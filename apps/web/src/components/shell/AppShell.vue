@@ -136,10 +136,16 @@ async function logout(): Promise<void> {
         </RouterLink>
         <RouterLink
           to="/mail"
-          class="px-3 py-2 rounded hover:bg-ink-700/60"
+          class="px-3 py-2 rounded hover:bg-ink-700/60 relative"
           active-class="bg-ink-700/60 text-ink-50"
         >
           書 {{ t('shell.nav.mail') }}
+          <span
+            v-if="game.unreadMail > 0"
+            class="absolute -top-1 -right-1 px-1.5 py-0.5 rounded-full bg-red-600 text-[10px] text-white"
+          >
+            {{ game.unreadMail > 99 ? '99+' : game.unreadMail }}
+          </span>
         </RouterLink>
         <RouterLink
           to="/giftcode"

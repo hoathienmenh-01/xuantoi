@@ -31,6 +31,7 @@ onMounted(async () => {
   }
   await game.fetchState().catch(() => null);
   game.bindSocket();
+  game.clearMailBadge();
   await refresh();
 });
 
