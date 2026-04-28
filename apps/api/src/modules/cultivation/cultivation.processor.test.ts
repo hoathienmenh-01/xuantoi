@@ -2,6 +2,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import {
   CULTIVATION_TICK_BASE_EXP,
   STAMINA_REGEN_PER_TICK,
+  cultivationRateForRealm,
   expCostForStage,
 } from '@xuantoi/shared';
 import { PrismaService } from '../../common/prisma.service';
@@ -41,8 +42,11 @@ describe('CultivationProcessor.process (tick)', () => {
 
     const cA = await prisma.character.findUniqueOrThrow({ where: { id: a.characterId } });
     const cB = await prisma.character.findUniqueOrThrow({ where: { id: b.characterId } });
-    // gain = base + floor(spirit/4) = 5 + 2 = 7
-    expect(cA.exp).toBe(BigInt(CULTIVATION_TICK_BASE_EXP + 2));
+    // gain = rateForRealm(luyenkhi) + floor(spirit/4) = 7 + 2 = 9
+    const expectedGain = BigInt(
+      cultivationRateForRealm('luyenkhi', CULTIVATION_TICK_BASE_EXP) + 2,
+    );
+    expect(cA.exp).toBe(expectedGain);
     expect(cB.exp).toBe(0n);
   });
 
@@ -78,7 +82,9 @@ describe('CultivationProcessor.process (tick)', () => {
 
     const c = await prisma.character.findUniqueOrThrow({ where: { id: a.characterId } });
     // Sau tick: vượt cap → stage 2; exp = (exp + gain - cap1)
-    const gain = BigInt(CULTIVATION_TICK_BASE_EXP + 2);
+    const gain = BigInt(
+      cultivationRateForRealm('luyenkhi', CULTIVATION_TICK_BASE_EXP) + 2,
+    );
     expect(c.realmStage).toBe(2);
     expect(c.exp).toBe(cap1 - 1n + gain - cap1);
   });

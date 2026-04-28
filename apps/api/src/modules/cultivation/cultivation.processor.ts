@@ -4,6 +4,7 @@ import type { Job } from 'bullmq';
 import {
   CULTIVATION_TICK_BASE_EXP,
   STAMINA_REGEN_PER_TICK,
+  cultivationRateForRealm,
   expCostForStage,
   type CultivateTickPayload,
 } from '@xuantoi/shared';
@@ -46,8 +47,14 @@ export class CultivationProcessor extends WorkerHost {
 
     for (const c of cultivating) {
       try {
-        // EXP gain = base + spirit/4 (làm tròn xuống).
-        const gain = BigInt(CULTIVATION_TICK_BASE_EXP + Math.floor(c.spirit / 4));
+        // EXP gain = rateForRealm(realm) + floor(spirit/4).
+        // rateForRealm scale 1.45^order → tu luyện ở cảnh giới cao có base rate
+        // cao hơn, bù lại expCostForStage cũng cao hơn.
+        const realmRate = cultivationRateForRealm(
+          c.realmKey,
+          CULTIVATION_TICK_BASE_EXP,
+        );
+        const gain = BigInt(realmRate + Math.floor(c.spirit / 4));
         let exp = c.exp + gain;
         let realmKey = c.realmKey;
         let realmStage = c.realmStage;
