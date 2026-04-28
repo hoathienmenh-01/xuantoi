@@ -114,6 +114,13 @@ async function logout(): Promise<void> {
           坊 {{ t('shell.nav.market') }}
         </RouterLink>
         <RouterLink
+          to="/shop"
+          class="px-3 py-2 rounded hover:bg-ink-700/60"
+          active-class="bg-ink-700/60 text-ink-50"
+        >
+          肆 {{ t('shell.nav.shop') }}
+        </RouterLink>
+        <RouterLink
           to="/sect"
           class="px-3 py-2 rounded hover:bg-ink-700/60"
           active-class="bg-ink-700/60 text-ink-50"

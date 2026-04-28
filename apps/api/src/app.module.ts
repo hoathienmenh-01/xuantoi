@@ -16,6 +16,7 @@ import { OpsModule } from './modules/ops/ops.module';
 import { MissionModule } from './modules/mission/mission.module';
 import { GiftCodeModule } from './modules/giftcode/giftcode.module';
 import { MailModule } from './modules/mail/mail.module';
+import { ShopModule } from './modules/shop/shop.module';
 import { HealthModule } from './modules/health/health.module';
 import { RedisModule } from './common/redis.module';
 
@@ -39,6 +40,7 @@ import { RedisModule } from './common/redis.module';
     MissionModule,
     GiftCodeModule,
     MailModule,
+    ShopModule,
     HealthModule,
   ],
 })

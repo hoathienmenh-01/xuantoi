@@ -174,6 +174,7 @@
       "dungeon": "Sparring Hall",
       "inventory": "Inventory",
       "market": "Market",
+      "shop": "NPC Shop",
       "sect": "Sect",
       "boss": "World Boss",
       "missions": "Missions",
@@ -421,6 +422,30 @@
       "INVENTORY_ITEM_NOT_FOUND": "Item no longer exists.",
       "LISTING_NOT_FOUND": "Listing not found.",
       "NOT_OWNER": "This is not your listing.",
+      "UNKNOWN": "Something went wrong, please retry."
+    }
+  },
+  "shop": {
+    "title": "NPC Shop",
+    "subtitle": "Buy common pills and starter gear from the NPC vendor.",
+    "balance": "Linh Thạch",
+    "qty": "Qty",
+    "buy": "Buy",
+    "empty": "Shop is empty.",
+    "nonStackable": "1 per purchase",
+    "buyOk": "Bought {qty} × {name} for {price} linh thạch.",
+    "currency": {
+      "linhThach": "linh thạch",
+      "tienNgoc": "tiên ngọc"
+    },
+    "errors": {
+      "loadFail": "Failed to load shop.",
+      "INSUFFICIENT_FUNDS": "Not enough linh thạch.",
+      "ITEM_NOT_IN_SHOP": "Item not available in shop.",
+      "INVALID_QTY": "Invalid quantity.",
+      "NON_STACKABLE_QTY_GT_1": "This item can only be bought 1 at a time.",
+      "NO_CHARACTER": "You have not created a character.",
+      "UNAUTHENTICATED": "Session expired. Please log in again.",
       "UNKNOWN": "Something went wrong, please retry."
     }
   },
