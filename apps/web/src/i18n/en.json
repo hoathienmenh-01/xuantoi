@@ -185,6 +185,17 @@
       "admin": "Admin"
     }
   },
+  "profile": {
+    "title": "Cultivator Profile",
+    "notFound": "Cultivator not found.",
+    "sect": "Sect",
+    "joinedAt": "Joined",
+    "stats": "Stats",
+    "power": "Power",
+    "spirit": "Spirit",
+    "speed": "Speed",
+    "luck": "Luck"
+  },
   "settings": {
     "title": "Settings",
     "subtitle": "Manage your account, password and active sessions.",

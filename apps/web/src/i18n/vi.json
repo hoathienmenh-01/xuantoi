@@ -185,6 +185,17 @@
       "admin": "Quản Trị"
     }
   },
+  "profile": {
+    "title": "Đạo Hữu Kỷ Lục",
+    "notFound": "Không tìm thấy đạo hữu này.",
+    "sect": "Tông Môn",
+    "joinedAt": "Nhập đạo",
+    "stats": "Đạo Cơ",
+    "power": "Lực",
+    "spirit": "Linh",
+    "speed": "Tốc",
+    "luck": "May"
+  },
   "settings": {
     "title": "Tâm Pháp Đường",
     "subtitle": "Quản lý tài khoản, mật khẩu và phiên đăng nhập.",
