@@ -1,16 +1,16 @@
 # AI Handoff Report — Xuân Tôi
 
-> **Snapshot**: `main` @ commit `68fa1a3` (28 Apr 2026 19:23 UTC, sau khi PR #33..#46, #48..#51 merged. PR #47 KHÔNG nằm trong `main` — xem cảnh báo bên dưới).
-> **Người viết**: AI engineer session 28/4 sess.5 (audit replay gap PR #47 + bump snapshot + mark PR #50/#51 merged).
+> **Snapshot**: `main` @ commit `82e6212` (28 Apr 2026 20:00 UTC, sau khi PR #52 audit-session-5 merged + replay-gap PR #47 được giải quyết bằng PR B — cập nhật khi PR B merge).
+> **Người viết**: AI engineer session 28/4 sess.5 (PR #52 audit + PR B replay PR #47 vitest/playwright).
 > **Đối tượng đọc**: AI kế nhiệm sẽ tiếp tục đưa dự án tới beta / production.
 >
 > Báo cáo trung thực. Mọi tuyên bố "đã xong" đều có PR + file + test chứng minh. Khi chưa verify runtime, ghi rõ **"Needs runtime smoke"**.
 >
-> **Trạng thái (28/4 session 5)**: PR #33..#46 + PR #48..#51 đã merge `main`. PR #50 (docs QA_CHECKLIST.md) + PR #51 (sidebar badges) **đã merge** (session 4 ghi nhầm là Open).
+> **Trạng thái (28/4 session 5)**: PR #33..#46 + PR #48..#52 đã merge `main`. **PR B (replay PR #47 — vitest/playwright scaffold)** mang `apps/web/vitest.config.ts` + `playwright.config.ts` + `e2e/golden.spec.ts` + 17 vitest test (`toast`, `game` store) vào main — và đã fix `apps/web/package.json` từ `echo skipped` thành `vitest run`.
 >
-> ⚠️ **REPLAY GAP — PR #47**: PR #47 (`feat(web,test): wire Vitest minimal + Playwright golden path scaffold (H5)`) đã merge **NHƯNG vào feature branch `devin/1777398022-audit-pr-45-blueprint-docs` (merge commit `4ed913a`), KHÔNG vào `main`**. Trên `main` hiện tại, các file `apps/web/vitest.config.ts`, `apps/web/playwright.config.ts`, `apps/web/e2e/golden.spec.ts`, `apps/web/src/stores/__tests__/*.test.ts` **không tồn tại**, và `apps/web/package.json` test script vẫn là `echo "(web) test skipped — wire vitest in Phase 1"`. ⇒ **H5 vẫn Open trên `main`** (xem §16). Cần replay PR #47 vào main như task ưu tiên kế tiếp (Roadmap §20.2-3 + §21 PR B).
+> **Replay-gap PR #47 — Đã giải quyết**: PR B base vào main (cherry-pick `32a33a6` từ `devin/1777398483-h5-vitest-playwright`, conflict `docs/AI_HANDOFF_REPORT.md` resolved take `--ours`). Web vitest 17/17 pass local. Playwright KHÔNG add vào CI (gate `E2E_FULL=1`). ⇒ **H5 → Resolved partial** (xem §16).
 >
-> Roadmap kế tiếp: replay PR #47 (PR B) → tiếp tục closed-beta polish + smart features. Xem `## Recent Changes` + §21.
+> Roadmap kế tiếp: mở rộng vitest coverage cho 5 view chính (HomeView/MissionView/ShopView/AdminView/SettingsView), M3 WS `mission:progress`, L4 `itemName(key, locale)` helper, hoặc smart features tiếp từ prompt user §20. Xem `## Recent Changes` + §21.
 >
 > **Blueprint gốc 04/05**: nay đã được commit vào `docs/04_TECH_STACK_VA_DATA_MODEL.md` + `docs/05_KICH_BAN_BUILD_VA_PROMPT_AI.md` kèm banner **"Historical blueprint, NOT the current source of truth"**. Khi có conflict giữa 04/05 và code hiện tại + report này → **tin code & report**, KHÔNG rollback hoặc rewrite project theo 04/05.
 
@@ -895,7 +895,7 @@ _(Không có lỗi làm app không chạy / mất tiền / auth hỏng tại com
 | ~~H2~~ | ~~Không có seed script tạo admin đầu tiên.~~ | `apps/api/scripts/bootstrap.ts` | — | **Resolved** by **PR #33** (`pnpm --filter @xuantoi/api bootstrap`, idempotent, 7 test). |
 | ~~H3~~ | ~~Không có seed sect (Thanh Vân Môn, Huyền Thuỷ Cung, Tu La Điện).~~ | `apps/api/scripts/bootstrap.ts:DEFAULT_SECTS` | — | **Resolved** by **PR #33**. |
 | ~~H4~~ | ~~`InventoryService` không có test unit.~~ | `apps/api/src/modules/inventory/inventory.service.test.ts` | — | **Resolved** by **PR #34** (19 test). |
-| H5 | Web chưa có Vitest + E2E Playwright **trên `main`**. | `apps/web` | Regression FE không bắt được. | **Open (replay needed)** — PR #47 đã tạo scaffold (vitest config + playwright + 17 store test) **nhưng merge vào feature branch chứ chưa vào `main`**. Cần PR replay (xem §21 PR B). |
+| ~~H5~~ | ~~Web chưa có Vitest + E2E Playwright **trên `main`**.~~ | `apps/web/vitest.config.ts` + `playwright.config.ts` + `e2e/golden.spec.ts` + `src/stores/__tests__/*.test.ts` | — | **Resolved partial** by **PR B** (replay PR #47, cherry-pick `32a33a6`) — vitest@^2.1.9 + happy-dom + 17 store test pass (toast 9 + game 8). Playwright `@playwright/test@^1.49.0` scaffold sẵn, golden path gate `E2E_FULL=1`, **chưa wire CI matrix** (mở issue tiếp khi cần full E2E). |
 
 ### Medium
 
@@ -1064,9 +1064,9 @@ Admin hiện tại có thể vào `/admin` → Users → tìm → **Set role = A
 
 ### Immediate (1–2 session tới)
 
-1. ~~**Smoke E2E sau PR #33→#40 merged**~~ — Done tại PR #44 (6/6 pass). Còn lại: smoke tích hợp sau PR #48..#51 (admin guard, next-actions, badges) — **Needs runtime smoke**. Bao gồm verify badges sidebar với mission claimable / boss active / topup PENDING.
-2. **H5 — Replay PR #47 vào `main`** (ưu tiên cao nhất, xem §21 PR B): wire Vitest config + playwright config + 17 store test (`toast`, `game`) + golden.spec.ts gated `E2E_FULL=1` + `apps/web/package.json` test script `vitest run`.
-3. **H5 — Sau khi replay**: cân nhắc thêm Playwright vitest CI matrix riêng — medium effort, cần service Postgres + Redis + spin api/web.
+1. ~~**Smoke E2E sau PR #33→#40 merged**~~ — Done tại PR #44 (6/6 pass). Còn lại: smoke tích hợp sau PR #48..#52 + PR B (admin guard, next-actions, badges, vitest scaffold) — **Needs runtime smoke**. Bao gồm verify badges sidebar với mission claimable / boss active / topup PENDING.
+2. ~~**H5 — Replay PR #47 vào `main`**~~ — **Done** by **PR B** (cherry-pick `32a33a6`). 17 vitest pass (toast 9 + game 8). Playwright scaffold ready, gate `E2E_FULL=1`.
+3. **H5 follow-up — Mở rộng vitest coverage**: thêm test cho `HomeView` (next-action panel render), `AppShell` (badge logic), `MissionView` (claim flow), 1-2 component snapshot. Tùy chọn: wire Playwright CI job riêng (medium effort, cần service Postgres + Redis + spin api/web).
 4. ~~**M1 — Mission timezone env**~~: **Done** by **PR #42** — `MISSION_RESET_TZ=Asia/Ho_Chi_Minh` vào `MissionService` helpers + 7 test.
 5. **i18n gap audit** sau khi thêm settings/profile/shop/boss-admin (~75 key mới) — grep `[À-ỹ]` trong `.vue/.ts`.
 
@@ -1124,11 +1124,10 @@ Admin hiện tại có thể vào `/admin` → Users → tìm → **Set role = A
 - **File**: chỉ ghi báo cáo trong `docs/AI_HANDOFF_REPORT.md` (Recent Changes / Smoke section). Không sửa code (nếu không phát hiện bug).
 - **Risk**: nếu phát hiện bug → mở PR fix riêng theo mức độ.
 
-#### PR B — H5 Replay PR #47 (Vitest minimal + Playwright scaffold) vào `main`
-- **Bối cảnh**: PR #47 (`32a33a6 feat(web,test): wire Vitest minimal + Playwright golden path scaffold (H5)`) đã merge vào feature branch `devin/1777398022-audit-pr-45-blueprint-docs` tại `4ed913a` nhưng KHÔNG vào `main`. Cần PR mới base vào `main` mang nguyên nội dung PR #47 (cherry-pick `32a33a6` hoặc clean re-impl).
-- **File**: `apps/web/vitest.config.ts` (new, vitest@^2.1.9 happy-dom), `apps/web/playwright.config.ts` (new, @playwright/test@^1.49.0), `apps/web/e2e/golden.spec.ts` (new, smoke + golden gated `E2E_FULL=1`), `apps/web/src/stores/__tests__/toast.test.ts` (new, 9 test), `apps/web/src/stores/__tests__/game.test.ts` (new, 8 test), `apps/web/package.json` (test script `vitest run` + 4 devDeps + scripts `test:watch`/`e2e`/`e2e:install`), `pnpm-lock.yaml`. **Không sửa** `.github/workflows/ci.yml` — step `pnpm test` recursive sẽ tự pickup vitest (+~2s).
+#### ~~PR B — H5 Replay PR #47 (Vitest minimal + Playwright scaffold) vào `main`~~ — **Done** (cherry-pick `32a33a6` vào main, conflict `docs/AI_HANDOFF_REPORT.md` resolved take `--ours`)
+- **File**: `apps/web/vitest.config.ts` (new, vitest@^2.1.9 happy-dom), `apps/web/playwright.config.ts` (new, @playwright/test@^1.49.0), `apps/web/e2e/golden.spec.ts` (new, smoke + golden gated `E2E_FULL=1`), `apps/web/src/stores/__tests__/toast.test.ts` (new, 9 test), `apps/web/src/stores/__tests__/game.test.ts` (new, 8 test), `apps/web/package.json` (test script `vitest run` + 4 devDeps + scripts `test:watch`/`e2e`/`e2e:install`), `pnpm-lock.yaml`. **Không sửa** `.github/workflows/ci.yml` — step `pnpm test` recursive tự pickup vitest (+~2s).
 - **Test**: 17 vitest pass local. Playwright KHÔNG add vào CI (cần browser + full stack). API/shared test không đổi.
-- **Risk**: low — chỉ thêm test infrastructure, không sửa runtime code. CI build sẽ tốn thêm ~2s cho vitest run.
+- **Risk**: low — chỉ thêm test infrastructure, không sửa runtime code. CI build tốn thêm ~2s cho vitest run.
 
 #### ~~PR C — M1 Mission reset timezone env~~ — **Done** (PR #42)
 - **File**: `apps/api/src/modules/mission/mission.service.ts` (helper `getMissionResetTz` + tz-aware `nextDailyWindowEnd`/`nextWeeklyWindowEnd`), `apps/api/.env.example` (`MISSION_RESET_TZ=Asia/Ho_Chi_Minh`), `mission.service.test.ts` (+7 test).
@@ -1153,10 +1152,17 @@ Admin hiện tại có thể vào `/admin` → Users → tìm → **Set role = A
 - Helper `itemName(key, locale)` (L4) vẫn open — tách thành PR riêng khi có catalog item l10n.
 
 #### Thứ tự đề xuất cho AI tiếp theo
-**~~A (smoke)~~ → B (Replay PR #47 — Vitest+Playwright) → ~~C (timezone)~~ → ~~D (index)~~ → ~~E (guard split)~~ → ~~F (i18n)~~**.  
-(A Done qua PR #44 smoke E2E pass 6/6; C Done tại PR #42; D Done tại PR #43; E Done tại PR #48; F Done tại PR #45. **B vẫn pending** vì replay-gap PR #47.)
+**~~A (smoke)~~ → ~~B (Replay PR #47 — Vitest+Playwright)~~ → ~~C (timezone)~~ → ~~D (index)~~ → ~~E (guard split)~~ → ~~F (i18n)~~**.  
+(A Done qua PR #44 smoke E2E pass 6/6; B Done tại PR replay PR #47 [session 5]; C Done tại PR #42; D Done tại PR #43; E Done tại PR #48; F Done tại PR #45.)
 
-**Ưu tiên hành động sau PR B (replay PR #47)**: chuyển sang smart-feature tiếp hoặc closed-beta polish (mobile responsive verify, helper `itemName(key, locale)` cho L4, `ADMIN_REVOKE` endpoint cho L7, mở rộng vitest coverage cho `home`/`mission`/`shop` view). Không còn issue **High** đóng trên main ngoài H5; chỉ còn **Medium** (M3/M6/M7/M9/M10/M11) và **Low** (L2/L3/L4/L5/L6/L7).
+**Ưu tiên hành động sau PR B**: chuyển sang smart-feature tiếp hoặc closed-beta polish:
+- **G1 (high value, low risk)**: Mở rộng vitest coverage cho `HomeView` (next-action panel render), `AppShell` (badge logic 60s polling), `MissionView` (claim button enable/disable). Reuse vitest infra của PR B.
+- **G2 (medium, low)**: L4 helper `itemName(key, locale)` cho `MissionView/MailView/GiftCodeView/ShopView` — dịch tên item theo i18n.
+- **G3 (medium, medium)**: M3 WS `mission:progress` push (throttled `emitToUser` tại `MissionService.track*`).
+- **G4 (smart admin)**: Admin Overview tab thêm alert nếu currency âm / item qty âm / topup pending >24h.
+- **G5 (post-beta backlog)**: leaderboard, `ADMIN_REVOKE` endpoint (L7), Alchemy/Refinery/Arena.
+
+Không còn issue **High** mở trên main; chỉ còn **Medium** (M3/M6/M7/M9/M10/M11) và **Low** (L2/L3/L4/L5/L6/L7).
 
 Các hạng mục smart-feature đề xuất (không bắt buộc — AI tự quyết theo prompt user):
 - **Smart next-action / onboarding checklist** (§16 của prompt user mục 1–2): /home giợ widget "Nên làm gì tiếp?" dựa trên state (đủ EXP đột phá, mission claim-able, mail unread, boss đang mở, …).
@@ -1170,7 +1176,20 @@ Leaderboard / Alchemy / Refinery / Arena / Pet / Companion / Event / Battle Pass
 
 ---
 
-### Session 5 audit log (28/4 19:56 UTC — this PR)
+### Session 5 audit log (28/4 19:56–20:08 UTC — PR #52 + PR B replay)
+
+**PR B — Replay PR #47 (cherry-pick `32a33a6` vào main)**
+- Branch mới base off main (sau khi PR #52 merge tại `82e6212`).
+- `git cherry-pick 32a33a6` → conflict `docs/AI_HANDOFF_REPORT.md` (file đã thay đổi nhiều từ session 4 đến 5). Resolve: `git checkout --ours docs/AI_HANDOFF_REPORT.md` (giữ report mới hơn của session 5), để PR B không đụng report. Sau đó update report riêng trong cùng PR (entry này).
+- Cherry-pick continue → commit giữ nguyên tác giả + message gốc PR #47.
+- `pnpm install` (mang 20 devDep mới cho vitest/playwright/happy-dom/test-utils).
+- `pnpm --filter @xuantoi/web test` → 17 pass (1.86s, vitest 2.1.9, happy-dom).
+- `pnpm typecheck` + `pnpm lint` + `pnpm build` → pass (xem checklist dưới).
+- Risk: low — chỉ thêm test infra, không đụng runtime code.
+
+---
+
+**PR #52 — audit session 5 (this changelog entry referenced)**
 
 - **Action**: pull `main` → `68fa1a3`. Verify trạng thái PR #46..#51 và phát hiện replay-gap PR #47.
 - **Discrepancy phát hiện**:
