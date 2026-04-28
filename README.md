@@ -76,6 +76,12 @@ pnpm dev
 
 Xem chi tiết spec trong tài liệu `docs/04_TECH_STACK_VA_DATA_MODEL.md` và `docs/05_KICH_BAN_BUILD_VA_PROMPT_AI.md` (sẽ đẩy lên sau).
 
+## Tài liệu developer
+
+- [`docs/SEEDING.md`](./docs/SEEDING.md) — static catalog Item / Skill / Dungeon / Mission / Realm + cách thêm mới.
+- [`docs/BALANCE.md`](./docs/BALANCE.md) — công thức EXP / damage / drop + bảng tra 28 cảnh giới.
+- [`docs/BETA_CHECKLIST.md`](./docs/BETA_CHECKLIST.md) — roadmap & cut-line để chuẩn bị beta.
+
 ## License
 
 Private — chưa công khai.
