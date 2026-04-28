@@ -1,10 +1,12 @@
 # AI Handoff Report — Xuân Tôi
 
-> **Snapshot**: `main` @ commit `897eb2f` (28 Apr 2026, sau khi PR #25 + #31 merged).
-> **Người viết**: AI engineer đã làm session 27-28/4 (Phase 0-8 + chuỗi PR #9..#31).
+> **Snapshot**: `main` @ commit `ce6da28` (28 Apr 2026, sau khi PR #33..#40 merged).
+> **Người viết**: AI engineer session 28/4 (audit chuỗi PR #33..#40 + cập nhật report).
 > **Đối tượng đọc**: AI kế nhiệm sẽ tiếp tục đưa dự án tới beta / production.
 >
-> Báo cáo trung thực. Mọi tuyên bố "đã xong" đều có PR + file + test chứng minh. Khi nào chưa verify runtime, sẽ ghi rõ **"chưa xác minh runtime"**.
+> Báo cáo trung thực. Mọi tuyên bố "đã xong" đều có PR + file + test chứng minh. Khi chưa verify runtime, ghi rõ **"Needs runtime smoke"**.
+>
+> **Trạng thái audit (28/4 session 2)**: 8 PR (#33→#40) đã merge vào `main`, CI xanh trên từng PR. Đã smoke local (typecheck/lint/test/build) thông qua mỗi PR; **chưa** smoke E2E trên `main` sau cùng. Xem `## Recent Changes (PR #33→#40)`.
 
 ---
 
@@ -15,29 +17,173 @@
 - **Gameplay loop**: đăng ký → chọn tông môn → **Nhập Định (cultivation)** passive tick EXP → **Luyện Khí Đường (combat PvE)** + dungeon → loot → **Phường Thị (market P2P)** → **Tông Môn (sect)** cống hiến + chat → **World Boss** → **Nạp Tiên Ngọc (topup)** → admin cấp → tiến cảnh giới 28 stage.
 - **Stack**: monorepo pnpm. `apps/api` (NestJS 10 + Prisma 5 + Postgres 16 + Redis 7 + BullMQ + Socket.io). `apps/web` (Vue 3 + Vite + Pinia + Tailwind + vue-i18n + PWA). `packages/shared` (Zod + realms/items/missions catalog).
 - **Mục tiêu hiện tại**: **closed beta readiness**. Hầu hết feature Phase 0-8 + Mission + Mail + GiftCode đã merge. Còn lại polish + observability + content scale.
-- **Trạng thái**: repo build xanh, CI xanh, **150 test api + 30 test shared = 180 test pass** (tại commit tham chiếu). Chưa E2E runtime smoke trên bản main mới (PR #25 + #31 vừa merge, chỉ local test pass).
+- **Trạng thái**: repo build xanh, CI xanh trên PR #40. Sau khi PR #33→#40 merge: **~217 test API + ~47 test shared (≈4 file) = ~264 test** đếm theo `it(`. Chưa runtime smoke E2E trên main mới sau tất cả PR → **Needs runtime smoke**.
 
 ---
 
 ## 2. Current Branch / CI / PR Status
 
 - **Default branch**: `main`.
-- **Commit audit**: `897eb2f Merge pull request #31 from hoathienmenh-01/devin/1777365088-pr-g-mail-ws-prune`.
-- **CI gần nhất trên main**: xanh (GitHub Actions: `api build` + `web build`; Devin Review là external check không block merge).
-- **PR open đáng kể**: **không có** tại thời điểm viết. Tất cả chuỗi PR #9..#31 đã merge (trừ các branch feature cũ chưa xoá, không mở PR).
-- **PR merged gần đây ảnh hưởng lớn** (theo thứ tự thời gian):
+- **Commit audit**: `ce6da28 Merge pull request #40 from hoathienmenh-01/devin/1777372035-item-ledger`.
+- **CI gần nhất trên main**: xanh (GitHub Actions job `build` — typecheck + lint + test + build, có postgres + redis service; Devin Review là external check không block merge).
+- **PR open đáng kể**: **không có**. Toàn bộ chuỗi #33..#40 đã merge vào `main`.
+- **PR merged gần đây ảnh hưởng lớn**:
   | PR | Chủ đề | Impact |
   |---|---|---|
   | #24 | Chat rate limit Redis sliding window | Anti-spam, fallback in-memory |
-  | #25 | Mission backend (`mission.*`) + scheduler reset | Thêm module + `MissionProgress` model + cron daily/weekly |
-  | #26 | Mission FE (`MissionView.vue`) | Thêm route `/missions` + nav |
-  | #27 | Mail system (BE + FE + admin send/broadcast) | Thêm `Mail` model + `/mail/*` + `/admin/mail/*` |
-  | #28 | Gift code (BE + FE + admin) | Thêm `GiftCode` + `GiftCodeRedemption` + `/giftcode/redeem` + `/admin/giftcodes/*` |
-  | #29 | Health/docs (`/healthz` `/readyz` `/version`) + `docs/API.md` | Observability + API inventory |
-  | #30 | Admin stats (`/admin/stats`) + Overview tab | Admin dashboard |
-  | #31 | WS `mail:new` push + cron prune mail claimed >90d | Mail live push + housekeeping |
+  | #25 | Mission backend + scheduler reset | Thêm `MissionProgress` + cron daily/weekly |
+  | #26 | Mission FE (`MissionView.vue`) | Route `/missions` + nav |
+  | #27 | Mail system | `Mail` model + `/mail/*` + `/admin/mail/*` |
+  | #28 | Gift code | `GiftCode` + `/giftcode/redeem` + admin CRUD |
+  | #29 | `/healthz` + `/readyz` + `/version` + `docs/API.md` | Observability |
+  | #30 | Admin stats + Overview tab | Dashboard |
+  | #31 | WS `mail:new` + cron prune mail claimed >90d | Live push + housekeeping |
+  | #33 | Bootstrap admin + 3 sect (idempotent) | Resolve H2 + H3 |
+  | #34 | InventoryService 19 test | Resolve H4 |
+  | #35 | Docs ops (RUN_LOCAL/DEPLOY/ADMIN_GUIDE/SECURITY/TROUBLESHOOTING) | Onboard ops/admin |
+  | #36 | Admin boss spawn `/boss/admin/spawn` + UI tab + audit | Resolve M2 |
+  | #37 | Settings page + change password + logout-all (`POST /_auth/logout-all`) | Self-service auth |
+  | #38 | `GET /character/profile/:id` + `ProfileView` | Profile viewing — Resolve M3 partial |
+  | #39 | NPC Shop module (`/shop/npc`, `/shop/buy`) + ShopView + catalog `NPC_SHOP` (11 entries) | Sink for LINH_THACH ngày 1 |
+  | #40 | `ItemLedger` audit + hook 6 grant flows + market post/cancel/buy ledger | Resolve M4 |
 
 - Các branch `devin/*` feature đã merge vẫn còn tồn tại ở origin — có thể xoá sau khi smoke test, không cần gấp.
+
+---
+
+## Recent Changes (PR #33→#40)
+
+Mỗi PR đều `Merged` vào `main`, CI xanh (3/3 check), branch base = `main`. Smoke local (typecheck/lint/test/build) đã chạy ở mỗi PR; **chưa** smoke E2E sau khi tất cả merged → ghi `Needs runtime smoke` ở mục cuối.
+
+### PR #33 — `feat(api): bootstrap admin đầu tiên + seed 3 tông môn (H2 + H3)`
+
+- **Branch**: `devin/1777368742-bootstrap-admin-sect`. **Status**: Merged. **CI**: xanh.
+- **Commits chính**: `a8b5fb0 feat(api): bootstrap script tạo admin đầu tiên + 3 tông môn mặc định`, `8187896 fix(api): thêm require/module/NodeJS vào eslint globals cho scripts/`.
+- **Mục tiêu**: Fresh deploy chạy `pnpm --filter @xuantoi/api bootstrap` là có 1 ADMIN + 3 sect (Thanh Vân Môn, Huyền Thuỷ Cung, Tu La Điện). Idempotent — không ghi đè `passwordHash`.
+- **File**: `apps/api/scripts/bootstrap.ts` (new), `apps/api/scripts/bootstrap.test.ts` (new, 7 test), `apps/api/.env.example` thêm `INITIAL_ADMIN_EMAIL` + `INITIAL_ADMIN_PASSWORD`, `apps/api/package.json` thêm script `bootstrap`, `apps/api/tsconfig.json`/`vitest.config.ts`/`eslint.config.js` cover `scripts/`, `README.md` thêm bước bootstrap.
+- **Migration / seed**: không tạo migration mới — chỉ ghi vào `User` + `Sect` qua Prisma client.
+- **Test**: 7 test integration (real Postgres) — env validation, tạo mới, idempotent, promote PLAYER, promote PLAYER banned, `skipAdmin`, `skipSects`.
+- **Risk**: nếu `INITIAL_ADMIN_EMAIL` trùng email user PLAYER thật → promote (đã document).
+- **Follow-up**: không.
+
+### PR #34 — `test(api): inventory.service coverage 19 test (H4)`
+
+- **Branch**: `devin/1777369187-inventory-tests`. **Status**: Merged. **CI**: xanh.
+- **Commit chính**: `04724c0 test(api): inventory.service test coverage (H4)`.
+- **Mục tiêu**: Đóng gap H4 — InventoryService 0 test.
+- **File**: `apps/api/src/modules/inventory/inventory.service.test.ts` (new, 19 test). Không sửa service.
+- **Test breakdown**: `grant`+`list` (4), `equip`/`unequip` (7), `use` (5), `equipBonus` (2), `grantTx` (1).
+- **Risk**: chưa cover concurrency `Promise.all` — post-beta.
+- **Follow-up**: không.
+
+### PR #35 — `docs: 5 doc ops trước closed beta (RUN_LOCAL, DEPLOY, ADMIN_GUIDE, SECURITY, TROUBLESHOOTING)`
+
+- **Branch**: `devin/1777369332-docs-ops`. **Status**: Merged. **CI**: xanh (docs only).
+- **Commit chính**: `c827794 docs: add RUN_LOCAL/DEPLOY/ADMIN_GUIDE/SECURITY/TROUBLESHOOTING`.
+- **Mục tiêu**: Onboard contributor + admin mới.
+- **File**: `docs/RUN_LOCAL.md`, `docs/DEPLOY.md`, `docs/ADMIN_GUIDE.md`, `docs/SECURITY.md`, `docs/TROUBLESHOOTING.md` (5 file mới); `README.md` thêm link.
+- **Migration / seed / i18n / test**: không.
+- **Risk**: docs có thể outdated khi code đổi (low).
+- **Follow-up**: không.
+
+### PR #36 — `feat(boss): admin spawn endpoint + UI tab + audit (M2)`
+
+- **Branch**: `devin/1777369737-admin-boss-spawn`. **Status**: Merged. **CI**: xanh.
+- **Commits chính**: `416c6f5` (feat), `1ce753b` (fix tôn trọng admin level), `aa2b130` (fix race condition flip ACTIVE→EXPIRED), `56aa07d` (fix force-expire phải distribute reward + audit replacedBossId).
+- **Mục tiêu**: Admin chủ động spawn boss (cho QA, GM event live).
+- **BE**: `boss.service.ts` thêm `adminSpawn(actorId, opts)` + `BOSS_ALREADY_ACTIVE`/`INVALID_BOSS_KEY`/`INVALID_LEVEL`. `boss.controller.ts` `@Post('admin/spawn')` + `AdminGuard`. `boss.module.ts` import `AdminModule`. `admin.module.ts` export `AdminGuard`.
+- **FE**: `apps/web/src/api/admin.ts` `adminSpawnBoss()`. `AdminView.vue` thêm tab `boss`. i18n VI/EN +8 key + 3 error code.
+- **Audit**: `AdminAuditLog` action `BOSS_SPAWN`, có `replacedBossId` khi force-expire.
+- **Test**: `boss.service.test.ts` +7 test (spawn mới, default level, auto-rotate, ALREADY_ACTIVE, force replace, INVALID_BOSS_KEY rollback, level boundary). Tổng 16 test boss.
+- **Risk**: admin spam spawn → coi như feature (audit ghi rõ).
+- **Follow-up**: không.
+
+### PR #37 — `feat(settings): trang Settings + đổi mật khẩu + logout-all`
+
+- **Branch**: `devin/1777370196-settings-page`. **Status**: Merged. **CI**: xanh.
+- **Commit chính**: `96ed383 feat(settings): trang Settings + đổi mật khẩu + logout-all (M5/M7)`.
+- **Mục tiêu**: Self-service đổi password + logout all devices trước beta.
+- **BE**: `auth.service.ts` thêm `logoutAll(userId)` revoke toàn bộ refresh token active. `auth.controller.ts` `@Post('logout-all')` ⇒ path `/api/_auth/logout-all`.
+- **FE**: `views/SettingsView.vue` (new, 4 section: account info, change password, locale, logout-all). `router/index.ts` `/settings`. `AppShell.vue` link "Tâm Pháp". `api/auth.ts` `logoutAll()`. i18n VI/EN +25 key + `shell.nav.settings`.
+- **Test**: `auth.service.test.ts` +3 test cho `logoutAll` (revoke 2 active token, idempotent, không ảnh hưởng user khác). Tổng 18 test auth.
+- **Caveat**: Access token cũ (15 phút) vẫn valid sau `logoutAll` cho thiết bị khác → không bump `passwordVersion` vì password chưa đổi. Trade-off acceptable.
+- **Follow-up**: không.
+
+### PR #38 — `feat(character): GET /character/profile/:id + ProfileView`
+
+- **Branch**: `devin/1777370723-profile-view`. **Status**: Merged. **CI**: xanh.
+- **Commits chính**: `c738e36` (feat), `f675328 fix(profile): hiển thị tên cảnh giới đầy đủ`.
+- **Mục tiêu**: Public profile cho người chơi khác (cần cho leaderboard / market / chat tap-name).
+- **BE**: `character.service.ts` thêm `PublicProfileView` + `findPublicProfile(id)` — public-safe (không lộ exp/hp/mp/stamina/linhThach/tienNgoc/cultivating). Owner banned ⇒ `null`. `character.controller.ts` `@Get('profile/:id')` yêu cầu access cookie (anti-scrape).
+- **FE**: `api/character.ts` `getPublicProfile(id)`. `views/ProfileView.vue` (new). `router/index.ts` `/profile/:id`. `BossView.vue` cell tên người chơi → `RouterLink /profile/:id`. i18n +10 key.
+- **Test**: `character.service.test.ts` mới, 6 case (id null, full view, sect / no-sect, banned ⇒ null, role ADMIN/MOD lộ).
+- **Risk**: chưa rate-limit endpoint (low — id là cuid, hard enumerate).
+- **Follow-up**: leaderboard FE chưa có (post-beta).
+
+### PR #39 — `feat(shop): NPC Shop module — GET /shop/npc + POST /shop/buy + ShopView`
+
+- **Branch**: `devin/1777371222-npc-shop`. **Status**: Merged. **CI**: xanh.
+- **Commit chính**: `2be7b74`.
+- **Mục tiêu**: Sink LINH_THACH cho beta player ngày 1 (không cần chờ market P2P).
+- **Shared**: `packages/shared/src/shop.ts` (new) — `NPC_SHOP` (11 entries: 3 đan HP/MP, 1 đan EXP, 1 quặng, 6 starter equipment Phàm/Linh phẩm, only LINH_THACH). Helpers `npcShopEntries`, `npcShopByKey`, `toShopEntryView`.
+- **BE**: `apps/api/src/modules/shop/{shop.module,shop.service,shop.controller}.ts` (new). `shop.service.ts` `buy(userId, itemKey, qty)` `$transaction(applyTx + grantTx)` với `LedgerReason='SHOP_BUY'`. `currency.service.ts` thêm `'SHOP_BUY'` vào `LedgerReason` union. `app.module.ts` register `ShopModule`.
+- **FE**: `api/shop.ts`, `views/ShopView.vue`, route `/shop`, nav "肆 NPC Tiệm", i18n +18 key.
+- **Test**: `shop.service.test.ts` mới, 10 case (anti-spoof boss item, INSUFFICIENT_FUNDS không trừ tiền, NON_STACKABLE_QTY_GT_1, validation qty, gộp stackable, NO_CHARACTER, instanceof error).
+- **Migration / seed**: không (Schema đã có sẵn).
+- **Risk**: stock infinite, không daily limit (intentional). Không có rate-limit.
+- **Follow-up**: PR #40 hook `ItemLedger` cho shop (đã làm — có dòng `SHOP_BUY` qua `grantTx`).
+
+### PR #40 — `feat(inventory): ItemLedger audit trail (M4) + hook 6 grant flows`
+
+- **Branch**: `devin/1777372035-item-ledger`. **Status**: Merged. **CI**: xanh.
+- **Commits chính**: `4553bb9` (feat), `b781163 fix(inventory): pass meta to grant/grantTx after merge với main (PR #34 + #39)`.
+- **Mục tiêu**: Đóng gap M4 — `ItemLedger` audit table cho mọi item flow.
+- **Schema**: `prisma/schema.prisma` thêm model `ItemLedger { characterId, itemKey, qtyDelta (signed Int), reason, refType?, refId?, actorUserId?, meta, createdAt }` + 4 index. Migration `20260428102849_itemledger` (ADD TABLE only, an toàn rollback).
+- **Reasons**: Inflow `COMBAT_LOOT` / `BOSS_REWARD` / `MARKET_BUY` / `MISSION_CLAIM` / `MAIL_CLAIM` / `GIFTCODE_REDEEM` / `SHOP_BUY` / `ADMIN_GRANT`. Outflow `USE` / `MARKET_SELL` / `ADMIN_REVOKE`.
+- **InventoryService**: `grant()`/`grantTx()` thêm tham số bắt buộc `meta: ItemLedgerMeta`. `grantOneTx()` ghi 1 dòng / item (không cộng dồn). `use()` ghi `qtyDelta=-1 reason='USE'` cùng `$transaction`.
+- **Callers**: `combat.service.ts` (`COMBAT_LOOT`), `boss.service.ts` (`BOSS_REWARD`), `giftcode.service.ts` (`GIFTCODE_REDEEM`), `mail.service.ts` (`MAIL_CLAIM`), `mission.service.ts` (`MISSION_CLAIM`), `shop.service.ts` (`SHOP_BUY`), `market.service.ts` post (`-qty MARKET_SELL stage=POST`), cancel (`+qty stage=CANCEL`), buy (`+qty MARKET_BUY` cho buyer).
+- **Test**: `inventory/item-ledger.test.ts` (new, 7 test) + `market.service.test.ts` +2 test (post/buy/cancel ledger flow). `test-helpers.ts` `wipeAll` xoá `itemLedger` trước `currencyLedger`.
+- **Risk**: volume ~10–50 row/player/ngày (đủ index, có thể partition sau).
+- **Follow-up**: equip/unequip không ghi ledger (đúng thiết kế — không thay đổi qty). `ADMIN_REVOKE` chưa có endpoint thật (chỉ enum cho future).
+
+### Audit gap (chưa được cover trong PR #33→#40)
+
+- **E2E Playwright** vẫn chưa có (H5 còn).
+- **Web Vitest** vẫn chưa wire (H5 còn).
+- **Smoke runtime** sau khi cả 8 PR merged chưa chạy → đánh dấu `Needs runtime smoke` ở §16 H1.
+
+---
+
+## Completed Features (snapshot `main @ ce6da28`)
+
+| Feature | Backend | Frontend | Test | Status |
+|---|---|---|---|---|
+| Auth (register / login / refresh / change-password / **logout-all**) | `modules/auth/*` | `views/AuthView.vue` + `views/SettingsView.vue` + `stores/auth.ts` | 18 test | **Done** |
+| Onboarding (chọn sect) | `modules/character/character.service.ts` | `views/OnboardingView.vue` | 6 test (profile) | **Done** |
+| Cultivation tick (BullMQ 30s) | `modules/cultivation/*` | `stores/game.ts` (WS `cultivate:tick`) | 5 test | **Done** |
+| Combat (dungeon turn-based) | `modules/combat/*` | `views/DungeonView.vue` | 7 test | **Done** |
+| Inventory (equip / unequip / use / stack) | `modules/inventory/*` | `views/InventoryView.vue` | 19 + 7 (ledger) test | **Done** |
+| Market P2P (post / buy / cancel + 5% fee) | `modules/market/*` | `views/MarketView.vue` | 10 test | **Done** |
+| Sect (list / create / join / leave / contribute) | `modules/sect/*` | `views/SectView.vue` | 7 test | **Done** |
+| Chat (world / sect + Redis sliding window 8/30s) | `modules/chat/*` | `components/shell/ChatPanel.vue` | 9 test | **Done** |
+| World Boss (current / attack + reward distribution) | `modules/boss/*` | `views/BossView.vue` | 16 test (incl. `adminSpawn`) | **Done** |
+| **Admin Boss Spawn** (PR #36) | `POST /api/boss/admin/spawn` + `AdminGuard` + audit `BOSS_SPAWN` | `AdminView.vue` tab boss | 7 test | **Done** |
+| Topup (manual approval) | `modules/topup/*` + `modules/admin/*` | `views/TopupView.vue` + `AdminView.vue` | 13 admin/topup test | **Done** |
+| Admin (users / topups / audit / stats / giftcodes / mail / boss) | `modules/admin/*` | `views/AdminView.vue` | 13 test | **Done** |
+| GiftCode (player redeem + admin CRUD) | `modules/giftcode/*` | `views/GiftCodeView.vue` + admin tab | 12 test | **Done** |
+| Mail (inbox / read / claim + admin send/broadcast + WS `mail:new` + cron prune) | `modules/mail/*` | `views/MailView.vue` + admin tab | 14 test | **Done** |
+| Mission (daily/weekly/once + claim + cron reset) | `modules/mission/*` | `views/MissionView.vue` | 19 test | **Done** (M1 timezone open) |
+| Health (`/healthz`/`/readyz`/`/version`) | `modules/health/*` | — | 4 test | **Done** |
+| Ops housekeeping (BullMQ prune) | `modules/ops/*` | — | 7 test | **Done** |
+| Realtime (WS `/api/ws` JWT auth) | `modules/realtime/*` | `ws/client.ts` | 10 test | **Done** |
+| **Bootstrap CLI** (PR #33) | `apps/api/scripts/bootstrap.ts` | — | 7 test | **Done** |
+| **Settings page** (PR #37) | `POST /api/_auth/logout-all` | `views/SettingsView.vue` | 3 test | **Done** |
+| **Public Profile** (PR #38) | `GET /api/character/profile/:id` | `views/ProfileView.vue` | 6 test | **Done** |
+| **NPC Shop** (PR #39) | `modules/shop/*` (`/shop/npc`, `/shop/buy`) + catalog `NPC_SHOP` 11 entries | `views/ShopView.vue` | 10 test | **Done** |
+| **ItemLedger** audit (PR #40) | `prisma:ItemLedger` + hook 6 grant flows + market post/cancel/buy | — | 7 test (+ 2 market) | **Done** |
+| **Docs ops** (PR #35) | — | `docs/RUN_LOCAL.md` + `DEPLOY.md` + `ADMIN_GUIDE.md` + `SECURITY.md` + `TROUBLESHOOTING.md` | — | **Done** |
+
+> Tất cả feature trên **đã merge code + test pass trong CI từng PR**, **chưa** smoke E2E sau khi tất cả merged đồng thời → mọi feature đánh `Needs runtime smoke` cho đến khi PR A (xem §21) chạy.
 
 ---
 
@@ -511,34 +657,37 @@ apps/api/src/modules/character/currency.service.ts:88   data: { tienNgoc: { incr
 
 | Area | Existing Tests | Missing | Priority |
 |---|---|---|---|
-| Auth | 15 test (`auth.service.test.ts`) | Email verification / password reset flow chưa có feature nên không test | — |
+| Auth | **18 test** (`auth.service.test.ts`) — +3 cho `logoutAll` (PR #37) | Email verification / password reset flow chưa có feature | — |
+| Bootstrap | **7 test** (`scripts/bootstrap.test.ts`) (PR #33) | — | — |
 | Character/Currency | 9 test (`currency.service.test.ts`) | Test breakthrough multi-stage | Low |
+| Character/Profile | **6 test** (`character.service.test.ts`) (PR #38) | — | — |
 | Cultivation | 5 test (`cultivation.processor.test.ts`) | Multi-instance lock test | Medium |
 | Combat | 7 test (`combat.service.test.ts`) | Skill with status effect chain | Low |
-| Inventory | **0 test riêng** | Equip/unequip swap, stack, use | **Medium** |
-| Market | 8 test (`market.service.test.ts`) | Fee config test | Low |
+| Inventory | **19 test** (`inventory.service.test.ts`) (PR #34) + **7 test** (`item-ledger.test.ts`) (PR #40) | Concurrency `Promise.all` race | Low |
+| Market | **10 test** (`market.service.test.ts`) — +2 ledger flow (PR #40) | Fee config test | Low |
 | Sect | 7 test (`sect.service.test.ts`) | Leader transfer (feature chưa có) | Low |
 | Chat | 9 test (`chat.service.test.ts`) | Redis failover test | Low |
-| Boss | 6 test (`boss.service.test.ts`) | Spawn cron (feature chưa có) | Medium |
-| Admin/Topup | 11 test (`admin-stats` + `topup-admin`) | User list filter edge | Low |
+| Boss | **16 test** (`boss.service.test.ts`) — +7 cho `adminSpawn` (PR #36) | Spawn cron auto (feature chưa có) | Medium |
+| Admin/Topup | **13 test** (`admin-stats` 3 + `topup-admin` 10) | User list filter edge | Low |
 | GiftCode | 12 test (`giftcode.service.test.ts`) | Expire during redeem race | Low |
 | Mail | 14 test (`mail.service.test.ts`) | WS `mail:new` tích hợp end-to-end | Low |
 | Mission | 19 test (`mission.service.test.ts`) | Reset cron timezone | Medium |
-| Health | 3 test (`health.controller.test.ts`) | — | — |
-| Ops | 6 test (`ops.processor.test.ts`) | — | — |
+| **Shop** | **10 test** (`shop.service.test.ts`) (PR #39) | Daily limit (feature chưa có) | — |
+| Health | 4 test (`health.controller.test.ts`) | — | — |
+| Ops | **7 test** (`ops.processor.test.ts`) | — | — |
 | Realtime | 10 test (`realtime.gateway.test.ts`) | Ban user during connection | Medium |
-| Rate limiter | 11 test (`rate-limiter.test.ts`) | — | — |
-| Shared (realms/catalog/proverbs) | 30 test | — | — |
+| Rate limiter | 8 test (`rate-limiter.test.ts`) | — | — |
+| Shared (realms/catalog/proverbs) | **47 test** (3 file) | — | — |
 | **Web Vitest** | **0** | **Toàn bộ** | **High** |
 | **E2E Playwright** | **0** | **Toàn bộ golden path** | **High** |
-| **Economy integration** | Rải rác trong từng service | Cross-module ledger consistency test | Medium |
+| **Economy integration** | Rải rác trong từng service + `item-ledger.test.ts` consistency check | Cross-module: market post → buy, ngân sách sect | Medium |
 
-**Tổng**: 150 test api + 30 test shared = **180 test**. CI xanh. Real Postgres + real Redis service.
+**Tổng (đếm `it(`)**: ~217 test API + ~47 test shared = **~264 test**. CI xanh. Real Postgres + real Redis service. (Con số `vitest run` thực tế có thể lệch nhẹ do `it.skip` hoặc `describe.each` — chạy `pnpm test` để verify chính xác.)
 
 **Chạy**:
 ```bash
-pnpm --filter @xuantoi/api test        # 150 test
-pnpm --filter @xuantoi/shared test     # 30 test
+pnpm --filter @xuantoi/api test        # ~217 test (api + bootstrap script)
+pnpm --filter @xuantoi/shared test     # ~47 test
 pnpm test                              # toàn bộ (web script = echo skip)
 ```
 
@@ -611,74 +760,81 @@ pnpm test                              # toàn bộ (web script = echo skip)
 ## 16. Known Issues / Risks
 
 ### Critical
-_(Không có lỗi làm app không chạy / mất tiền / auth hỏng tại commit này. CI xanh + 180 test pass.)_
+_(Không có lỗi làm app không chạy / mất tiền / auth hỏng tại commit `ce6da28`. CI xanh ở từng PR #33→#40, ~264 test pass.)_
 
 ### High
 
-| # | Issue | File | Impact | Fix đề xuất |
+| # | Issue | File | Impact | Status / Fix |
 |---|---|---|---|---|
-| H1 | Chưa có smoke E2E sau khi PR #25 + #31 merged vào main. | — | Có thể có regression không bắt được bằng unit test. | Chạy lại smoke phase-0-8 đã dùng cho PR #11, cập nhật thêm mission/mail/giftcode steps. |
-| H2 | Không có seed script tạo admin đầu tiên. | `apps/api/prisma/` | Deploy mới phải promote admin bằng SQL thủ công → dễ sai + tạm bợ. | Thêm `scripts/promote-admin.ts` dùng argon2 + env `INITIAL_ADMIN_EMAIL/PASSWORD`. |
-| H3 | Không có seed sect (Thanh Vân Môn, Huyền Thuỷ Cung, Tu La Điện). | — | Onboarding reference key vỡ nếu DB trống. | Thêm migration data hoặc bootstrap service check-and-create khi start. |
-| H4 | `InventoryService` không có test unit. | `apps/api/src/modules/inventory/*` | Có thể exploit equip race / stack off-by-one. | Thêm ≥ 5 test integration. |
-| H5 | Web chưa có Vitest + E2E Playwright. | `apps/web` | Regression FE không bắt được. | Wire Vitest minimal + 1 Playwright happy path (login → home → cultivate 1 tick → mission claim). |
+| H1 | Chưa có smoke E2E sau khi PR #33→#40 merged vào main (bổ sung shop / settings / profile / boss admin / item ledger). | — | Có thể có regression không bắt được bằng unit test. | **Open** — Needs runtime smoke. Chạy full auth → onboard → cultivate → combat → mission claim → mail claim → giftcode → shop buy → settings change-password → profile view → admin boss spawn (force) → kiểm `ItemLedger`/`CurrencyLedger` consistency. |
+| ~~H2~~ | ~~Không có seed script tạo admin đầu tiên.~~ | `apps/api/scripts/bootstrap.ts` | — | **Resolved** by **PR #33** (`pnpm --filter @xuantoi/api bootstrap`, idempotent, 7 test). |
+| ~~H3~~ | ~~Không có seed sect (Thanh Vân Môn, Huyền Thuỷ Cung, Tu La Điện).~~ | `apps/api/scripts/bootstrap.ts:DEFAULT_SECTS` | — | **Resolved** by **PR #33**. |
+| ~~H4~~ | ~~`InventoryService` không có test unit.~~ | `apps/api/src/modules/inventory/inventory.service.test.ts` | — | **Resolved** by **PR #34** (19 test). |
+| H5 | Web chưa có Vitest + E2E Playwright. | `apps/web` | Regression FE không bắt được. | **Open** — Wire Vitest minimal + 1 Playwright happy path (login → home → cultivate 1 tick → mission claim → shop buy). |
 
 ### Medium
 
-| # | Issue | Fix |
+| # | Issue | Status / Fix |
 |---|---|---|
-| M1 | Cron mission reset dùng timezone UTC mặc định. | Thêm env `MISSION_RESET_TZ` + config timezone (VN +07). |
-| M2 | Boss spawn chỉ manual qua admin (nhưng endpoint admin spawn chưa có). | Thêm `POST /admin/boss/spawn` + audit log. |
-| M3 | Chưa có WS `mission:progress` push. | Thêm emitToUser ở `MissionService.track*` (cẩn thận throttle để không spam). |
-| M4 | `ItemLedger` audit table chưa có. | Model + migration + hook ở `InventoryService.grant/consume`. |
-| M5 | `CurrencyLedger.actorUserId` chưa index. | `@@index([actorUserId])`. |
-| M6 | LogsModule (G3 cũ) chưa build — không có `/logs/me` endpoint. | Low priority, chỉ bổ sung khi cần UI xem log action. |
-| M7 | CSP production-ready nhưng chưa test deploy với CDN/asset domain khác. | Khi deploy: review `script-src`, `connect-src`. |
-| M8 | Admin guard kiểm `role === 'ADMIN' \|\| 'MOD'` — MOD có quyền broad gần ADMIN. | Split fine-grained permission: MOD không được grant/approve topup. |
+| M1 | Cron mission reset dùng timezone UTC mặc định. | **Open** — thêm env `MISSION_RESET_TZ` + config timezone (VN +07). |
+| ~~M2~~ | ~~Boss spawn chỉ manual + admin endpoint chưa có.~~ | **Resolved** by **PR #36** (`POST /api/boss/admin/spawn` + UI tab + 7 test, audit `BOSS_SPAWN`). |
+| M3 | Chưa có WS `mission:progress` push. | **Open** — (lưu ý: PR #38 đã đánh nhầm M3 ở body — đó là profile, không phải mission progress). Thêm emitToUser ở `MissionService.track*` (throttle để không spam). |
+| ~~M4~~ | ~~`ItemLedger` audit table chưa có.~~ | **Resolved** by **PR #40** (model + migration `20260428102849_itemledger` + hook 6 grant flows + market post/cancel/buy + 7 test trong `item-ledger.test.ts`). |
+| M5 | `CurrencyLedger.actorUserId` chưa index. | **Open** — `@@index([actorUserId])`. |
+| M6 | LogsModule (G3 cũ) chưa build — không có `/logs/me` endpoint. | **Open** — low priority, chỉ khi cần UI xem log action. |
+| M7 | CSP production-ready nhưng chưa test deploy với CDN/asset domain khác. | **Open** — khi deploy: review `script-src`, `connect-src`. |
+| M8 | Admin guard kiểm `role === 'ADMIN' \|\| 'MOD'` — MOD có quyền broad gần ADMIN (grant currency, approve topup, broadcast mail, spawn boss). | **Open** — split fine-grained permission: MOD chỉ đọc + chat moderation; ADMIN mới grant/approve/broadcast/spawn. |
+| M9 | Settings logout-all không bump `passwordVersion` → access token cũ (15m) vẫn valid ở thiết bị khác. | **Open** (intentional trade-off, document trong `SECURITY.md`) — nếu cần force ngay, bump `passwordVersion` hoặc implement revocation list. |
+| M10 | Shop không có rate-limit + stock infinite + không daily limit. | **Open** — closed beta acceptable; sau beta thêm `dailyLimit`. |
+| M11 | `GET /character/profile/:id` không có rate-limit riêng → enumerate cuid khó nhưng không bị chặn. | **Open** — low (cuid khó brute), thêm middleware sau. |
 
 ### Low
 
-| # | Issue | Fix |
+| # | Issue | Status / Fix |
 |---|---|---|
-| L1 | Hard-code VN/EN còn lẻ tẻ. | Grep `[À-ỹ]` + `[A-Z][a-z]+ [A-Z]` trong `.vue/.ts` + thay bằng `t()`. |
-| L2 | Market fee 5% hard-code. | Đưa ra `config` namespace. |
-| L3 | Proverbs loading screen chỉ 30+ câu — lặp nhanh. | Mở rộng corpus. |
-| L4 | Không có tên item localized (FE `MissionView` hiển thị `itemKey ×qty`). | Thêm helper `itemName(key, locale)`. |
-| L5 | Một số view chưa skeleton loader. | UI polish. |
+| L1 | Hard-code VN/EN còn lẻ tẻ. | **Open** — grep `[À-ỹ]` + `[A-Z][a-z]+ [A-Z]` trong `.vue/.ts` + thay bằng `t()`. Cần re-audit sau khi thêm settings/profile/shop/boss-admin (~75 key mới). |
+| L2 | Market fee 5% hard-code. | **Open** — đưa ra `config` namespace. |
+| L3 | Proverbs loading screen chỉ 30+ câu — lặp nhanh. | **Open** — mở rộng corpus. |
+| L4 | Không có tên item localized (FE `MissionView` hiển thị `itemKey ×qty`). | **Open** — thêm helper `itemName(key, locale)`. |
+| L5 | Một số view chưa skeleton loader. | **Open** — UI polish. |
+| L6 | Settings dùng `window.confirm()` cho logout-all. | **Open** — nhẹ nhàng, post-beta thay bằng modal đẹp. |
+| L7 | `ADMIN_REVOKE` reason đã định nghĩa trong `ItemLedger` nhưng chưa có endpoint admin thực thi. | **Open** — bổ sung khi cần thu hồi item nhầm. |
 
 ---
 
 ## 17. Missing Pages / Missing APIs
 
-### Frontend pages thiếu (so với roadmap MUD tu tiên)
+### Frontend pages
 
-| Trang | Cần trước beta? | Ghi chú |
-|---|---|---|
-| `ProfileView` | **Yes** | Xem attributes, equipped, stats. Có thể dùng HomeView tab mở rộng. |
-| `LeaderboardView` | Nice-to-have beta | Top power / topup / sect. |
-| `SettingsView` | Nice-to-have beta | Đổi password (hiện phải qua API trực tiếp), logout all devices, locale. |
-| `ShopView` (NPC shop) | **Nên có beta** | Hiện chỉ có market P2P. NPC shop bán linh dược/đan thuốc cơ bản. |
-| `AlchemyView` (luyện đan) | Post-beta | Feature lớn. |
-| `RefineryView` (luyện khí) | Post-beta | Feature lớn. |
-| `ArenaView` (đấu trường PvP) | Post-beta | Feature lớn. |
-| `EventView` | Post-beta | Event mùa (lễ hội, double drop, …). |
-| `PetView` | Post-beta | Theo doc 04. |
-| `CompanionView` (đạo lữ / phụ tu) | Post-beta | Lớn + cần balance. |
+| Trang | Tình trạng | Cần trước beta? | Ghi chú |
+|---|---|---|---|
+| `ProfileView` | **Có** (PR #38) | — | `/profile/:id` route + `BossView` link. |
+| `SettingsView` | **Có** (PR #37) | — | `/settings` — đổi password + logout-all + locale. |
+| `ShopView` | **Có** (PR #39) | — | `/shop` — 11 entry NPC, chỉ LINH_THACH. |
+| `LeaderboardView` | Thiếu | Nice-to-have beta | Top power / topup / sect. Cần `GET /leaderboard/...` BE trước. |
+| `AlchemyView` (luyện đan) | Thiếu | Post-beta | Feature lớn. |
+| `RefineryView` (luyện khí) | Thiếu | Post-beta | Feature lớn. |
+| `ArenaView` (đấu trường PvP) | Thiếu | Post-beta | Feature lớn. |
+| `EventView` | Thiếu | Post-beta | Event mùa (lễ hội, double drop, …). |
+| `PetView` | Thiếu | Post-beta | Theo doc 04. |
+| `CompanionView` (đạo lữ / phụ tu) | Thiếu | Post-beta | Lớn + cần balance. |
 
-### APIs thiếu
+### APIs
 
 | API | Tình trạng | Cần trước beta? |
 |---|---|---|
-| `GET /character/profile/:id` (xem profile player khác) | Thiếu | Nice-to-have |
-| `POST /admin/boss/spawn` | Thiếu | **Yes** (để run live event) |
-| `POST /auth/forgot-password` + `POST /auth/reset-password` | Thiếu | Nice-to-have beta closed |
-| `POST /auth/verify-email` | Thiếu | Closed beta không cần |
-| `GET /leaderboard/{power,topup,sect}` | Thiếu | Nice-to-have |
-| `GET /shop/npc` + `POST /shop/buy` | Thiếu | **Nên có** |
-| `POST /missions/progress/stream` (WS mission:progress) | Thiếu | Low |
-| `POST /logs/me` | Thiếu (G3) | Low |
+| `GET /api/character/profile/:id` | **Có** (PR #38) | — |
+| `POST /api/boss/admin/spawn` | **Có** (PR #36) | — |
+| `GET /api/shop/npc` + `POST /api/shop/buy` | **Có** (PR #39) | — |
+| `POST /api/_auth/logout-all` | **Có** (PR #37) | — |
+| `POST /api/_auth/forgot-password` + `POST /api/_auth/reset-password` | Thiếu | Nice-to-have beta closed |
+| `POST /api/_auth/verify-email` | Thiếu | Closed beta không cần |
+| `GET /api/leaderboard/{power,topup,sect}` | Thiếu | Nice-to-have |
+| `WS mission:progress` (server-push tracker) | Thiếu | Low (M3) |
+| `GET /api/logs/me` (G3 cũ) | Thiếu | Low (M6) |
+| `POST /api/admin/inventory/revoke` (`ADMIN_REVOKE` ledger) | Thiếu | Low (L7) |
 
-**Không có route FE đang gọi mà BE chưa có** — kiểm tra nhanh `apps/web/src/api/*.ts` khớp với controller.
+**Không có route FE đang gọi mà BE chưa có** — đã grep `apps/web/src/api/*.ts` khớp với `@Controller` tại `apps/api/src/modules/**/*.controller.ts`. Lưu ý: prefix global `/api`, auth controller tại `/_auth`, giftcode tại `/giftcodes`.
 
 ---
 
@@ -781,100 +937,94 @@ Admin hiện tại có thể vào `/admin` → Users → tìm → **Set role = A
 
 ## 20. Recommended Next Roadmap
 
-### Immediate (ngay trong 1-2 session tới)
+### Immediate (1–2 session tới)
 
-1. **Smoke E2E sau PR #25 + #31 merged**: chạy full auth → onboarding → cultivate → combat → mission claim → mail claim → giftcode redeem trên main hiện tại. Ghi report.
-2. **Fix H2 + H3**: thêm script seed admin + sect qua `scripts/bootstrap.ts`.
-3. **Fix H4**: thêm 5-6 test cho InventoryService.
-4. **Viết** `docs/ADMIN_GUIDE.md` + `docs/DEPLOY.md` + `docs/RUN_LOCAL.md`.
+1. **Smoke E2E sau PR #33→#40 merged** (Needs runtime smoke). Kiểm: auth → onboarding → cultivate 1 tick → combat → mission claim → mail claim → giftcode redeem → **shop buy** → **settings change-password** → **profile view người khác** → **admin boss spawn (force)** → query `ItemLedger` + `CurrencyLedger` consistency. Ghi report vào `docs/AI_HANDOFF_REPORT.md`.
+2. **H5 — Web Vitest minimal**: wire 1 file test cho `useGameStore` hoặc `AppShell.vue` snapshot tối thiểu; remove `echo skipped`.
+3. **H5 — Playwright happy path**: register → onboard → home → cultivate toggle → 1 tick → mission claim. Wire CI job riêng.
+4. **M1 — Mission timezone env**: thêm `MISSION_RESET_TZ` (default `Asia/Ho_Chi_Minh`) vào `MissionScheduler`.
+5. **i18n gap audit** sau khi thêm settings/profile/shop/boss-admin (~75 key mới) — grep `[À-ỹ]` trong `.vue/.ts`.
 
 ### Before Closed Beta
 
-5. **Web Vitest minimal** (component smoke cho 3-4 view chính).
-6. **E2E Playwright** 1 golden path (login → home → cultivate tick → mission claim → mail claim).
-7. **NPC Shop** (feature + API + view + seed item).
-8. **Admin boss spawn endpoint**.
-9. **Item Ledger** audit table.
-10. **Admin guard split** (MOD giảm quyền).
-11. **Settings page** (đổi password + logout all + locale).
-12. **i18n gap audit** (grep cuối).
-13. **Timezone config cho mission reset cron**.
-14. **Mobile responsive verify** trên iPhone SE viewport.
+6. **M5 — `CurrencyLedger.actorUserId` index** (small migration `@@index([actorUserId])`).
+7. **M8 — Admin guard split**: ADMIN-only cho grant/approve/broadcast/spawn-boss; MOD chỉ read + chat moderation.
+8. **L1 — i18n gap audit run cuối** + l10n tên item (`itemName(key, locale)`).
+9. **Mobile responsive verify** trên iPhone SE viewport.
+10. **Health/CSP staging deploy** — verify `connectSrc` cho WS endpoint thực tế.
 
 ### During Closed Beta
 
-15. Monitor `/healthz` + `/readyz` + ledger balance consistency check định kỳ.
-16. Thu thập user feedback + bug report.
-17. Balance tuning: cultivation rate, loot drop, market fee, mission reward.
+11. Monitor `/healthz` + `/readyz` + ledger balance consistency check định kỳ (qua admin overview tab).
+12. Thu thập user feedback + bug report.
+13. Balance tuning: cultivation rate, loot drop, market fee 5%, mission reward, NPC shop price.
 
 ### After Beta
 
-18. **Alchemy** (luyện đan).
-19. **Refinery** (luyện khí forge).
-20. **Arena PvP**.
-21. **Pet system**.
-22. **Companion/Wife** (đạo lữ).
-23. **Battle Pass seasonal**.
-24. **Event system + cron spawn**.
-25. **Leaderboard**.
-26. **Cross-server world boss**.
+14. **Alchemy** (luyện đan).
+15. **Refinery** (luyện khí forge).
+16. **Arena PvP**.
+17. **Pet system**.
+18. **Companion/Wife** (đạo lữ).
+19. **Battle Pass seasonal**.
+20. **Event system + cron spawn**.
+21. **Leaderboard** + `GET /api/leaderboard/{power,topup,sect}`.
+22. **Cross-server world boss**.
+23. **`POST /api/_auth/forgot-password` + `reset-password`** (email-based).
+24. **WS `mission:progress` push** (M3) + WS `mail:new` tích hợp test.
+25. **`ADMIN_REVOKE` endpoint** + UI để admin thu hồi item nhầm (L7).
 
 ---
 
-## 21. Exact PR Plan For Next AI
+## 21. Exact PR Plan
 
-### PR 1 — Seed admin + sect bootstrap (H2 + H3)
-- **Mục tiêu**: Fresh deploy có thể chạy được ngay.
-- **File dự kiến**:
-  - `apps/api/scripts/bootstrap.ts` (new) — hash password bằng argon2, upsert user ADMIN, upsert 3 sect.
-  - `apps/api/package.json` — thêm script `"bootstrap": "ts-node scripts/bootstrap.ts"`.
-  - `apps/api/.env.example` — thêm `INITIAL_ADMIN_EMAIL`, `INITIAL_ADMIN_PASSWORD`.
-  - `README.md` + `docs/RUN_LOCAL.md` — hướng dẫn chạy.
-- **Test**: 1 test đảm bảo chạy 2 lần không tạo duplicate (idempotent upsert).
-- **Risk**: Nếu production đã có admin thủ công → script phải chỉ upsert khi chưa có (check count). Ghi rõ trong PR.
+### Done (chuỗi #33→#40 đã merge trên `main` tại `ce6da28`)
 
-### PR 2 — InventoryService test (H4)
-- **Mục tiêu**: tăng coverage.
-- **File**: `apps/api/src/modules/inventory/inventory.service.test.ts` (new).
-- **Test cases**: equip → unequip → swap slot; stack qty up/down; use potion heal; grant đúng qty; equip khi slot đã occupied → swap.
-- **Risk**: thấp, không sửa service.
+| PR | Plan cũ | Status |
+|---|---|---|
+| PR 1 — Seed admin + sect bootstrap (H2 + H3) | — | **Done** — PR #33 merged. |
+| PR 2 — InventoryService test (H4) | — | **Done** — PR #34 merged (19 test). |
+| PR 3 — Docs ADMIN_GUIDE + DEPLOY + RUN_LOCAL (+ SECURITY + TROUBLESHOOTING) | — | **Done** — PR #35 merged. |
+| PR 4 — NPC Shop + seed | — | **Done** — PR #39 merged (BE + FE + 11 entry catalog + 10 test + ledger SHOP_BUY). |
+| PR 5 — Admin boss spawn endpoint | — | **Done** — PR #36 merged (`POST /api/boss/admin/spawn` + UI tab + 7 test + audit). |
+| PR 7 — Settings page + change password UI + logout-all | — | **Done** — PR #37 merged (`POST /api/_auth/logout-all` + 3 test). |
+| PR 8 — Item Ledger | — | **Done** — PR #40 merged (model + migration `20260428102849_itemledger` + hook 6 grant flows + 7 test). |
+| (PR ngoài kế hoạch) PR 8b — Profile public API + ProfileView | — | **Done** — PR #38 merged. |
 
-### PR 3 — Docs ADMIN_GUIDE + DEPLOY + RUN_LOCAL
-- **Mục tiêu**: AI mới + user admin mới có thể tự setup.
-- **File**: `docs/ADMIN_GUIDE.md` (new), `docs/DEPLOY.md` (new), `docs/RUN_LOCAL.md` (new), README link.
-- **Test**: không.
+### Pending (theo §20)
 
-### PR 4 — NPC Shop + seed
-- **Mục tiêu**: late-game không trống vì chưa đủ player để maintain market.
-- **File**: `apps/api/src/modules/shop/*` (new module), `packages/shared/src/shop.ts` (new catalog), `apps/web/src/views/ShopView.vue` (new), `router/index.ts`, i18n.
-- **Test**: `shop.service.test.ts` (buy ok / out-of-stock / insufficient).
-- **Risk**: balance giá — bắt đầu với item phàm 3-5 cấp LINH_THACH thấp.
+#### PR A — Smoke E2E + Runtime sanity (Immediate §20.1)
+- **Mục tiêu**: xác nhận `main @ ce6da28` chạy đúng sau khi #33→#40 merge.
+- **Bước**: `pnpm install && pnpm infra:up && prisma migrate deploy && bootstrap`. Chạy `pnpm dev`. Smoke 11 bước theo §20.1. Query `ItemLedger` + `CurrencyLedger` kiểm consistency.
+- **File**: chỉ ghi báo cáo trong `docs/AI_HANDOFF_REPORT.md` (Recent Changes / Smoke section). Không sửa code (nếu không phát hiện bug).
+- **Risk**: nếu phát hiện bug → mở PR fix riêng theo mức độ.
 
-### PR 5 — Admin boss spawn endpoint
-- **Mục tiêu**: admin có thể chạy live event.
-- **File**: `admin.service.ts` thêm `spawnBoss`, controller `POST /admin/boss/spawn`, admin tab UI.
-- **Test**: admin-stats test extend + guard test.
-- **Risk**: nếu đã có ACTIVE boss → reject với BOSS_ACTIVE.
+#### PR B — H5 Playwright golden path + Vitest minimal
+- **File**: `apps/web/e2e/golden.spec.ts` (new), `apps/web/playwright.config.ts` (new), `apps/web/vitest.config.ts` (new), `apps/web/src/__tests__/app-shell.test.ts` (new), `.github/workflows/ci.yml` (extend matrix). Update `apps/web/package.json` `test` script.
+- **Test**: register → onboard → cultivate 1 tick → mission claim. Vitest — 1 store + 1 component snapshot.
+- **Risk**: thêm ~2-3 phút CI; cần service Postgres + Redis (đã có sẵn).
 
-### PR 6 — E2E Playwright golden path
-- **Mục tiêu**: bắt regression quan trọng nhất.
-- **File**: `apps/web/e2e/golden.spec.ts` (new), `playwright.config.ts` (new), CI job.
-- **Test**: register → onboard → cultivate toggle → 1 tick → mission claim → mail claim.
-- **Risk**: CI chạy postgres/redis + vite build → thêm 2-3 phút pipeline.
+#### PR C — M1 Mission reset timezone env
+- **File**: `apps/api/src/modules/mission/mission.scheduler.ts` (đọc env `MISSION_RESET_TZ`, default `Asia/Ho_Chi_Minh`), `apps/api/.env.example`, `mission.service.test.ts` thêm test boundary midnight VN.
+- **Risk**: thấp — chỉ thay đổi cron expression.
 
-### PR 7 — Settings page + change password UI
-- **Mục tiêu**: user có thể đổi password mà không cần curl.
-- **File**: `apps/web/src/views/SettingsView.vue` (new), router, i18n, logout-all button.
-- **Test**: không unit (wire FE only).
+#### PR D — M5 `CurrencyLedger.actorUserId` index
+- **File**: prisma migration ADD INDEX (new), `schema.prisma` `@@index([actorUserId])`.
+- **Risk**: thấp — ADD INDEX an toàn.
 
-### PR 8 — Item Ledger
-- **Mục tiêu**: audit item grant/consume.
-- **File**: migration (new), `ItemLedger` model, hook ở `InventoryService`.
-- **Test**: extend inventory test.
-- **Risk**: migration ADD TABLE — an toàn backward compat. Rollback: DROP TABLE.
+#### PR E — M8 Admin guard split (ADMIN vs MOD)
+- **File**: `apps/api/src/modules/admin/admin.guard.ts` thêm `RequireAdmin` decorator/guard phân biệt. Update controller cho grant/approve/broadcast/spawn-boss yêu cầu ADMIN; giữ MOD cho ban/role-set + chat moderation. Test guard.
+- **Risk**: medium — đổi quyền thực tế, phải đồng bộ FE check.
 
-### Thứ tự đề xuất
-**1 → 2 → 3 → 6** (trước closed beta core) → **4 → 5 → 7 → 8** (enhance).
+#### PR F — L1 i18n gap re-audit
+- **File**: grep `[À-ỹ]` trong `apps/web/src/**/*.{vue,ts}`, fix bằng `t()`. Thêm helper `itemName(key, locale)` cho mission/mail/giftcode/shop reward render.
+- **Risk**: thấp, chỉ đổi template.
+
+#### Thứ tự đề xuất cho AI tiếp theo
+**A (smoke) → B (Vitest+Playwright) → C (timezone) → D (index) → E (guard split) → F (i18n)**.
+
+#### Post-beta backlog
+Leaderboard / Alchemy / Refinery / Arena / Pet / Companion / Event / Battle Pass / `forgot-password` / `mission:progress` WS / `ADMIN_REVOKE` endpoint.
 
 ---
 
