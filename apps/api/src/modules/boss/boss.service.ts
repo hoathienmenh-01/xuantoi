@@ -449,6 +449,10 @@ export class BossService implements OnModuleInit, OnModuleDestroy {
       where: { status: BossStatus.ACTIVE },
       orderBy: { spawnedAt: 'desc' },
     });
+    // replacedBossId chỉ ghi vào audit khi force-expire thực sự diễn ra
+    // (flip.count > 0). Trường hợp race với player kill boss giữa findFirst
+    // và update → flip=0 → audit log không nói dối là admin đã thay boss đó.
+    let replacedBossId: string | null = null;
     if (active) {
       if (!opts.force) throw new BossError('BOSS_ALREADY_ACTIVE');
       // Optimistic lock: chỉ flip ACTIVE → EXPIRED. Nếu giữa findFirst và đây
@@ -460,7 +464,25 @@ export class BossService implements OnModuleInit, OnModuleDestroy {
         data: { status: BossStatus.EXPIRED, defeatedAt: new Date() },
       });
       if (flip.count > 0) {
-        this.realtime.broadcast('boss:end', { id: active.id, status: BossStatus.EXPIRED });
+        replacedBossId = active.id;
+        // Phát thưởng EXPIRED 60% pool cho người tham chiến — KHÔNG được
+        // skip kể cả khi admin force, nếu không người chơi đã đầu tư
+        // stamina/MP/thời gian sẽ mất trắng phần thưởng (Devin Review
+        // #36 #3153247323). Khớp đúng pattern heartbeat() line 355-363.
+        const activeDef = bossByKey(active.bossKey);
+        if (activeDef) {
+          const slices = await this.distributeRewardsExpired(active.id, activeDef);
+          this.realtime.broadcast('boss:end', {
+            id: active.id,
+            status: 'EXPIRED',
+            rewards: slices,
+          });
+        } else {
+          this.realtime.broadcast('boss:end', {
+            id: active.id,
+            status: BossStatus.EXPIRED,
+          });
+        }
       }
     }
 
@@ -474,7 +496,7 @@ export class BossService implements OnModuleInit, OnModuleDestroy {
           bossKey: spawned.bossKey,
           level: spawned.level,
           forced: !!opts.force,
-          replacedBossId: active?.id ?? null,
+          replacedBossId,
         } as Prisma.InputJsonValue,
       },
     });

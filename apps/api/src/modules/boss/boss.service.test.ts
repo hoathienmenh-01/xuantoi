@@ -283,6 +283,82 @@ describe('BossService', () => {
       expect(oldAfter.defeatedAt?.toISOString()).toBe(defeatedAt.toISOString());
       // Boss mới vẫn được tạo bình thường.
       expect(r.id).not.toBe(old.id);
+      // Audit log cho lần spawn race-defeated KHÔNG được nói dối là admin
+      // đã thay boss đó (replacedBossId phải null vì flip.count=0).
+      const audit = await prisma.adminAuditLog.findFirstOrThrow({
+        where: { actorUserId: admin.id, action: 'BOSS_SPAWN' },
+        orderBy: { createdAt: 'desc' },
+      });
+      const meta = audit.meta as { replacedBossId: string | null; forced: boolean };
+      expect(meta.replacedBossId).toBeNull();
+      expect(meta.forced).toBe(true);
+    });
+
+    it('force-expire boss có người tham chiến → distribute 60% reward EXPIRED cho player (không mất trắng)', async () => {
+      // Devin Review #36 #3153247323.
+      // Người chơi đã đầu tư stamina/MP fight boss; nếu admin force-spawn
+      // mà không phát thưởng EXPIRED, người chơi mất trắng phần thưởng.
+      const admin = await prisma.user.create({
+        data: { email: `admin-${Date.now()}@xt.local`, passwordHash: 'x', role: 'ADMIN' },
+      });
+      const player = await prisma.user.create({
+        data: { email: `p-${Date.now()}@xt.local`, passwordHash: 'x', role: 'PLAYER' },
+      });
+      const sect = await prisma.sect.create({ data: { name: `Boss-Sect-${Date.now()}` } });
+      const playerChar = await prisma.character.create({
+        data: {
+          userId: player.id,
+          name: `BP_${Date.now()}`,
+          realmKey: 'luyenkhi',
+          realmStage: 1,
+          spirit: 8,
+          linhThach: 100n,
+          tienNgoc: 0,
+          sectId: sect.id,
+          stamina: 100,
+          staminaMax: 100,
+          hp: 100,
+          hpMax: 100,
+          mp: 50,
+          mpMax: 50,
+          power: 10,
+          speed: 10,
+          luck: 5,
+        },
+      });
+      const old = await spawnBoss();
+      // Mock player damage record.
+      await prisma.bossDamage.create({
+        data: {
+          bossId: old.id,
+          characterId: playerChar.id,
+          characterName: playerChar.name,
+          totalDamage: 10_000n,
+          hits: 5,
+        },
+      });
+      const before = await prisma.character.findUniqueOrThrow({
+        where: { id: playerChar.id },
+      });
+
+      await boss.adminSpawn(admin.id, { bossKey: DEF.key, level: 2, force: true });
+
+      // Player nhận được linh thạch (>0) — chứng tỏ distributeRewardsExpired
+      // đã chạy trên boss bị force-expire.
+      const after = await prisma.character.findUniqueOrThrow({
+        where: { id: playerChar.id },
+      });
+      expect(after.linhThach).toBeGreaterThan(before.linhThach);
+      // Có ít nhất 1 dòng ledger BOSS_REWARD cho character này.
+      const ledger = await prisma.currencyLedger.findFirst({
+        where: {
+          characterId: playerChar.id,
+          reason: 'BOSS_REWARD',
+          refType: 'WorldBoss',
+          refId: old.id,
+        },
+      });
+      expect(ledger).not.toBeNull();
     });
 
     it('bossKey không có trong catalog → throw INVALID_BOSS_KEY, không tạo gì', async () => {
