@@ -10,6 +10,11 @@ import type { EquipSlot, Quality } from './enums';
 export type ItemKind =
   | 'WEAPON'
   | 'ARMOR'
+  | 'BELT'
+  | 'BOOTS'
+  | 'HAT'
+  | 'TRAM'
+  | 'ARTIFACT'
   | 'PILL_HP'
   | 'PILL_MP'
   | 'PILL_EXP'
@@ -200,6 +205,203 @@ export const ITEMS: readonly ItemDef[] = [
     stackable: true,
     effect: { hp: 1500, exp: 600 },
     price: 4000,
+  },
+
+  // ----- Thắt lưng (BELT) -----
+  {
+    key: 'pham_thuc_dai',
+    name: 'Phàm Thúc Đái',
+    description: 'Thắt lưng da thuộc, gia tăng sức chịu đựng.',
+    kind: 'BELT',
+    quality: 'PHAM',
+    stackable: false,
+    slot: 'BELT',
+    bonuses: { hpMax: 20 },
+    price: 35,
+  },
+  {
+    key: 'linh_thuc_dai',
+    name: 'Linh Thúc Đái',
+    description: 'Thúc đái bện bằng linh ti, ôn nhuận khí huyết.',
+    kind: 'BELT',
+    quality: 'LINH',
+    stackable: false,
+    slot: 'BELT',
+    bonuses: { hpMax: 45, def: 3 },
+    price: 200,
+  },
+  {
+    key: 'huyen_long_dai',
+    name: 'Huyền Long Đái',
+    description: 'Thúc đái khảm vảy huyền long, vững như núi non.',
+    kind: 'BELT',
+    quality: 'HUYEN',
+    stackable: false,
+    slot: 'BELT',
+    bonuses: { hpMax: 120, def: 10 },
+    price: 850,
+  },
+
+  // ----- Giày (BOOTS) -----
+  {
+    key: 'pham_hai',
+    name: 'Phàm Hài',
+    description: 'Giày vải phàm phẩm, thoải mái đi đường.',
+    kind: 'BOOTS',
+    quality: 'PHAM',
+    stackable: false,
+    slot: 'BOOTS',
+    bonuses: { def: 2 },
+    price: 28,
+  },
+  {
+    key: 'vu_linh_hai',
+    name: 'Vũ Linh Hài',
+    description: 'Giày linh dệt bằng lông phượng, bước đi nhẹ như gió.',
+    kind: 'BOOTS',
+    quality: 'LINH',
+    stackable: false,
+    slot: 'BOOTS',
+    bonuses: { def: 6, spirit: 2 },
+    price: 190,
+  },
+  {
+    key: 'tien_phong_hai',
+    name: 'Tiên Phong Hài',
+    description: 'Lưu phong hoá hài, tốc độ vô song.',
+    kind: 'BOOTS',
+    quality: 'HUYEN',
+    stackable: false,
+    slot: 'BOOTS',
+    bonuses: { def: 14, spirit: 5 },
+    price: 820,
+  },
+
+  // ----- Mũ (HAT) -----
+  {
+    key: 'pham_quan',
+    name: 'Phàm Quan',
+    description: 'Mũ vải phàm phẩm.',
+    kind: 'HAT',
+    quality: 'PHAM',
+    stackable: false,
+    slot: 'HAT',
+    bonuses: { def: 2, mpMax: 10 },
+    price: 30,
+  },
+  {
+    key: 'tu_ngoc_quan',
+    name: 'Tử Ngọc Quan',
+    description: 'Mũ khảm tử ngọc, khai minh linh đài.',
+    kind: 'HAT',
+    quality: 'LINH',
+    stackable: false,
+    slot: 'HAT',
+    bonuses: { def: 6, mpMax: 35, spirit: 2 },
+    price: 220,
+  },
+  {
+    key: 'huyen_thien_quan',
+    name: 'Huyền Thiên Quan',
+    description: 'Bảo quan thượng cổ, tâm linh thông thấu huyền thiên.',
+    kind: 'HAT',
+    quality: 'HUYEN',
+    stackable: false,
+    slot: 'HAT',
+    bonuses: { def: 15, mpMax: 90, spirit: 6 },
+    price: 900,
+  },
+
+  // ----- Trâm (TRAM) -----
+  {
+    key: 'ngoc_tram',
+    name: 'Ngọc Trâm',
+    description: 'Trâm ngọc khảm hoa, tinh tế an thần.',
+    kind: 'TRAM',
+    quality: 'LINH',
+    stackable: false,
+    slot: 'TRAM',
+    bonuses: { mpMax: 25, spirit: 3 },
+    price: 180,
+  },
+  {
+    key: 'cuu_diep_linh_tram',
+    name: 'Cửu Diệp Linh Trâm',
+    description: 'Trâm chín cánh, hút linh khí thiên địa.',
+    kind: 'TRAM',
+    quality: 'HUYEN',
+    stackable: false,
+    slot: 'TRAM',
+    bonuses: { mpMax: 70, spirit: 8 },
+    price: 780,
+  },
+
+  // ----- Pháp bảo (ARTIFACT) -----
+  {
+    key: 'luyen_khi_phu',
+    name: 'Luyện Khí Phù',
+    description: 'Phù thuật sơ cấp, cộng sức công nhẹ.',
+    kind: 'ARTIFACT',
+    quality: 'PHAM',
+    stackable: false,
+    slot: 'ARTIFACT_1',
+    bonuses: { atk: 4 },
+    price: 80,
+  },
+  {
+    key: 'bat_huyet_linh_bai',
+    name: 'Bát Huyết Linh Bài',
+    description: 'Linh bài tế huyết, bảo vệ chủ nhân khỏi ma khí.',
+    kind: 'ARTIFACT',
+    quality: 'LINH',
+    stackable: false,
+    slot: 'ARTIFACT_1',
+    bonuses: { def: 8, hpMax: 60 },
+    price: 420,
+  },
+  {
+    key: 'huyen_kim_toa',
+    name: 'Huyền Kim Toạ',
+    description: 'Bảo toạ trường sinh, tăng nguyên khí.',
+    kind: 'ARTIFACT',
+    quality: 'HUYEN',
+    stackable: false,
+    slot: 'ARTIFACT_2',
+    bonuses: { hpMax: 150, mpMax: 80, spirit: 5 },
+    price: 1200,
+  },
+  {
+    key: 'thien_linh_ngoc',
+    name: 'Thiên Linh Ngọc',
+    description: 'Ngọc trời vô giá, khai mở thiên mệnh.',
+    kind: 'ARTIFACT',
+    quality: 'TIEN',
+    stackable: false,
+    slot: 'ARTIFACT_3',
+    bonuses: { atk: 30, hpMax: 200, spirit: 12 },
+    price: 6500,
+  },
+
+  // ----- Đan dược bổ sung -----
+  {
+    key: 'hoi_nguyen_dan',
+    name: 'Hồi Nguyên Đan',
+    description: 'Hồi 400 MP, dùng trong đánh phó bản dài.',
+    kind: 'PILL_MP',
+    quality: 'LINH',
+    stackable: true,
+    effect: { mp: 400 },
+    price: 150,
+  },
+  {
+    key: 'van_linh_dan',
+    name: 'Vạn Linh Đan',
+    description: 'Tăng 2500 EXP tu vi, hiếm và đắt.',
+    kind: 'PILL_EXP',
+    quality: 'HUYEN',
+    stackable: true,
+    effect: { exp: 2500 },
+    price: 1200,
   },
 ];
 
