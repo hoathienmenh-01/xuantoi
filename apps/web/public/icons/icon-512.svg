@@ -7,5 +7,5 @@
   </defs>
   <rect width="512" height="512" rx="96" fill="url(#g)"/>
   <circle cx="256" cy="256" r="170" fill="none" stroke="#bfa66a" stroke-width="6" opacity="0.85"/>
-  <text x="256" y="316" text-anchor="middle" font-family="Noto Serif SC, Noto Serif, serif" font-size="244" fill="#efe7d2">道</text>
+  <text x="256" y="340" text-anchor="middle" font-family="Noto Serif SC, Noto Serif, serif" font-size="244" fill="#efe7d2" font-weight="bold">道</text>
 </svg>
