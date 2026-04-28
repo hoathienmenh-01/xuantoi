@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, onMounted, onUnmounted } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useAuthStore } from '@/stores/auth';
 import { useGameStore } from '@/stores/game';
+import { useBadgesStore } from '@/stores/badges';
 import { useRouter } from 'vue-router';
 import ChatPanel from './ChatPanel.vue';
 import LocaleSwitcher from './LocaleSwitcher.vue';
@@ -10,7 +11,16 @@ import LocaleSwitcher from './LocaleSwitcher.vue';
 const { t } = useI18n();
 const auth = useAuthStore();
 const game = useGameStore();
+const badges = useBadgesStore();
 const router = useRouter();
+
+onMounted(() => {
+  badges.start();
+});
+
+onUnmounted(() => {
+  badges.stop();
+});
 
 const expPct = computed(() => Math.round(game.expProgress * 100));
 const realmText = computed(() => game.realmFullName || '—');
@@ -129,17 +139,28 @@ async function logout(): Promise<void> {
         </RouterLink>
         <RouterLink
           to="/boss"
-          class="px-3 py-2 rounded hover:bg-ink-700/60"
+          class="px-3 py-2 rounded hover:bg-ink-700/60 relative"
           active-class="bg-ink-700/60 text-ink-50"
         >
           鬼 {{ t('shell.nav.boss') }}
+          <span
+            v-if="badges.bossActive"
+            class="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-rose-500 ring-2 ring-ink-700"
+            :title="t('shell.badge.bossActive')"
+          />
         </RouterLink>
         <RouterLink
           to="/missions"
-          class="px-3 py-2 rounded hover:bg-ink-700/60"
+          class="px-3 py-2 rounded hover:bg-ink-700/60 relative"
           active-class="bg-ink-700/60 text-ink-50"
         >
           任 {{ t('shell.nav.missions') }}
+          <span
+            v-if="badges.missionClaimable > 0"
+            class="absolute -top-1 -right-1 px-1.5 py-0.5 rounded-full bg-amber-500 text-[10px] text-white"
+          >
+            {{ badges.missionClaimable > 99 ? '99+' : badges.missionClaimable }}
+          </span>
         </RouterLink>
         <RouterLink
           to="/mail"
@@ -163,10 +184,15 @@ async function logout(): Promise<void> {
         </RouterLink>
         <RouterLink
           to="/topup"
-          class="px-3 py-2 rounded hover:bg-ink-700/60"
+          class="px-3 py-2 rounded hover:bg-ink-700/60 relative"
           active-class="bg-ink-700/60 text-ink-50"
         >
           ⛧ {{ t('shell.nav.topup') }}
+          <span
+            v-if="badges.topupPending"
+            class="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-amber-400 ring-2 ring-ink-700"
+            :title="t('shell.badge.topupPending')"
+          />
         </RouterLink>
         <RouterLink
           to="/settings"

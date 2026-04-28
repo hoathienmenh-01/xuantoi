@@ -198,6 +198,10 @@
       "topup": "Nạp Tiên Ngọc",
       "settings": "Tâm Pháp",
       "admin": "Quản Trị"
+    },
+    "badge": {
+      "bossActive": "Boss đang xuất thế",
+      "topupPending": "Đơn nạp đang chờ duyệt"
     }
   },
   "profile": {

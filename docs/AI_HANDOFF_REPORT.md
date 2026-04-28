@@ -6,7 +6,7 @@
 >
 > Báo cáo trung thực. Mọi tuyên bố "đã xong" đều có PR + file + test chứng minh. Khi chưa verify runtime, ghi rõ **"Needs runtime smoke"**.
 >
-> **Trạng thái (28/4 session 4)**: PR #33→#48 đã merge `main`. PR #46 (audit + commit blueprint 04/05) + PR #48 (M8 admin guard split `@RequireAdmin`) đã merge. PR #49 (smart next-action panel) đang mở. Roadmap kế tiếp: closed-beta polish + smart features từ §21. Xem `## Recent Changes` + §21.
+> **Trạng thái (28/4 session 4)**: PR #33→#49 đã merge `main`. PR #46 (audit + blueprint 04/05) + PR #48 (M8 admin guard split `@RequireAdmin`) + PR #49 (smart next-action panel) đã merge. PR #50 (docs QA_CHECKLIST.md) + PR #51 (sidebar badges từ next-actions) đang mở. Roadmap kế tiếp: closed-beta polish + smart features từ §21. Xem `## Recent Changes` + §21.
 >
 > **Blueprint gốc 04/05**: nay đã được commit vào `docs/04_TECH_STACK_VA_DATA_MODEL.md` + `docs/05_KICH_BAN_BUILD_VA_PROMPT_AI.md` kèm banner **"Historical blueprint, NOT the current source of truth"**. Khi có conflict giữa 04/05 và code hiện tại + report này → **tin code & report**, KHÔNG rollback hoặc rewrite project theo 04/05.
 
@@ -58,13 +58,34 @@
 
 ---
 
-## Recent Changes (PR #33→#46 + PR #48 + PR #49)
+## Recent Changes (PR #33→#49 + PR #50 docs + PR #51 badges)
 
-Mỗi PR đều `Merged` vào `main` (hoặc open + CI xanh), branch base = `main`. Smoke local (typecheck/lint/test/build) đã chạy ở mỗi PR; smoke E2E 6/6 đã pass tại PR #44 (snapshot `4d8af10`). PR #45 chỉ là text-only fix vi.json 12 key admin → không cần re-smoke runtime. Blueprint 04/05 commit vào `docs/` ở session 4 — không đổi code/test.
+Mỗi PR đều `Merged` vào `main` (hoặc open + CI xanh), branch base = `main`. Smoke local (typecheck/lint/test/build) đã chạy ở mỗi PR; smoke E2E 6/6 đã pass tại PR #44 (snapshot `4d8af10`).
+
+### PR #51 — `feat(web): sidebar badges (mission claimable / boss active / topup pending) từ /me/next-actions`
+
+- **Branch**: `devin/1777401826-badges`. **Base**: `main`. **Status**: Open.
+- **Mục tiêu**: Smart UX polish (prompt §20 mục 6) — Reuse `/me/next-actions` (PR #49) để hiển thị badge trên sidebar nav: `Missions` (số đếm claimable), `Boss` (chấm đỏ khi có boss live), `Topup` (chấm vàng khi có order PENDING). Mail nav vẫn dùng badge cũ từ WS `mail:new`.
+- **File**:
+  - `apps/web/src/stores/badges.ts` (new) — Pinia store, polling `/me/next-actions` mỗi 60s, expose computed `missionClaimable`, `mailUnclaimed`, `bossActive`, `topupPending`, `breakthroughReady`.
+  - `apps/web/src/components/shell/AppShell.vue` — import `useBadgesStore`, gọi `start()` onMounted + `stop()` onUnmounted; thêm 3 badge span trên Mission/Boss/Topup nav.
+  - `apps/web/src/views/HomeView.vue` — thêm `badges.refresh()` khi load (immediate refresh sau khi character ready).
+  - `apps/web/src/i18n/{vi,en}.json` — `shell.badge.bossActive` + `shell.badge.topupPending` cho tooltip.
+- **Polling**: 60s interval, silent fail (badges chỉ ẩn khi API fail). Stop khi shell unmount.
+- **Tests**: typecheck/lint/build xanh. Web vitest chưa wire ở main (PR #47 chưa merge), nên không thêm test web cho PR này — chỉ smoke manual khi PR merged.
+- **Risk**: low — pure FE polish, dùng endpoint read-only đã có. Polling 1 req/60s/user.
+- **Rollback**: revert PR. Không ảnh hưởng schema/data/backend.
+
+### PR #50 — `docs: thêm QA_CHECKLIST.md (smoke 15-phút trước release closed beta)`
+
+- **Branch**: `devin/1777400787-qa-checklist`. **Base**: `main`. **Status**: Open / docs only / CI 3/3 xanh (rebased sau PR #49 merge).
+- **Mục tiêu**: Theo prompt §20 mục 5 + 7. Checklist manual smoke 15 phút phủ 12 nhóm (Auth → Admin) + healthcheck post-deploy.
+- **File**: `docs/QA_CHECKLIST.md` (new), `README.md` (link).
+- **Risk**: zero — pure docs.
 
 ### PR #49 — `feat: smart next-action panel cho HomeView (smart onboarding)`
 
-- **Branch**: `devin/1777399841-smart-next-action`. **Base**: `main`. **Status**: Open / awaiting CI.
+- **Branch**: `devin/1777399841-smart-next-action`. **Base**: `main`. **Status**: **Merged** (CI 2/2 xanh).
 - **Mục tiêu**: Smart next-action (prompt §20 mục 2) — hiển thị "Nên làm gì tiếp?" trên HomeView dựa state: NO_CHARACTER / BREAKTHROUGH_READY / MISSION_CLAIMABLE / MAIL_UNCLAIMED / MAIL_UNREAD / BOSS_ACTIVE / TOPUP_PENDING / CULTIVATE_IDLE. Giá trị cao cho onboarding closed beta, risk low.
 - **File**:
   - `apps/api/src/modules/next-action/next-action.service.ts` (new) — pure-read Prisma queries, sort theo priority 1..5 ASC.
