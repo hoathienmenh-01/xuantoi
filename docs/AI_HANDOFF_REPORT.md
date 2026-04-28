@@ -1,12 +1,16 @@
 # AI Handoff Report — Xuân Tôi
 
-> **Snapshot**: `main` @ commit `e99a35f` (28 Apr 2026, sau khi PR #33..#45 merged).
-> **Người viết**: AI engineer session 28/4 sess.4 (audit PR #45 + đẩy blueprint 04/05 vào `docs/`).
+> **Snapshot**: `main` @ commit `68fa1a3` (28 Apr 2026 19:23 UTC, sau khi PR #33..#46, #48..#51 merged. PR #47 KHÔNG nằm trong `main` — xem cảnh báo bên dưới).
+> **Người viết**: AI engineer session 28/4 sess.5 (audit replay gap PR #47 + bump snapshot + mark PR #50/#51 merged).
 > **Đối tượng đọc**: AI kế nhiệm sẽ tiếp tục đưa dự án tới beta / production.
 >
 > Báo cáo trung thực. Mọi tuyên bố "đã xong" đều có PR + file + test chứng minh. Khi chưa verify runtime, ghi rõ **"Needs runtime smoke"**.
 >
-> **Trạng thái (28/4 session 4)**: PR #33→#49 đã merge `main`. PR #46 (audit + blueprint 04/05) + PR #48 (M8 admin guard split `@RequireAdmin`) + PR #49 (smart next-action panel) đã merge. PR #50 (docs QA_CHECKLIST.md) + PR #51 (sidebar badges từ next-actions) đang mở. Roadmap kế tiếp: closed-beta polish + smart features từ §21. Xem `## Recent Changes` + §21.
+> **Trạng thái (28/4 session 5)**: PR #33..#46 + PR #48..#51 đã merge `main`. PR #50 (docs QA_CHECKLIST.md) + PR #51 (sidebar badges) **đã merge** (session 4 ghi nhầm là Open).
+>
+> ⚠️ **REPLAY GAP — PR #47**: PR #47 (`feat(web,test): wire Vitest minimal + Playwright golden path scaffold (H5)`) đã merge **NHƯNG vào feature branch `devin/1777398022-audit-pr-45-blueprint-docs` (merge commit `4ed913a`), KHÔNG vào `main`**. Trên `main` hiện tại, các file `apps/web/vitest.config.ts`, `apps/web/playwright.config.ts`, `apps/web/e2e/golden.spec.ts`, `apps/web/src/stores/__tests__/*.test.ts` **không tồn tại**, và `apps/web/package.json` test script vẫn là `echo "(web) test skipped — wire vitest in Phase 1"`. ⇒ **H5 vẫn Open trên `main`** (xem §16). Cần replay PR #47 vào main như task ưu tiên kế tiếp (Roadmap §20.2-3 + §21 PR B).
+>
+> Roadmap kế tiếp: replay PR #47 (PR B) → tiếp tục closed-beta polish + smart features. Xem `## Recent Changes` + §21.
 >
 > **Blueprint gốc 04/05**: nay đã được commit vào `docs/04_TECH_STACK_VA_DATA_MODEL.md` + `docs/05_KICH_BAN_BUILD_VA_PROMPT_AI.md` kèm banner **"Historical blueprint, NOT the current source of truth"**. Khi có conflict giữa 04/05 và code hiện tại + report này → **tin code & report**, KHÔNG rollback hoặc rewrite project theo 04/05.
 
@@ -26,9 +30,10 @@
 ## 2. Current Branch / CI / PR Status
 
 - **Default branch**: `main`.
-- **Commit audit**: `e99a35f Merge pull request #45 from hoathienmenh-01/devin/1777388675-i18n-reaudit`.
-- **CI gần nhất trên main**: xanh (GitHub Actions job `build` — typecheck + lint + test + build, có postgres + redis service; Devin Review là external check không block merge).
-- **PR open đáng kể**: **không có**. Toàn bộ chuỗi #33..#45 đã merge vào `main`.
+- **Commit audit**: `68fa1a3 Merge pull request #50 from hoathienmenh-01/devin/1777400787-qa-checklist` (HEAD `main`, 28/4 19:23 UTC).
+- **CI gần nhất trên main**: xanh — PR #50 + #51 đều merge với `build` job xanh (typecheck + lint + test + build, postgres + redis service; Devin Review là external check không block merge).
+- **PR open đáng kể**: **không có** PR nào mở tại thời điểm audit session 5.
+- **⚠️ Replay gap**: PR #47 (Vitest + Playwright scaffold) closed-as-merged trên GitHub nhưng vào feature branch `devin/1777398022-audit-pr-45-blueprint-docs` chứ KHÔNG vào `main` — xem §6 dưới và §21 PR B. Branch nguồn `devin/1777398483-h5-vitest-playwright` vẫn tồn tại trên origin (commit `32a33a6`).
 - **PR merged gần đây ảnh hưởng lớn**:
   | PR | Chủ đề | Impact |
   |---|---|---|
@@ -53,18 +58,24 @@
   | #43 | Index `actorUserId, createdAt` cho `CurrencyLedger` + `ItemLedger` | Resolve M5 |
   | #44 | Replay PR #42/#43 vào main + smoke E2E pass 6/6 | Snapshot bump `4d8af10` + Resolve H1 |
   | #45 | i18n `vi.json` — dịch 12 admin key còn English (`roleLabel`, `tab.audit`, `users.col.role`, `users.banned`, `roleChangeConfirm`, `roleChangedToast`, `topups.col.{user,status,note}`, `audit.col.{actor,action,meta}`) | Resolve L1 |
+  | #46 | Audit session 4 + commit blueprint `docs/04_*` + `docs/05_*` với banner "Historical blueprint, NOT the current source of truth" | Snapshot bump `e99a35f` → `ddd3d56` (post-merge `1fc814d`) |
+  | ~~#47~~ | ~~`feat(web,test): wire Vitest minimal + Playwright golden path scaffold (H5)`~~ | **⚠️ Merged vào feature branch `devin/1777398022-audit-pr-45-blueprint-docs` (`4ed913a`), KHÔNG vào `main`. Cần replay** — xem PR B §21. |
+  | #48 | Split ADMIN vs MOD permission via `@RequireAdmin` decorator + reflector | Resolve M8 |
+  | #49 | Smart next-action panel cho HomeView (`/me/next-actions` endpoint + 13 test) | Smart onboarding (§21 prompt user) |
+  | #50 | docs QA_CHECKLIST.md (smoke 15-phút trước release closed beta) | docs only — merge `68fa1a3` |
+  | #51 | feat(web): sidebar badges (mission/boss/topup) từ `/me/next-actions` | Smart UX polish — merge `699af81` |
 
-- Các branch `devin/*` feature đã merge vẫn còn tồn tại ở origin — có thể xoá sau khi smoke test, không cần gấp.
+- Các branch `devin/*` feature đã merge vẫn còn tồn tại ở origin — có thể xoá sau khi smoke test, không cần gấp. **Lưu ý**: branch `devin/1777398022-audit-pr-45-blueprint-docs` vẫn chứa commit `4ed913a` (Merge PR #47) chưa vào main — nguồn để cherry-pick/replay.
 
 ---
 
-## Recent Changes (PR #33→#49 + PR #50 docs + PR #51 badges)
+## Recent Changes (PR #33→#51 + replay-gap PR #47)
 
-Mỗi PR đều `Merged` vào `main` (hoặc open + CI xanh), branch base = `main`. Smoke local (typecheck/lint/test/build) đã chạy ở mỗi PR; smoke E2E 6/6 đã pass tại PR #44 (snapshot `4d8af10`).
+Mỗi PR đều `Merged` vào `main` (trừ PR #47 — xem cảnh báo), branch base = `main`. Smoke local (typecheck/lint/test/build) đã chạy ở mỗi PR; smoke E2E 6/6 đã pass tại PR #44 (snapshot `4d8af10`).
 
 ### PR #51 — `feat(web): sidebar badges (mission claimable / boss active / topup pending) từ /me/next-actions`
 
-- **Branch**: `devin/1777401826-badges`. **Base**: `main`. **Status**: Open.
+- **Branch**: `devin/1777401826-badges`. **Base**: `main`. **Status**: **Merged** (commit `699af81`).
 - **Mục tiêu**: Smart UX polish (prompt §20 mục 6) — Reuse `/me/next-actions` (PR #49) để hiển thị badge trên sidebar nav: `Missions` (số đếm claimable), `Boss` (chấm đỏ khi có boss live), `Topup` (chấm vàng khi có order PENDING). Mail nav vẫn dùng badge cũ từ WS `mail:new`.
 - **File**:
   - `apps/web/src/stores/badges.ts` (new) — Pinia store, polling `/me/next-actions` mỗi 60s, expose computed `missionClaimable`, `mailUnclaimed`, `bossActive`, `topupPending`, `breakthroughReady`.
@@ -78,7 +89,7 @@ Mỗi PR đều `Merged` vào `main` (hoặc open + CI xanh), branch base = `mai
 
 ### PR #50 — `docs: thêm QA_CHECKLIST.md (smoke 15-phút trước release closed beta)`
 
-- **Branch**: `devin/1777400787-qa-checklist`. **Base**: `main`. **Status**: Open / docs only / CI 3/3 xanh (rebased sau PR #49 merge).
+- **Branch**: `devin/1777400787-qa-checklist`. **Base**: `main`. **Status**: **Merged** (commit `68fa1a3`, docs only, CI 3/3 xanh).
 - **Mục tiêu**: Theo prompt §20 mục 5 + 7. Checklist manual smoke 15 phút phủ 12 nhóm (Auth → Admin) + healthcheck post-deploy.
 - **File**: `docs/QA_CHECKLIST.md` (new), `README.md` (link).
 - **Risk**: zero — pure docs.
@@ -257,13 +268,14 @@ Mỗi PR đều `Merged` vào `main` (hoặc open + CI xanh), branch base = `mai
 - **Risk**: volume ~10–50 row/player/ngày (đủ index, có thể partition sau).
 - **Follow-up**: equip/unequip không ghi ledger (đúng thiết kế — không thay đổi qty). `ADMIN_REVOKE` chưa có endpoint thật (chỉ enum cho future).
 
-### Audit gap (chưa được cover trong PR #33→#45)
+### Audit gap (sau session 5 — tính trạng thực tế trên `main @ 68fa1a3`)
 
-- **E2E Playwright** scaffolded (PR #47) — wired `playwright.config.ts` + `golden.spec.ts` (smoke + golden path gated `E2E_FULL=1`); chưa add CI matrix.
-- **Web Vitest** wired (PR #47) — 17 test pass cho 2 store (toast, game).
-- **Smoke runtime** sau PR #47: không cần thiết (chỉ thêm test infrastructure). Smoke E2E gần nhất là sau PR #44 — PASS 6/6.
-- **PR E (M8 admin guard split ADMIN vs MOD)** — đã làm xong (PR đang open hoặc đã merge tuỳ thời điểm).
+- **⚠️ Web Vitest + Playwright (PR #47) KHÔNG ở main**: branch `devin/1777398483-h5-vitest-playwright` đã merge vào branch trung gian `devin/1777398022-audit-pr-45-blueprint-docs` (commit `4ed913a`) NHƯNG branch trung gian đó đã merge vào main TRƯỚC khi PR #47 được merge vào nó (PR #46 merge `1fc814d` mang `ddd3d56`, sau đó PR #47 merge `4ed913a` chỉ tồn tại trên feature branch). Tất cả file và thay đổi của PR #47 (vitest config, playwright config, e2e spec, store test, devDeps `vitest`/`@playwright/test`/`happy-dom`/`@vue/test-utils`, `apps/web/package.json` test script update) — **không** có mặt trên `main`.
+  - Lớp dễ kiểm tra: `ls apps/web/vitest.config.ts apps/web/playwright.config.ts apps/web/e2e/golden.spec.ts` ⇒ `No such file`.
+  - `grep '"test"' apps/web/package.json` vẫn ra `"echo \"(web) test skipped — wire vitest in Phase 1\""`.
+- **Smoke runtime** sau PR #51 (sidebar badges): **Needs runtime smoke** (badge polling 60s, AppShell mount/unmount lifecycle). Manual smoke dựa vào `docs/QA_CHECKLIST.md` section 1.
 - **Helper `itemName(key, locale)` (L4)** — chưa làm; tách PR riêng khi cần catalog item l10n cho `MissionView/MailView/GiftCodeView/ShopView`.
+- **Old text về "PR #47 wired"**: trước đây session 4 ghi audit gap như "E2E Playwright scaffolded (PR #47) — wired" + "Web Vitest wired (PR #47)" — **sai** với trạng thái `main`. Chính sửa ô này trong audit session 5.
 
 ---
 
@@ -883,7 +895,7 @@ _(Không có lỗi làm app không chạy / mất tiền / auth hỏng tại com
 | ~~H2~~ | ~~Không có seed script tạo admin đầu tiên.~~ | `apps/api/scripts/bootstrap.ts` | — | **Resolved** by **PR #33** (`pnpm --filter @xuantoi/api bootstrap`, idempotent, 7 test). |
 | ~~H3~~ | ~~Không có seed sect (Thanh Vân Môn, Huyền Thuỷ Cung, Tu La Điện).~~ | `apps/api/scripts/bootstrap.ts:DEFAULT_SECTS` | — | **Resolved** by **PR #33**. |
 | ~~H4~~ | ~~`InventoryService` không có test unit.~~ | `apps/api/src/modules/inventory/inventory.service.test.ts` | — | **Resolved** by **PR #34** (19 test). |
-| H5 | Web chưa có Vitest + E2E Playwright. | `apps/web` | Regression FE không bắt được. | **Open** — Wire Vitest minimal + 1 Playwright happy path (login → home → cultivate 1 tick → mission claim → shop buy). |
+| H5 | Web chưa có Vitest + E2E Playwright **trên `main`**. | `apps/web` | Regression FE không bắt được. | **Open (replay needed)** — PR #47 đã tạo scaffold (vitest config + playwright + 17 store test) **nhưng merge vào feature branch chứ chưa vào `main`**. Cần PR replay (xem §21 PR B). |
 
 ### Medium
 
@@ -1052,9 +1064,9 @@ Admin hiện tại có thể vào `/admin` → Users → tìm → **Set role = A
 
 ### Immediate (1–2 session tới)
 
-1. **Smoke E2E sau PR #33→#40 merged** (Needs runtime smoke). Kiểm: auth → onboarding → cultivate 1 tick → combat → mission claim → mail claim → giftcode redeem → **shop buy** → **settings change-password** → **profile view người khác** → **admin boss spawn (force)** → query `ItemLedger` + `CurrencyLedger` consistency. Ghi report vào `docs/AI_HANDOFF_REPORT.md`.
-2. **H5 — Web Vitest minimal**: wire 1 file test cho `useGameStore` hoặc `AppShell.vue` snapshot tối thiểu; remove `echo skipped`.
-3. **H5 — Playwright happy path**: register → onboard → home → cultivate toggle → 1 tick → mission claim. Wire CI job riêng.
+1. ~~**Smoke E2E sau PR #33→#40 merged**~~ — Done tại PR #44 (6/6 pass). Còn lại: smoke tích hợp sau PR #48..#51 (admin guard, next-actions, badges) — **Needs runtime smoke**. Bao gồm verify badges sidebar với mission claimable / boss active / topup PENDING.
+2. **H5 — Replay PR #47 vào `main`** (ưu tiên cao nhất, xem §21 PR B): wire Vitest config + playwright config + 17 store test (`toast`, `game`) + golden.spec.ts gated `E2E_FULL=1` + `apps/web/package.json` test script `vitest run`.
+3. **H5 — Sau khi replay**: cân nhắc thêm Playwright vitest CI matrix riêng — medium effort, cần service Postgres + Redis + spin api/web.
 4. ~~**M1 — Mission timezone env**~~: **Done** by **PR #42** — `MISSION_RESET_TZ=Asia/Ho_Chi_Minh` vào `MissionService` helpers + 7 test.
 5. **i18n gap audit** sau khi thêm settings/profile/shop/boss-admin (~75 key mới) — grep `[À-ỹ]` trong `.vue/.ts`.
 
@@ -1112,10 +1124,11 @@ Admin hiện tại có thể vào `/admin` → Users → tìm → **Set role = A
 - **File**: chỉ ghi báo cáo trong `docs/AI_HANDOFF_REPORT.md` (Recent Changes / Smoke section). Không sửa code (nếu không phát hiện bug).
 - **Risk**: nếu phát hiện bug → mở PR fix riêng theo mức độ.
 
-#### PR B — H5 Playwright golden path + Vitest minimal
-- **File**: `apps/web/e2e/golden.spec.ts` (new), `apps/web/playwright.config.ts` (new), `apps/web/vitest.config.ts` (new), `apps/web/src/__tests__/app-shell.test.ts` (new), `.github/workflows/ci.yml` (extend matrix). Update `apps/web/package.json` `test` script.
-- **Test**: register → onboard → cultivate 1 tick → mission claim. Vitest — 1 store + 1 component snapshot.
-- **Risk**: thêm ~2-3 phút CI; cần service Postgres + Redis (đã có sẵn).
+#### PR B — H5 Replay PR #47 (Vitest minimal + Playwright scaffold) vào `main`
+- **Bối cảnh**: PR #47 (`32a33a6 feat(web,test): wire Vitest minimal + Playwright golden path scaffold (H5)`) đã merge vào feature branch `devin/1777398022-audit-pr-45-blueprint-docs` tại `4ed913a` nhưng KHÔNG vào `main`. Cần PR mới base vào `main` mang nguyên nội dung PR #47 (cherry-pick `32a33a6` hoặc clean re-impl).
+- **File**: `apps/web/vitest.config.ts` (new, vitest@^2.1.9 happy-dom), `apps/web/playwright.config.ts` (new, @playwright/test@^1.49.0), `apps/web/e2e/golden.spec.ts` (new, smoke + golden gated `E2E_FULL=1`), `apps/web/src/stores/__tests__/toast.test.ts` (new, 9 test), `apps/web/src/stores/__tests__/game.test.ts` (new, 8 test), `apps/web/package.json` (test script `vitest run` + 4 devDeps + scripts `test:watch`/`e2e`/`e2e:install`), `pnpm-lock.yaml`. **Không sửa** `.github/workflows/ci.yml` — step `pnpm test` recursive sẽ tự pickup vitest (+~2s).
+- **Test**: 17 vitest pass local. Playwright KHÔNG add vào CI (cần browser + full stack). API/shared test không đổi.
+- **Risk**: low — chỉ thêm test infrastructure, không sửa runtime code. CI build sẽ tốn thêm ~2s cho vitest run.
 
 #### ~~PR C — M1 Mission reset timezone env~~ — **Done** (PR #42)
 - **File**: `apps/api/src/modules/mission/mission.service.ts` (helper `getMissionResetTz` + tz-aware `nextDailyWindowEnd`/`nextWeeklyWindowEnd`), `apps/api/.env.example` (`MISSION_RESET_TZ=Asia/Ho_Chi_Minh`), `mission.service.test.ts` (+7 test).
@@ -1140,10 +1153,10 @@ Admin hiện tại có thể vào `/admin` → Users → tìm → **Set role = A
 - Helper `itemName(key, locale)` (L4) vẫn open — tách thành PR riêng khi có catalog item l10n.
 
 #### Thứ tự đề xuất cho AI tiếp theo
-**~~A (smoke)~~ → B (Vitest+Playwright) → ~~C (timezone)~~ → ~~D (index)~~ → E (guard split) → ~~F (i18n)~~**.  
-(A Done qua PR #44 smoke E2E pass 6/6; C Done tại PR #42; D Done tại PR #43; F Done tại PR #45.)
+**~~A (smoke)~~ → B (Replay PR #47 — Vitest+Playwright) → ~~C (timezone)~~ → ~~D (index)~~ → ~~E (guard split)~~ → ~~F (i18n)~~**.  
+(A Done qua PR #44 smoke E2E pass 6/6; C Done tại PR #42; D Done tại PR #43; E Done tại PR #48; F Done tại PR #45. **B vẫn pending** vì replay-gap PR #47.)
 
-**Ưu tiên hành động sau PR E**: chuyển sang smart-feature (smart next-action / smart admin dashboard / mission notification badge) hoặc closed-beta polish (mobile responsive verify, helper `itemName(key, locale)` cho L4). Không còn issue **High** mở; chỉ còn **Medium** (M2/M3/M6/M7/M9/M10) và **Low** (L2/L3/L4).
+**Ưu tiên hành động sau PR B (replay PR #47)**: chuyển sang smart-feature tiếp hoặc closed-beta polish (mobile responsive verify, helper `itemName(key, locale)` cho L4, `ADMIN_REVOKE` endpoint cho L7, mở rộng vitest coverage cho `home`/`mission`/`shop` view). Không còn issue **High** đóng trên main ngoài H5; chỉ còn **Medium** (M3/M6/M7/M9/M10/M11) và **Low** (L2/L3/L4/L5/L6/L7).
 
 Các hạng mục smart-feature đề xuất (không bắt buộc — AI tự quyết theo prompt user):
 - **Smart next-action / onboarding checklist** (§16 của prompt user mục 1–2): /home giợ widget "Nên làm gì tiếp?" dựa trên state (đủ EXP đột phá, mission claim-able, mail unread, boss đang mở, …).
@@ -1157,7 +1170,32 @@ Leaderboard / Alchemy / Refinery / Arena / Pet / Companion / Event / Battle Pass
 
 ---
 
-### Session 4 audit log (28/4 — this PR)
+### Session 5 audit log (28/4 19:56 UTC — this PR)
+
+- **Action**: pull `main` → `68fa1a3`. Verify trạng thái PR #46..#51 và phát hiện replay-gap PR #47.
+- **Discrepancy phát hiện**:
+  1. Snapshot pointer `e99a35f` lỗi thời — main đã tại `68fa1a3` (PR #46→#51 merged sau đó, trừ #47).
+  2. **Trạng thái PR #50 + #51** ghi "đang mở" — sai (đã merge `68fa1a3` và `699af81`).
+  3. **⚠️ Replay-gap PR #47**: GitHub PR API show `closed (merged)`, nhưng commit merge `4ed913a` chỉ tồn tại trên `origin/devin/1777398022-audit-pr-45-blueprint-docs`. `git branch --contains 4ed913a` ⇒ chỉ ra branch đó, không có `main`. File `apps/web/vitest.config.ts`, `apps/web/playwright.config.ts`, `apps/web/e2e/golden.spec.ts`, `apps/web/src/stores/__tests__/*.test.ts` **không tồn tại** trên `main @ 68fa1a3`. `apps/web/package.json` test script vẫn `"echo \"(web) test skipped — wire vitest in Phase 1\""`.
+  4. **H5 known issue** ghi "Resolved partial" qua PR #47 — sai cho trạng thái `main`. Đã đổi sang **Open (replay needed)**.
+  5. **Audit gap session 4** ghi "E2E Playwright scaffolded (PR #47) — wired" + "Web Vitest wired (PR #47)" — sai. Đã ghi đè bằng note replay-gap.
+  6. Section heading `Recent Changes (PR #33→#49 + PR #50 docs + PR #51 badges)` — đã đổi sang `(PR #33→#51 + replay-gap PR #47)`.
+  7. §21 PR B mô tả như mới tinh — đã retitle "Replay PR #47" để AI sau hiểu rõ có commit sẵn để cherry-pick.
+- **Fix đã áp dụng trong PR này (docs only)**:
+  1. Header snapshot `e99a35f` → `68fa1a3` + thêm cảnh báo replay-gap.
+  2. §2 commit audit + bảng PR merged gần đây thêm #46..#51 (#47 gạch ngang + note replay-gap).
+  3. Recent Changes PR #50/#51 đổi Open → Merged + commit ref.
+  4. Audit gap section viết lại theo thực tế main.
+  5. §16 H5 → Open (replay needed).
+  6. §20 Immediate roadmap reorder: replay PR #47 lên #2.
+  7. §21 PR B retitle + ghi rõ có commit `32a33a6` để cherry-pick.
+- **Local check session 5**: `pnpm install` → done; `pnpm --filter @xuantoi/api prisma:generate` → done; `pnpm --filter @xuantoi/shared build` → done; `pnpm typecheck` → pass (3/3 workspace); `pnpm lint` → pass (api + web `--max-warnings 0`); test/build skip (docs-only PR + chua có Postgres local).
+- **Risk**: green — docs-only PR, không đụng code/test/migration/schema.
+- **Roadmap kế**: PR B (replay PR #47) — base main, cherry-pick `32a33a6` (hoặc re-impl sạch); update `apps/web/package.json` test script. CI sẽ tự pickup vitest qua `pnpm test`.
+
+---
+
+### Session 4 audit log (28/4 — PR #46)
 
 - **Action**: pull `main` → `e99a35f`. Verify PR #45 (L1 i18n re-audit) đã merge. Confirm 0 PR open.
 - **Discrepancy phát hiện**:
