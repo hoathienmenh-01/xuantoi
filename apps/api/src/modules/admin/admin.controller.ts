@@ -162,6 +162,12 @@ export class AdminController {
     return { ok: true, data: r };
   }
 
+  @Get('stats')
+  async stats() {
+    const r = await this.admin.stats();
+    return { ok: true, data: r };
+  }
+
   @Get('giftcodes')
   async giftList(@Query('limit') limit: string | undefined) {
     const l = Math.max(1, Math.min(500, Number.parseInt(limit ?? '100', 10) || 100));

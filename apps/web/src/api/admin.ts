@@ -119,3 +119,28 @@ export async function adminListAudit(page: number): Promise<Page<AdminAuditRow>>
   });
   return unwrap(data);
 }
+
+export interface AdminStats {
+  users: { total: number; banned: number; admins: number };
+  characters: {
+    total: number;
+    cultivating: number;
+    bySect: { sectId: string | null; name: string; count: number }[];
+  };
+  economy: {
+    linhThachCirculating: string;
+    tienNgocCirculating: string;
+    topupPending: number;
+    topupApproved: number;
+    topupRejected: number;
+  };
+  activity: {
+    last24hLogins: number;
+    last7dRegistrations: number;
+  };
+}
+
+export async function adminStats(): Promise<AdminStats> {
+  const { data } = await apiClient.get<Envelope<AdminStats>>('/admin/stats');
+  return unwrap(data);
+}
