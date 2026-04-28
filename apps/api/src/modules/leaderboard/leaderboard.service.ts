@@ -42,7 +42,8 @@ export class LeaderboardService {
   constructor(private readonly prisma: PrismaService) {}
 
   async topByPower(limit = DEFAULT_LIMIT): Promise<LeaderboardRow[]> {
-    const safe = Math.min(Math.max(1, Math.floor(limit) || DEFAULT_LIMIT), MAX_LIMIT);
+    const n = Number.isFinite(limit) ? Math.floor(limit) : DEFAULT_LIMIT;
+    const safe = Math.min(Math.max(1, n), MAX_LIMIT);
     const rows = await this.prisma.character.findMany({
       where: { user: { banned: false } },
       select: {
