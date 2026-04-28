@@ -8,6 +8,7 @@ import { useToastStore } from '@/stores/toast';
 import {
   adminApproveTopup,
   adminBanUser,
+  adminEconomyAlerts,
   adminGrant,
   adminListAudit,
   adminListTopups,
@@ -17,6 +18,7 @@ import {
   adminSpawnBoss,
   adminStats,
   type AdminAuditRow,
+  type AdminEconomyAlerts,
   type AdminStats,
   type AdminUserRow,
   type Role,
@@ -35,6 +37,7 @@ const { t } = useI18n();
 type Tab = 'stats' | 'users' | 'topups' | 'audit' | 'boss';
 const tab = ref<Tab>('stats');
 const stats = ref<AdminStats | null>(null);
+const alerts = ref<AdminEconomyAlerts | null>(null);
 
 // Users tab
 const userQuery = ref('');
@@ -95,7 +98,9 @@ watch(tab, async (curTab) => {
 async function refreshStats(): Promise<void> {
   loading.value = true;
   try {
-    stats.value = await adminStats();
+    const [s, a] = await Promise.all([adminStats(), adminEconomyAlerts()]);
+    stats.value = s;
+    alerts.value = a;
   } catch (e) {
     handleErr(e);
   } finally {
@@ -312,6 +317,52 @@ const isAdmin = () => game.character?.role === 'ADMIN';
             </dl>
           </div>
         </div>
+
+        <!-- ECONOMY ALERTS -->
+        <div v-if="alerts" class="bg-ink-700/30 border border-amber-500/30 rounded p-3">
+          <h3 class="text-sm text-amber-200 font-semibold">{{ t('admin.alerts.title') }}</h3>
+          <p class="text-xs text-ink-300 mt-1">{{ t('admin.alerts.subtitle', { hours: alerts.staleHours }) }}</p>
+
+          <div v-if="alerts.negativeCurrency.length === 0 && alerts.negativeInventory.length === 0 && alerts.stalePendingTopups.length === 0" class="text-emerald-300 text-sm mt-2">
+            {{ t('admin.alerts.allClear') }}
+          </div>
+
+          <div v-else class="mt-3 space-y-3">
+            <!-- negative currency -->
+            <div v-if="alerts.negativeCurrency.length > 0">
+              <h4 class="text-xs text-rose-300 uppercase tracking-wide">{{ t('admin.alerts.negativeCurrency') }} ({{ alerts.negativeCurrency.length }})</h4>
+              <ul class="text-xs space-y-0.5 mt-1">
+                <li v-for="row in alerts.negativeCurrency" :key="row.characterId" class="flex justify-between gap-2">
+                  <span class="truncate">{{ row.name }} <span class="text-ink-300">({{ row.userEmail }})</span></span>
+                  <span class="text-rose-300 font-mono">LT={{ row.linhThach }} · TN={{ row.tienNgoc }} · TNK={{ row.tienNgocKhoa }}</span>
+                </li>
+              </ul>
+            </div>
+
+            <!-- negative inventory -->
+            <div v-if="alerts.negativeInventory.length > 0">
+              <h4 class="text-xs text-rose-300 uppercase tracking-wide">{{ t('admin.alerts.negativeInventory') }} ({{ alerts.negativeInventory.length }})</h4>
+              <ul class="text-xs space-y-0.5 mt-1">
+                <li v-for="row in alerts.negativeInventory" :key="row.inventoryItemId" class="flex justify-between gap-2">
+                  <span class="truncate">{{ row.characterName }} · <span class="text-ink-300">{{ row.itemKey }}</span></span>
+                  <span class="text-rose-300 font-mono">qty={{ row.qty }}</span>
+                </li>
+              </ul>
+            </div>
+
+            <!-- stale topups -->
+            <div v-if="alerts.stalePendingTopups.length > 0">
+              <h4 class="text-xs text-amber-300 uppercase tracking-wide">{{ t('admin.alerts.stalePendingTopups') }} ({{ alerts.stalePendingTopups.length }})</h4>
+              <ul class="text-xs space-y-0.5 mt-1">
+                <li v-for="row in alerts.stalePendingTopups" :key="row.id" class="flex justify-between gap-2">
+                  <span class="truncate">{{ row.userEmail }} · <span class="text-ink-300">{{ row.packageKey }}</span> · {{ row.tienNgocAmount }} TN</span>
+                  <span class="text-amber-300 font-mono">{{ row.ageHours }}h</span>
+                </li>
+              </ul>
+            </div>
+          </div>
+        </div>
+
         <MButton @click="refreshStats()">{{ t('common.refresh') }}</MButton>
       </section>
 
