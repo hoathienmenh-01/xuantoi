@@ -38,6 +38,11 @@ const GrantInput = z.object({
   tienNgoc: z.number().int().default(0),
   reason: z.string().max(200).default(''),
 });
+const InventoryRevokeInput = z.object({
+  itemKey: z.string().min(1).max(80),
+  qty: z.number().int().positive().max(999),
+  reason: z.string().max(200).default(''),
+});
 const TopupActionInput = z.object({
   note: z.string().max(200).default(''),
 });
@@ -132,6 +137,31 @@ export class AdminController {
         id,
         BigInt(parsed.data.linhThach),
         parsed.data.tienNgoc,
+        parsed.data.reason,
+      );
+      return { ok: true, data: { ok: true } };
+    } catch (e) {
+      this.handleErr(e);
+    }
+  }
+
+  @Post('users/:id/inventory/revoke')
+  @HttpCode(200)
+  @RequireAdmin()
+  async revokeInventory(
+    @Req() req: AdminReq,
+    @Param('id') id: string,
+    @Body() body: unknown,
+  ) {
+    const parsed = InventoryRevokeInput.safeParse(body);
+    if (!parsed.success) fail('INVALID_INPUT');
+    try {
+      await this.admin.revokeInventory(
+        req.userId,
+        req.role,
+        id,
+        parsed.data.itemKey,
+        parsed.data.qty,
         parsed.data.reason,
       );
       return { ok: true, data: { ok: true } };

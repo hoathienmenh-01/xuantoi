@@ -5,6 +5,7 @@ import { CharacterService } from '../character/character.service';
 import { CurrencyError, CurrencyService } from '../character/currency.service';
 import { TopupService, type TopupOrderView } from '../topup/topup.service';
 import { RealtimeService } from '../realtime/realtime.service';
+import { InventoryService } from '../inventory/inventory.service';
 
 export class AdminError extends Error {
   constructor(
@@ -21,6 +22,7 @@ export class AdminError extends Error {
 
 const MAX_GRANT_LINH_THACH = 1_000_000_000n; // 1 tỷ
 const MAX_GRANT_TIEN_NGOC = 1_000_000;
+const MAX_REVOKE_QTY = 999; // chặn admin gõ nhầm lệnh revoke số khổng lồ
 const PAGE_SIZE = 30;
 
 export interface AdminUserRow {
@@ -48,6 +50,7 @@ export class AdminService {
     private readonly topup: TopupService,
     private readonly realtime: RealtimeService,
     private readonly currency: CurrencyService,
+    private readonly inventory: InventoryService,
   ) {}
 
   // ---------- users ----------
@@ -215,6 +218,70 @@ export class AdminService {
       targetUserId,
       deltaLinhThach: deltaLinhThach.toString(),
       deltaTienNgoc,
+      reason,
+    });
+
+    const state = await this.chars.findByUser(targetUserId);
+    if (state) this.realtime.emitToUser(targetUserId, 'state:update', state);
+  }
+
+  /**
+   * Thu hồi item khỏi túi người chơi — admin tool.
+   * Use-case: cấp nhầm, ban cheat, refund item giao dịch lỗi.
+   *
+   *  - MOD chỉ revoke được PLAYER; ADMIN revoke được MOD/ADMIN.
+   *  - Không revoke chính mình (`CANNOT_TARGET_SELF`).
+   *  - qty 1..999 — bảo vệ khỏi lệnh nhầm số lớn.
+   *  - Không revoke được nếu tổng qty trong túi nhỏ hơn `qty` → `INVALID_INPUT`.
+   *  - Ghi `ItemLedger` với `reason=ADMIN_REVOKE` + `actorUserId` + meta reason.
+   *  - Ghi audit log `admin.inventory.revoke`.
+   */
+  async revokeInventory(
+    actorId: string,
+    actorRole: Role,
+    targetUserId: string,
+    itemKey: string,
+    qty: number,
+    reason: string,
+  ): Promise<void> {
+    if (actorId === targetUserId) throw new AdminError('CANNOT_TARGET_SELF');
+    if (!Number.isInteger(qty) || qty <= 0 || qty > MAX_REVOKE_QTY) {
+      throw new AdminError('INVALID_INPUT');
+    }
+    if (!itemKey || itemKey.length > 80) throw new AdminError('INVALID_INPUT');
+    const targetUser = await this.prisma.user.findUnique({
+      where: { id: targetUserId },
+      select: { role: true },
+    });
+    if (!targetUser) throw new AdminError('NOT_FOUND');
+    if (actorRole !== 'ADMIN' && targetUser.role !== 'PLAYER') {
+      throw new AdminError('FORBIDDEN');
+    }
+    const target = await this.prisma.character.findUnique({
+      where: { userId: targetUserId },
+      select: { id: true },
+    });
+    if (!target) throw new AdminError('NOT_FOUND');
+
+    try {
+      await this.inventory.revoke(target.id, itemKey, qty, {
+        refType: 'User',
+        refId: targetUserId,
+        actorUserId: actorId,
+        extra: { reason },
+      });
+    } catch (e) {
+      const code = (e as { code?: string }).code;
+      if (code === 'ITEM_NOT_FOUND' || code === 'INSUFFICIENT_QTY') {
+        throw new AdminError('INVALID_INPUT');
+      }
+      throw e;
+    }
+
+    await this.audit(actorId, 'admin.inventory.revoke', {
+      targetUserId,
+      itemKey,
+      qty,
       reason,
     });
 

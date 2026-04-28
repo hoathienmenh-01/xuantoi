@@ -41,7 +41,8 @@ class InventoryError extends Error {
       | 'NOT_EQUIPPABLE'
       | 'NOT_USABLE'
       | 'WRONG_SLOT'
-      | 'ALREADY_USED',
+      | 'ALREADY_USED'
+      | 'INSUFFICIENT_QTY',
   ) {
     super(code);
   }
@@ -186,6 +187,75 @@ export class InventoryService {
         actorUserId: meta.actorUserId ?? null,
         meta: meta.extra ?? {},
       },
+    });
+  }
+
+  /**
+   * Admin revoke — thu hồi item khỏi túi người chơi. Ghi ledger `ADMIN_REVOKE`.
+   *
+   * Logic:
+   *  1. Tổng qty của `itemKey` trên character = Σ qty của mọi row (equipped + unequipped stack).
+   *  2. Nếu tổng < qty yêu cầu → throw `INSUFFICIENT_QTY`. KHÔNG trừ một phần (atomic).
+   *  3. Ưu tiên trừ từ row KHÔNG equipped trước (tránh làm player bị mất trang bị đang đeo
+   *     đột ngột). Nếu hết row non-equipped mà vẫn còn nợ → đụng row equipped,
+   *     nhưng clear `equippedSlot` khi hết sạch row đó.
+   *  4. Row qty → 0: delete row.
+   *  5. Ghi ledger với `qtyDelta = -qty` (total), `reason = ADMIN_REVOKE`.
+   *
+   * Caller (AdminService) chịu trách nhiệm check role hierarchy + audit log.
+   */
+  async revoke(
+    characterId: string,
+    itemKey: string,
+    qty: number,
+    meta: Omit<ItemLedgerMeta, 'reason'>,
+  ): Promise<void> {
+    if (qty <= 0) throw new InventoryError('INSUFFICIENT_QTY');
+    const def = itemByKey(itemKey);
+    if (!def) throw new InventoryError('ITEM_NOT_FOUND');
+
+    await this.prisma.$transaction(async (tx) => {
+      const rows = await tx.inventoryItem.findMany({
+        where: { characterId, itemKey },
+        orderBy: [
+          // non-equipped trước (equippedSlot IS NULL → true → xếp trước)
+          { equippedSlot: 'asc' },
+          { createdAt: 'asc' },
+        ],
+      });
+      const total = rows.reduce((s, r) => s + r.qty, 0);
+      if (total < qty) throw new InventoryError('INSUFFICIENT_QTY');
+
+      let remaining = qty;
+      // Chiến lược "non-equipped trước": sort lại thủ công vì Prisma sort NULL
+      // theo locale DB, không ổn định.
+      const sorted = [...rows].sort((a, b) => {
+        const ae = a.equippedSlot === null ? 0 : 1;
+        const be = b.equippedSlot === null ? 0 : 1;
+        if (ae !== be) return ae - be;
+        return a.createdAt.getTime() - b.createdAt.getTime();
+      });
+      for (const r of sorted) {
+        if (remaining <= 0) break;
+        const take = Math.min(r.qty, remaining);
+        remaining -= take;
+        if (r.qty === take) {
+          await tx.inventoryItem.delete({ where: { id: r.id } });
+        } else {
+          await tx.inventoryItem.update({
+            where: { id: r.id },
+            data: { qty: r.qty - take },
+          });
+        }
+      }
+
+      await this.writeLedgerTx(tx, characterId, itemKey, -qty, {
+        reason: 'ADMIN_REVOKE',
+        refType: meta.refType,
+        refId: meta.refId,
+        actorUserId: meta.actorUserId,
+        extra: meta.extra,
+      });
     });
   }
 

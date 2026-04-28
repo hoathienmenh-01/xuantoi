@@ -1,6 +1,6 @@
 # AI Handoff Report — Xuân Tôi
 
-> **Snapshot**: `main` @ `81706a9` (Merge PR #61 audit session 6, 28 Apr 2026 22:05 UTC). PR #52..#61 đã merge `main`. **3 PR Pending merge**: #62 (G8 — M11 profile rate-limit, CI ✅ 3/3), #63 (G9 — M3 WS mission:progress, CI ✅ 3/3), #64 (G10 — H6 wire Playwright smoke vào CI).
+> **Snapshot**: `main` @ `81706a9` (Merge PR #61 audit session 6, 28 Apr 2026 22:05 UTC). PR #52..#61 đã merge `main`. **5 PR Pending merge**: #62 (G8 — M11 profile rate-limit, CI ✅ 3/3), #63 (G9 — M3 WS `mission:progress`, CI ✅ 3/3), #64 (G10 — H6 wire Playwright smoke vào CI, CI ✅ 5/5), #65 (G11 — FE handler `mission:progress` stacked trên #63, CI ✅ 3/3), **#66 (G12 — L7 `POST /admin/users/:id/inventory/revoke` + ledger `ADMIN_REVOKE` + audit log)**.
 > **Người viết**: AI engineer session 28/4 sess.6 (audit refresh sau khi PR #58/#59/#60 đã merge — header report cũ vẫn ghi #59/#60 "Open" → đó là tồn tại lỗi thời và đã được fix bởi PR docs này).
 > **Đối tượng đọc**: AI kế nhiệm sẽ tiếp tục đưa dự án tới beta / production.
 >
@@ -10,7 +10,7 @@
 >
 > **Trạng thái (28/4 session 6)**: PR #33..#60 đã merge `main`. PR #59 thêm leaderboard (BE + FE + 7 test). PR #60 thêm rate-limit `POST /auth/register` per-IP (+2 test) — security hardening. Vitest scaffold (PR B / replay PR #47) đã trên main; web test set hiện 64 test (toast 9 + game 8 + auth 7 + badges 9 + NextActionPanel 6 + OnboardingChecklist 8 + itemName 11 + LeaderboardView 6).
 >
-> Roadmap kế tiếp (xem §20/§21): ~~M11 rate-limit profile~~ → PR #62 Pending merge; ~~M3 WS `mission:progress`~~ → PR #63 Pending merge; ~~H6 Playwright CI~~ → PR #64 Pending merge — còn lại: L5 skeleton loaders, L7 `POST /admin/inventory/revoke`, L2 market fee 5% → config, M6/M7/M9/M10, FE handler `mission:progress` event, smart features tiếp từ prompt user.
+> Roadmap kế tiếp (xem §20/§21): ~~M11 rate-limit profile~~ → PR #62 Pending merge; ~~M3 WS `mission:progress`~~ → PR #63 + #65 Pending merge; ~~H6 Playwright CI~~ → PR #64 Pending merge; ~~L7 `POST /admin/inventory/revoke`~~ → **PR #66 Pending merge** (này) — còn lại: L5 skeleton loaders, L2 market fee 5% → config, M6/M7/M9/M10, smart features tiếp từ prompt user.
 >
 > **Note replay-gap PR #47** đã closed bởi PR #53 (cherry-pick `32a33a6` vào main) — không còn drift giữa GitHub PR status và `main`.
 >
@@ -85,30 +85,34 @@
 
 Mỗi PR đều `Merged` vào `main`, branch base = `main`. Smoke local (typecheck/lint/test/build) đã chạy ở mỗi PR; smoke E2E 6/6 đã pass tại PR #44 (snapshot `4d8af10`).
 
-### PR #73 — `feat(admin): topup list filter range date + user email (G19)` — **Pending merge**
+### PR #66 — `feat(api): admin revoke inventory endpoint + ledger ADMIN_REVOKE (L7)` — **Pending merge**
 
-- **Branch**: `devin/1777419928-g19-topup-date-filter`. **Base**: `main` @ `e102c6b`. **Status**: **Pending merge**.
-- **Mục tiêu** (Smart admin §3 prompt user — "Bộ lọc tìm topup"): Trước đây `AdminService.listTopups(status, page)` chỉ filter theo status — closed beta sẽ có nhiều đơn nạp, admin cần lọc theo khoảng ngày tạo và email người nạp để truy soát/đối chiếu chuyển khoản.
+- **Branch**: `devin/1777416580-g12-admin-inventory-revoke`. **Base**: `main` @ `81706a9`. **Status**: **Pending merge** (CI đang chạy sau push).
+- **Mục tiêu** (L7 trong Known Issues / Missing APIs): Trước đây admin chỉ có `POST /admin/users/:id/grant` (linh thạch + tiên ngọc). Không có cách revoke item đã cấp nhầm / refund bug / clean cheat. Token `ADMIN_REVOKE` đã có trong `ItemLedgerReason` union nhưng chưa có endpoint ghi nó.
 - **Giải pháp**:
-  - **BE `AdminService.listTopups(status, page, filters)`**: thêm 3 filter — `fromDate` (`createdAt.gte`), `toDate` (`createdAt.lte`), `userEmail` (resolve email → userId list → sentinel `'__none__'` nếu rỗng). Combine bằng `Prisma.TopupOrderWhereInput.AND`.
-  - **BE `AdminController.topups`**: 3 query params — `from` (ISO), `to` (ISO), `email` (max 120 char). Validate `Date.parse` không NaN; bỏ qua param invalid silent.
-  - **FE `apps/web/src/api/admin.ts`**: `adminListTopups(status, page, filters?)`.
-  - **FE `AdminView.vue`** topups tab: thêm 2 input `type="date"` + 1 input email. Date `to` clamp end-of-day 23:59:59 trước khi gửi ISO. data-testid để E2E.
-  - **i18n**: `admin.topups.filter.{from, to, emailPlaceholder}` (vi + en).
+  - **`InventoryService.revoke(characterId, itemKey, qty, meta)`** (new, 54 line): transactional. Query mọi row cùng `itemKey` của character, sort non-equipped trước, lấy qty từ từng row (update hoặc delete khi qty=0), ghi 1 ledger `ADMIN_REVOKE` với `qtyDelta=-qty`, `actorUserId`. Throw `INSUFFICIENT_QTY` nếu total < qty (atomic — không trừ một phần).
+  - **`AdminService.revokeInventory(actorId, actorRole, targetUserId, itemKey, qty, reason)`** (new, 52 line): validate `CANNOT_TARGET_SELF`, qty 1..999 (`MAX_REVOKE_QTY`), itemKey length; hierarchy check MOD chỉ revoke PLAYER (ADMIN revoke được mọi role); lookup character; delegate to `InventoryService.revoke`; map errors `ITEM_NOT_FOUND`/`INSUFFICIENT_QTY` → `AdminError INVALID_INPUT`; ghi `AdminAuditLog` action `admin.inventory.revoke`; emit WS `state:update` cho target user.
+  - **`POST /admin/users/:id/inventory/revoke`** controller (`@RequireAdmin()`): zod `{itemKey, qty: 1..999, reason?: string}`.
+  - `AdminModule` import `InventoryModule` (đã `exports InventoryService`).
 - **Files**:
-  - `apps/api/src/modules/admin/admin.service.ts` (+22 / -1)
-  - `apps/api/src/modules/admin/admin.controller.ts` (+15 / -2)
-  - `apps/api/src/modules/admin/admin-list-topups-filter.test.ts` (new, 130 line, **8 test**)
-  - `apps/web/src/api/admin.ts` (+11 / -3)
-  - `apps/web/src/views/AdminView.vue` (+44 / -1)
-  - `apps/web/src/i18n/{vi,en}.json` (+3 each)
-- **Tests**: 8 test mới — không filter, status only, fromDate, toDate, range, userEmail, combine status+range+email, email không match → 0. Tổng API test: **267/267** local (was 259, +8).
-- **Local verified**: `pnpm typecheck` ✅ · `pnpm lint` ✅ · `pnpm test` ✅ · `pnpm build` ✅.
-- **Risk**: low. Backward-compat: caller cũ `listTopups(status, page)` không pass filter vẫn hoạt động identical (param default `{}`).
-- **Backward compat**: existing FE call sites đều OK.
-- **Runtime smoke**: Needs runtime smoke — `/admin` tab Topups → chọn `from=2026-04-01`, `to=2026-04-15` → list chỉ trong range; nhập email user A → list chỉ A's orders.
-- **Rollback**: revert; FE filter chỉ là UI state.
-- **Bước tiếp**: G20 — daily login reward (cần model RewardClaimLog), M6 mission analytics, hoặc admin export CSV cho topup/audit.
+  - `apps/api/src/modules/inventory/inventory.service.ts` (+69 / -1)
+  - `apps/api/src/modules/admin/admin.service.ts` (+64 / -0)
+  - `apps/api/src/modules/admin/admin.controller.ts` (+28 / -0)
+  - `apps/api/src/modules/admin/admin.module.ts` (+2 / -0)
+  - `apps/api/src/modules/admin/admin-revoke-inventory.test.ts` (new, 219 line, **9 test**)
+  - `apps/api/src/modules/admin/{topup-admin,economy-alerts,admin-stats}.service.test.ts` (+3 / -0 mỗi file: inject `InventoryService` vào constructor)
+- **Tests**: API pass **268/268** local (was 259 trên main, +9 revoke).
+  - 9 test cover: happy path (trừ qty + ghi ledger + actor); revoke full qty xóa row; insufficient qty → INVALID_INPUT (không side-effect); target thiếu character → NOT_FOUND; self target → CANNOT_TARGET_SELF; MOD revoke MOD khác → FORBIDDEN; qty=0 và qty=1000 → INVALID_INPUT; itemKey không tồn tại → INVALID_INPUT; audit log meta đầy đủ (targetUserId, itemKey, qty, reason).
+- **Local verified**: `pnpm typecheck` ✅ · `pnpm lint` ✅ · `pnpm --filter @xuantoi/api test` ✅ 268/268 · `pnpm build` ✅.
+- **Risk**: medium-low.
+  - Transaction đảm bảo atomic (all-or-nothing).
+  - `MAX_REVOKE_QTY=999` + role hierarchy + audit log bảo vệ khỏi abuse.
+  - Ưu tiên trừ non-equipped → giảm trường hợp đột ngột mất trang bị trên người.
+  - Emit WS `state:update` → FE cập nhật inventory ngay.
+- **Backward compat**: `AdminService` constructor thêm `inventory` param required → tests cũ update (3 file). Không đổi API public cũ.
+- **Runtime smoke**: Needs runtime smoke sau merge — curl `POST /admin/users/:id/inventory/revoke` với ADMIN session, verify ItemLedger row + audit log.
+- **Rollback**: `git revert`. `ItemLedgerReason` union vẫn giữ `ADMIN_REVOKE` (unused nếu không có caller khác). Không mất dữ liệu.
+- **Bước tiếp**: G13 — L5 skeleton loaders / G14 — L2 market fee config.
 
 ---
 
