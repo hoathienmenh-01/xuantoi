@@ -186,7 +186,6 @@
   "profile": {
     "title": "Cultivator Profile",
     "notFound": "Cultivator not found.",
-    "realm": "{realm} stage {stage}",
     "sect": "Sect",
     "joinedAt": "Joined",
     "stats": "Stats",

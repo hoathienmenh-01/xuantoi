@@ -2,10 +2,17 @@
 import { onMounted, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useRoute, useRouter } from 'vue-router';
+import { fullRealmName, realmByKey } from '@xuantoi/shared';
 import { useAuthStore } from '@/stores/auth';
 import { useGameStore } from '@/stores/game';
 import { getPublicProfile, type PublicProfile } from '@/api/character';
 import AppShell from '@/components/shell/AppShell.vue';
+
+function realmText(key: string, stage: number): string {
+  const r = realmByKey(key);
+  if (!r) return key;
+  return fullRealmName(r, stage);
+}
 
 const auth = useAuthStore();
 const game = useGameStore();
@@ -77,7 +84,7 @@ watch(
             <div>
               <h2 class="text-xl text-amber-200">{{ profile.name }}</h2>
               <p class="text-xs text-ink-300">
-                {{ t('profile.realm', { realm: profile.realmKey, stage: profile.realmStage }) }}
+                {{ realmText(profile.realmKey, profile.realmStage) }}
                 · Lv.{{ profile.level }}
               </p>
             </div>
