@@ -518,7 +518,12 @@ export class BossService implements OnModuleInit, OnModuleDestroy {
         });
       }
       if (items.length > 0) {
-        await this.inventory.grantTx(tx, row.characterId, items);
+        await this.inventory.grantTx(tx, row.characterId, items, {
+          reason: 'BOSS_REWARD',
+          refType: 'WorldBoss',
+          refId: bossId,
+          extra: { rank, bossKey: def.key },
+        });
       }
       slices.push({
         rank,

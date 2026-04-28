@@ -5,6 +5,33 @@ import { PrismaService } from '../../common/prisma.service';
 import { RealtimeService } from '../realtime/realtime.service';
 import { CharacterService } from '../character/character.service';
 
+/**
+ * Lý do thay đổi vật phẩm — ghi vào `ItemLedger.reason`.
+ * - Inflow:  COMBAT_LOOT | BOSS_REWARD | MARKET_BUY | MISSION_CLAIM
+ *           | MAIL_CLAIM | GIFTCODE_REDEEM | SHOP_BUY | ADMIN_GRANT
+ * - Outflow: USE | MARKET_SELL | ADMIN_REVOKE
+ */
+export type ItemLedgerReason =
+  | 'COMBAT_LOOT'
+  | 'BOSS_REWARD'
+  | 'MARKET_BUY'
+  | 'MARKET_SELL'
+  | 'MISSION_CLAIM'
+  | 'MAIL_CLAIM'
+  | 'GIFTCODE_REDEEM'
+  | 'SHOP_BUY'
+  | 'ADMIN_GRANT'
+  | 'ADMIN_REVOKE'
+  | 'USE';
+
+export interface ItemLedgerMeta {
+  reason: ItemLedgerReason;
+  refType?: string;
+  refId?: string;
+  actorUserId?: string;
+  extra?: Prisma.InputJsonValue;
+}
+
 class InventoryError extends Error {
   constructor(
     public code:
@@ -86,21 +113,29 @@ export class InventoryService {
     return { atk, def, hpMaxBonus, mpMaxBonus, spiritBonus };
   }
 
-  /** Thêm item vào túi: stackable thì gộp qty, không thì tạo row mới. */
-  async grant(characterId: string, loot: RolledLoot[]): Promise<void> {
+  /**
+   * Thêm item vào túi: stackable thì gộp qty, không thì tạo row mới.
+   * Mọi grant đều ghi `ItemLedger` để audit (qtyDelta dương).
+   */
+  async grant(
+    characterId: string,
+    loot: RolledLoot[],
+    meta: ItemLedgerMeta,
+  ): Promise<void> {
     for (const l of loot) {
-      await this.grantOneTx(this.prisma, characterId, l.itemKey, l.qty);
+      await this.grantOneTx(this.prisma, characterId, l.itemKey, l.qty, meta);
     }
   }
 
-  /** Tx-aware grant — dùng trong reward distribution boss/market. */
+  /** Tx-aware grant — dùng trong reward distribution boss/market/mail/giftcode. */
   async grantTx(
     tx: Prisma.TransactionClient,
     characterId: string,
     items: { itemKey: string; qty: number }[],
+    meta: ItemLedgerMeta,
   ): Promise<void> {
     for (const it of items) {
-      await this.grantOneTx(tx, characterId, it.itemKey, it.qty);
+      await this.grantOneTx(tx, characterId, it.itemKey, it.qty, meta);
     }
   }
 
@@ -109,9 +144,11 @@ export class InventoryService {
     characterId: string,
     itemKey: string,
     qty: number,
+    meta: ItemLedgerMeta,
   ): Promise<void> {
     const def = itemByKey(itemKey);
     if (!def) return;
+    if (qty <= 0) return;
     if (def.stackable) {
       const existing = await db.inventoryItem.findFirst({
         where: { characterId, itemKey, equippedSlot: null },
@@ -121,11 +158,34 @@ export class InventoryService {
           where: { id: existing.id },
           data: { qty: { increment: qty } },
         });
+        await this.writeLedgerTx(db, characterId, itemKey, qty, meta);
         return;
       }
     }
     await db.inventoryItem.create({
       data: { characterId, itemKey, qty },
+    });
+    await this.writeLedgerTx(db, characterId, itemKey, qty, meta);
+  }
+
+  private async writeLedgerTx(
+    db: Prisma.TransactionClient | PrismaService,
+    characterId: string,
+    itemKey: string,
+    qtyDelta: number,
+    meta: ItemLedgerMeta,
+  ): Promise<void> {
+    await db.itemLedger.create({
+      data: {
+        characterId,
+        itemKey,
+        qtyDelta,
+        reason: meta.reason,
+        refType: meta.refType ?? null,
+        refId: meta.refId ?? null,
+        actorUserId: meta.actorUserId ?? null,
+        meta: meta.extra ?? {},
+      },
     });
   }
 
@@ -212,6 +272,11 @@ export class InventoryService {
       } else {
         await tx.inventoryItem.delete({ where: { id: inv.id } });
       }
+      await this.writeLedgerTx(tx, char.id, inv.itemKey, -1, {
+        reason: 'USE',
+        refType: 'InventoryItem',
+        refId: inv.id,
+      });
     });
 
     await this.refreshState(userId);

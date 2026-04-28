@@ -181,6 +181,7 @@ model Character {
 
   inventory       InventoryItem[]
   ledger          CurrencyLedger[]
+  itemLedger      ItemLedger[]
   missionProgress MissionProgress[]
   mails           Mail[]
 
@@ -426,4 +427,27 @@ model GiftCodeRedemption {
   @@unique([giftCodeId, userId])
   @@index([userId])
   @@index([characterId])
+}
+
+/// Audit trail mọi thay đổi InventoryItem.qty (Phase 9). Một dòng = một thao
+/// tác đổi vật phẩm của 1 character. `qtyDelta` có dấu (âm = trừ / mất / dùng).
+model ItemLedger {
+  id          String   @id @default(cuid())
+  characterId String
+  character   Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  itemKey     String
+  /// Có dấu: dương khi grant (boss/mail/giftcode/shop/mission), âm khi consume (use/sell).
+  qtyDelta    Int
+  reason      String
+  refType     String?
+  refId       String?
+  meta        Json     @default("{}")
+  /// Nếu thao tác do admin thực hiện (vd ADMIN_GRANT).
+  actorUserId String?
+  createdAt   DateTime @default(now())
+
+  @@index([characterId, createdAt])
+  @@index([itemKey, createdAt])
+  @@index([reason, createdAt])
+  @@index([refType, refId])
 }

@@ -180,7 +180,11 @@ export class MailService {
         });
       }
       if (items.length > 0) {
-        await this.inventory.grantTx(tx, char.id, items);
+        await this.inventory.grantTx(tx, char.id, items, {
+          reason: 'MAIL_CLAIM',
+          refType: 'Mail',
+          refId: mail.id,
+        });
       }
     });
 

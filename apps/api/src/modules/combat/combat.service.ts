@@ -296,7 +296,12 @@ export class CombatService {
     if (nextStatus === EncounterStatus.WON) {
       const loot = rollDungeonLoot(dungeon.key, 2);
       if (loot.length > 0) {
-        await this.inventory.grant(char.id, loot);
+        await this.inventory.grant(char.id, loot, {
+          reason: 'COMBAT_LOOT',
+          refType: 'Encounter',
+          refId: enc.id,
+          extra: { dungeonKey: dungeon.key },
+        });
         for (const l of loot) {
           const def = itemByKey(l.itemKey);
           if (!def) continue;

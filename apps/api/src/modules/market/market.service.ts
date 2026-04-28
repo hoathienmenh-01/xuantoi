@@ -146,6 +146,18 @@ export class MarketService {
           pricePerUnit: input.pricePerUnit,
         },
       });
+      // Item rời túi seller → escrow listing. Ghi ledger outflow.
+      await tx.itemLedger.create({
+        data: {
+          characterId: char.id,
+          itemKey: inv.itemKey,
+          qtyDelta: -input.qty,
+          reason: 'MARKET_SELL',
+          refType: 'Listing',
+          refId: created.id,
+          meta: { stage: 'POST', pricePerUnit: input.pricePerUnit.toString() },
+        },
+      });
       return { listing: created, item: itemDef };
     });
 
@@ -195,6 +207,18 @@ export class MarketService {
           data: { characterId: char.id, itemKey: l.itemKey, qty: l.qty },
         });
       }
+      // Ghi ledger refund (item về túi seller).
+      await tx.itemLedger.create({
+        data: {
+          characterId: char.id,
+          itemKey: l.itemKey,
+          qtyDelta: l.qty,
+          reason: 'MARKET_SELL',
+          refType: 'Listing',
+          refId: l.id,
+          meta: { stage: 'CANCEL' },
+        },
+      });
       return tx.listing.findUniqueOrThrow({ where: { id: l.id } });
     });
 
@@ -295,6 +319,22 @@ export class MarketService {
           data: { characterId: buyer.id, itemKey: l.itemKey, qty: l.qty },
         });
       }
+      // Ghi ledger inflow cho buyer.
+      await tx.itemLedger.create({
+        data: {
+          characterId: buyer.id,
+          itemKey: l.itemKey,
+          qtyDelta: l.qty,
+          reason: 'MARKET_BUY',
+          refType: 'Listing',
+          refId: l.id,
+          meta: {
+            sellerId: l.sellerId,
+            pricePerUnit: l.pricePerUnit.toString(),
+            total: total.toString(),
+          },
+        },
+      });
       return tx.listing.findUniqueOrThrow({ where: { id: l.id } });
     });
 
