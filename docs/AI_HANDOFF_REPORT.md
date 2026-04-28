@@ -1,16 +1,18 @@
 # AI Handoff Report — Xuân Tôi
 
-> **Snapshot**: `main` @ commit (post-PR #54 + #55 + #56 + #57 + #58 + #59 merged 28 Apr 2026, cập nhật SHA khi PR #60 merge). Đang mở: **PR #60 G7 register IP rate-limit (+2 test, security)**.
-> **Người viết**: AI engineer session 28/4 sess.5 (PR #52 audit + PR #53 replay + PR #54 G4 + PR #55 G1 store + PR #56 G1 render + PR #57 G2 itemName + PR #58 G3 onboarding + PR G6 leaderboard + PR G7 register rate-limit).
+> **Snapshot**: `main` @ `993a95f` (Merge PR #60, 28 Apr 2026 21:37 UTC). PR #52..#60 đều đã merge `main`. **Không còn PR nào open** tại thời điểm audit session 6.
+> **Người viết**: AI engineer session 28/4 sess.6 (audit refresh sau khi PR #58/#59/#60 đã merge — header report cũ vẫn ghi #59/#60 "Open" → đó là tồn tại lỗi thời và đã được fix bởi PR docs này).
 > **Đối tượng đọc**: AI kế nhiệm sẽ tiếp tục đưa dự án tới beta / production.
 >
 > Báo cáo trung thực. Mọi tuyên bố "đã xong" đều có PR + file + test chứng minh. Khi chưa verify runtime, ghi rõ **"Needs runtime smoke"**.
 >
-> **Trạng thái (28/4 session 5)**: PR #33..#46 + PR #48..#52 đã merge `main`. **PR B (replay PR #47 — vitest/playwright scaffold)** mang `apps/web/vitest.config.ts` + `playwright.config.ts` + `e2e/golden.spec.ts` + 17 vitest test (`toast`, `game` store) vào main — và đã fix `apps/web/package.json` từ `echo skipped` thành `vitest run`.
+> **Baseline session 6 (đã verify local 28/4 21:55 UTC)**: `pnpm typecheck` ✅ · `pnpm lint` ✅ · `pnpm --filter @xuantoi/shared test` ✅ **47/47** · `pnpm --filter @xuantoi/api test` (real Postgres + Redis) ✅ **259/259** (26 file) · `pnpm --filter @xuantoi/web test` (vitest) ✅ **64/64** (8 file) · `pnpm build` ✅. Tổng test toàn workspace: **370 pass**. CI main mới nhất run `25079013093` xanh 1m34s.
 >
-> **Replay-gap PR #47 — Đã giải quyết**: PR B base vào main (cherry-pick `32a33a6` từ `devin/1777398483-h5-vitest-playwright`, conflict `docs/AI_HANDOFF_REPORT.md` resolved take `--ours`). Web vitest 17/17 pass local. Playwright KHÔNG add vào CI (gate `E2E_FULL=1`). ⇒ **H5 → Resolved partial** (xem §16).
+> **Trạng thái (28/4 session 6)**: PR #33..#60 đã merge `main`. PR #59 thêm leaderboard (BE + FE + 7 test). PR #60 thêm rate-limit `POST /auth/register` per-IP (+2 test) — security hardening. Vitest scaffold (PR B / replay PR #47) đã trên main; web test set hiện 64 test (toast 9 + game 8 + auth 7 + badges 9 + NextActionPanel 6 + OnboardingChecklist 8 + itemName 11 + LeaderboardView 6).
 >
-> Roadmap kế tiếp: mở rộng vitest coverage cho 5 view chính (HomeView/MissionView/ShopView/AdminView/SettingsView), M3 WS `mission:progress`, L4 `itemName(key, locale)` helper, hoặc smart features tiếp từ prompt user §20. Xem `## Recent Changes` + §21.
+> Roadmap kế tiếp (xem §20/§21): M11 rate-limit `GET /character/profile/:id` (analog PR #60), M3 WS `mission:progress` push, L5 skeleton loaders, L7 `POST /admin/inventory/revoke`, L2 market fee 5% → config, hoặc smart features tiếp từ prompt user.
+>
+> **Note replay-gap PR #47** đã closed bởi PR #53 (cherry-pick `32a33a6` vào main) — không còn drift giữa GitHub PR status và `main`.
 >
 > **Blueprint gốc 04/05**: nay đã được commit vào `docs/04_TECH_STACK_VA_DATA_MODEL.md` + `docs/05_KICH_BAN_BUILD_VA_PROMPT_AI.md` kèm banner **"Historical blueprint, NOT the current source of truth"**. Khi có conflict giữa 04/05 và code hiện tại + report này → **tin code & report**, KHÔNG rollback hoặc rewrite project theo 04/05.
 
@@ -23,17 +25,17 @@
 - **Gameplay loop**: đăng ký → chọn tông môn → **Nhập Định (cultivation)** passive tick EXP → **Luyện Khí Đường (combat PvE)** + dungeon → loot → **Phường Thị (market P2P)** → **Tông Môn (sect)** cống hiến + chat → **World Boss** → **Nạp Tiên Ngọc (topup)** → admin cấp → tiến cảnh giới 28 stage.
 - **Stack**: monorepo pnpm. `apps/api` (NestJS 10 + Prisma 5 + Postgres 16 + Redis 7 + BullMQ + Socket.io). `apps/web` (Vue 3 + Vite + Pinia + Tailwind + vue-i18n + PWA). `packages/shared` (Zod + realms/items/missions catalog).
 - **Mục tiêu hiện tại**: **closed beta readiness**. Hầu hết feature Phase 0-8 + Mission + Mail + GiftCode đã merge. Còn lại polish + observability + content scale.
-- **Trạng thái**: repo build xanh, CI xanh trên PR #40 → #45. Sau khi PR #33→#45 merge: **~224 test API + ~47 test shared = ~271 test** (PR #42 +7 mission tz; PR #43/#44/#45 không thêm test). Smoke E2E pass 6/6 đã chạy ở PR #44 (`ce6da28..4d8af10`) — **PR #45 chỉ đổi text 12 vi.json key, không cần re-smoke runtime**.
+- **Trạng thái**: repo build xanh, CI xanh trên PR #40 → #60. Sau khi PR #33→#60 merge (28/4 21:37 UTC): **259 test API + 47 test shared + 64 test web (vitest) = 370 test pass** — verified local 28/4 21:55 UTC với real Postgres + Redis. Smoke E2E pass 6/6 đã chạy ở PR #44 (`ce6da28..4d8af10`); sau đó chưa smoke runtime tích hợp sau khi PR #46..#60 merge — **Needs runtime smoke** cho leaderboard FE + register rate-limit + sidebar badges + onboarding checklist + economy alerts + next-action panel.
 
 ---
 
 ## 2. Current Branch / CI / PR Status
 
 - **Default branch**: `main`.
-- **Commit audit**: `68fa1a3 Merge pull request #50 from hoathienmenh-01/devin/1777400787-qa-checklist` (HEAD `main`, 28/4 19:23 UTC).
-- **CI gần nhất trên main**: xanh — PR #50 + #51 đều merge với `build` job xanh (typecheck + lint + test + build, postgres + redis service; Devin Review là external check không block merge).
-- **PR open đáng kể**: **không có** PR nào mở tại thời điểm audit session 5.
-- **⚠️ Replay gap**: PR #47 (Vitest + Playwright scaffold) closed-as-merged trên GitHub nhưng vào feature branch `devin/1777398022-audit-pr-45-blueprint-docs` chứ KHÔNG vào `main` — xem §6 dưới và §21 PR B. Branch nguồn `devin/1777398483-h5-vitest-playwright` vẫn tồn tại trên origin (commit `32a33a6`).
+- **Commit audit**: `993a95f Merge pull request #60 from hoathienmenh-01/devin/1777411089-g7-health-readiness` (HEAD `main`, 28/4 21:37 UTC).
+- **CI gần nhất trên main**: xanh — run `25079013093` (1m34s, conclusion `success`). Các run gần nhất `2507864368[9]` (PR #59 merge) và `25078368194` (PR #58 merge) đều xanh.
+- **PR open đáng kể**: **không có** PR nào mở tại thời điểm audit session 6 (verified qua `gh pr list --state open`).
+- **Replay gap PR #47**: **Đã đóng** — PR #53 (cherry-pick `32a33a6` từ `devin/1777398483-h5-vitest-playwright`) merge vào main commit `2ae4cc0` (28/4 20:15 UTC). File `apps/web/vitest.config.ts` + `playwright.config.ts` + `e2e/golden.spec.ts` + `apps/web/src/stores/__tests__/{toast,game}.test.ts` đã có trên main.
 - **PR merged gần đây ảnh hưởng lớn**:
   | PR | Chủ đề | Impact |
   |---|---|---|
@@ -64,18 +66,27 @@
   | #49 | Smart next-action panel cho HomeView (`/me/next-actions` endpoint + 13 test) | Smart onboarding (§21 prompt user) |
   | #50 | docs QA_CHECKLIST.md (smoke 15-phút trước release closed beta) | docs only — merge `68fa1a3` |
   | #51 | feat(web): sidebar badges (mission/boss/topup) từ `/me/next-actions` | Smart UX polish — merge `699af81` |
+  | #52 | docs(handoff): audit session 5 — bump snapshot to `68fa1a3` + flag PR #47 replay-gap | docs only — merge `82e6212` |
+  | #53 | feat(web,test): replay PR #47 — wire Vitest minimal + Playwright golden path scaffold (H5) | Cherry-pick `32a33a6` — đóng replay-gap — merge `2ae4cc0` |
+  | #54 | feat(admin): smart economy alerts (negative currency / inventory / stale topup PENDING) | `GET /admin/economy/alerts` + Stats tab + 7 test — merge `d9fbbf1` |
+  | #55 | test(web): expand vitest coverage — useBadgesStore (9) + useAuthStore (7) | +16 test — merge `2ded632` |
+  | #56 | test(web): render-level vitest cho NextActionPanel (6) | +6 test — merge `6576ae3` |
+  | #57 | feat(web): `itemName(key, t?)` helper + dedupe rendering across views (G2/L4) | i18n catalog item names — +11 test — merge `5d91ad6` |
+  | #58 | feat(web): smart onboarding checklist (HomeView panel, derived from character state) | +8 test — merge `067a6c4` |
+  | #59 | feat(api,web): basic leaderboard (top 50 by realm + power) + clamp limit fix | `GET /api/leaderboard/...` + `LeaderboardView` + 7 test BE + 6 test FE — merge `26f91bf` |
+  | #60 | feat(api): rate-limit `POST /auth/register` per-IP (anti-bot, security hardening G7) | Reuse `RateLimiter` interface — 5 register/IP/15min, Redis distributed prod, in-memory fallback — +2 test — merge `993a95f` |
 
 - Các branch `devin/*` feature đã merge vẫn còn tồn tại ở origin — có thể xoá sau khi smoke test, không cần gấp. **Lưu ý**: branch `devin/1777398022-audit-pr-45-blueprint-docs` vẫn chứa commit `4ed913a` (Merge PR #47) chưa vào main — nguồn để cherry-pick/replay.
 
 ---
 
-## Recent Changes (PR #33→#58 + open #59 + open G7)
+## Recent Changes (PR #33→#60 — tất cả đã merge `main`)
 
-Mỗi PR đều `Merged` vào `main` (trừ PR #47 — xem cảnh báo), branch base = `main`. Smoke local (typecheck/lint/test/build) đã chạy ở mỗi PR; smoke E2E 6/6 đã pass tại PR #44 (snapshot `4d8af10`).
+Mỗi PR đều `Merged` vào `main`, branch base = `main`. Smoke local (typecheck/lint/test/build) đã chạy ở mỗi PR; smoke E2E 6/6 đã pass tại PR #44 (snapshot `4d8af10`).
 
-### PR G7 — `feat(api): rate-limit register endpoint per-IP (anti-bot, security hardening)` — prompt §8
+### PR #60 — `feat(api): rate-limit register endpoint per-IP (anti-bot, security hardening)` — prompt §8 — **Merged** `993a95f`
 
-- **Branch**: `devin/1777411089-g7-health-readiness`. **Base**: `main` (post-PR #58). **Status**: Open (CI pending).
+- **Branch**: `devin/1777411089-g7-health-readiness`. **Base**: `main` (post-PR #59). **Status**: **Merged** 28/4 21:37 UTC (CI run `25079013093` xanh, 1m34s).
 - **Mục tiêu**: Smart production readiness (§8 prompt user — "Rate limit cho route nhạy cảm"). Trước đây `POST /auth/register` chỉ check `EMAIL_TAKEN` — KHÔNG có anti-spam. Attacker có thể spam endpoint tạo hàng nghìn account để pollution DB / email enumeration / argon2 CPU exhaust (argon2id 64MB memory + 3 timeCost/req → tốn server). Login đã có `RATE_LIMIT_MAX_FAILS=5/15min` per email+IP, chat đã có sliding-window rate limit; **register thì chưa**.
 - **Giải pháp**: Reuse `RateLimiter` interface từ `apps/api/src/common/rate-limiter.ts`. Inject limiter vào `AuthService` qua DI token `REGISTER_RATE_LIMITER`. Production dùng `RedisSlidingWindowRateLimiter` (phân tán giữa instance, key prefix `rl:register`); test/no-redis fallback `InMemorySlidingWindowRateLimiter`. Config `5 register/IP/15 phút`.
 - **Files**:
@@ -90,7 +101,7 @@ Mỗi PR đều `Merged` vào `main` (trừ PR #47 — xem cảnh báo), branch 
 
 ### PR #58 — `feat(web): smart onboarding checklist (HomeView panel, derived from character state)` — **Merged**
 
-- **Branch**: `devin/1777409659-g3-onboarding-checklist`. **Base**: `main` (post-PR #56). **Status**: Open (CI pending).
+- **Branch**: `devin/1777409659-g3-onboarding-checklist`. **Base**: `main` (post-PR #57). **Status**: **Merged** 28/4 20:59 UTC, commit `067a6c4`.
 - **Mục tiêu**: Smart onboarding (§1 prompt user) — hiển thị "Tân Thủ Chỉ Nam" panel trên `HomeView` với 4 step derived từ `game.character` — KHÔNG cần backend tracking riêng. Tự ẩn khi player hoàn thành cả 4.
 - **Files**:
   - `apps/web/src/components/OnboardingChecklist.vue` (new) — 4 step: Khai lập đạo hiệu (`character != null`), Bái nhập tông môn (`sectKey != null`), Bắt đầu nhập định (`cultivating`), Đột phá đầu (`realmKey !== 'phamnhan'` hoặc `realmStage > 0`). Mỗi step chưa done có button "Đi" → `router.push` tới route phù hợp (`/onboarding`, `/sect`, `/`).
@@ -270,7 +281,7 @@ Mỗi PR đều `Merged` vào `main` (trừ PR #47 — xem cảnh báo), branch 
 - **FE**: `api/character.ts` `getPublicProfile(id)`. `views/ProfileView.vue` (new). `router/index.ts` `/profile/:id`. `BossView.vue` cell tên người chơi → `RouterLink /profile/:id`. i18n +10 key.
 - **Test**: `character.service.test.ts` mới, 6 case (id null, full view, sect / no-sect, banned ⇒ null, role ADMIN/MOD lộ).
 - **Risk**: chưa rate-limit endpoint (low — id là cuid, hard enumerate).
-- **Follow-up**: leaderboard FE chưa có (post-beta).
+- **Follow-up**: leaderboard FE đã có (PR #59) — link tap-name → `/profile/:id`.
 
 ### PR #39 — `feat(shop): NPC Shop module — GET /shop/npc + POST /shop/buy + ShopView`
 
@@ -356,11 +367,11 @@ Mỗi PR đều `Merged` vào `main` (trừ PR #47 — xem cảnh báo), branch 
 
 ---
 
-## Completed Features (snapshot `main @ e99a35f`)
+## Completed Features (snapshot `main @ 993a95f` — 28/4 21:37 UTC)
 
 | Feature | Backend | Frontend | Test | Status |
 |---|---|---|---|---|
-| Auth (register / login / refresh / change-password / **logout-all**) | `modules/auth/*` | `views/AuthView.vue` + `views/SettingsView.vue` + `stores/auth.ts` | 18 test | **Done** |
+| Auth (register / login / refresh / change-password / **logout-all** + **register IP rate-limit** PR #60) | `modules/auth/*` | `views/AuthView.vue` + `views/SettingsView.vue` + `stores/auth.ts` | **20 test** | **Done** |
 | Onboarding (chọn sect) | `modules/character/character.service.ts` | `views/OnboardingView.vue` | 6 test (profile) | **Done** |
 | Cultivation tick (BullMQ 30s) | `modules/cultivation/*` | `stores/game.ts` (WS `cultivate:tick`) | 5 test | **Done** |
 | Combat (dungeon turn-based) | `modules/combat/*` | `views/DungeonView.vue` | 7 test | **Done** |
@@ -384,6 +395,12 @@ Mỗi PR đều `Merged` vào `main` (trừ PR #47 — xem cảnh báo), branch 
 | **NPC Shop** (PR #39) | `modules/shop/*` (`/shop/npc`, `/shop/buy`) + catalog `NPC_SHOP` 11 entries | `views/ShopView.vue` | 10 test | **Done** |
 | **ItemLedger** audit (PR #40) | `prisma:ItemLedger` + hook 6 grant flows + market post/cancel/buy | — | 7 test (+ 2 market) | **Done** |
 | **Docs ops** (PR #35) | — | `docs/RUN_LOCAL.md` + `DEPLOY.md` + `ADMIN_GUIDE.md` + `SECURITY.md` + `TROUBLESHOOTING.md` | — | **Done** |
+| **Smart next-action** (PR #49) | `modules/next-action/*` (`GET /me/next-actions`) | `components/NextActionPanel.vue` (HomeView) + `stores/badges.ts` (sidebar badges PR #51) | **13 BE + 6 FE + 9 badges** test | **Done** |
+| **Smart admin economy alerts** (PR #54) | `AdminService.getEconomyAlerts(staleHours)` + `GET /admin/economy/alerts` | `views/AdminView.vue` Stats tab panel | **7 test** | **Done** |
+| **Smart onboarding checklist** (PR #58) | derived from `game.character` (no BE) | `components/OnboardingChecklist.vue` (HomeView) | **8 test** | **Done** |
+| **Leaderboard** (PR #59) | `modules/leaderboard/*` (`GET /api/leaderboard?limit=N`, top 50 by realm + power, clamp 1≤N≤50) | `views/LeaderboardView.vue` route `/leaderboard` | **7 BE + 6 FE** test | **Done** |
+| **i18n itemName helper** (PR #57) | `packages/shared` catalog (`items.ts` + `missions.ts`) | `apps/web/src/lib/itemName.ts` + dedupe across `MissionView`/`MailView`/`GiftCodeView`/`ShopView` | **11 test** | **Done** |
+| **Sidebar badges** (PR #51) | reuse `GET /me/next-actions` (PR #49) | `stores/badges.ts` 60s polling — mission/boss/topup | **9 test** (`stores/__tests__/badges.test.ts`) | **Done — Needs runtime smoke** |
 
 > Tất cả feature trên **đã merge code + test pass trong CI từng PR**, **chưa** smoke E2E sau khi tất cả merged đồng thời → mọi feature đánh `Needs runtime smoke` cho đến khi PR A (xem §21) chạy.
 
@@ -880,17 +897,18 @@ apps/api/src/modules/character/currency.service.ts:88   data: { tienNgoc: { incr
 | Realtime | 10 test (`realtime.gateway.test.ts`) | Ban user during connection | Medium |
 | Rate limiter | 8 test (`rate-limiter.test.ts`) | — | — |
 | Shared (realms/catalog/proverbs) | **47 test** (3 file) | — | — |
-| **Web Vitest** | **0** | **Toàn bộ** | **High** |
-| **E2E Playwright** | **0** | **Toàn bộ golden path** | **High** |
+| **Web Vitest** | **64 test** (8 file) — toast 9, game 8, auth 7, badges 9, NextActionPanel 6, OnboardingChecklist 8, itemName 11, LeaderboardView 6 | Render-level cho `MissionView` claim flow + `AppShell` nav badge interaction. | Medium |
+| **E2E Playwright** | **Scaffold** (PR #53) — `apps/web/e2e/golden.spec.ts` gate `E2E_FULL=1`, chưa wire CI. | Wire CI matrix job (Postgres+Redis+api+web). | Medium |
 | **Economy integration** | Rải rác trong từng service + `item-ledger.test.ts` consistency check | Cross-module: market post → buy, ngân sách sect | Medium |
 
-**Tổng (`vitest run` thực tế, sau PR #42)**: **222 test API + 47 test shared = 269 test pass**. CI xanh. Real Postgres + real Redis service.
+**Tổng (`vitest run` thực tế, sau PR #60)**: **259 test API + 47 test shared + 64 test web = 370 test pass**. CI xanh (run `25079013093` 1m34s). Real Postgres + real Redis service trên CI; local dùng `infra/docker-compose.dev.yml` (`docker compose up -d pg redis`).
 
 **Chạy**:
 ```bash
-pnpm --filter @xuantoi/api test        # 222 test (22 file, includes bootstrap script)
+pnpm --filter @xuantoi/api test        # 259 test (26 file, includes bootstrap + leaderboard + economy-alerts + next-action)
 pnpm --filter @xuantoi/shared test     # 47 test (3 file)
-pnpm test                              # toàn bộ (web script = echo skip)
+pnpm --filter @xuantoi/web test        # 64 test (8 file, vitest 2.1.9 happy-dom)
+pnpm test                              # toàn bộ — gộp shared + api + web
 ```
 
 ---
@@ -972,7 +990,8 @@ _(Không có lỗi làm app không chạy / mất tiền / auth hỏng tại com
 | ~~H2~~ | ~~Không có seed script tạo admin đầu tiên.~~ | `apps/api/scripts/bootstrap.ts` | — | **Resolved** by **PR #33** (`pnpm --filter @xuantoi/api bootstrap`, idempotent, 7 test). |
 | ~~H3~~ | ~~Không có seed sect (Thanh Vân Môn, Huyền Thuỷ Cung, Tu La Điện).~~ | `apps/api/scripts/bootstrap.ts:DEFAULT_SECTS` | — | **Resolved** by **PR #33**. |
 | ~~H4~~ | ~~`InventoryService` không có test unit.~~ | `apps/api/src/modules/inventory/inventory.service.test.ts` | — | **Resolved** by **PR #34** (19 test). |
-| ~~H5~~ | ~~Web chưa có Vitest + E2E Playwright **trên `main`**.~~ | `apps/web/vitest.config.ts` + `playwright.config.ts` + `e2e/golden.spec.ts` + `src/stores/__tests__/*.test.ts` | — | **Resolved partial** by **PR B** (replay PR #47, cherry-pick `32a33a6`) — vitest@^2.1.9 + happy-dom + 17 store test pass (toast 9 + game 8). Playwright `@playwright/test@^1.49.0` scaffold sẵn, golden path gate `E2E_FULL=1`, **chưa wire CI matrix** (mở issue tiếp khi cần full E2E). |
+| ~~H5~~ | ~~Web chưa có Vitest + E2E Playwright **trên `main`**.~~ | `apps/web/vitest.config.ts` + `playwright.config.ts` + `e2e/golden.spec.ts` + `src/{stores,components,lib,views}/__tests__/*.test.ts` | — | **Resolved** — PR #53 cherry-pick PR #47 vào main; PR #55/#56/#57/#58/#59 mở rộng coverage → **64 vitest pass** (toast 9 + game 8 + auth 7 + badges 9 + NextActionPanel 6 + OnboardingChecklist 8 + itemName 11 + LeaderboardView 6). Playwright scaffold sẵn, gate `E2E_FULL=1`, **chưa wire CI matrix** (mở issue tiếp khi cần full E2E — xem H6 dưới). |
+| H6 | Playwright golden path scaffold sẵn nhưng chưa có CI job chạy headless. | `.github/workflows/ci.yml` + `apps/web/playwright.config.ts` + `apps/web/e2e/golden.spec.ts` | Tốn thêm ~3-5 min CI nhưng bắt được regression UI golden. | **Open** — medium effort. Cần thêm matrix job `e2e` với services postgres+redis, run `pnpm --filter @xuantoi/api start &`, `pnpm --filter @xuantoi/web preview &`, sau đó `E2E_FULL=1 pnpm --filter @xuantoi/web e2e`. |
 
 ### Medium
 
@@ -980,7 +999,7 @@ _(Không có lỗi làm app không chạy / mất tiền / auth hỏng tại com
 |---|---|---|
 | ~~M1~~ | ~~Cron mission reset dùng timezone UTC mặc định.~~ | **Resolved** by **PR #42** — thêm env `MISSION_RESET_TZ` (default `Asia/Ho_Chi_Minh`) + helper `getMissionResetTz()` + tz-aware `nextDailyWindowEnd`/`nextWeeklyWindowEnd` + 7 test mới. |
 | ~~M2~~ | ~~Boss spawn chỉ manual + admin endpoint chưa có.~~ | **Resolved** by **PR #36** (`POST /api/boss/admin/spawn` + UI tab + 7 test, audit `BOSS_SPAWN`). |
-| M3 | Chưa có WS `mission:progress` push. | **Open** — (lưu ý: PR #38 đã đánh nhầm M3 ở body — đó là profile, không phải mission progress). Thêm emitToUser ở `MissionService.track*` (throttle để không spam). |
+| M3 | Chưa có WS `mission:progress` push. | **Open** — PR #38 đã đánh nhầm M3 ở body (đó là profile). Cần thêm `emitToUser('mission:progress', {missionKey,currentCount,targetCount})` ở `MissionService.track*` với throttle ≥500ms/event để không spam. **Workaround hiện tại**: badges store poll `/me/next-actions` 60s (PR #51) đã bắt được trigger "mission ready". |
 | ~~M4~~ | ~~`ItemLedger` audit table chưa có.~~ | **Resolved** by **PR #40** (model + migration `20260428102849_itemledger` + hook 6 grant flows + market post/cancel/buy + 7 test trong `item-ledger.test.ts`). |
 | ~~M5~~ | ~~`CurrencyLedger.actorUserId` chưa index.~~ | **Resolved** by **PR #43** — thêm `@@index([actorUserId, createdAt])` cho cả `CurrencyLedger` và `ItemLedger`. Migration `20260428112804_actor_user_id_index` (ADD INDEX only). |
 | M6 | LogsModule (G3 cũ) chưa build — không có `/logs/me` endpoint. | **Open** — low priority, chỉ khi cần UI xem log action. |
@@ -988,7 +1007,7 @@ _(Không có lỗi làm app không chạy / mất tiền / auth hỏng tại com
 | M8 | Admin guard kiểm `role === 'ADMIN' \|\| 'MOD'` — MOD có quyền broad gần ADMIN (grant currency, approve topup, broadcast mail, spawn boss). | **Resolved** by PR E — thêm `@RequireAdmin()` decorator + reflector trong `AdminGuard`; ADMIN-only cho grant / role-set / approve-topup / reject-topup / giftcode-create / giftcode-revoke / mail-send / mail-broadcast / boss-admin-spawn. MOD vẫn được: GET (read) + ban (đã có hierarchy MOD↦PLAYER ở service). 8 unit test thuê reflector cho guard. |
 | M9 | Settings logout-all không bump `passwordVersion` → access token cũ (15m) vẫn valid ở thiết bị khác. | **Open** (intentional trade-off, document trong `SECURITY.md`) — nếu cần force ngay, bump `passwordVersion` hoặc implement revocation list. |
 | M10 | Shop không có rate-limit + stock infinite + không daily limit. | **Open** — closed beta acceptable; sau beta thêm `dailyLimit`. |
-| M11 | `GET /character/profile/:id` không có rate-limit riêng → enumerate cuid khó nhưng không bị chặn. | **Open** — low (cuid khó brute), thêm middleware sau. |
+| M11 | `GET /character/profile/:id` không có rate-limit riêng → enumerate cuid khó nhưng không bị chặn. | **Open** — low (cuid khó brute). Đề xuất fix: reuse `RateLimiter` interface như PR #60 — limiter token `PROFILE_RATE_LIMITER`, key `profile:${ip}` hoặc `profile:${userId}`, giới hạn ~120 req/IP/15min (đủ cho các flow leaderboard click + chat tap-name). |
 
 ### Low
 
@@ -997,7 +1016,7 @@ _(Không có lỗi làm app không chạy / mất tiền / auth hỏng tại com
 | L1 | Hard-code VN/EN còn lẻ tẻ. | **Resolved (PR F)** — audit cuối: 554/554 key và vi.json/en.json sync, 400 used key all resolve. Fix 12 key admin vẫn English (`roleLabel`, `tab.audit`, `users.col.role`, `users.banned`, `roleChangeConfirm`, `roleChangedToast`, `topups.col.user/status/note`, `audit.col.actor/action/meta`). Các "identical en≡vi" còn lại (locale names, EXP, HP/MP, WS, OK, Boss, A Linh, currency names) là đúng ý đồ — universal/native term. |
 | L2 | Market fee 5% hard-code. | **Open** — đưa ra `config` namespace. |
 | L3 | Proverbs loading screen chỉ 30+ câu — lặp nhanh. | **Open** — mở rộng corpus. |
-| L4 | Không có tên item localized (FE `MissionView` hiển thị `itemKey ×qty`). | **Open** — thêm helper `itemName(key, locale)`. |
+| ~~L4~~ | ~~Không có tên item localized.~~ | **Resolved** by **PR #57** — `apps/web/src/lib/itemName.ts` helper + 11 vitest test, dedupe across `MissionView`/`MailView`/`GiftCodeView`/`ShopView`. |
 | L5 | Một số view chưa skeleton loader. | **Open** — UI polish. |
 | L6 | Settings dùng `window.confirm()` cho logout-all. | **Open** — nhẹ nhàng, post-beta thay bằng modal đẹp. |
 | L7 | `ADMIN_REVOKE` reason đã định nghĩa trong `ItemLedger` nhưng chưa có endpoint admin thực thi. | **Open** — bổ sung khi cần thu hồi item nhầm. |
@@ -1013,7 +1032,7 @@ _(Không có lỗi làm app không chạy / mất tiền / auth hỏng tại com
 | `ProfileView` | **Có** (PR #38) | — | `/profile/:id` route + `BossView` link. |
 | `SettingsView` | **Có** (PR #37) | — | `/settings` — đổi password + logout-all + locale. |
 | `ShopView` | **Có** (PR #39) | — | `/shop` — 11 entry NPC, chỉ LINH_THACH. |
-| `LeaderboardView` | Thiếu | Nice-to-have beta | Top power / topup / sect. Cần `GET /leaderboard/...` BE trước. |
+| `LeaderboardView` | **Có** (PR #59) | — | Top 50 by realm + power. Route `/leaderboard`, FE component test 6 vitest. |
 | `AlchemyView` (luyện đan) | Thiếu | Post-beta | Feature lớn. |
 | `RefineryView` (luyện khí) | Thiếu | Post-beta | Feature lớn. |
 | `ArenaView` (đấu trường PvP) | Thiếu | Post-beta | Feature lớn. |
@@ -1031,7 +1050,7 @@ _(Không có lỗi làm app không chạy / mất tiền / auth hỏng tại com
 | `POST /api/_auth/logout-all` | **Có** (PR #37) | — |
 | `POST /api/_auth/forgot-password` + `POST /api/_auth/reset-password` | Thiếu | Nice-to-have beta closed |
 | `POST /api/_auth/verify-email` | Thiếu | Closed beta không cần |
-| `GET /api/leaderboard/{power,topup,sect}` | Thiếu | Nice-to-have |
+| `GET /api/leaderboard/{power,topup,sect}` | **Power**: đã có (PR #59 — `GET /leaderboard?limit=50` top by realm+power, clamp 1≤limit≤50). Topup/sect chưa có. | Power done; topup/sect Nice-to-have post-beta. |
 | `WS mission:progress` (server-push tracker) | Thiếu | Low (M3) |
 | `GET /api/logs/me` (G3 cũ) | Thiếu | Low (M6) |
 | `POST /api/admin/inventory/revoke` (`ADMIN_REVOKE` ledger) | Thiếu | Low (L7) |
@@ -1139,42 +1158,45 @@ Admin hiện tại có thể vào `/admin` → Users → tìm → **Set role = A
 
 ## 20. Recommended Next Roadmap
 
-### Immediate (1–2 session tới)
+### Immediate (session 7 — còn việc an toàn)
 
-1. ~~**Smoke E2E sau PR #33→#40 merged**~~ — Done tại PR #44 (6/6 pass). Còn lại: smoke tích hợp sau PR #48..#52 + PR B (admin guard, next-actions, badges, vitest scaffold) — **Needs runtime smoke**. Bao gồm verify badges sidebar với mission claimable / boss active / topup PENDING.
-2. ~~**H5 — Replay PR #47 vào `main`**~~ — **Done** by **PR B** (cherry-pick `32a33a6`). 17 vitest pass (toast 9 + game 8). Playwright scaffold ready, gate `E2E_FULL=1`.
-3. **H5 follow-up — Mở rộng vitest coverage**: thêm test cho `HomeView` (next-action panel render), `AppShell` (badge logic), `MissionView` (claim flow), 1-2 component snapshot. Tùy chọn: wire Playwright CI job riêng (medium effort, cần service Postgres + Redis + spin api/web).
-4. ~~**M1 — Mission timezone env**~~: **Done** by **PR #42** — `MISSION_RESET_TZ=Asia/Ho_Chi_Minh` vào `MissionService` helpers + 7 test.
-5. **i18n gap audit** sau khi thêm settings/profile/shop/boss-admin (~75 key mới) — grep `[À-ỹ]` trong `.vue/.ts`.
+1. **Runtime smoke tích hợp sau PR #46→#60 đã merge** — **Needs runtime smoke**. Checklist (15 phút, theo `docs/QA_CHECKLIST.md`): register/login (verify rate-limit 5/IP/15min), HomeView (next-action panel + onboarding checklist), sidebar badges polling 60s, leaderboard render top 50 + tap-name → profile, admin economy alerts panel, mission claim, mail unread badge, NPC shop buy + ledger row.
+2. **M11 — Rate-limit `GET /character/profile/:id`** (analog PR #60). Reuse `RateLimiter` interface, limiter token `PROFILE_RATE_LIMITER`, ~120 req/IP/15min. Risk low, +2 test.
+3. **H6 — Wire Playwright golden path vào CI** (matrix job `e2e` với services postgres+redis, run api+web preview, `E2E_FULL=1 pnpm --filter @xuantoi/web e2e`). Effort medium, value cao cho regression UI.
+4. **M3 — WS `mission:progress` push**: `emitToUser('mission:progress', {missionKey,currentCount,targetCount})` ở `MissionService.track*` với throttle ≥500ms/event. UX polish, bổ sung cho badges polling.
+5. **L5 — Skeleton loaders** cho `BossView`, `GiftCodeView`, `LeaderboardView`. Reuse pattern đã có ở `MissionView`.
+6. **Mission claim flow render-level vitest** — cover claim button enable/disable + claimedAt badge update.
 
 ### Before Closed Beta
 
-6. ~~**M5 — `CurrencyLedger.actorUserId` index**~~: **Done** by **PR #43** (cover cả `ItemLedger.actorUserId`).
-7. ~~**M8 — Admin guard split**~~: **Done** by **PR E** — `@RequireAdmin()` decorator + reflector. ADMIN-only cho 9 action có ảnh hưởng tài sản/policy.
-8. **L1 — i18n gap audit run cuối** + l10n tên item (`itemName(key, locale)`).
-9. **Mobile responsive verify** trên iPhone SE viewport.
-10. **Health/CSP staging deploy** — verify `connectSrc` cho WS endpoint thực tế.
+7. ~~**M5 — `CurrencyLedger.actorUserId` index**~~: **Done** by **PR #43** (cover cả `ItemLedger.actorUserId`).
+8. ~~**M8 — Admin guard split**~~: **Done** by **PR E** — `@RequireAdmin()` decorator + reflector. ADMIN-only cho 9 action có ảnh hưởng tài sản/policy.
+9. ~~**L1 — i18n gap audit**~~: **Done** by **PR #45** + l10n tên item by **PR #57** (`itemName(key, t)` helper).
+10. **L7 — `POST /api/admin/inventory/revoke`** + UI tab Users (admin thu hồi item nhầm, ghi `ADMIN_REVOKE` ledger — reason đã định nghĩa sẵn).
+11. **L2 — Market fee 5% → config env** (`MARKET_FEE_BPS=500` default 500=5%).
+12. **Mobile responsive verify** trên iPhone SE viewport.
+13. **Health/CSP staging deploy** — verify `connectSrc` cho WS endpoint thực tế.
 
 ### During Closed Beta
 
-11. Monitor `/healthz` + `/readyz` + ledger balance consistency check định kỳ (qua admin overview tab).
-12. Thu thập user feedback + bug report.
-13. Balance tuning: cultivation rate, loot drop, market fee 5%, mission reward, NPC shop price.
+14. Monitor `/healthz` + `/readyz` + ledger balance consistency check định kỳ (qua admin overview tab + `GET /admin/economy/alerts` PR #54).
+15. Thu thập user feedback + bug report.
+16. Balance tuning: cultivation rate, loot drop, market fee 5%, mission reward, NPC shop price.
 
 ### After Beta
 
-14. **Alchemy** (luyện đan).
-15. **Refinery** (luyện khí forge).
-16. **Arena PvP**.
-17. **Pet system**.
-18. **Companion/Wife** (đạo lữ).
-19. **Battle Pass seasonal**.
-20. **Event system + cron spawn**.
-21. **Leaderboard** + `GET /api/leaderboard/{power,topup,sect}`.
-22. **Cross-server world boss**.
-23. **`POST /api/_auth/forgot-password` + `reset-password`** (email-based).
-24. **WS `mission:progress` push** (M3) + WS `mail:new` tích hợp test.
-25. **`ADMIN_REVOKE` endpoint** + UI để admin thu hồi item nhầm (L7).
+17. **Alchemy** (luyện đan).
+18. **Refinery** (luyện khí forge).
+19. **Arena PvP**.
+20. **Pet system**.
+21. **Companion/Wife** (đạo lữ).
+22. **Battle Pass seasonal**.
+23. **Event system + cron spawn**.
+24. **Leaderboard mở rộng** — `GET /api/leaderboard/{topup,sect}` (power đã có PR #59).
+25. **Cross-server world boss**.
+26. **`POST /api/_auth/forgot-password` + `reset-password`** (email-based).
+27. **WS `mission:progress` push** (M3) + WS `mail:new` tích hợp test.
+28. ~~**`ADMIN_REVOKE` endpoint**~~ — đã chuyển lên Before Closed Beta (#10) chỗ còn thiếu thao tác admin recovery.
 
 ---
 
@@ -1240,9 +1262,12 @@ Admin hiện tại có thể vào `/admin` → Users → tìm → **Set role = A
 - **G2 (medium, low)**: L4 helper `itemName(key, locale)` cho `MissionView/MailView/GiftCodeView/ShopView` — dịch tên item theo i18n.
 - **G3 (medium, medium)**: M3 WS `mission:progress` push (throttled `emitToUser` tại `MissionService.track*`).
 - ~~**G4 (smart admin)**: Admin Overview tab thêm alert nếu currency âm / item qty âm / topup pending >24h.~~ — **Done** by **PR #54** (Open, chờ CI). Endpoint `GET /admin/economy/alerts` + Stats tab panel + 7 test.
-- **G5 (post-beta backlog)**: leaderboard, `ADMIN_REVOKE` endpoint (L7), Alchemy/Refinery/Arena.
+- ~~**G5 (post-beta backlog)**: leaderboard~~ — **Done** (PR #59). Còn `ADMIN_REVOKE` endpoint (L7), Alchemy/Refinery/Arena (post-beta).
+- ~~**G6 (basic leaderboard)**~~ — **Done** (PR #59 — `GET /api/leaderboard?limit=N` + `LeaderboardView` route `/leaderboard`).
+- ~~**G7 (register IP rate-limit)**~~ — **Done** (PR #60 — 5 register/IP/15min, Redis distributed prod, in-memory fallback).
+- **G8 (next safe task)**: M11 — rate-limit `GET /character/profile/:id` analog PR #60. Reuse `RateLimiter` interface + new DI token `PROFILE_RATE_LIMITER` (key prefix `rl:profile`, 120 req/IP/15min). +2 test (over-limit + per-IP isolation).
 
-Không còn issue **High** mở trên main; chỉ còn **Medium** (M3/M6/M7/M9/M10/M11) và **Low** (L2/L3/L4/L5/L6/L7).
+Không còn issue **High** mở trên main (H6 Playwright CI wire là Medium effort, **Open**); chỉ còn **Medium** (M3/M6/M7/M9/M10/M11) và **Low** (L2/L3/L5/L6/L7 — L4 đã done PR #57).
 
 Các hạng mục smart-feature đề xuất (không bắt buộc — AI tự quyết theo prompt user):
 - **Smart next-action / onboarding checklist** (§16 của prompt user mục 1–2): /home giợ widget "Nên làm gì tiếp?" dựa trên state (đủ EXP đột phá, mission claim-able, mail unread, boss đang mở, …).
@@ -1252,7 +1277,29 @@ Các hạng mục smart-feature đề xuất (không bắt buộc — AI tự qu
 - **`POST /api/admin/inventory/revoke`** (L7): kèm UI tab Users; hoãn đến khi có case thực.
 
 #### Post-beta backlog
-Leaderboard / Alchemy / Refinery / Arena / Pet / Companion / Event / Battle Pass / `forgot-password` / `mission:progress` WS / `ADMIN_REVOKE` endpoint.
+~~Leaderboard~~ (Done PR #59) / Alchemy / Refinery / Arena / Pet / Companion / Event / Battle Pass / `forgot-password` / `mission:progress` WS / `ADMIN_REVOKE` endpoint.
+
+---
+
+### Session 6 audit log (28/4 21:55 UTC — docs-only refresh)
+
+**Audit refresh** — PR docs only, branch `devin/1777413579-audit-session-6-report-refresh`.
+
+- **Goal**: Đồng bộ `AI_HANDOFF_REPORT.md` với trạng thái `main @ 993a95f` sau khi PR #58 + #59 + #60 merge (header cũ vẫn ghi #59/#60 "Open").
+- **Discrepancy phát hiện**:
+  1. Header snapshot vẫn ghi `(post-PR #54..#59 merged, cập nhật SHA khi PR #60 merge)` và "Đang mở: PR #60 G7" — sai (PR #60 đã merge `993a95f`).
+  2. PR #58 entry trong Recent Changes ghi `Status: Open (CI pending)` — sai (đã merge `067a6c4` 28/4 20:59 UTC).
+  3. §2 commit audit pointer `68fa1a3` — sai (main đã ở `993a95f`).
+  4. §2 bảng PR merged thiếu PR #52..#60.
+  5. §12 Tests: web vitest ghi `0 — Toàn bộ thiếu` — sai (64 test/8 file). Tổng test `222 + 47 = 269` — sai (`259 + 47 + 64 = 370`).
+  6. §16 Known Issues: H5 ghi `Resolved partial` (17 test) — sai (đã mở rộng đến 64 test, **Resolved**); L4 vẫn `Open` — sai (Done PR #57).
+  7. §17 Missing Pages: `LeaderboardView Thiếu` và `GET /leaderboard Thiếu` — sai (Done PR #59).
+  8. §20 Roadmap: Immediate vẫn ghi G1/G4/G6/G7 như `Open` — sai (đã done).
+- **Verify local 28/4 21:55 UTC**: `pnpm install`, `pnpm typecheck` xanh, `pnpm lint` xanh, `docker compose -f infra/docker-compose.dev.yml up -d pg redis` + `prisma migrate deploy`, `pnpm --filter @xuantoi/api test` 259/259 pass (25.8s, 26 file), `pnpm --filter @xuantoi/shared test` 47/47 pass, `pnpm --filter @xuantoi/web test` 64/64 pass (vitest 2.1.9 happy-dom), `pnpm build` xanh.
+- **CI main**: gần nhất run `25079013093` xanh 1m34s.
+- **Không đổi code/test/seed**. Chỉ fix report.
+- **Risk**: zero (docs-only).
+- **Next planned PR (sau khi #61 docs merge)**: PR G8 (M11 rate-limit profile) — analog PR #60.
 
 ---
 
