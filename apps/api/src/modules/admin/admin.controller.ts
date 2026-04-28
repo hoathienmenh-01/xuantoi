@@ -193,6 +193,14 @@ export class AdminController {
     return { ok: true, data: r };
   }
 
+  @Get('economy/alerts')
+  async economyAlerts(@Query('staleHours') staleHours: string | undefined) {
+    const parsed = Number.parseInt(staleHours ?? '24', 10);
+    const hrs = Number.isFinite(parsed) ? Math.max(1, Math.min(24 * 30, parsed)) : 24;
+    const r = await this.admin.getEconomyAlerts(hrs);
+    return { ok: true, data: r };
+  }
+
   @Get('giftcodes')
   async giftList(@Query('limit') limit: string | undefined) {
     const l = Math.max(1, Math.min(500, Number.parseInt(limit ?? '100', 10) || 100));

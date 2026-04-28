@@ -679,6 +679,14 @@
       "last24hLogins": "Login 24h qua",
       "last7dRegistrations": "Đăng ký 7 ngày qua"
     },
+    "alerts": {
+      "title": "Cảnh báo Kinh Tế",
+      "subtitle": "Bất thường currency / inventory / topup PENDING > {hours}h",
+      "allClear": "Tất cả ổn — không có bất thường.",
+      "negativeCurrency": "Currency âm",
+      "negativeInventory": "Inventory qty < 1",
+      "stalePendingTopups": "Topup PENDING quá hạn"
+    },
     "noPermission": "Bạn không có quyền vào khu này.",
     "users": {
       "searchPlaceholder": "Tìm email hoặc đạo hiệu…",

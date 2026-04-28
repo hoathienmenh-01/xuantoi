@@ -145,6 +145,41 @@ export async function adminStats(): Promise<AdminStats> {
   return unwrap(data);
 }
 
+export interface AdminEconomyAlerts {
+  negativeCurrency: {
+    characterId: string;
+    name: string;
+    userEmail: string;
+    linhThach: string;
+    tienNgoc: number;
+    tienNgocKhoa: number;
+  }[];
+  negativeInventory: {
+    inventoryItemId: string;
+    characterId: string;
+    characterName: string;
+    itemKey: string;
+    qty: number;
+  }[];
+  stalePendingTopups: {
+    id: string;
+    userEmail: string;
+    packageKey: string;
+    tienNgocAmount: number;
+    createdAt: string;
+    ageHours: number;
+  }[];
+  staleHours: number;
+  generatedAt: string;
+}
+
+export async function adminEconomyAlerts(staleHours = 24): Promise<AdminEconomyAlerts> {
+  const { data } = await apiClient.get<Envelope<AdminEconomyAlerts>>('/admin/economy/alerts', {
+    params: { staleHours },
+  });
+  return unwrap(data);
+}
+
 export interface AdminBossSpawnInput {
   bossKey?: string;
   level?: number;

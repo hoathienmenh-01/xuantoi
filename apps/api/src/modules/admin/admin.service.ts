@@ -476,6 +476,124 @@ export class AdminService {
     };
   }
 
+  /**
+   * Smart economy alerts cho admin/mod overview.
+   *
+   * Liệt kê các bất thường economy mà closed-beta cần phát hiện sớm:
+   * - characters có currency âm (linhThach/tienNgoc/tienNgocKhoa < 0) — invariant violation.
+   * - inventory items có qty < 1 — invariant violation (nên đã bị xoá khi qty=0).
+   * - topup orders PENDING quá `staleHours` giờ (mặc định 24h) — admin lười duyệt.
+   *
+   * Read-only, không gây side-effect, MOD đọc được.
+   */
+  async getEconomyAlerts(staleHours = 24): Promise<{
+    negativeCurrency: {
+      characterId: string;
+      name: string;
+      userEmail: string;
+      linhThach: string;
+      tienNgoc: number;
+      tienNgocKhoa: number;
+    }[];
+    negativeInventory: {
+      inventoryItemId: string;
+      characterId: string;
+      characterName: string;
+      itemKey: string;
+      qty: number;
+    }[];
+    stalePendingTopups: {
+      id: string;
+      userEmail: string;
+      packageKey: string;
+      tienNgocAmount: number;
+      createdAt: string;
+      ageHours: number;
+    }[];
+    staleHours: number;
+    generatedAt: string;
+  }> {
+    const since = new Date(Date.now() - staleHours * 3600 * 1000);
+
+    const [negChars, negItems, staleTopups] = await Promise.all([
+      this.prisma.character.findMany({
+        where: {
+          OR: [
+            { linhThach: { lt: 0n } },
+            { tienNgoc: { lt: 0 } },
+            { tienNgocKhoa: { lt: 0 } },
+          ],
+        },
+        select: {
+          id: true,
+          name: true,
+          linhThach: true,
+          tienNgoc: true,
+          tienNgocKhoa: true,
+          user: { select: { email: true } },
+        },
+        orderBy: { name: 'asc' },
+        take: 100,
+      }),
+      this.prisma.inventoryItem.findMany({
+        where: { qty: { lt: 1 } },
+        select: {
+          id: true,
+          characterId: true,
+          itemKey: true,
+          qty: true,
+          character: { select: { name: true } },
+        },
+        orderBy: { id: 'asc' },
+        take: 100,
+      }),
+      this.prisma.topupOrder.findMany({
+        where: {
+          status: TopupStatus.PENDING,
+          createdAt: { lt: since },
+        },
+        select: {
+          id: true,
+          packageKey: true,
+          tienNgocAmount: true,
+          createdAt: true,
+          user: { select: { email: true } },
+        },
+        orderBy: { createdAt: 'asc' },
+        take: 100,
+      }),
+    ]);
+
+    const now = Date.now();
+    return {
+      negativeCurrency: negChars.map((c) => ({
+        characterId: c.id,
+        name: c.name,
+        userEmail: c.user.email,
+        linhThach: c.linhThach.toString(),
+        tienNgoc: c.tienNgoc,
+        tienNgocKhoa: c.tienNgocKhoa,
+      })),
+      negativeInventory: negItems.map((i) => ({
+        inventoryItemId: i.id,
+        characterId: i.characterId,
+        characterName: i.character.name,
+        itemKey: i.itemKey,
+        qty: i.qty,
+      })),
+      stalePendingTopups: staleTopups.map((t) => ({
+        id: t.id,
+        userEmail: t.user.email,
+        packageKey: t.packageKey,
+        tienNgocAmount: t.tienNgocAmount,
+        createdAt: t.createdAt.toISOString(),
+        ageHours: Math.floor((now - t.createdAt.getTime()) / (3600 * 1000)),
+      })),
+      staleHours,
+      generatedAt: new Date(now).toISOString(),
+    };
+  }
+
   private async audit(actorId: string, action: string, meta: Prisma.InputJsonValue): Promise<void> {
     await this.prisma.adminAuditLog.create({
       data: { actorUserId: actorId, action, meta },
