@@ -1,6 +1,6 @@
 # AI Handoff Report — Xuân Tôi
 
-> **Snapshot**: `main` @ `81706a9` (Merge PR #61 audit session 6, 28 Apr 2026 22:05 UTC). PR #52..#61 đã merge `main`. **PR #62 (G8 — M11 profile rate-limit) Pending merge** — CI ✅ (3/3) — branch `devin/1777414051-g8-profile-rate-limit`. **PR #63 (G9 — M3 WS mission:progress throttled push) Pending merge** — branch `devin/1777414636-g9-ws-mission-progress`.
+> **Snapshot**: `main` @ `81706a9` (Merge PR #61 audit session 6, 28 Apr 2026 22:05 UTC). PR #52..#61 đã merge `main`. **4 PR Pending merge**: #62 (G8 — M11 profile rate-limit, CI ✅ 3/3), #63 (G9 — M3 WS mission:progress, CI ✅ 3/3), #64 (G10 — H6 wire Playwright smoke vào CI, CI ✅ 5/5), **#65 (G11 — FE handler `mission:progress` stacked trên PR #63)**.
 > **Người viết**: AI engineer session 28/4 sess.6 (audit refresh sau khi PR #58/#59/#60 đã merge — header report cũ vẫn ghi #59/#60 "Open" → đó là tồn tại lỗi thời và đã được fix bởi PR docs này).
 > **Đối tượng đọc**: AI kế nhiệm sẽ tiếp tục đưa dự án tới beta / production.
 >
@@ -1296,6 +1296,7 @@ Admin hiện tại có thể vào `/admin` → Users → tìm → **Set role = A
 - ~~**G7 (register IP rate-limit)**~~ — **Done** (PR #60 — 5 register/IP/15min, Redis distributed prod, in-memory fallback).
 - ~~**G8**: M11 — rate-limit `GET /character/profile/:id`~~ → **Pending merge PR #62** (CI 3/3 xanh).
 - ~~**G9**: M3 — WS `mission:progress` throttled push~~ → **Pending merge PR #63**.
+- ~~**G11**: FE handler `mission:progress` (closed-loop cho PR #63 BE push)~~ → **Pending merge PR #65** (stacked trên PR #63).
 - **G10 (next safe task)**: H6 — wire Playwright `pnpm e2e` vào GitHub Actions CI để catch UI regression. Đã có `playwright.config.ts` + `e2e/golden.spec.ts` từ PR #44; chỉ cần thêm job `e2e` vào `.github/workflows/ci.yml` với service Postgres + Redis + step `pnpm --filter @xuantoi/web e2e`.
 
 Không còn issue **High** mở trên main (H6 Playwright CI wire là Medium effort, **Open**); chỉ còn **Medium** (M3/M6/M7/M9/M10) và **Low** (L2/L3/L5/L6/L7 — L4 done PR #57, M11 done PR #62 pending merge).
@@ -1309,6 +1310,36 @@ Các hạng mục smart-feature đề xuất (không bắt buộc — AI tự qu
 
 #### Post-beta backlog
 ~~Leaderboard~~ (Done PR #59) / Alchemy / Refinery / Arena / Pet / Companion / Event / Battle Pass / `forgot-password` / `mission:progress` WS / `ADMIN_REVOKE` endpoint.
+
+---
+
+### Session 6 audit log (28/4 22:45 UTC — PR #65 G11 FE mission:progress handler)
+
+**PR #65 — G11: FE handler event `mission:progress` (stacked trên PR #63)**
+
+- **Branch**: `devin/1777416234-g11-fe-mission-handler`. **Base**: `devin/1777414636-g9-ws-mission-progress` (PR #63 branch). **Status**: **Pending merge**. Merge PR #63 trước, sau đó rebase PR #65 xuống `main` và merge.
+- **Mục tiêu**: Hoàn tất closed-loop của PR #63 ở phía FE — khi BE push frame `mission:progress` (sau `MissionService.track()`), FE nhận được event và merge delta vào `missions` ref của `MissionView.vue` → progress bar nhảy real-time không cần refetch.
+- **Giải pháp**:
+  - `apps/web/src/ws/client.ts`: thêm `'mission:progress'` vào mảng `events` để socket.io-client lắng nghe + dispatch tới handlers.
+  - **NEW** `apps/web/src/lib/missionProgress.ts` (38 line): fn `applyMissionProgressFrame(current, frame)` — immutable update. Invariants: không lùi `currentAmount` (server monotonic), không đổi `claimed`, không tạo mission mới, completable bị gộp `!m.claimed` để tránh bug UI.
+  - `apps/web/src/views/MissionView.vue`: `onMounted` subscribe `wsOn('mission:progress', ...)`; `onUnmounted` unsubscribe. `missions.value = applyMissionProgressFrame(missions.value, frame.payload)`.
+- **Files**:
+  - `apps/web/src/ws/client.ts` (+1 / -0)
+  - `apps/web/src/lib/missionProgress.ts` (new, 38 line)
+  - `apps/web/src/lib/__tests__/missionProgress.test.ts` (new, 126 line, 6 test)
+  - `apps/web/src/views/MissionView.vue` (+22 / -0: import + subscribe/unsubscribe)
+- **Tests**: web local pass **70/70** (was 64, +6 missionProgress).
+  - 6 unit test: apply `currentAmount`+`completable` delta cho key match; completable đẩy mission sẵn sàng claim; stale frame (currentAmount nhỏ hơn local) không lùi; `claimed=true` block completable reset; empty changes → no-op return same ref; unknown mission key → skip, không tạo mới.
+- **Local verified**: `pnpm typecheck` ✅ · `pnpm lint` ✅ · `pnpm --filter @xuantoi/web build` ✅ · `pnpm --filter @xuantoi/web test` ✅ 70/70.
+- **CI**: chờ push branch.
+- **Risk**: low.
+  - Chỉ subscribe trong `MissionView`, lúc unmount hủy subscription — không leak.
+  - `applyMissionProgressFrame` immutable, return cùng ref khi no-op — tránh trigger reactivity thừa.
+  - Không đổi API/DB/schema.
+- **Backward compat**: Nếu BE chưa push frame (vd PR #63 chưa merge), FE không nhận gì → graceful (polling cũ vẫn hoạt động).
+- **Runtime smoke**: Needs runtime smoke với BE + FE chạy đồng thời sau khi PR #63 + PR #65 cùng merge — verify DevTools → WS thấy frame, progress bar UI nhảy khi tu luyện.
+- **Rollback**: revert PR #65. FE mất realtime update; tính đúng đắn mission list không đổi.
+- **Bước tiếp**: G12 — L5 skeleton loaders / L7 admin revoke / L2 market fee config.
 
 ---
 

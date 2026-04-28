@@ -83,6 +83,7 @@ export function connect(): Socket {
     'boss:end',
     'boss:defeated',
     'mail:new',
+    'mission:progress',
     'pong',
   ];
   for (const ev of events) {
