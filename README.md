@@ -91,6 +91,7 @@ Xem chi tiết spec **blueprint gốc** trong [`docs/04_TECH_STACK_VA_DATA_MODEL
 - [`docs/SEEDING.md`](./docs/SEEDING.md) — static catalog Item / Skill / Dungeon / Mission / Realm + cách thêm mới.
 - [`docs/BALANCE.md`](./docs/BALANCE.md) — công thức EXP / damage / drop + bảng tra 28 cảnh giới.
 - [`docs/BETA_CHECKLIST.md`](./docs/BETA_CHECKLIST.md) — roadmap & cut-line để chuẩn bị beta.
+- [`docs/QA_CHECKLIST.md`](./docs/QA_CHECKLIST.md) — smoke checklist 15 phút trước mỗi release closed beta.
 - [`docs/AI_HANDOFF_REPORT.md`](./docs/AI_HANDOFF_REPORT.md) — handoff cho session AI tiếp theo.
 
 ## License
