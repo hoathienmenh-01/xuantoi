@@ -40,6 +40,12 @@ export async function listMail(): Promise<MailView[]> {
   return unwrap(data).mails;
 }
 
+export async function fetchMailUnreadCount(): Promise<number> {
+  const { data } =
+    await apiClient.get<Envelope<{ count: number }>>('/mail/unread-count');
+  return unwrap(data).count;
+}
+
 export async function readMail(id: string): Promise<MailView> {
   const { data } = await apiClient.post<Envelope<{ mail: MailView }>>(
     `/mail/${encodeURIComponent(id)}/read`,

@@ -43,6 +43,16 @@ export class MailController {
     }
   }
 
+  @Get('unread-count')
+  async unreadCount(
+    @Req() req: Request,
+  ): Promise<{ ok: true; data: { count: number } }> {
+    const userId = await this.auth.userIdFromAccess(req.cookies?.[ACCESS_COOKIE]);
+    if (!userId) fail('UNAUTHENTICATED', HttpStatus.UNAUTHORIZED);
+    const count = await this.mail.unreadCount(userId);
+    return { ok: true, data: { count } };
+  }
+
   @Post(':id/read')
   @HttpCode(200)
   async read(@Req() req: Request, @Param('id') id: string) {

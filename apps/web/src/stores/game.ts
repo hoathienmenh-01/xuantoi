@@ -2,6 +2,7 @@ import { computed, ref } from 'vue';
 import { defineStore } from 'pinia';
 import { realmByKey, fullRealmName, type CharacterStatePayload } from '@xuantoi/shared';
 import { apiClient } from '@/api/client';
+import { fetchMailUnreadCount } from '@/api/mail';
 import { connect, on } from '@/ws/client';
 
 interface Envelope<T> {
@@ -46,6 +47,18 @@ export const useGameStore = defineStore('game', () => {
       '/character/state',
     );
     if (data.ok && data.data) character.value = data.data.character;
+  }
+
+  /**
+   * Hydrate `unreadMail` từ BE. Gọi sau login hoặc khi vào view có badge.
+   * Silent error → không phá UI flow nếu mail service tạm chết.
+   */
+  async function hydrateUnreadMail(): Promise<void> {
+    try {
+      unreadMail.value = await fetchMailUnreadCount();
+    } catch {
+      // silent
+    }
   }
 
   async function setCultivating(on: boolean): Promise<void> {
@@ -115,6 +128,7 @@ export const useGameStore = defineStore('game', () => {
     realmFullName,
     expProgress,
     fetchState,
+    hydrateUnreadMail,
     setCultivating,
     breakthrough,
     bindSocket,
