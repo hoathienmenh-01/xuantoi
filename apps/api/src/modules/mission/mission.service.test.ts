@@ -4,6 +4,7 @@ import { PrismaService } from '../../common/prisma.service';
 import {
   MissionError,
   MissionService,
+  getMissionResetTz,
   nextDailyWindowEnd,
   nextWeeklyWindowEnd,
 } from './mission.service';
@@ -31,7 +32,7 @@ afterAll(async () => {
   await prisma.$disconnect();
 });
 
-describe('MissionService — window helpers', () => {
+describe('MissionService — window helpers (UTC default)', () => {
   it('nextDailyWindowEnd: luôn 00:00:00 UTC và > now', () => {
     const now = new Date('2026-04-28T10:30:00.000Z');
     const end = nextDailyWindowEnd(now);
@@ -55,6 +56,60 @@ describe('MissionService — window helpers', () => {
     const monday = new Date('2026-04-27T09:00:00.000Z'); // thứ Hai
     const end = nextWeeklyWindowEnd(monday);
     expect(end.toISOString()).toBe('2026-05-04T00:00:00.000Z');
+  });
+});
+
+describe('MissionService — window helpers (Asia/Ho_Chi_Minh, UTC+07)', () => {
+  const TZ = 'Asia/Ho_Chi_Minh';
+
+  it('nextDailyWindowEnd VN: 28/04 10:30 UTC ⇒ 28/04 17:00 UTC (29/04 00:00 VN)', () => {
+    // 28/04/2026 10:30 UTC = 28/04 17:30 VN → next 00:00 VN = 29/04 00:00 VN = 28/04 17:00 UTC.
+    const now = new Date('2026-04-28T10:30:00.000Z');
+    const end = nextDailyWindowEnd(now, TZ);
+    expect(end.toISOString()).toBe('2026-04-28T17:00:00.000Z');
+    expect(end.getTime()).toBeGreaterThan(now.getTime());
+  });
+
+  it('nextDailyWindowEnd VN: 28/04 18:00 UTC (= 29/04 01:00 VN) ⇒ 30/04 00:00 VN', () => {
+    const now = new Date('2026-04-28T18:00:00.000Z');
+    const end = nextDailyWindowEnd(now, TZ);
+    expect(end.toISOString()).toBe('2026-04-29T17:00:00.000Z'); // = 30/04 00:00 VN
+  });
+
+  it('nextWeeklyWindowEnd VN: thuộc 28/04 (thứ Ba VN) ⇒ 04/05 00:00 VN = 03/05 17:00 UTC', () => {
+    const now = new Date('2026-04-28T10:30:00.000Z'); // thứ Ba VN.
+    const end = nextWeeklyWindowEnd(now, TZ);
+    expect(end.toISOString()).toBe('2026-05-03T17:00:00.000Z');
+  });
+
+  it('nextWeeklyWindowEnd VN: thứ Hai 00:00 VN ⇒ thứ Hai tuần sau (+7 ngày)', () => {
+    // 27/04 00:00 VN = 26/04 17:00 UTC.
+    const now = new Date('2026-04-26T17:00:00.000Z');
+    const end = nextWeeklyWindowEnd(now, TZ);
+    expect(end.toISOString()).toBe('2026-05-03T17:00:00.000Z');
+  });
+});
+
+describe('MissionService — getMissionResetTz()', () => {
+  const ORIG = process.env.MISSION_RESET_TZ;
+  afterAll(() => {
+    if (ORIG === undefined) delete process.env.MISSION_RESET_TZ;
+    else process.env.MISSION_RESET_TZ = ORIG;
+  });
+
+  it('default Asia/Ho_Chi_Minh khi env trống', () => {
+    delete process.env.MISSION_RESET_TZ;
+    expect(getMissionResetTz()).toBe('Asia/Ho_Chi_Minh');
+  });
+
+  it('default Asia/Ho_Chi_Minh khi env là chuỗi trắng', () => {
+    process.env.MISSION_RESET_TZ = '   ';
+    expect(getMissionResetTz()).toBe('Asia/Ho_Chi_Minh');
+  });
+
+  it('respect env override (UTC)', () => {
+    process.env.MISSION_RESET_TZ = 'UTC';
+    expect(getMissionResetTz()).toBe('UTC');
   });
 });
 
