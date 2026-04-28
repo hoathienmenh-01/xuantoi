@@ -40,27 +40,75 @@ export interface MissionProgressView {
 }
 
 /**
- * Cửa sổ tiếp theo cho DAILY — 00:00 UTC ngày mai.
+ * Đọc env `MISSION_RESET_TZ` để xác định timezone của mốc reset DAILY/WEEKLY.
+ * Mặc định `Asia/Ho_Chi_Minh` (UTC+07, không DST) — giờ VN là zone player chính.
+ * Đặt `UTC` (hoặc bất kỳ IANA tz hợp lệ nào) để override.
  */
-export function nextDailyWindowEnd(now: Date = new Date()): Date {
-  return new Date(
-    Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1),
-  );
+export function getMissionResetTz(): string {
+  const v = process.env.MISSION_RESET_TZ?.trim();
+  return v && v.length > 0 ? v : 'Asia/Ho_Chi_Minh';
 }
 
 /**
- * Cửa sổ tiếp theo cho WEEKLY — 00:00 UTC thứ Hai kế tiếp.
- * Quy ước: tuần bắt đầu vào thứ Hai (ISO 8601).
+ * Trả về offset của một IANA timezone tại một thời điểm cụ thể, đơn vị phút.
+ * UTC → 0, Asia/Ho_Chi_Minh → 420, America/New_York → -240/-300 (DST).
  */
-export function nextWeeklyWindowEnd(now: Date = new Date()): Date {
-  const start = new Date(
-    Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()),
+function tzOffsetMinutes(tz: string, at: Date): number {
+  const fmt = new Intl.DateTimeFormat('en-US', {
+    timeZone: tz,
+    timeZoneName: 'longOffset',
+  });
+  const parts = fmt.formatToParts(at);
+  const name = parts.find((p) => p.type === 'timeZoneName')?.value ?? '';
+  // "GMT+07:00", "GMT-05:00", "GMT" (UTC).
+  const m = name.match(/GMT([+-])(\d{2}):(\d{2})/);
+  if (!m) return 0;
+  const sign = m[1] === '+' ? 1 : -1;
+  return sign * (parseInt(m[2], 10) * 60 + parseInt(m[3], 10));
+}
+
+/**
+ * Cửa sổ tiếp theo cho DAILY — 00:00 "local" theo `tz` ngày mai, trả về UTC Date.
+ * Xấp xỉ 1 lần (nếu zone đổi DST giữa now và midnight, sai số tối đa ~1h —
+ * chấp nhận được vì cron chạy mỗi 10 phút bù trễ).
+ */
+export function nextDailyWindowEnd(
+  now: Date = new Date(),
+  tz: string = 'UTC',
+): Date {
+  const offMs = tzOffsetMinutes(tz, now) * 60_000;
+  // "Local" instant: Date có UTC-fields trùng với local-fields ở zone tz.
+  const local = new Date(now.getTime() + offMs);
+  const tomorrowLocalUtc = Date.UTC(
+    local.getUTCFullYear(),
+    local.getUTCMonth(),
+    local.getUTCDate() + 1,
   );
-  const dow = start.getUTCDay(); // 0=Sun, 1=Mon, ..., 6=Sat
-  // Số ngày tới thứ Hai kế tiếp (>= 1 ngày, không bao giờ = 0 để luôn "tuần sau").
+  return new Date(tomorrowLocalUtc - offMs);
+}
+
+/**
+ * Cửa sổ tiếp theo cho WEEKLY — 00:00 "local" theo `tz` thứ Hai kế tiếp.
+ * Quy ước: tuần bắt đầu vào thứ Hai (ISO 8601). Khi `now` rơi đúng thứ Hai
+ * 00:00 trở đi, trả về thứ Hai tuần sau (+7 ngày) — tránh windowEnd <= now
+ * ngay lúc tạo.
+ */
+export function nextWeeklyWindowEnd(
+  now: Date = new Date(),
+  tz: string = 'UTC',
+): Date {
+  const offMs = tzOffsetMinutes(tz, now) * 60_000;
+  const local = new Date(now.getTime() + offMs);
+  const startLocalUtc = Date.UTC(
+    local.getUTCFullYear(),
+    local.getUTCMonth(),
+    local.getUTCDate(),
+  );
+  const startLocal = new Date(startLocalUtc);
+  const dow = startLocal.getUTCDay(); // 0=Sun, 1=Mon, ..., 6=Sat (theo "local").
   const daysToMonday = dow === 1 ? 7 : (1 - dow + 7) % 7 || 7;
-  start.setUTCDate(start.getUTCDate() + daysToMonday);
-  return start;
+  startLocal.setUTCDate(startLocal.getUTCDate() + daysToMonday);
+  return new Date(startLocal.getTime() - offMs);
 }
 
 /**
@@ -126,6 +174,7 @@ export class MissionService {
     });
     const have = new Set(existing.map((r) => r.missionKey));
     const now = new Date();
+    const tz = getMissionResetTz();
     const toCreate: Prisma.MissionProgressCreateManyInput[] = MISSIONS.filter(
       (m) => !have.has(m.key),
     ).map((m) => ({
@@ -135,9 +184,9 @@ export class MissionService {
       goalAmount: m.goalAmount,
       windowEnd:
         m.period === 'DAILY'
-          ? nextDailyWindowEnd(now)
+          ? nextDailyWindowEnd(now, tz)
           : m.period === 'WEEKLY'
-            ? nextWeeklyWindowEnd(now)
+            ? nextWeeklyWindowEnd(now, tz)
             : null,
     }));
     if (toCreate.length > 0) {
@@ -273,8 +322,11 @@ export class MissionService {
    */
   async resetPeriod(period: 'DAILY' | 'WEEKLY'): Promise<number> {
     const now = new Date();
+    const tz = getMissionResetTz();
     const nextEnd =
-      period === 'DAILY' ? nextDailyWindowEnd(now) : nextWeeklyWindowEnd(now);
+      period === 'DAILY'
+        ? nextDailyWindowEnd(now, tz)
+        : nextWeeklyWindowEnd(now, tz);
     const res = await this.prisma.missionProgress.updateMany({
       where: {
         period: period as MissionPeriod,
