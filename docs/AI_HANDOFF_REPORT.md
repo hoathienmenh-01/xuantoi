@@ -649,7 +649,7 @@ apps/api/src/modules/character/currency.service.ts:88   data: { tienNgoc: { incr
 
 **Risk còn lại**:
 - `ItemLedger` nên thêm khi bước sau — giúp audit duplication khi equip/unequip race + market fraud.
-- `CurrencyLedger.actorUserId` chưa có index — query "user X đã làm gì với tiền người Y" sẽ full-scan.
+- ~~`CurrencyLedger.actorUserId` chưa có index~~ — đã fix ở PR #43 (`@@index([actorUserId, createdAt])` cho cả CurrencyLedger và ItemLedger).
 
 ---
 
@@ -780,7 +780,7 @@ _(Không có lỗi làm app không chạy / mất tiền / auth hỏng tại com
 | ~~M2~~ | ~~Boss spawn chỉ manual + admin endpoint chưa có.~~ | **Resolved** by **PR #36** (`POST /api/boss/admin/spawn` + UI tab + 7 test, audit `BOSS_SPAWN`). |
 | M3 | Chưa có WS `mission:progress` push. | **Open** — (lưu ý: PR #38 đã đánh nhầm M3 ở body — đó là profile, không phải mission progress). Thêm emitToUser ở `MissionService.track*` (throttle để không spam). |
 | ~~M4~~ | ~~`ItemLedger` audit table chưa có.~~ | **Resolved** by **PR #40** (model + migration `20260428102849_itemledger` + hook 6 grant flows + market post/cancel/buy + 7 test trong `item-ledger.test.ts`). |
-| M5 | `CurrencyLedger.actorUserId` chưa index. | **Open** — `@@index([actorUserId])`. |
+| ~~M5~~ | ~~`CurrencyLedger.actorUserId` chưa index.~~ | **Resolved** by **PR #43** — thêm `@@index([actorUserId, createdAt])` cho cả `CurrencyLedger` và `ItemLedger`. Migration `20260428112804_actor_user_id_index` (ADD INDEX only). |
 | M6 | LogsModule (G3 cũ) chưa build — không có `/logs/me` endpoint. | **Open** — low priority, chỉ khi cần UI xem log action. |
 | M7 | CSP production-ready nhưng chưa test deploy với CDN/asset domain khác. | **Open** — khi deploy: review `script-src`, `connect-src`. |
 | M8 | Admin guard kiểm `role === 'ADMIN' \|\| 'MOD'` — MOD có quyền broad gần ADMIN (grant currency, approve topup, broadcast mail, spawn boss). | **Open** — split fine-grained permission: MOD chỉ đọc + chat moderation; ADMIN mới grant/approve/broadcast/spawn. |
@@ -947,7 +947,7 @@ Admin hiện tại có thể vào `/admin` → Users → tìm → **Set role = A
 
 ### Before Closed Beta
 
-6. **M5 — `CurrencyLedger.actorUserId` index** (small migration `@@index([actorUserId])`).
+6. ~~**M5 — `CurrencyLedger.actorUserId` index**~~: **Done** by **PR #43** (cover cả `ItemLedger.actorUserId`).
 7. **M8 — Admin guard split**: ADMIN-only cho grant/approve/broadcast/spawn-boss; MOD chỉ read + chat moderation.
 8. **L1 — i18n gap audit run cuối** + l10n tên item (`itemName(key, locale)`).
 9. **Mobile responsive verify** trên iPhone SE viewport.
@@ -1009,9 +1009,10 @@ Admin hiện tại có thể vào `/admin` → Users → tìm → **Set role = A
 - **Test**: 26 mission test pass (3 UTC default + 4 VN tz + 3 env helper + 16 cũ).
 - **Risk**: thấp — helper pure + thêm env optional (default backward-compat = `'UTC'` tại function-level).
 
-#### PR D — M5 `CurrencyLedger.actorUserId` index
-- **File**: prisma migration ADD INDEX (new), `schema.prisma` `@@index([actorUserId])`.
-- **Risk**: thấp — ADD INDEX an toàn.
+#### ~~PR D — M5 `CurrencyLedger.actorUserId` index~~ — **Done** (PR #43)
+- **File**: `apps/api/prisma/schema.prisma` (`@@index([actorUserId, createdAt])` x2 cho `CurrencyLedger` + `ItemLedger`), migration `20260428112804_actor_user_id_index/migration.sql` (ADD INDEX only).
+- **Test**: không thêm test riêng — ADD INDEX không đổi logic. 269 test cũ vẫn pass.
+- **Risk**: thấp — ADD INDEX an toàn, không khoá bảng (Postgres `CREATE INDEX` non-concurrent phù hợp vì bảng cuối `migrate deploy` size nhỏ).
 
 #### PR E — M8 Admin guard split (ADMIN vs MOD)
 - **File**: `apps/api/src/modules/admin/admin.guard.ts` thêm `RequireAdmin` decorator/guard phân biệt. Update controller cho grant/approve/broadcast/spawn-boss yêu cầu ADMIN; giữ MOD cho ban/role-set + chat moderation. Test guard.
@@ -1022,8 +1023,8 @@ Admin hiện tại có thể vào `/admin` → Users → tìm → **Set role = A
 - **Risk**: thấp, chỉ đổi template.
 
 #### Thứ tự đề xuất cho AI tiếp theo
-**A (smoke) → B (Vitest+Playwright) → ~~C (timezone)~~ → D (index) → E (guard split) → F (i18n)**.  
-(C đã Done tại PR #42.)
+**A (smoke) → B (Vitest+Playwright) → ~~C (timezone)~~ → ~~D (index)~~ → E (guard split) → F (i18n)**.  
+(C đã Done tại PR #42; D đã Done tại PR #43.)
 
 #### Post-beta backlog
 Leaderboard / Alchemy / Refinery / Arena / Pet / Companion / Event / Battle Pass / `forgot-password` / `mission:progress` WS / `ADMIN_REVOKE` endpoint.
