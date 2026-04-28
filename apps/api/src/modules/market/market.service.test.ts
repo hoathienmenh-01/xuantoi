@@ -5,7 +5,12 @@ import { RealtimeService } from '../realtime/realtime.service';
 import { CharacterService } from '../character/character.service';
 import { CurrencyService } from '../character/currency.service';
 import { MarketService, MARKET_FEE_PCT } from './market.service';
-import { TEST_DATABASE_URL, makeUserChar, wipeAll } from '../../test-helpers';
+import {
+  TEST_DATABASE_URL,
+  makeMissionService,
+  makeUserChar,
+  wipeAll,
+} from '../../test-helpers';
 
 let prisma: PrismaService;
 let market: MarketService;
@@ -17,7 +22,8 @@ beforeAll(() => {
   realtime = new RealtimeService();
   const chars = new CharacterService(prisma, realtime);
   const currency = new CurrencyService(prisma);
-  market = new MarketService(prisma, realtime, chars, currency);
+  const missions = makeMissionService(prisma);
+  market = new MarketService(prisma, realtime, chars, currency, missions);
 });
 
 beforeEach(async () => {

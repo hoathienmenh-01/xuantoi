@@ -1,5 +1,10 @@
 import { CurrencyKind } from '@prisma/client';
 import { PrismaService } from './common/prisma.service';
+import { RealtimeService } from './modules/realtime/realtime.service';
+import { CharacterService } from './modules/character/character.service';
+import { CurrencyService } from './modules/character/currency.service';
+import { InventoryService } from './modules/inventory/inventory.service';
+import { MissionService } from './modules/mission/mission.service';
 
 /**
  * Helpers cho integration test — tạo fixture user/character nhanh, không
@@ -90,6 +95,7 @@ export async function wipeAll(prisma: PrismaService): Promise<void> {
   await prisma.chatMessage.deleteMany({});
   await prisma.listing.deleteMany({});
   await prisma.inventoryItem.deleteMany({});
+  await prisma.missionProgress.deleteMany({});
   await prisma.giftCodeRedemption.deleteMany({});
   await prisma.giftCode.deleteMany({});
   await prisma.mail.deleteMany({});
@@ -100,6 +106,18 @@ export async function wipeAll(prisma: PrismaService): Promise<void> {
   await prisma.character.deleteMany({});
   await prisma.user.deleteMany({});
   await prisma.sect.deleteMany({});
+}
+
+/**
+ * Dựng `MissionService` tối thiểu cho integration test (bypass DI container).
+ * Dùng lại các service khác (thường test chỉ cần prisma).
+ */
+export function makeMissionService(prisma: PrismaService): MissionService {
+  const realtime = new RealtimeService();
+  const chars = new CharacterService(prisma, realtime);
+  const currency = new CurrencyService(prisma);
+  const inventory = new InventoryService(prisma, realtime, chars);
+  return new MissionService(prisma, currency, inventory);
 }
 
 export const TEST_DATABASE_URL =

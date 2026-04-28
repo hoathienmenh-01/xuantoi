@@ -19,6 +19,7 @@ import { RealtimeService } from '../realtime/realtime.service';
 import { CharacterService } from '../character/character.service';
 import { CurrencyService } from '../character/currency.service';
 import { InventoryService } from '../inventory/inventory.service';
+import { MissionService } from '../mission/mission.service';
 
 export class BossError extends Error {
   constructor(
@@ -102,6 +103,7 @@ export class BossService implements OnModuleInit, OnModuleDestroy {
     private readonly chars: CharacterService,
     private readonly inventory: InventoryService,
     private readonly currency: CurrencyService,
+    private readonly missions: MissionService,
   ) {}
 
   onModuleInit(): void {
@@ -301,6 +303,13 @@ export class BossService implements OnModuleInit, OnModuleDestroy {
       where: { bossId: boss.id, totalDamage: { gt: myDamageTotal } },
     });
     myRank = rankRow + 1;
+
+    // Mission tracking — mỗi lần hit thành công (dmg > 0) → BOSS_HIT +1.
+    try {
+      await this.missions.track(char.id, 'BOSS_HIT', 1);
+    } catch {
+      // bỏ qua
+    }
 
     // Re-emit state user + boss room.
     await this.refreshState(userId);

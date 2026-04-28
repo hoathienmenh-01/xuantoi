@@ -5,6 +5,7 @@ import { PrismaService } from '../../common/prisma.service';
 import { RealtimeService } from '../realtime/realtime.service';
 import { CharacterService } from '../character/character.service';
 import { CurrencyError, CurrencyService } from '../character/currency.service';
+import { MissionService } from '../mission/mission.service';
 
 class MarketError extends Error {
   constructor(
@@ -54,6 +55,7 @@ export class MarketService {
     private readonly realtime: RealtimeService,
     private readonly chars: CharacterService,
     private readonly currency: CurrencyService,
+    private readonly missions: MissionService,
   ) {}
 
   async listActive(viewerCharacterId: string, kind?: ItemKind): Promise<ListingView[]> {
@@ -307,6 +309,14 @@ export class MarketService {
       if (sellerState) {
         this.realtime.emitToUser(seller.userId, 'state:update', sellerState);
       }
+    }
+
+    // Mission tracking — buyer BUY_LISTING +1, seller SELL_LISTING +1.
+    try {
+      await this.missions.track(buyer.id, 'BUY_LISTING', 1);
+      await this.missions.track(l.sellerId, 'SELL_LISTING', 1);
+    } catch {
+      // bỏ qua
     }
 
     return this.toView(updated, item, seller?.name ?? '???', buyer.id);

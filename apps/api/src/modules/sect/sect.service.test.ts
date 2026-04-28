@@ -4,7 +4,13 @@ import { RealtimeService } from '../realtime/realtime.service';
 import { CharacterService } from '../character/character.service';
 import { CurrencyService } from '../character/currency.service';
 import { SectService } from './sect.service';
-import { TEST_DATABASE_URL, makeUserChar, nextSuffix, wipeAll } from '../../test-helpers';
+import {
+  TEST_DATABASE_URL,
+  makeMissionService,
+  makeUserChar,
+  nextSuffix,
+  wipeAll,
+} from '../../test-helpers';
 
 let prisma: PrismaService;
 let sect: SectService;
@@ -15,7 +21,8 @@ beforeAll(() => {
   const realtime = new RealtimeService();
   const chars = new CharacterService(prisma, realtime);
   const currency = new CurrencyService(prisma);
-  sect = new SectService(prisma, realtime, chars, currency);
+  const missions = makeMissionService(prisma);
+  sect = new SectService(prisma, realtime, chars, currency, missions);
 });
 
 beforeEach(async () => {

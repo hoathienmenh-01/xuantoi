@@ -176,10 +176,50 @@
       "market": "Phường Thị",
       "sect": "Tông Môn",
       "boss": "Boss Đại Hội",
+      "missions": "Nhiệm Vụ",
       "mail": "Thư Sứ",
       "giftcode": "Lễ Mã",
       "topup": "Nạp Tiên Ngọc",
       "admin": "Quản Trị"
+    }
+  },
+  "mission": {
+    "title": "Bảng Nhiệm Vụ",
+    "empty": "Không có nhiệm vụ trong mục này.",
+    "claim": "Nhận Thưởng",
+    "claimToast": "Đã nhận thưởng: {name}",
+    "resetIn": "Làm mới sau",
+    "resetImminent": "Đang làm mới",
+    "tab": {
+      "daily": "Hằng Ngày",
+      "weekly": "Hằng Tuần",
+      "once": "Thiên Kiếp"
+    },
+    "status": {
+      "ready": "Sẵn sàng",
+      "claimed": "Đã nhận"
+    },
+    "quality": {
+      "PHAM": "Phàm",
+      "LINH": "Linh",
+      "HUYEN": "Huyền",
+      "TIEN": "Tiên",
+      "THANH": "Thánh"
+    },
+    "reward": {
+      "label": "Phần thưởng",
+      "linhThach": "Linh Thạch",
+      "tienNgoc": "Tiên Ngọc",
+      "exp": "EXP",
+      "congHien": "Cống Hiến"
+    },
+    "errors": {
+      "NO_CHARACTER": "Chưa tạo nhân vật.",
+      "MISSION_UNKNOWN": "Nhiệm vụ không tồn tại.",
+      "NOT_READY": "Chưa đạt điều kiện nhận thưởng.",
+      "ALREADY_CLAIMED": "Nhiệm vụ này đã được nhận.",
+      "UNAUTHENTICATED": "Phiên đã hết hạn, vui lòng đăng nhập lại.",
+      "UNKNOWN": "Lỗi bất định."
     }
   },
   "mail": {

@@ -1,0 +1,287 @@
+import { Injectable } from '@nestjs/common';
+import { CurrencyKind, MissionPeriod, Prisma } from '@prisma/client';
+import {
+  MISSIONS,
+  type MissionDef,
+  type MissionGoalKind,
+  type MissionReward,
+  missionByKey,
+} from '@xuantoi/shared';
+import { PrismaService } from '../../common/prisma.service';
+import { CurrencyService } from '../character/currency.service';
+import { InventoryService } from '../inventory/inventory.service';
+
+export class MissionError extends Error {
+  constructor(
+    public code:
+      | 'NO_CHARACTER'
+      | 'MISSION_UNKNOWN'
+      | 'NOT_READY'
+      | 'ALREADY_CLAIMED',
+  ) {
+    super(code);
+  }
+}
+
+export interface MissionProgressView {
+  key: string;
+  name: string;
+  description: string;
+  period: MissionPeriod;
+  goalKind: MissionGoalKind;
+  goalAmount: number;
+  currentAmount: number;
+  claimed: boolean;
+  /** currentAmount >= goalAmount AND !claimed → sẵn sàng nhận thưởng. */
+  completable: boolean;
+  windowEnd: string | null;
+  rewards: MissionReward;
+  quality: MissionDef['quality'];
+}
+
+/**
+ * Cửa sổ tiếp theo cho DAILY — 00:00 UTC ngày mai.
+ */
+export function nextDailyWindowEnd(now: Date = new Date()): Date {
+  return new Date(
+    Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1),
+  );
+}
+
+/**
+ * Cửa sổ tiếp theo cho WEEKLY — 00:00 UTC thứ Hai kế tiếp.
+ * Quy ước: tuần bắt đầu vào thứ Hai (ISO 8601).
+ */
+export function nextWeeklyWindowEnd(now: Date = new Date()): Date {
+  const start = new Date(
+    Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()),
+  );
+  const dow = start.getUTCDay(); // 0=Sun, 1=Mon, ..., 6=Sat
+  // Số ngày tới thứ Hai kế tiếp (>= 1 ngày, không bao giờ = 0 để luôn "tuần sau").
+  const daysToMonday = dow === 1 ? 7 : (1 - dow + 7) % 7 || 7;
+  start.setUTCDate(start.getUTCDate() + daysToMonday);
+  return start;
+}
+
+/**
+ * Service cho nhiệm vụ hằng ngày / hằng tuần / 1 lần.
+ *
+ * - `listForUser(userId)`: trả full catalog + tiến độ hiện tại (lazy-create
+ *   row nếu chưa có) — FE dùng để render list & disable nút.
+ * - `track(characterId, goalKind, amount)`: các service gameplay gọi sau khi
+ *   user làm được hành động (tu luyện đủ giây, đánh quái thắng, chat, đóng
+ *   góp, v.v.). Tự bỏ qua mission đã claim / đã full.
+ * - `claim(userId, missionKey)`: trao thưởng atomic qua `CurrencyService`
+ *   (LINH_THACH / TIEN_NGOC có audit trail) + `InventoryService.grantTx`
+ *   cho item, + tăng `exp` / `congHien` trực tiếp trên Character.
+ * - `resetPeriod(period)`: cron job gọi mỗi 00:00 UTC / đầu tuần để đưa
+ *   `currentAmount=0`, `claimed=false` và đẩy `windowEnd` sang cửa sổ mới.
+ *   Mission `ONCE` KHÔNG bao giờ reset.
+ */
+@Injectable()
+export class MissionService {
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly currency: CurrencyService,
+    private readonly inventory: InventoryService,
+  ) {}
+
+  async listForUser(userId: string): Promise<MissionProgressView[]> {
+    const char = await this.prisma.character.findUnique({
+      where: { userId },
+      select: { id: true },
+    });
+    if (!char) throw new MissionError('NO_CHARACTER');
+    await this.ensureRows(char.id);
+    const rows = await this.prisma.missionProgress.findMany({
+      where: { characterId: char.id },
+    });
+    const byKey = new Map(rows.map((r) => [r.missionKey, r]));
+    return MISSIONS.map((def) => {
+      const row = byKey.get(def.key);
+      const currentAmount = row?.currentAmount ?? 0;
+      const claimed = row?.claimed ?? false;
+      return {
+        key: def.key,
+        name: def.name,
+        description: def.description,
+        period: def.period as MissionPeriod,
+        goalKind: def.goalKind,
+        goalAmount: def.goalAmount,
+        currentAmount,
+        claimed,
+        completable: currentAmount >= def.goalAmount && !claimed,
+        windowEnd: row?.windowEnd?.toISOString() ?? null,
+        rewards: def.rewards,
+        quality: def.quality,
+      };
+    });
+  }
+
+  /** Tạo đủ row cho mỗi mission trong catalog (idempotent). */
+  async ensureRows(characterId: string): Promise<void> {
+    const existing = await this.prisma.missionProgress.findMany({
+      where: { characterId },
+      select: { missionKey: true },
+    });
+    const have = new Set(existing.map((r) => r.missionKey));
+    const now = new Date();
+    const toCreate: Prisma.MissionProgressCreateManyInput[] = MISSIONS.filter(
+      (m) => !have.has(m.key),
+    ).map((m) => ({
+      characterId,
+      missionKey: m.key,
+      period: m.period as MissionPeriod,
+      goalAmount: m.goalAmount,
+      windowEnd:
+        m.period === 'DAILY'
+          ? nextDailyWindowEnd(now)
+          : m.period === 'WEEKLY'
+            ? nextWeeklyWindowEnd(now)
+            : null,
+    }));
+    if (toCreate.length > 0) {
+      await this.prisma.missionProgress.createMany({
+        data: toCreate,
+        skipDuplicates: true,
+      });
+    }
+  }
+
+  async track(
+    characterId: string,
+    goalKind: MissionGoalKind,
+    amount = 1,
+  ): Promise<void> {
+    if (amount <= 0) return;
+    await this.ensureRows(characterId);
+    const matchingKeys = MISSIONS.filter((m) => m.goalKind === goalKind).map(
+      (m) => m.key,
+    );
+    if (matchingKeys.length === 0) return;
+    const rows = await this.prisma.missionProgress.findMany({
+      where: {
+        characterId,
+        missionKey: { in: matchingKeys },
+        claimed: false,
+      },
+    });
+    for (const row of rows) {
+      if (row.currentAmount >= row.goalAmount) continue;
+      const newAmount = Math.min(row.goalAmount, row.currentAmount + amount);
+      if (newAmount === row.currentAmount) continue;
+      // Atomic guard: chỉ update nếu vẫn còn claimed=false và currentAmount chưa đổi.
+      await this.prisma.missionProgress.updateMany({
+        where: {
+          id: row.id,
+          claimed: false,
+          currentAmount: row.currentAmount,
+        },
+        data: { currentAmount: newAmount },
+      });
+    }
+  }
+
+  async claim(userId: string, missionKey: string): Promise<void> {
+    const def = missionByKey(missionKey);
+    if (!def) throw new MissionError('MISSION_UNKNOWN');
+    const char = await this.prisma.character.findUnique({
+      where: { userId },
+      select: { id: true },
+    });
+    if (!char) throw new MissionError('NO_CHARACTER');
+
+    await this.prisma.$transaction(async (tx) => {
+      const row = await tx.missionProgress.findUnique({
+        where: {
+          characterId_missionKey: {
+            characterId: char.id,
+            missionKey,
+          },
+        },
+      });
+      if (!row) throw new MissionError('NOT_READY');
+      if (row.claimed) throw new MissionError('ALREADY_CLAIMED');
+      if (row.currentAmount < row.goalAmount) {
+        throw new MissionError('NOT_READY');
+      }
+
+      // CAS: chỉ set claimed=true nếu row vẫn đang claimed=false + đủ goal.
+      const upd = await tx.missionProgress.updateMany({
+        where: {
+          id: row.id,
+          claimed: false,
+          currentAmount: { gte: row.goalAmount },
+        },
+        data: { claimed: true, claimedAt: new Date() },
+      });
+      if (upd.count !== 1) throw new MissionError('ALREADY_CLAIMED');
+
+      const r = def.rewards;
+      if (r.linhThach && r.linhThach > 0) {
+        await this.currency.applyTx(tx, {
+          characterId: char.id,
+          currency: CurrencyKind.LINH_THACH,
+          delta: BigInt(r.linhThach),
+          reason: 'MISSION_CLAIM',
+          refType: 'MISSION',
+          refId: missionKey,
+        });
+      }
+      if (r.tienNgoc && r.tienNgoc > 0) {
+        await this.currency.applyTx(tx, {
+          characterId: char.id,
+          currency: CurrencyKind.TIEN_NGOC,
+          delta: BigInt(r.tienNgoc),
+          reason: 'MISSION_CLAIM',
+          refType: 'MISSION',
+          refId: missionKey,
+        });
+      }
+      if (r.exp && r.exp > 0) {
+        await tx.character.update({
+          where: { id: char.id },
+          data: { exp: { increment: BigInt(r.exp) } },
+        });
+      }
+      if (r.congHien && r.congHien > 0) {
+        await tx.character.update({
+          where: { id: char.id },
+          data: { congHien: { increment: r.congHien } },
+        });
+      }
+      if (r.items && r.items.length > 0) {
+        await this.inventory.grantTx(
+          tx,
+          char.id,
+          r.items.map((it) => ({ itemKey: it.itemKey, qty: it.qty })),
+        );
+      }
+    });
+  }
+
+  /**
+   * Reset cho 1 period (DAILY hoặc WEEKLY). Các row có `windowEnd <= now`
+   * sẽ được đưa về `currentAmount=0`, `claimed=false`, cập nhật windowEnd
+   * cho cửa sổ tiếp theo. Mission ONCE không bao giờ reset.
+   */
+  async resetPeriod(period: 'DAILY' | 'WEEKLY'): Promise<number> {
+    const now = new Date();
+    const nextEnd =
+      period === 'DAILY' ? nextDailyWindowEnd(now) : nextWeeklyWindowEnd(now);
+    const res = await this.prisma.missionProgress.updateMany({
+      where: {
+        period: period as MissionPeriod,
+        windowEnd: { lte: now },
+      },
+      data: {
+        currentAmount: 0,
+        claimed: false,
+        claimedAt: null,
+        windowEnd: nextEnd,
+        startedAt: now,
+      },
+    });
+    return res.count;
+  }
+}

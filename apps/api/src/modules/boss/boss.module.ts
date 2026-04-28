@@ -6,9 +6,16 @@ import { RealtimeModule } from '../realtime/realtime.module';
 import { AuthModule } from '../auth/auth.module';
 import { CharacterModule } from '../character/character.module';
 import { InventoryModule } from '../inventory/inventory.module';
+import { MissionModule } from '../mission/mission.module';
 
 @Module({
-  imports: [RealtimeModule, AuthModule, CharacterModule, InventoryModule],
+  imports: [
+    RealtimeModule,
+    AuthModule,
+    CharacterModule,
+    InventoryModule,
+    MissionModule,
+  ],
   controllers: [BossController],
   providers: [BossService, PrismaService],
   exports: [BossService],

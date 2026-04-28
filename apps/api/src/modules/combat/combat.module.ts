@@ -6,9 +6,16 @@ import { AuthModule } from '../auth/auth.module';
 import { RealtimeModule } from '../realtime/realtime.module';
 import { CharacterModule } from '../character/character.module';
 import { InventoryModule } from '../inventory/inventory.module';
+import { MissionModule } from '../mission/mission.module';
 
 @Module({
-  imports: [AuthModule, RealtimeModule, CharacterModule, InventoryModule],
+  imports: [
+    AuthModule,
+    RealtimeModule,
+    CharacterModule,
+    InventoryModule,
+    MissionModule,
+  ],
   controllers: [CombatController],
   providers: [CombatService, PrismaService],
 })

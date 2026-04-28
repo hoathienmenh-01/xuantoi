@@ -10,6 +10,7 @@ import { ChatController } from './chat.controller';
 import { PrismaService } from '../../common/prisma.service';
 import { RealtimeModule } from '../realtime/realtime.module';
 import { AuthModule } from '../auth/auth.module';
+import { MissionModule } from '../mission/mission.module';
 import {
   RedisSlidingWindowRateLimiter,
   InMemorySlidingWindowRateLimiter,
@@ -42,7 +43,7 @@ const chatRateLimiterProvider = {
 };
 
 @Module({
-  imports: [RealtimeModule, AuthModule],
+  imports: [RealtimeModule, AuthModule, MissionModule],
   controllers: [ChatController],
   providers: [ChatService, PrismaService, chatRateLimiterProvider],
   exports: [ChatService],

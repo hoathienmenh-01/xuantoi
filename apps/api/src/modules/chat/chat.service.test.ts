@@ -7,15 +7,23 @@ import {
   ChatService,
 } from './chat.service';
 import { InMemorySlidingWindowRateLimiter } from '../../common/rate-limiter';
-import { TEST_DATABASE_URL, makeUserChar, wipeAll } from '../../test-helpers';
+import { MissionService } from '../mission/mission.service';
+import {
+  TEST_DATABASE_URL,
+  makeMissionService,
+  makeUserChar,
+  wipeAll,
+} from '../../test-helpers';
 
 let prisma: PrismaService;
 let realtime: RealtimeService;
+let missions: MissionService;
 
 beforeAll(() => {
   process.env.DATABASE_URL = TEST_DATABASE_URL;
   prisma = new PrismaService();
   realtime = new RealtimeService();
+  missions = makeMissionService(prisma);
 });
 
 beforeEach(async () => {
@@ -28,7 +36,7 @@ afterAll(async () => {
 
 function svcWithFreshLimiter(windowMs = 30_000, max = CHAT_RATE_LIMIT_MAX) {
   const limiter = new InMemorySlidingWindowRateLimiter(windowMs, max);
-  const svc = new ChatService(prisma, realtime, limiter);
+  const svc = new ChatService(prisma, realtime, missions, limiter);
   return { svc, limiter };
 }
 

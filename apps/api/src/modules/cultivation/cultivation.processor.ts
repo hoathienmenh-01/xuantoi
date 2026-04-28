@@ -3,6 +3,7 @@ import { Logger } from '@nestjs/common';
 import type { Job } from 'bullmq';
 import {
   CULTIVATION_TICK_BASE_EXP,
+  CULTIVATION_TICK_MS,
   STAMINA_REGEN_PER_TICK,
   cultivationRateForRealm,
   expCostForStage,
@@ -10,6 +11,7 @@ import {
 } from '@xuantoi/shared';
 import { PrismaService } from '../../common/prisma.service';
 import { RealtimeService } from '../realtime/realtime.service';
+import { MissionService } from '../mission/mission.service';
 import { CULTIVATION_QUEUE } from './cultivation.queue';
 
 @Processor(CULTIVATION_QUEUE)
@@ -19,6 +21,7 @@ export class CultivationProcessor extends WorkerHost {
   constructor(
     private readonly prisma: PrismaService,
     private readonly realtime: RealtimeService,
+    private readonly missions: MissionService,
   ) {
     super();
   }
@@ -73,6 +76,25 @@ export class CultivationProcessor extends WorkerHost {
           where: { id: c.id },
           data: { exp, realmStage },
         });
+
+        // Mission tracking — mỗi tick cộng seconds và exp gained. Không throw
+        // nếu MissionService lỗi — tu luyện là core loop, không để mission
+        // chặn EXP gain.
+        try {
+          await this.missions.track(
+            c.id,
+            'CULTIVATE_SECONDS',
+            Math.round(CULTIVATION_TICK_MS / 1000),
+          );
+          await this.missions.track(c.id, 'GAIN_EXP', Number(gain));
+          if (brokeThrough) {
+            await this.missions.track(c.id, 'BREAKTHROUGH', 1);
+          }
+        } catch (e) {
+          this.logger.warn(
+            `mission track failed for char=${c.id}: ${(e as Error).message}`,
+          );
+        }
 
         const expNext = expCostForStage(realmKey, realmStage);
         const payload: CultivateTickPayload = {

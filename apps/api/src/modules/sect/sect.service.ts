@@ -4,6 +4,7 @@ import { PrismaService } from '../../common/prisma.service';
 import { RealtimeService } from '../realtime/realtime.service';
 import { CharacterService } from '../character/character.service';
 import { CurrencyError, CurrencyService } from '../character/currency.service';
+import { MissionService } from '../mission/mission.service';
 
 class SectError extends Error {
   constructor(
@@ -57,6 +58,7 @@ export class SectService {
     private readonly realtime: RealtimeService,
     private readonly chars: CharacterService,
     private readonly currency: CurrencyService,
+    private readonly missions: MissionService,
   ) {}
 
   async list(): Promise<SectListView[]> {
@@ -282,6 +284,11 @@ export class SectService {
     });
 
     await this.refreshState(userId);
+    try {
+      await this.missions.track(char.id, 'SECT_CONTRIBUTE', Number(amount));
+    } catch {
+      // bỏ qua lỗi mission — contribute đã thành công.
+    }
     return this.detail(sectId, char.id);
   }
 

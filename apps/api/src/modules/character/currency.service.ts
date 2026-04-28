@@ -22,6 +22,7 @@ export type LedgerReason =
   | 'ADMIN_TOPUP_APPROVE'
   | 'BOSS_REWARD'
   | 'COMBAT_LOOT'
+  | 'MISSION_CLAIM'
   | 'GIFTCODE_REDEEM'
   | 'MAIL_CLAIM';
 

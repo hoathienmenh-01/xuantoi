@@ -176,10 +176,50 @@
       "market": "Market",
       "sect": "Sect",
       "boss": "World Boss",
+      "missions": "Missions",
       "mail": "Mail",
       "giftcode": "Gift Code",
       "topup": "Top Up",
       "admin": "Admin"
+    }
+  },
+  "mission": {
+    "title": "Mission Log",
+    "empty": "No missions in this category.",
+    "claim": "Claim",
+    "claimToast": "Claimed: {name}",
+    "resetIn": "Resets in",
+    "resetImminent": "Resetting",
+    "tab": {
+      "daily": "Daily",
+      "weekly": "Weekly",
+      "once": "One-time"
+    },
+    "status": {
+      "ready": "Ready",
+      "claimed": "Claimed"
+    },
+    "quality": {
+      "PHAM": "Mortal",
+      "LINH": "Spirit",
+      "HUYEN": "Mystic",
+      "TIEN": "Immortal",
+      "THANH": "Divine"
+    },
+    "reward": {
+      "label": "Rewards",
+      "linhThach": "Spirit Stones",
+      "tienNgoc": "Jade",
+      "exp": "EXP",
+      "congHien": "Contribution"
+    },
+    "errors": {
+      "NO_CHARACTER": "No character created yet.",
+      "MISSION_UNKNOWN": "Mission not found.",
+      "NOT_READY": "Requirements not met.",
+      "ALREADY_CLAIMED": "Mission already claimed.",
+      "UNAUTHENTICATED": "Session expired. Please log in again.",
+      "UNKNOWN": "Unknown error."
     }
   },
   "mail": {
