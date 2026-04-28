@@ -5,6 +5,7 @@ import { useI18n } from 'vue-i18n';
 import { useAuthStore } from '@/stores/auth';
 import { useToastStore } from '@/stores/toast';
 import { useGameStore } from '@/stores/game';
+import { useBadgesStore } from '@/stores/badges';
 import { getCharacter } from '@/api/character';
 import AppShell from '@/components/shell/AppShell.vue';
 import MButton from '@/components/ui/MButton.vue';
@@ -14,6 +15,7 @@ const auth = useAuthStore();
 const router = useRouter();
 const toast = useToastStore();
 const game = useGameStore();
+const badges = useBadgesStore();
 const { t } = useI18n();
 
 const submitting = ref(false);
@@ -42,6 +44,7 @@ onMounted(async () => {
   }
   await game.fetchState();
   game.bindSocket();
+  badges.refresh();
 });
 
 async function toggleCultivate(): Promise<void> {

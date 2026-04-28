@@ -198,6 +198,10 @@
       "topup": "Top Up",
       "settings": "Settings",
       "admin": "Admin"
+    },
+    "badge": {
+      "bossActive": "World boss is live",
+      "topupPending": "Top-up order pending approval"
     }
   },
   "profile": {
