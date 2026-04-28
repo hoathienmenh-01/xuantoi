@@ -7,6 +7,7 @@ import { CharacterModule } from '../character/character.module';
 import { TopupModule } from '../topup/topup.module';
 import { RealtimeModule } from '../realtime/realtime.module';
 import { GiftCodeModule } from '../giftcode/giftcode.module';
+import { MailModule } from '../mail/mail.module';
 import { PrismaService } from '../../common/prisma.service';
 
 @Module({
@@ -16,6 +17,7 @@ import { PrismaService } from '../../common/prisma.service';
     TopupModule,
     RealtimeModule,
     GiftCodeModule,
+    MailModule,
   ],
   controllers: [AdminController],
   providers: [AdminService, AdminGuard, PrismaService],

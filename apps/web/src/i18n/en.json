@@ -176,9 +176,40 @@
       "market": "Market",
       "sect": "Sect",
       "boss": "World Boss",
+      "mail": "Mail",
       "giftcode": "Gift Code",
       "topup": "Top Up",
       "admin": "Admin"
+    }
+  },
+  "mail": {
+    "title": "Mailbox",
+    "empty": "Your mailbox is empty.",
+    "selectHint": "Select a mail to read.",
+    "claim": "Claim",
+    "claimToast": "Claimed rewards from: {subject}",
+    "unread": "Unread",
+    "unreadBadge": "{n} unread",
+    "rewardBadge": "Gift",
+    "from": "From",
+    "expiresAt": "Expires",
+    "status": {
+      "claimed": "Claimed"
+    },
+    "reward": {
+      "label": "Rewards",
+      "linhThach": "Spirit Stones",
+      "tienNgoc": "Jade",
+      "exp": "EXP"
+    },
+    "errors": {
+      "NO_CHARACTER": "No character created yet.",
+      "MAIL_NOT_FOUND": "Mail not found.",
+      "MAIL_EXPIRED": "Mail has expired.",
+      "NO_REWARD": "This mail has no rewards.",
+      "ALREADY_CLAIMED": "Mail already claimed.",
+      "UNAUTHENTICATED": "Session expired. Please log in again.",
+      "UNKNOWN": "Unknown error."
     }
   },
   "giftcode": {

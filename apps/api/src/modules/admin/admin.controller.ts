@@ -17,6 +17,7 @@ import { z } from 'zod';
 import { AdminGuard } from './admin.guard';
 import { AdminError, AdminService } from './admin.service';
 import { GiftCodeError, GiftCodeService } from '../giftcode/giftcode.service';
+import { MailError, MailService } from '../mail/mail.service';
 
 function fail(code: string, status = HttpStatus.BAD_REQUEST): never {
   throw new HttpException({ ok: false, error: { code, message: code } }, status);
@@ -54,6 +55,24 @@ const GiftCreateZ = z.object({
   expiresAt: z.string().datetime().optional(),
 });
 
+const MailItemZ = z.object({
+  itemKey: z.string().min(1).max(80),
+  qty: z.number().int().positive().max(999),
+});
+const MailBaseZ = z.object({
+  subject: z.string().min(1).max(120),
+  body: z.string().min(1).max(2000),
+  senderName: z.string().min(1).max(80).optional(),
+  rewardLinhThach: z.string().regex(/^\d+$/).default('0'),
+  rewardTienNgoc: z.number().int().min(0).default(0),
+  rewardExp: z.string().regex(/^\d+$/).default('0'),
+  rewardItems: z.array(MailItemZ).max(10).default([]),
+  expiresAt: z.string().datetime().optional(),
+});
+const MailSendZ = MailBaseZ.extend({
+  recipientCharacterId: z.string().min(1).max(80),
+});
+
 type AdminReq = Request & { userId: string; role: Role };
 
 @Controller('admin')
@@ -62,6 +81,7 @@ export class AdminController {
   constructor(
     private readonly admin: AdminService,
     private readonly giftCodes: GiftCodeService,
+    private readonly mailService: MailService,
   ) {}
 
   @Get('users')
@@ -208,6 +228,53 @@ export class AdminController {
     }
   }
 
+  @Post('mail/send')
+  @HttpCode(200)
+  async mailSend(@Req() req: AdminReq, @Body() body: unknown) {
+    const parsed = MailSendZ.safeParse(body);
+    if (!parsed.success) fail('INVALID_INPUT');
+    try {
+      const mail = await this.mailService.sendToCharacter({
+        recipientCharacterId: parsed.data.recipientCharacterId,
+        subject: parsed.data.subject,
+        body: parsed.data.body,
+        senderName: parsed.data.senderName,
+        rewardLinhThach: BigInt(parsed.data.rewardLinhThach),
+        rewardTienNgoc: parsed.data.rewardTienNgoc,
+        rewardExp: BigInt(parsed.data.rewardExp),
+        rewardItems: parsed.data.rewardItems,
+        expiresAt: parsed.data.expiresAt ? new Date(parsed.data.expiresAt) : undefined,
+        createdByAdminId: req.userId,
+      });
+      return { ok: true, data: { mail } };
+    } catch (e) {
+      this.handleErr(e);
+    }
+  }
+
+  @Post('mail/broadcast')
+  @HttpCode(200)
+  async mailBroadcast(@Req() req: AdminReq, @Body() body: unknown) {
+    const parsed = MailBaseZ.safeParse(body);
+    if (!parsed.success) fail('INVALID_INPUT');
+    try {
+      const count = await this.mailService.broadcast({
+        subject: parsed.data.subject,
+        body: parsed.data.body,
+        senderName: parsed.data.senderName,
+        rewardLinhThach: BigInt(parsed.data.rewardLinhThach),
+        rewardTienNgoc: parsed.data.rewardTienNgoc,
+        rewardExp: BigInt(parsed.data.rewardExp),
+        rewardItems: parsed.data.rewardItems,
+        expiresAt: parsed.data.expiresAt ? new Date(parsed.data.expiresAt) : undefined,
+        createdByAdminId: req.userId,
+      });
+      return { ok: true, data: { count } };
+    } catch (e) {
+      this.handleErr(e);
+    }
+  }
+
   private handleErr(e: unknown): never {
     if (e instanceof AdminError) {
       const status =
@@ -228,6 +295,15 @@ export class AdminController {
               e.code === 'CODE_EXPIRED' ||
               e.code === 'CODE_REVOKED' ||
               e.code === 'CODE_EXHAUSTED'
+            ? HttpStatus.CONFLICT
+            : HttpStatus.BAD_REQUEST;
+      fail(e.code, status);
+    }
+    if (e instanceof MailError) {
+      const status =
+        e.code === 'RECIPIENT_NOT_FOUND' || e.code === 'MAIL_NOT_FOUND'
+          ? HttpStatus.NOT_FOUND
+          : e.code === 'ALREADY_CLAIMED' || e.code === 'MAIL_EXPIRED' || e.code === 'NO_REWARD'
             ? HttpStatus.CONFLICT
             : HttpStatus.BAD_REQUEST;
       fail(e.code, status);
