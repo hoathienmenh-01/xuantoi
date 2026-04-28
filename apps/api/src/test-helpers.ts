@@ -90,6 +90,7 @@ export async function wipeAll(prisma: PrismaService): Promise<void> {
   await prisma.chatMessage.deleteMany({});
   await prisma.listing.deleteMany({});
   await prisma.inventoryItem.deleteMany({});
+  await prisma.mail.deleteMany({});
   await prisma.topupOrder.deleteMany({});
   await prisma.adminAuditLog.deleteMany({});
   await prisma.refreshToken.deleteMany({});

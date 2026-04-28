@@ -181,9 +181,35 @@ model Character {
 
   inventory        InventoryItem[]
   ledger           CurrencyLedger[]
+  mails            Mail[]
 
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
+}
+
+model Mail {
+  id               String    @id @default(cuid())
+  recipientId      String
+  recipient        Character @relation(fields: [recipientId], references: [id], onDelete: Cascade)
+  senderName       String    @default("Thiên Đạo Sứ Giả")
+  subject          String
+  body             String
+  rewardLinhThach  BigInt    @default(0)
+  rewardTienNgoc   Int       @default(0)
+  rewardExp        BigInt    @default(0)
+  /// JSON [{ itemKey, qty }]
+  rewardItems      Json      @default("[]")
+  readAt           DateTime?
+  claimedAt        DateTime?
+  expiresAt        DateTime?
+  /// userId của admin đã gửi (null cho hệ thống / script).
+  createdByAdminId String?
+  createdAt        DateTime  @default(now())
+
+  @@index([recipientId, createdAt])
+  @@index([recipientId, claimedAt])
+  @@index([recipientId, readAt])
+  @@index([expiresAt])
 }
 
 model InventoryItem {

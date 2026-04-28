@@ -175,8 +175,39 @@
       "market": "Phường Thị",
       "sect": "Tông Môn",
       "boss": "Boss Đại Hội",
+      "mail": "Thư Sứ",
       "topup": "Nạp Tiên Ngọc",
       "admin": "Quản Trị"
+    }
+  },
+  "mail": {
+    "title": "Thiên Đạo Thư Các",
+    "empty": "Hộp thư trống rỗng.",
+    "selectHint": "Chọn một bức thư để đọc.",
+    "claim": "Nhận Thưởng",
+    "claimToast": "Đã nhận thưởng từ thư: {subject}",
+    "unread": "Chưa đọc",
+    "unreadBadge": "{n} chưa đọc",
+    "rewardBadge": "Quà",
+    "from": "Từ",
+    "expiresAt": "Hết hạn",
+    "status": {
+      "claimed": "Đã nhận thưởng"
+    },
+    "reward": {
+      "label": "Phần thưởng",
+      "linhThach": "Linh Thạch",
+      "tienNgoc": "Tiên Ngọc",
+      "exp": "EXP"
+    },
+    "errors": {
+      "NO_CHARACTER": "Chưa tạo nhân vật.",
+      "MAIL_NOT_FOUND": "Thư không tồn tại.",
+      "MAIL_EXPIRED": "Thư đã hết hạn.",
+      "NO_REWARD": "Thư này không có phần thưởng.",
+      "ALREADY_CLAIMED": "Thư này đã được nhận.",
+      "UNAUTHENTICATED": "Phiên đã hết hạn, vui lòng đăng nhập lại.",
+      "UNKNOWN": "Lỗi bất định."
     }
   },
   "chat": {
