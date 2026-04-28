@@ -634,12 +634,12 @@
   },
   "admin": {
     "title": "Quản Trị",
-    "roleLabel": "Role: {role}",
+    "roleLabel": "Vai trò: {role}",
     "tab": {
       "stats": "Tổng quan",
       "users": "Người dùng",
       "topups": "Đơn nạp",
-      "audit": "Audit",
+      "audit": "Nhật ký",
       "boss": "Boss"
     },
     "stats": {
@@ -669,10 +669,10 @@
         "realm": "Cảnh giới",
         "linhThach": "Linh Thạch",
         "tienNgoc": "Tiên Ngọc",
-        "role": "Role",
+        "role": "Vai trò",
         "status": "Trạng thái"
       },
-      "banned": "BANNED",
+      "banned": "BỊ KHOÁ",
       "ok": "OK",
       "grantBtn": "Cộng/Trừ",
       "unlock": "Mở",
@@ -680,9 +680,9 @@
       "banConfirm": "{action} tài khoản {email}?",
       "actionLock": "Khoá",
       "actionUnlock": "Mở khoá",
-      "roleChangeConfirm": "Đổi role {email} → {role}?",
+      "roleChangeConfirm": "Đổi vai trò {email} → {role}?",
       "updatedToast": "Đã cập nhật.",
-      "roleChangedToast": "Đã đổi role.",
+      "roleChangedToast": "Đã đổi vai trò.",
       "grantedToast": "Đã cộng/trừ tài sản.",
       "grantTitle": "Cộng/Trừ tài sản",
       "grantLinh": "Linh thạch (có thể âm)",
@@ -693,13 +693,13 @@
       "notePlaceholder": "Ghi chú khi duyệt/từ chối…",
       "col": {
         "code": "Mã",
-        "user": "User",
+        "user": "Người chơi",
         "package": "Gói",
         "price": "Tiền",
         "tienNgoc": "Tiên Ngọc",
-        "status": "Status",
+        "status": "Trạng thái",
         "createdAt": "Tạo lúc",
-        "note": "Note"
+        "note": "Ghi chú"
       },
       "approve": "Duyệt",
       "reject": "Từ chối",
@@ -716,9 +716,9 @@
     "audit": {
       "col": {
         "at": "Lúc",
-        "actor": "Actor",
-        "action": "Action",
-        "meta": "Meta"
+        "actor": "Người thực hiện",
+        "action": "Hành động",
+        "meta": "Chi tiết"
       }
     },
     "boss": {
