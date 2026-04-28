@@ -55,20 +55,28 @@ export class AdminService {
 
   // ---------- users ----------
 
-  async listUsers(q: string | undefined, page: number): Promise<{
+  async listUsers(
+    q: string | undefined,
+    page: number,
+    filters: { role?: Role; banned?: boolean } = {},
+  ): Promise<{
     rows: AdminUserRow[];
     total: number;
     page: number;
     pageSize: number;
   }> {
-    const where: Prisma.UserWhereInput = q
-      ? {
-          OR: [
-            { email: { contains: q, mode: 'insensitive' } },
-            { character: { is: { name: { contains: q, mode: 'insensitive' } } } },
-          ],
-        }
-      : {};
+    const conditions: Prisma.UserWhereInput[] = [];
+    if (q) {
+      conditions.push({
+        OR: [
+          { email: { contains: q, mode: 'insensitive' } },
+          { character: { is: { name: { contains: q, mode: 'insensitive' } } } },
+        ],
+      });
+    }
+    if (filters.role !== undefined) conditions.push({ role: filters.role });
+    if (filters.banned !== undefined) conditions.push({ banned: filters.banned });
+    const where: Prisma.UserWhereInput = conditions.length > 0 ? { AND: conditions } : {};
     const [rows, total] = await Promise.all([
       this.prisma.user.findMany({
         where,
