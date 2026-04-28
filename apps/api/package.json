@@ -7,11 +7,12 @@
     "dev": "nest start --watch",
     "start": "node dist/main.js",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "lint": "eslint \"src/**/*.ts\" --max-warnings 0",
+    "lint": "eslint \"src/**/*.ts\" \"scripts/**/*.ts\" --max-warnings 0",
     "test": "vitest run --passWithNoTests",
     "test:auth": "vitest run src/modules/auth",
     "prisma:generate": "prisma generate",
-    "prisma:migrate": "prisma migrate dev"
+    "prisma:migrate": "prisma migrate dev",
+    "bootstrap": "ts-node scripts/bootstrap.ts"
   },
   "dependencies": {
     "@nestjs/bullmq": "^10.2.1",

@@ -1,6 +1,9 @@
 /**
  * Helper script: promote a user to ADMIN by email.
- *   pnpm --filter @xuantoi/api exec tsx scripts/promote-admin.ts user@example.com
+ *   pnpm --filter @xuantoi/api exec ts-node scripts/promote-admin.ts user@example.com
+ *
+ * Để bootstrap admin đầu tiên trên môi trường mới, dùng `scripts/bootstrap.ts`
+ * (đọc env `INITIAL_ADMIN_EMAIL` + `INITIAL_ADMIN_PASSWORD`).
  */
 import { PrismaClient } from '@prisma/client';
 
