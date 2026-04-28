@@ -13,6 +13,7 @@ import {
 } from '@/api/mission';
 import AppShell from '@/components/shell/AppShell.vue';
 import MButton from '@/components/ui/MButton.vue';
+import { formatItemRewardList } from '@/lib/itemName';
 
 const auth = useAuthStore();
 const game = useGameStore();
@@ -136,9 +137,7 @@ function rewardSummary(m: MissionProgressView): string {
   if (m.rewards.exp) parts.push(`${m.rewards.exp} ${t('mission.reward.exp')}`);
   if (m.rewards.congHien) parts.push(`${m.rewards.congHien} ${t('mission.reward.congHien')}`);
   if (m.rewards.items?.length) {
-    parts.push(
-      m.rewards.items.map((it) => `${it.itemKey} ×${it.qty}`).join(', '),
-    );
+    parts.push(formatItemRewardList(m.rewards.items, t));
   }
   return parts.length > 0 ? parts.join(' · ') : '—';
 }
