@@ -5,6 +5,7 @@ import {
   HttpCode,
   HttpException,
   HttpStatus,
+  Param,
   Post,
   Req,
 } from '@nestjs/common';
@@ -50,6 +51,15 @@ export class CharacterController {
     const userId = await this.requireUserId(req);
     const character = await this.chars.findByUser(userId);
     return { ok: true, data: { character } };
+  }
+
+  @Get('profile/:id')
+  async profile(@Req() req: Request, @Param('id') id: string) {
+    // Yêu cầu phải đăng nhập để xem profile (anti-scrape).
+    await this.requireUserId(req);
+    const profile = await this.chars.findPublicProfile(id);
+    if (!profile) fail('NOT_FOUND', HttpStatus.NOT_FOUND);
+    return { ok: true, data: { profile } };
   }
 
   @Get('state')

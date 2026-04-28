@@ -183,6 +183,18 @@
       "admin": "Admin"
     }
   },
+  "profile": {
+    "title": "Cultivator Profile",
+    "notFound": "Cultivator not found.",
+    "realm": "{realm} stage {stage}",
+    "sect": "Sect",
+    "joinedAt": "Joined",
+    "stats": "Stats",
+    "power": "Power",
+    "spirit": "Spirit",
+    "speed": "Speed",
+    "luck": "Luck"
+  },
   "mission": {
     "title": "Mission Log",
     "empty": "No missions in this category.",

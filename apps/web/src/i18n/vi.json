@@ -183,6 +183,18 @@
       "admin": "Quản Trị"
     }
   },
+  "profile": {
+    "title": "Đạo Hữu Kỷ Lục",
+    "notFound": "Không tìm thấy đạo hữu này.",
+    "realm": "{realm} tầng {stage}",
+    "sect": "Tông Môn",
+    "joinedAt": "Nhập đạo",
+    "stats": "Đạo Cơ",
+    "power": "Lực",
+    "spirit": "Linh",
+    "speed": "Tốc",
+    "luck": "May"
+  },
   "mission": {
     "title": "Bảng Nhiệm Vụ",
     "empty": "Không có nhiệm vụ trong mục này.",

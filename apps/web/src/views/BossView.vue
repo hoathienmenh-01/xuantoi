@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
-import { useRouter } from 'vue-router';
+import { RouterLink, useRouter } from 'vue-router';
 import {
   SKILL_BASIC_ATTACK,
   itemByKey,
@@ -350,7 +350,14 @@ function timeLeftText(iso: string): string {
               :class="row.characterId === game.character?.id ? 'text-amber-300' : ''"
             >
               <td>#{{ row.rank }}</td>
-              <td>{{ row.characterName }}</td>
+              <td>
+                <RouterLink
+                  :to="`/profile/${row.characterId}`"
+                  class="hover:text-amber-200 hover:underline"
+                >
+                  {{ row.characterName }}
+                </RouterLink>
+              </td>
               <td class="text-right">{{ row.damage }}</td>
               <td class="text-right">{{ row.hits }}</td>
             </tr>

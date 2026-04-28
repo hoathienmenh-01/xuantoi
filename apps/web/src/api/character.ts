@@ -45,3 +45,32 @@ export async function onboard(input: OnboardInput): Promise<Character> {
   if (!data.ok || !data.data) throw data.error ?? new Error('Onboard thất bại');
   return data.data.character;
 }
+
+export interface PublicProfile {
+  id: string;
+  name: string;
+  realmKey: string;
+  realmStage: number;
+  level: number;
+  power: number;
+  spirit: number;
+  speed: number;
+  luck: number;
+  sectId: string | null;
+  sectKey: string | null;
+  sectName: string | null;
+  role: 'PLAYER' | 'MOD' | 'ADMIN';
+  createdAt: string;
+}
+
+export async function getPublicProfile(id: string): Promise<PublicProfile | null> {
+  try {
+    const { data } = await apiClient.get<Envelope<{ profile: PublicProfile }>>(
+      `/character/profile/${id}`,
+    );
+    if (!data.ok || !data.data) return null;
+    return data.data.profile;
+  } catch {
+    return null;
+  }
+}

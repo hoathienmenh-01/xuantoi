@@ -42,6 +42,23 @@ const SECT_NAME_TO_KEY: Record<string, OnboardInput['sectKey']> = {
   'Tu La Tông': 'tu_la',
 };
 
+export interface PublicProfileView {
+  id: string;
+  name: string;
+  realmKey: string;
+  realmStage: number;
+  level: number;
+  power: number;
+  spirit: number;
+  speed: number;
+  luck: number;
+  sectId: string | null;
+  sectKey: string | null;
+  sectName: string | null;
+  role: 'PLAYER' | 'MOD' | 'ADMIN';
+  createdAt: string;
+}
+
 @Injectable()
 export class CharacterService {
   constructor(
@@ -56,6 +73,35 @@ export class CharacterService {
     });
     if (!c) return null;
     return this.toState(c);
+  }
+
+  /**
+   * Public-safe profile view — không lộ exp, hp/mp/stamina, currency, cultivating.
+   * Trả null nếu không tìm thấy hoặc owner đang banned.
+   */
+  async findPublicProfile(characterId: string): Promise<PublicProfileView | null> {
+    const c = await this.prisma.character.findUnique({
+      where: { id: characterId },
+      include: { sect: true, user: true },
+    });
+    if (!c) return null;
+    if (c.user.banned) return null;
+    return {
+      id: c.id,
+      name: c.name,
+      realmKey: c.realmKey,
+      realmStage: c.realmStage,
+      level: c.level,
+      power: c.power,
+      spirit: c.spirit,
+      speed: c.speed,
+      luck: c.luck,
+      sectId: c.sectId,
+      sectKey: c.sect ? SECT_NAME_TO_KEY[c.sect.name] ?? null : null,
+      sectName: c.sect?.name ?? null,
+      role: c.user.role,
+      createdAt: c.createdAt.toISOString(),
+    };
   }
 
   async getStateOrThrow(userId: string): Promise<CharacterStatePayload> {
