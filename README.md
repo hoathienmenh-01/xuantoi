@@ -78,7 +78,7 @@ pnpm dev
 - **Phase 7 — Admin + Anti-cheat + Tối ưu**.
 - **Phase 8 — QA, balance, ra mắt**.
 
-Xem chi tiết spec trong tài liệu `docs/04_TECH_STACK_VA_DATA_MODEL.md` và `docs/05_KICH_BAN_BUILD_VA_PROMPT_AI.md` (sẽ đẩy lên sau).
+Xem chi tiết spec **blueprint gốc** trong [`docs/04_TECH_STACK_VA_DATA_MODEL.md`](./docs/04_TECH_STACK_VA_DATA_MODEL.md) và [`docs/05_KICH_BAN_BUILD_VA_PROMPT_AI.md`](./docs/05_KICH_BAN_BUILD_VA_PROMPT_AI.md). Lưu ý: 2 file này là **historical blueprint, không phải nguồn sự thật hiện tại** — code trên `main` + [`docs/AI_HANDOFF_REPORT.md`](./docs/AI_HANDOFF_REPORT.md) mới là nguồn sự thật.
 
 ## Tài liệu developer
 

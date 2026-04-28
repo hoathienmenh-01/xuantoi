@@ -1,12 +1,14 @@
 # AI Handoff Report — Xuân Tôi
 
-> **Snapshot**: `main` @ commit `4d8af10` (28 Apr 2026, sau khi PR #33..#44 merged).
-> **Người viết**: AI engineer session 28/4 (audit chuỗi PR #33..#40 + replay PR #42/#43 + i18n re-audit).
+> **Snapshot**: `main` @ commit `e99a35f` (28 Apr 2026, sau khi PR #33..#45 merged).
+> **Người viết**: AI engineer session 28/4 sess.4 (audit PR #45 + đẩy blueprint 04/05 vào `docs/`).
 > **Đối tượng đọc**: AI kế nhiệm sẽ tiếp tục đưa dự án tới beta / production.
 >
 > Báo cáo trung thực. Mọi tuyên bố "đã xong" đều có PR + file + test chứng minh. Khi chưa verify runtime, ghi rõ **"Needs runtime smoke"**.
 >
-> **Trạng thái (28/4 session 3)**: PR #33→#44 đã merge `main`. PR #44 replay PR #42 (M1 mission VN tz) + PR #43 (M5 ledger index) vào `main`, smoke E2E pass 6/6. PR F (L1 i18n re-audit) đang mở — fix 12 admin key vẫn còn English trong `vi.json`. Xem `## Recent Changes`.
+> **Trạng thái (28/4 session 4)**: PR #33→#45 đã merge `main`. PR #45 fix 12 admin key i18n vi.json (L1 resolved). Hiện **không còn PR open**. Roadmap kế tiếp: **PR B (H5 — Vitest minimal + Playwright golden path)** hoặc **PR E (M8 — admin guard split ADMIN vs MOD)**. Xem `## Recent Changes` + §21.
+>
+> **Blueprint gốc 04/05**: nay đã được commit vào `docs/04_TECH_STACK_VA_DATA_MODEL.md` + `docs/05_KICH_BAN_BUILD_VA_PROMPT_AI.md` kèm banner **"Historical blueprint, NOT the current source of truth"**. Khi có conflict giữa 04/05 và code hiện tại + report này → **tin code & report**, KHÔNG rollback hoặc rewrite project theo 04/05.
 
 ---
 
@@ -17,16 +19,16 @@
 - **Gameplay loop**: đăng ký → chọn tông môn → **Nhập Định (cultivation)** passive tick EXP → **Luyện Khí Đường (combat PvE)** + dungeon → loot → **Phường Thị (market P2P)** → **Tông Môn (sect)** cống hiến + chat → **World Boss** → **Nạp Tiên Ngọc (topup)** → admin cấp → tiến cảnh giới 28 stage.
 - **Stack**: monorepo pnpm. `apps/api` (NestJS 10 + Prisma 5 + Postgres 16 + Redis 7 + BullMQ + Socket.io). `apps/web` (Vue 3 + Vite + Pinia + Tailwind + vue-i18n + PWA). `packages/shared` (Zod + realms/items/missions catalog).
 - **Mục tiêu hiện tại**: **closed beta readiness**. Hầu hết feature Phase 0-8 + Mission + Mail + GiftCode đã merge. Còn lại polish + observability + content scale.
-- **Trạng thái**: repo build xanh, CI xanh trên PR #40. Sau khi PR #33→#40 merge: **~217 test API + ~47 test shared (≈4 file) = ~264 test** đếm theo `it(`. Chưa runtime smoke E2E trên main mới sau tất cả PR → **Needs runtime smoke**.
+- **Trạng thái**: repo build xanh, CI xanh trên PR #40 → #45. Sau khi PR #33→#45 merge: **~224 test API + ~47 test shared = ~271 test** (PR #42 +7 mission tz; PR #43/#44/#45 không thêm test). Smoke E2E pass 6/6 đã chạy ở PR #44 (`ce6da28..4d8af10`) — **PR #45 chỉ đổi text 12 vi.json key, không cần re-smoke runtime**.
 
 ---
 
 ## 2. Current Branch / CI / PR Status
 
 - **Default branch**: `main`.
-- **Commit audit**: `ce6da28 Merge pull request #40 from hoathienmenh-01/devin/1777372035-item-ledger`.
+- **Commit audit**: `e99a35f Merge pull request #45 from hoathienmenh-01/devin/1777388675-i18n-reaudit`.
 - **CI gần nhất trên main**: xanh (GitHub Actions job `build` — typecheck + lint + test + build, có postgres + redis service; Devin Review là external check không block merge).
-- **PR open đáng kể**: **không có**. Toàn bộ chuỗi #33..#40 đã merge vào `main`.
+- **PR open đáng kể**: **không có**. Toàn bộ chuỗi #33..#45 đã merge vào `main`.
 - **PR merged gần đây ảnh hưởng lớn**:
   | PR | Chủ đề | Impact |
   |---|---|---|
@@ -46,14 +48,19 @@
   | #38 | `GET /character/profile/:id` + `ProfileView` | Profile viewing — Resolve M3 partial |
   | #39 | NPC Shop module (`/shop/npc`, `/shop/buy`) + ShopView + catalog `NPC_SHOP` (11 entries) | Sink for LINH_THACH ngày 1 |
   | #40 | `ItemLedger` audit + hook 6 grant flows + market post/cancel/buy ledger | Resolve M4 |
+  | #41 | Audit docs PR #33→#40 + cập nhật report | Snapshot bump `ce6da28` |
+  | #42 | Mission timezone-aware `MISSION_RESET_TZ=Asia/Ho_Chi_Minh` + 7 test | Resolve M1 |
+  | #43 | Index `actorUserId, createdAt` cho `CurrencyLedger` + `ItemLedger` | Resolve M5 |
+  | #44 | Replay PR #42/#43 vào main + smoke E2E pass 6/6 | Snapshot bump `4d8af10` + Resolve H1 |
+  | #45 | i18n `vi.json` — dịch 12 admin key còn English (`roleLabel`, `tab.audit`, `users.col.role`, `users.banned`, `roleChangeConfirm`, `roleChangedToast`, `topups.col.{user,status,note}`, `audit.col.{actor,action,meta}`) | Resolve L1 |
 
 - Các branch `devin/*` feature đã merge vẫn còn tồn tại ở origin — có thể xoá sau khi smoke test, không cần gấp.
 
 ---
 
-## Recent Changes (PR #33→#40)
+## Recent Changes (PR #33→#45)
 
-Mỗi PR đều `Merged` vào `main`, CI xanh (3/3 check), branch base = `main`. Smoke local (typecheck/lint/test/build) đã chạy ở mỗi PR; **chưa** smoke E2E sau khi tất cả merged → ghi `Needs runtime smoke` ở mục cuối.
+Mỗi PR đều `Merged` vào `main`, CI xanh (3/3 check), branch base = `main`. Smoke local (typecheck/lint/test/build) đã chạy ở mỗi PR; smoke E2E 6/6 đã pass tại PR #44 (snapshot `4d8af10`). PR #45 chỉ là text-only fix vi.json 12 key admin → không cần re-smoke runtime. Blueprint 04/05 commit vào `docs/` ở session 4 — không đổi code/test.
 
 ### PR #33 — `feat(api): bootstrap admin đầu tiên + seed 3 tông môn (H2 + H3)`
 
@@ -133,6 +140,53 @@ Mỗi PR đều `Merged` vào `main`, CI xanh (3/3 check), branch base = `main`.
 - **Risk**: stock infinite, không daily limit (intentional). Không có rate-limit.
 - **Follow-up**: PR #40 hook `ItemLedger` cho shop (đã làm — có dòng `SHOP_BUY` qua `grantTx`).
 
+### PR #45 — `i18n(vi): translate 12 admin keys still in English (L1 resolved)`
+
+- **Branch**: `devin/1777388675-i18n-reaudit`. **Status**: Merged (commit `e99a35f`). **CI**: xanh (2/2 pass).
+- **Commits chính**: `8249142 i18n(vi): translate 12 admin keys still in English (L1)`, `166c26f ci: re-trigger build`, `7e4ec86 ci: retry after runner availability check`.
+- **Mục tiêu**: Dứt điểm L1 — re-audit `apps/web/src/i18n/{vi,en}.json`. **554/554 key sync giữa 2 locale, 400 used `t()` key all resolve, 0 missing**. Trước fix có 28 key identical en≡vi → audit cuối: 18 universal/native term cố ý (`locale.vi/en`, `EXP`, `HP/MP`, `WS ✓/×`, `OK`, `Boss`, `A Linh`, `linh thạch`, `tiên ngọc`, `HOT`, `Email`), 10 key thực sự là gap (admin column labels + role) còn English trong `vi.json`. Fix 12 entries (10 + 2 confirm/toast liên quan) trong `vi.admin.*`.
+- **Diff bảng** (vi.json):
+  - `admin.roleLabel`: `Role: {role}` → `Vai trò: {role}`
+  - `admin.tab.audit`: `Audit` → `Nhật ký`
+  - `admin.users.col.role`: `Role` → `Vai trò`
+  - `admin.users.banned`: `BANNED` → `BỊ KHOÁ`
+  - `admin.users.roleChangeConfirm`: `Đổi role {email} → {role}?` → `Đổi vai trò {email} → {role}?`
+  - `admin.users.roleChangedToast`: `Đã đổi role.` → `Đã đổi vai trò.`
+  - `admin.topups.col.user`: `User` → `Người chơi`
+  - `admin.topups.col.status`: `Status` → `Trạng thái`
+  - `admin.topups.col.note`: `Note` → `Ghi chú`
+  - `admin.audit.col.actor`: `Actor` → `Người thực hiện`
+  - `admin.audit.col.action`: `Action` → `Hành động`
+  - `admin.audit.col.meta`: `Meta` → `Chi tiết`
+- **File**: `apps/web/src/i18n/vi.json` (+12/−12). `en.json` không đổi (đã đúng tiếng Anh). `docs/AI_HANDOFF_REPORT.md` (snapshot bump tại lúc tạo PR).
+- **Risk**: green — text-only fix 1 locale, không đụng logic/route/auth. Rollback = revert commit.
+
+### PR #44 — `replay: PR #42 (mission VN tz) + PR #43 (ledger index) onto main + smoke E2E pass`
+
+- **Branch**: `devin/1777377412-replay-pr-42-43`. **Status**: Merged (commit `4d8af10`). **CI**: xanh.
+- **Mục tiêu**: PR #42 (M1 mission VN tz) + PR #43 (M5 ledger index) đã merge vào branch phụ — replay vào `main`. Đồng thời chạy smoke E2E 6/6: register/onboard, mission VN tz `windowEnd=17:00Z`, shop buy + ItemLedger + CurrencyLedger row, settings change-password + logout-all, profile public view, admin boss spawn + AdminAuditLog, inventory↔ledger consistency.
+- **Resolve**: H1 (smoke E2E sau khi PR #33→#40 merged).
+
+### PR #43 — `feat(prisma): index actorUserId on CurrencyLedger + ItemLedger (M5)`
+
+- **Branch**: `devin/1777375666-currency-ledger-index`. **Status**: Merged (vào branch phụ; replay vào main qua PR #44).
+- **File**: `apps/api/prisma/schema.prisma` thêm `@@index([actorUserId, createdAt])` x2 (cho `CurrencyLedger` + `ItemLedger`). Migration `20260428112804_actor_user_id_index/migration.sql` (ADD INDEX only, an toàn rollback).
+- **Test**: 269 test cũ vẫn pass; không thêm test riêng (ADD INDEX không đổi logic).
+- **Risk**: thấp — ADD INDEX an toàn, không khoá bảng (size nhỏ tại `migrate deploy`).
+
+### PR #42 — `feat(mission): timezone-aware reset window (M1) + env MISSION_RESET_TZ`
+
+- **Branch**: `devin/1777375167-mission-tz`. **Status**: Merged (vào branch phụ; replay qua PR #44).
+- **Mục tiêu**: Mission cron reset không còn UTC mặc định. Thêm env `MISSION_RESET_TZ` (default `Asia/Ho_Chi_Minh`) + helper `getMissionResetTz()` + tz-aware `nextDailyWindowEnd`/`nextWeeklyWindowEnd`.
+- **File**: `apps/api/src/modules/mission/mission.service.ts`, `apps/api/.env.example`, `apps/api/src/modules/mission/mission.service.test.ts` (+7 test → 26 mission test).
+- **Test**: 26 mission test pass (3 UTC default + 4 VN tz + 3 env helper + 16 cũ).
+- **Risk**: thấp — helper pure + env optional (default backward-compat = `'UTC'` tại function-level).
+
+### PR #41 — `docs: audit PR #33–#40 + cập nhật AI_HANDOFF_REPORT.md`
+
+- **Branch**: `devin/1777374530-audit-pr-33-40-handoff`. **Status**: Merged (commit `65c28f7`).
+- **Mục tiêu**: Audit chuỗi PR #33→#40 vừa merge — bump snapshot trong report + chuyển H1/H2/H3/H4/M2/M4 sang Resolved + ghi rõ chuỗi 8 PR.
+
 ### PR #40 — `feat(inventory): ItemLedger audit trail (M4) + hook 6 grant flows`
 
 - **Branch**: `devin/1777372035-item-ledger`. **Status**: Merged. **CI**: xanh.
@@ -146,15 +200,17 @@ Mỗi PR đều `Merged` vào `main`, CI xanh (3/3 check), branch base = `main`.
 - **Risk**: volume ~10–50 row/player/ngày (đủ index, có thể partition sau).
 - **Follow-up**: equip/unequip không ghi ledger (đúng thiết kế — không thay đổi qty). `ADMIN_REVOKE` chưa có endpoint thật (chỉ enum cho future).
 
-### Audit gap (chưa được cover trong PR #33→#40)
+### Audit gap (chưa được cover trong PR #33→#45)
 
-- **E2E Playwright** vẫn chưa có (H5 còn).
-- **Web Vitest** vẫn chưa wire (H5 còn).
-- **Smoke runtime** sau khi cả 8 PR merged chưa chạy → đánh dấu `Needs runtime smoke` ở §16 H1.
+- **E2E Playwright** vẫn chưa có (H5 còn) — đề xuất ưu tiên kế tiếp.
+- **Web Vitest** vẫn chưa wire (H5 còn) — đề xuất ưu tiên kế tiếp.
+- **Smoke runtime** sau PR #45: không cần thiết (text-only). Smoke E2E gần nhất là sau PR #44 — PASS 6/6.
+- **PR E (M8 admin guard split ADMIN vs MOD)** — chưa làm.
+- **Helper `itemName(key, locale)` (L4)** — chưa làm; tách PR riêng khi cần catalog item l10n cho `MissionView/MailView/GiftCodeView/ShopView`.
 
 ---
 
-## Completed Features (snapshot `main @ ce6da28`)
+## Completed Features (snapshot `main @ e99a35f`)
 
 | Feature | Backend | Frontend | Test | Status |
 |---|---|---|---|---|
@@ -978,7 +1034,7 @@ Admin hiện tại có thể vào `/admin` → Users → tìm → **Set role = A
 
 ## 21. Exact PR Plan
 
-### Done (chuỗi #33→#40 đã merge trên `main` tại `ce6da28`)
+### Done (chuỗi #33→#45 đã merge trên `main` tại `e99a35f`)
 
 | PR | Plan cũ | Status |
 |---|---|---|
@@ -1018,17 +1074,45 @@ Admin hiện tại có thể vào `/admin` → Users → tìm → **Set role = A
 - **File**: `apps/api/src/modules/admin/admin.guard.ts` thêm `RequireAdmin` decorator/guard phân biệt. Update controller cho grant/approve/broadcast/spawn-boss yêu cầu ADMIN; giữ MOD cho ban/role-set + chat moderation. Test guard.
 - **Risk**: medium — đổi quyền thực tế, phải đồng bộ FE check.
 
-#### ~~PR F — L1 i18n gap re-audit~~ **Done tại PR (này)**
+#### ~~PR F — L1 i18n gap re-audit~~ **Done (PR #45, merged commit `e99a35f`)**
 - Audit `apps/web/src/i18n/{vi,en}.json` 554/554 key sync, 400 used key all resolve, 0 missing.
 - Fix 12 key admin vẫn English trong `vi.json` (roleLabel, tab.audit, users.col.role, users.banned, roleChangeConfirm, roleChangedToast, topups.col.user/status/note, audit.col.actor/action/meta) → dịch sang Việt.
 - Helper `itemName(key, locale)` (L4) vẫn open — tách thành PR riêng khi có catalog item l10n.
 
 #### Thứ tự đề xuất cho AI tiếp theo
 **~~A (smoke)~~ → B (Vitest+Playwright) → ~~C (timezone)~~ → ~~D (index)~~ → E (guard split) → ~~F (i18n)~~**.  
-(A Done qua PR #44 smoke E2E pass 6/6; C Done tại PR #42; D Done tại PR #43; F Done tại PR này.) **Nên làm tiếp B (Vitest+Playwright wire) hoặc E (admin guard split).**
+(A Done qua PR #44 smoke E2E pass 6/6; C Done tại PR #42; D Done tại PR #43; F Done tại PR #45.)
+
+**Ưu tiên hành động**: làm tiếp **B (Vitest minimal + Playwright golden path — H5)** trước, vì H5 hiện là issue **High** duy nhất còn mở. Sau B → **E (admin guard split ADMIN vs MOD)** để hạ M8.
+
+Các hạng mục smart-feature đề xuất (không bắt buộc — AI tự quyết theo prompt user):
+- **Smart next-action / onboarding checklist** (§16 của prompt user mục 1–2): /home giợ widget "Nên làm gì tiếp?" dựa trên state (đủ EXP đột phá, mission claim-able, mail unread, boss đang mở, …).
+- **Smart admin economy alert** (mục 3–4): Admin Overview tab thêm alert nếu currency âm hoặc item qty âm hoặc topup pending quá 24h.
+- **Smart QA**: Playwright golden path đã nằm trong PR B; sau đó mở rộng coverage.
+- **Mission/Mail badge** trong AppShell nav (mục 6 — UX polish).
+- **`POST /api/admin/inventory/revoke`** (L7): kèm UI tab Users; hoãn đến khi có case thực.
 
 #### Post-beta backlog
 Leaderboard / Alchemy / Refinery / Arena / Pet / Companion / Event / Battle Pass / `forgot-password` / `mission:progress` WS / `ADMIN_REVOKE` endpoint.
+
+---
+
+### Session 4 audit log (28/4 — this PR)
+
+- **Action**: pull `main` → `e99a35f`. Verify PR #45 (L1 i18n re-audit) đã merge. Confirm 0 PR open.
+- **Discrepancy phát hiện**:
+  1. Snapshot pointer `4d8af10` lỗi thời — main đã tại `e99a35f` (PR #45 merged).
+  2. Inconsistency: líne `Snapshot: 4d8af10` v.s. `Commit audit: ce6da28` (khác nhau 7 commit).
+  3. **Trạng thái** ghi PR F "đang mở" — sai (đã merge lúc 17:36 UTC 28/4).
+  4. Section heading `Recent Changes (PR #33→#40)` thiếu PR #41→#45.
+  5. **Audit gap** vẫn ghi "Smoke runtime chưa chạy" — sai (PR #44 đã smoke 6/6 pass).
+  6. Blueprint 04/05 chưa có trong repo — user expect `docs/04_*` + `docs/05_*` tồn tại.
+- **Fix đã áp dụng trong PR này**:
+  1–5. Cập nhật snapshot, audit commit, trạng thái, recent changes, audit gap.
+  6. Commit `docs/04_TECH_STACK_VA_DATA_MODEL.md` + `docs/05_KICH_BAN_BUILD_VA_PROMPT_AI.md` với banner "Historical blueprint, NOT the current source of truth".
+- **Local check**: `pnpm typecheck` → pass; `pnpm lint` → pass; `pnpm --filter @xuantoi/shared test` → 47/47 pass; (API test bỏ qua local — cần Postgres; CI chạy đầy đủ).
+- **Risk**: green — docs-only PR, không đụng code/test/migration.
+- **Roadmap kế**: PR B (Vitest minimal + Playwright golden path — H5).
 
 ---
 
