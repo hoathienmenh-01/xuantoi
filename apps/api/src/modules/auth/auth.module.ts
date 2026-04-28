@@ -1,9 +1,40 @@
 import { Module } from '@nestjs/common';
 import { JwtModule } from '@nestjs/jwt';
 import { ConfigModule, ConfigService } from '@nestjs/config';
+import type { Redis } from 'ioredis';
 import { AuthController } from './auth.controller';
-import { AuthService } from './auth.service';
+import {
+  AuthService,
+  REGISTER_RATE_LIMITER,
+  REGISTER_RATE_LIMIT_MAX,
+  REGISTER_RATE_LIMIT_WINDOW_MS,
+} from './auth.service';
 import { PrismaService } from '../../common/prisma.service';
+import {
+  InMemorySlidingWindowRateLimiter,
+  RedisSlidingWindowRateLimiter,
+  type RateLimiter,
+} from '../../common/rate-limiter';
+import { REDIS_CONNECTION } from '../../common/redis.module';
+
+const registerLimiterProvider = {
+  provide: REGISTER_RATE_LIMITER,
+  inject: [{ token: REDIS_CONNECTION, optional: true }],
+  useFactory: (redis?: Redis): RateLimiter => {
+    if (redis) {
+      return new RedisSlidingWindowRateLimiter(
+        redis,
+        REGISTER_RATE_LIMIT_WINDOW_MS,
+        REGISTER_RATE_LIMIT_MAX,
+        'rl:register',
+      );
+    }
+    return new InMemorySlidingWindowRateLimiter(
+      REGISTER_RATE_LIMIT_WINDOW_MS,
+      REGISTER_RATE_LIMIT_MAX,
+    );
+  },
+};
 
 @Module({
   imports: [
@@ -17,7 +48,7 @@ import { PrismaService } from '../../common/prisma.service';
     }),
   ],
   controllers: [AuthController],
-  providers: [AuthService, PrismaService],
+  providers: [PrismaService, registerLimiterProvider, AuthService],
   exports: [AuthService],
 })
 export class AuthModule {}

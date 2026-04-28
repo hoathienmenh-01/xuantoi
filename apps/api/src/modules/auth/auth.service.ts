@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable, Optional } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import * as argon2 from 'argon2';
@@ -10,6 +10,10 @@ import type {
   RegisterInput,
 } from '@xuantoi/shared';
 import { PrismaService } from '../../common/prisma.service';
+import {
+  InMemorySlidingWindowRateLimiter,
+  type RateLimiter,
+} from '../../common/rate-limiter';
 
 export type AuthErrorCode =
   | 'INVALID_CREDENTIALS'
@@ -56,6 +60,11 @@ const ARGON2_OPTS: argon2.Options = {
 const RATE_LIMIT_WINDOW_MS = 15 * 60 * 1000;
 const RATE_LIMIT_MAX_FAILS = 5;
 
+/** Anti-bot/anti-scripted-spam cho register: tối đa 5 user mới/IP/15 phút. */
+export const REGISTER_RATE_LIMIT_WINDOW_MS = 15 * 60 * 1000;
+export const REGISTER_RATE_LIMIT_MAX = 5;
+export const REGISTER_RATE_LIMITER = 'AUTH_REGISTER_RATE_LIMITER';
+
 const ACCESS_TTL_SEC_DEFAULT = 15 * 60;
 const REFRESH_TTL_SEC_DEFAULT = 30 * 24 * 60 * 60;
 
@@ -68,15 +77,28 @@ const INSECURE_DEFAULTS = new Set([
 
 @Injectable()
 export class AuthService {
+  private readonly registerLimiter: RateLimiter;
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly jwt: JwtService,
     private readonly cfg: ConfigService,
-  ) {}
+    @Optional() @Inject(REGISTER_RATE_LIMITER) registerLimiter?: RateLimiter,
+  ) {
+    this.registerLimiter =
+      registerLimiter ??
+      new InMemorySlidingWindowRateLimiter(
+        REGISTER_RATE_LIMIT_WINDOW_MS,
+        REGISTER_RATE_LIMIT_MAX,
+      );
+  }
 
   // ---------------- public API ----------------
 
   async register(input: RegisterInput, ctx: AuthCtx): Promise<AuthOutput> {
+    const result = await this.registerLimiter.check(`ip:${ctx.ip}`);
+    if (!result.allowed) throw new AuthError('RATE_LIMITED');
+
     const existing = await this.prisma.user.findUnique({ where: { email: input.email } });
     if (existing) throw new AuthError('EMAIL_TAKEN');
 
