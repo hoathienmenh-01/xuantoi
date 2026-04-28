@@ -377,6 +377,7 @@ model CurrencyLedger {
   @@index([characterId, createdAt])
   @@index([reason, createdAt])
   @@index([refType, refId])
+  @@index([actorUserId, createdAt])
 }
 
 model Encounter {
@@ -450,4 +451,5 @@ model ItemLedger {
   @@index([itemKey, createdAt])
   @@index([reason, createdAt])
   @@index([refType, refId])
+  @@index([actorUserId, createdAt])
 }
