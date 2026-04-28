@@ -42,6 +42,14 @@ export async function logout(): Promise<void> {
   await apiClient.post('/_auth/logout');
 }
 
+export async function logoutAll(): Promise<{ revoked: number }> {
+  const { data } = await apiClient.post<AuthEnvelope<{ revoked: number }>>(
+    '/_auth/logout-all',
+  );
+  if (!data.ok || !data.data) throw data.error ?? new Error('Logout all thất bại');
+  return data.data;
+}
+
 export async function refresh(): Promise<PublicUser | null> {
   try {
     const { data } = await apiClient.post<AuthEnvelope<{ user: PublicUser }>>(

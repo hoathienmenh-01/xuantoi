@@ -178,6 +178,49 @@ describe('AuthService', () => {
     await expect(auth.logout('garbage.jwt.token')).resolves.toBeUndefined();
   });
 
+  it('logoutAll: revoke toàn bộ refresh token đang active của user, trả count', async () => {
+    const out1 = await auth.register({ email: 'la1@xt.local', password: PASSWORD }, ctx);
+    // login lần 2 cùng user → có 2 refresh token active
+    await auth.login({ email: 'la1@xt.local', password: PASSWORD }, ctx);
+
+    const before = await prisma.refreshToken.count({
+      where: { userId: out1.user.id, revokedAt: null },
+    });
+    expect(before).toBe(2);
+
+    const r = await auth.logoutAll(out1.user.id);
+    expect(r.revoked).toBe(2);
+
+    const after = await prisma.refreshToken.count({
+      where: { userId: out1.user.id, revokedAt: null },
+    });
+    expect(after).toBe(0);
+
+    // refresh token cũ không còn dùng được
+    await expect(
+      auth.refresh(out1.refreshToken, ctx),
+    ).rejects.toMatchObject({ code: 'SESSION_EXPIRED' });
+  });
+
+  it('logoutAll idempotent: gọi 2 lần không lỗi, lần 2 revoked=0', async () => {
+    const out = await auth.register({ email: 'la2@xt.local', password: PASSWORD }, ctx);
+    const r1 = await auth.logoutAll(out.user.id);
+    const r2 = await auth.logoutAll(out.user.id);
+    expect(r1.revoked).toBe(1);
+    expect(r2.revoked).toBe(0);
+  });
+
+  it('logoutAll: chỉ ảnh hưởng user của chính mình', async () => {
+    const a = await auth.register({ email: 'la3a@xt.local', password: PASSWORD }, ctx);
+    const b = await auth.register({ email: 'la3b@xt.local', password: PASSWORD }, ctx);
+
+    await auth.logoutAll(a.user.id);
+
+    // refresh token của B vẫn dùng được
+    const refreshed = await auth.refresh(b.refreshToken, ctx);
+    expect(refreshed.user.id).toBe(b.user.id);
+  });
+
   it('AuthError exposes code property', () => {
     const e = new AuthError('RATE_LIMITED');
     expect(e.code).toBe('RATE_LIMITED');

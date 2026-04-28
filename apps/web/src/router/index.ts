@@ -69,6 +69,11 @@ const routes: RouteRecordRaw[] = [
     component: () => import('@/views/AdminView.vue'),
   },
   {
+    path: '/settings',
+    name: 'settings',
+    component: () => import('@/views/SettingsView.vue'),
+  },
+  {
     path: '/:pathMatch(.*)*',
     name: 'not-found',
     component: () => import('@/views/NotFoundView.vue'),

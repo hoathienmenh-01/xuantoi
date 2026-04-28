@@ -180,7 +180,48 @@
       "mail": "Mail",
       "giftcode": "Gift Code",
       "topup": "Top Up",
+      "settings": "Settings",
       "admin": "Admin"
+    }
+  },
+  "settings": {
+    "title": "Settings",
+    "subtitle": "Manage your account, password and active sessions.",
+    "account": {
+      "title": "Account",
+      "email": "Email",
+      "role": "Role",
+      "createdAt": "Joined"
+    },
+    "password": {
+      "title": "Change Password",
+      "hint": "Changing password logs out all devices. You will need to sign in again with the new password.",
+      "old": "Current password",
+      "new": "New password",
+      "confirm": "Confirm new password",
+      "submit": "Update password",
+      "empty": "Please fill in both current and new passwords.",
+      "mismatch": "New passwords do not match.",
+      "tooShort": "New password must be at least 8 characters.",
+      "success": "Password updated. Please sign in again."
+    },
+    "locale": {
+      "title": "Language",
+      "changed": "Language changed."
+    },
+    "logoutAll": {
+      "title": "Sign out everywhere",
+      "hint": "Revoke all sessions including this one. Other devices will be logged out within ~15 minutes.",
+      "submit": "Sign out everywhere",
+      "confirm": "Are you sure you want to sign out of all devices?",
+      "success": "Revoked {revoked} session(s)."
+    },
+    "errors": {
+      "OLD_PASSWORD_WRONG": "Current password is incorrect.",
+      "PASSWORD_TOO_WEAK": "New password is too weak (min 8 characters).",
+      "UNAUTHENTICATED": "Session expired, please sign in again.",
+      "RATE_LIMITED": "Too many requests, try again later.",
+      "UNKNOWN": "Something went wrong."
     }
   },
   "mission": {

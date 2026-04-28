@@ -162,6 +162,13 @@ async function logout(): Promise<void> {
           ⛧ {{ t('shell.nav.topup') }}
         </RouterLink>
         <RouterLink
+          to="/settings"
+          class="px-3 py-2 rounded hover:bg-ink-700/60"
+          active-class="bg-ink-700/60 text-ink-50"
+        >
+          設 {{ t('shell.nav.settings') }}
+        </RouterLink>
+        <RouterLink
           v-if="isStaff"
           to="/admin"
           class="px-3 py-2 rounded hover:bg-ink-700/60 text-amber-200"
