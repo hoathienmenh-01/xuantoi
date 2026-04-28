@@ -16,7 +16,7 @@ export default defineConfig({
     }),
   ],
   test: {
-    include: ['src/**/*.test.ts'],
+    include: ['src/**/*.test.ts', 'scripts/**/*.test.ts'],
     testTimeout: 30_000,
     hookTimeout: 30_000,
     pool: 'forks',

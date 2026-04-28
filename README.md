@@ -41,7 +41,11 @@ cp apps/web/.env.example apps/web/.env
 pnpm --filter @xuantoi/api prisma:generate
 pnpm --filter @xuantoi/api prisma:migrate
 
-# 5. Chạy song song web + api
+# 5. Bootstrap admin đầu tiên + 3 tông môn mặc định (idempotent)
+#    Đặt INITIAL_ADMIN_EMAIL + INITIAL_ADMIN_PASSWORD trong apps/api/.env trước.
+pnpm --filter @xuantoi/api bootstrap
+
+# 6. Chạy song song web + api
 pnpm dev
 ```
 
