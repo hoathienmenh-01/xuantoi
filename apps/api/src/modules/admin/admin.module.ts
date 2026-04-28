@@ -21,5 +21,6 @@ import { PrismaService } from '../../common/prisma.service';
   ],
   controllers: [AdminController],
   providers: [AdminService, AdminGuard, PrismaService],
+  exports: [AdminGuard],
 })
 export class AdminModule {}

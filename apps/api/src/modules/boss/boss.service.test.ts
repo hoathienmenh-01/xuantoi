@@ -173,4 +173,106 @@ describe('BossService', () => {
       code: 'NO_ACTIVE_BOSS',
     });
   });
+
+  describe('adminSpawn', () => {
+    it('không có boss ACTIVE → spawn mới + ghi audit BOSS_SPAWN', async () => {
+      const admin = await prisma.user.create({
+        data: {
+          email: `admin-${Date.now()}@xt.local`,
+          passwordHash: 'x',
+          role: 'ADMIN',
+        },
+      });
+
+      const r = await boss.adminSpawn(admin.id, { bossKey: DEF.key, level: 3 });
+
+      expect(r.bossKey).toBe(DEF.key);
+      expect(r.level).toBe(3);
+
+      const w = await prisma.worldBoss.findUniqueOrThrow({ where: { id: r.id } });
+      expect(w.status).toBe(BossStatus.ACTIVE);
+      expect(w.level).toBe(3);
+      expect(w.maxHp).toBe(BigInt(bossByKey(DEF.key)!.baseMaxHp) * 3n);
+
+      const audit = await prisma.adminAuditLog.findFirstOrThrow({
+        where: { actorUserId: admin.id, action: 'BOSS_SPAWN' },
+      });
+      expect((audit.meta as { bossId: string }).bossId).toBe(w.id);
+      expect((audit.meta as { forced: boolean }).forced).toBe(false);
+    });
+
+    it('default level=1 nếu không truyền', async () => {
+      const admin = await prisma.user.create({
+        data: { email: `admin-${Date.now()}@xt.local`, passwordHash: 'x', role: 'ADMIN' },
+      });
+      const r = await boss.adminSpawn(admin.id, { bossKey: DEF.key });
+      expect(r.level).toBe(1);
+    });
+
+    it('không truyền bossKey → auto-rotate theo count', async () => {
+      const admin = await prisma.user.create({
+        data: { email: `admin-${Date.now()}@xt.local`, passwordHash: 'x', role: 'ADMIN' },
+      });
+      const r = await boss.adminSpawn(admin.id, {});
+      expect(BOSSES.some((b) => b.key === r.bossKey)).toBe(true);
+    });
+
+    it('boss ACTIVE đang có + force=false → throw BOSS_ALREADY_ACTIVE', async () => {
+      const admin = await prisma.user.create({
+        data: { email: `admin-${Date.now()}@xt.local`, passwordHash: 'x', role: 'ADMIN' },
+      });
+      await spawnBoss();
+      await expect(
+        boss.adminSpawn(admin.id, { bossKey: DEF.key, level: 1 }),
+      ).rejects.toMatchObject({ code: 'BOSS_ALREADY_ACTIVE' });
+    });
+
+    it('boss ACTIVE + force=true → expire boss cũ + spawn boss mới + audit ghi replacedBossId', async () => {
+      const admin = await prisma.user.create({
+        data: { email: `admin-${Date.now()}@xt.local`, passwordHash: 'x', role: 'ADMIN' },
+      });
+      const old = await spawnBoss();
+      const r = await boss.adminSpawn(admin.id, { bossKey: DEF.key, level: 2, force: true });
+
+      const oldUpdated = await prisma.worldBoss.findUniqueOrThrow({ where: { id: old.id } });
+      expect(oldUpdated.status).toBe(BossStatus.EXPIRED);
+      expect(oldUpdated.defeatedAt).not.toBeNull();
+
+      const audit = await prisma.adminAuditLog.findFirstOrThrow({
+        where: { actorUserId: admin.id, action: 'BOSS_SPAWN' },
+      });
+      const meta = audit.meta as { replacedBossId: string | null; forced: boolean };
+      expect(meta.replacedBossId).toBe(old.id);
+      expect(meta.forced).toBe(true);
+
+      // boss mới khác id boss cũ
+      expect(r.id).not.toBe(old.id);
+    });
+
+    it('bossKey không có trong catalog → throw INVALID_BOSS_KEY, không tạo gì', async () => {
+      const admin = await prisma.user.create({
+        data: { email: `admin-${Date.now()}@xt.local`, passwordHash: 'x', role: 'ADMIN' },
+      });
+      await expect(boss.adminSpawn(admin.id, { bossKey: 'fake_boss' })).rejects.toMatchObject({
+        code: 'INVALID_BOSS_KEY',
+      });
+      expect(await prisma.worldBoss.count()).toBe(0);
+      expect(await prisma.adminAuditLog.count()).toBe(0);
+    });
+
+    it('level ngoài 1..10 → throw INVALID_LEVEL', async () => {
+      const admin = await prisma.user.create({
+        data: { email: `admin-${Date.now()}@xt.local`, passwordHash: 'x', role: 'ADMIN' },
+      });
+      await expect(boss.adminSpawn(admin.id, { level: 0 })).rejects.toMatchObject({
+        code: 'INVALID_LEVEL',
+      });
+      await expect(boss.adminSpawn(admin.id, { level: 11 })).rejects.toMatchObject({
+        code: 'INVALID_LEVEL',
+      });
+      await expect(boss.adminSpawn(admin.id, { level: 1.5 })).rejects.toMatchObject({
+        code: 'INVALID_LEVEL',
+      });
+    });
+  });
 });
