@@ -8,3 +8,4 @@ export * from './items';
 export * from './missions';
 export * from './boss';
 export * from './topup';
+export * from './shop';
