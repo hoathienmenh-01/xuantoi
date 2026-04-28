@@ -2,7 +2,13 @@ import { describe, it, expect, beforeAll, beforeEach, afterAll } from 'vitest';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../../common/prisma.service';
-import { AuthService, AuthError } from './auth.service';
+import {
+  AuthService,
+  AuthError,
+  REGISTER_RATE_LIMIT_MAX,
+  REGISTER_RATE_LIMIT_WINDOW_MS,
+} from './auth.service';
+import { InMemorySlidingWindowRateLimiter } from '../../common/rate-limiter';
 
 const TEST_DATABASE_URL =
   process.env.TEST_DATABASE_URL ??
@@ -26,13 +32,12 @@ class FakeConfig extends ConfigService {
 let prisma: PrismaService;
 let jwt: JwtService;
 let auth: AuthService;
+let registerLimiter: InMemorySlidingWindowRateLimiter;
 
 beforeAll(() => {
   process.env.DATABASE_URL = TEST_DATABASE_URL;
   prisma = new PrismaService();
   jwt = new JwtService({});
-  const cfg = new FakeConfig();
-  auth = new AuthService(prisma, jwt, cfg);
 });
 
 beforeEach(async () => {
@@ -40,6 +45,13 @@ beforeEach(async () => {
   await prisma.refreshToken.deleteMany({});
   await prisma.loginAttempt.deleteMany({});
   await prisma.user.deleteMany({});
+  // Fresh limiter per test — register limiter có state in-memory persist giữa test.
+  registerLimiter = new InMemorySlidingWindowRateLimiter(
+    REGISTER_RATE_LIMIT_WINDOW_MS,
+    REGISTER_RATE_LIMIT_MAX,
+  );
+  const cfg = new FakeConfig();
+  auth = new AuthService(prisma, jwt, cfg, registerLimiter);
 });
 
 afterAll(async () => {
@@ -82,6 +94,30 @@ describe('AuthService', () => {
       where: { email: 'd@xt.local', success: false },
     });
     expect(attempts.length).toBe(1);
+  });
+
+  it('register quá 5 lần/IP/15 phút → RATE_LIMITED (anti-bot scripted spam)', async () => {
+    for (let i = 0; i < REGISTER_RATE_LIMIT_MAX; i++) {
+      await auth.register({ email: `bot${i}@xt.local`, password: PASSWORD }, ctx);
+    }
+    // Lần thứ 6 từ cùng IP → reject ngay cả khi email chưa tồn tại.
+    await expect(
+      auth.register({ email: 'bot-overflow@xt.local', password: PASSWORD }, ctx),
+    ).rejects.toMatchObject({ code: 'RATE_LIMITED' });
+  });
+
+  it('register từ IP khác KHÔNG bị limit chéo (per-IP isolation)', async () => {
+    for (let i = 0; i < REGISTER_RATE_LIMIT_MAX; i++) {
+      await auth.register(
+        { email: `ip1-${i}@xt.local`, password: PASSWORD },
+        { ip: '10.0.0.1' },
+      );
+    }
+    const out = await auth.register(
+      { email: 'ip2@xt.local', password: PASSWORD },
+      { ip: '10.0.0.2' },
+    );
+    expect(out.user.email).toBe('ip2@xt.local');
   });
 
   it('login sai 5 lần / 15 phút / IP+email → RATE_LIMITED', async () => {
