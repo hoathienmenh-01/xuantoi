@@ -64,20 +64,20 @@ enum TopupStatus {
 }
 
 model TopupOrder {
-  id            String      @id @default(cuid())
-  userId        String
-  user          User        @relation("TopupOrderUser", fields: [userId], references: [id], onDelete: Cascade)
-  packageKey    String
+  id             String      @id @default(cuid())
+  userId         String
+  user           User        @relation("TopupOrderUser", fields: [userId], references: [id], onDelete: Cascade)
+  packageKey     String
   tienNgocAmount Int
-  priceVND      Int
+  priceVND       Int
   /// Mã chuyển khoản hiển thị cho user khi quét QR (ví dụ TOPUP-<short>).
-  transferCode  String      @unique
-  status        TopupStatus @default(PENDING)
-  note          String      @default("")
-  approvedById  String?
-  approvedBy    User?       @relation("TopupOrderApprover", fields: [approvedById], references: [id], onDelete: SetNull)
-  approvedAt    DateTime?
-  createdAt     DateTime    @default(now())
+  transferCode   String      @unique
+  status         TopupStatus @default(PENDING)
+  note           String      @default("")
+  approvedById   String?
+  approvedBy     User?       @relation("TopupOrderApprover", fields: [approvedById], references: [id], onDelete: SetNull)
+  approvedAt     DateTime?
+  createdAt      DateTime    @default(now())
 
   @@index([userId, status, createdAt])
   @@index([status, createdAt])
@@ -106,11 +106,11 @@ model User {
   createdAt       DateTime  @default(now())
   lastLoginAt     DateTime?
 
-  character       Character?
-  topupOrders     TopupOrder[]    @relation("TopupOrderUser")
-  topupApprovals  TopupOrder[]    @relation("TopupOrderApprover")
-  auditLogs       AdminAuditLog[] @relation("AdminAuditActor")
-  refreshTokens   RefreshToken[]
+  character      Character?
+  topupOrders    TopupOrder[]    @relation("TopupOrderUser")
+  topupApprovals TopupOrder[]    @relation("TopupOrderApprover")
+  auditLogs      AdminAuditLog[] @relation("AdminAuditActor")
+  refreshTokens  RefreshToken[]
 }
 
 model RefreshToken {
@@ -142,49 +142,50 @@ model LoginAttempt {
 }
 
 model Character {
-  id               String   @id @default(cuid())
-  userId           String   @unique
-  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  name             String   @unique
-  realmKey         String
-  realmStage       Int      @default(1)
-  title            String?
-  exp              BigInt   @default(0)
-  level            Int      @default(1)
+  id         String  @id @default(cuid())
+  userId     String  @unique
+  user       User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name       String  @unique
+  realmKey   String
+  realmStage Int     @default(1)
+  title      String?
+  exp        BigInt  @default(0)
+  level      Int     @default(1)
 
-  hp               Int      @default(100)
-  hpMax            Int      @default(100)
-  mp               Int      @default(50)
-  mpMax            Int      @default(50)
-  stamina          Int      @default(100)
-  staminaMax       Int      @default(100)
-  power            Int      @default(10)
-  spirit           Int      @default(10)
-  speed            Int      @default(10)
-  luck             Int      @default(5)
-  daoVan           Int      @default(0)
+  hp         Int @default(100)
+  hpMax      Int @default(100)
+  mp         Int @default(50)
+  mpMax      Int @default(50)
+  stamina    Int @default(100)
+  staminaMax Int @default(100)
+  power      Int @default(10)
+  spirit     Int @default(10)
+  speed      Int @default(10)
+  luck       Int @default(5)
+  daoVan     Int @default(0)
 
-  linhThach        BigInt   @default(0)
-  tienNgoc         Int      @default(0)
-  tienNgocKhoa     Int      @default(0)
-  tienTe           Int      @default(0)
-  nguyenThach      Int      @default(0)
-  congHien         Int      @default(0)
-  congDuc          Int      @default(0)
-  chienCongTongMon Int      @default(0)
+  linhThach        BigInt @default(0)
+  tienNgoc         Int    @default(0)
+  tienNgocKhoa     Int    @default(0)
+  tienTe           Int    @default(0)
+  nguyenThach      Int    @default(0)
+  congHien         Int    @default(0)
+  congDuc          Int    @default(0)
+  chienCongTongMon Int    @default(0)
 
-  settings         Json     @default("{}")
-  cultivating      Boolean  @default(false)
+  settings    Json    @default("{}")
+  cultivating Boolean @default(false)
 
-  sectId           String?
-  sect             Sect?    @relation(fields: [sectId], references: [id])
+  sectId String?
+  sect   Sect?   @relation(fields: [sectId], references: [id])
 
-  inventory        InventoryItem[]
-  ledger           CurrencyLedger[]
-  missionProgress  MissionProgress[]
+  inventory       InventoryItem[]
+  ledger          CurrencyLedger[]
+  missionProgress MissionProgress[]
+  mails           Mail[]
 
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 enum MissionPeriod {
@@ -216,17 +217,42 @@ model MissionProgress {
   @@index([period, windowEnd])
 }
 
-model InventoryItem {
-  id            String     @id @default(cuid())
-  characterId   String
-  character     Character  @relation(fields: [characterId], references: [id], onDelete: Cascade)
-  itemKey       String
-  qty           Int        @default(1)
-  equippedSlot  EquipSlot?
-  createdAt     DateTime   @default(now())
+model Mail {
+  id               String    @id @default(cuid())
+  recipientId      String
+  recipient        Character @relation(fields: [recipientId], references: [id], onDelete: Cascade)
+  senderName       String    @default("Thiên Đạo Sứ Giả")
+  subject          String
+  body             String
+  rewardLinhThach  BigInt    @default(0)
+  rewardTienNgoc   Int       @default(0)
+  rewardExp        BigInt    @default(0)
+  /// JSON [{ itemKey, qty }]
+  rewardItems      Json      @default("[]")
+  readAt           DateTime?
+  claimedAt        DateTime?
+  expiresAt        DateTime?
+  /// userId của admin đã gửi (null cho hệ thống / script).
+  createdByAdminId String?
+  createdAt        DateTime  @default(now())
 
-  @@index([characterId, itemKey])
+  @@index([recipientId, createdAt])
+  @@index([recipientId, claimedAt])
+  @@index([recipientId, readAt])
+  @@index([expiresAt])
+}
+
+model InventoryItem {
+  id           String     @id @default(cuid())
+  characterId  String
+  character    Character  @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  itemKey      String
+  qty          Int        @default(1)
+  equippedSlot EquipSlot?
+  createdAt    DateTime   @default(now())
+
   @@unique([characterId, equippedSlot])
+  @@index([characterId, itemKey])
 }
 
 enum ListingStatus {
@@ -236,16 +262,16 @@ enum ListingStatus {
 }
 
 model Listing {
-  id             String        @id @default(cuid())
-  sellerId       String
-  itemKey        String
-  itemKind       String
-  qty            Int
-  pricePerUnit   BigInt
-  status         ListingStatus @default(ACTIVE)
-  buyerId        String?
-  createdAt      DateTime      @default(now())
-  soldAt         DateTime?
+  id           String        @id @default(cuid())
+  sellerId     String
+  itemKey      String
+  itemKind     String
+  qty          Int
+  pricePerUnit BigInt
+  status       ListingStatus @default(ACTIVE)
+  buyerId      String?
+  createdAt    DateTime      @default(now())
+  soldAt       DateTime?
 
   @@index([status, itemKind])
   @@index([status, itemKey])
@@ -288,32 +314,32 @@ enum BossStatus {
 }
 
 model WorldBoss {
-  id           String     @id @default(cuid())
-  bossKey      String
-  name         String
-  level        Int
-  maxHp        BigInt
-  currentHp    BigInt
-  status       BossStatus @default(ACTIVE)
-  spawnedAt    DateTime   @default(now())
-  expiresAt    DateTime
-  defeatedAt   DateTime?
-  rewardTotal  BigInt     @default(0)
+  id          String     @id @default(cuid())
+  bossKey     String
+  name        String
+  level       Int
+  maxHp       BigInt
+  currentHp   BigInt
+  status      BossStatus @default(ACTIVE)
+  spawnedAt   DateTime   @default(now())
+  expiresAt   DateTime
+  defeatedAt  DateTime?
+  rewardTotal BigInt     @default(0)
 
-  damages      BossDamage[]
+  damages BossDamage[]
 
   @@index([status, spawnedAt])
 }
 
 model BossDamage {
-  id           String     @id @default(cuid())
-  bossId       String
-  boss         WorldBoss  @relation(fields: [bossId], references: [id], onDelete: Cascade)
-  characterId  String
+  id            String    @id @default(cuid())
+  bossId        String
+  boss          WorldBoss @relation(fields: [bossId], references: [id], onDelete: Cascade)
+  characterId   String
   characterName String
-  totalDamage  BigInt     @default(0)
-  hits         Int        @default(0)
-  lastHitAt    DateTime   @default(now())
+  totalDamage   BigInt    @default(0)
+  hits          Int       @default(0)
+  lastHitAt     DateTime  @default(now())
 
   @@unique([bossId, characterId])
   @@index([bossId, totalDamage])
@@ -365,4 +391,39 @@ model Encounter {
   updatedAt   DateTime        @updatedAt
 
   @@index([characterId, status])
+}
+
+model GiftCode {
+  id               String               @id @default(cuid())
+  /// Normalized upper-case, unique trên toàn hệ.
+  code             String               @unique
+  rewardLinhThach  BigInt               @default(0)
+  rewardTienNgoc   Int                  @default(0)
+  rewardExp        BigInt               @default(0)
+  /// JSON [{ itemKey, qty }]
+  rewardItems      Json                 @default("[]")
+  /// null = không giới hạn số lần redeem toàn server (vẫn chặn 1 user 1 lần).
+  maxRedeems       Int?
+  redeemCount      Int                  @default(0)
+  expiresAt        DateTime?
+  revokedAt        DateTime?
+  createdByAdminId String?
+  createdAt        DateTime             @default(now())
+  redemptions      GiftCodeRedemption[]
+
+  @@index([expiresAt])
+  @@index([revokedAt])
+}
+
+model GiftCodeRedemption {
+  id          String   @id @default(cuid())
+  giftCodeId  String
+  giftCode    GiftCode @relation(fields: [giftCodeId], references: [id], onDelete: Cascade)
+  userId      String
+  characterId String
+  redeemedAt  DateTime @default(now())
+
+  @@unique([giftCodeId, userId])
+  @@index([userId])
+  @@index([characterId])
 }

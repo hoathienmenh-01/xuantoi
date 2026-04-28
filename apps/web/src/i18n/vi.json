@@ -17,6 +17,7 @@
     "yes": "Có",
     "no": "Không",
     "reload": "Tải lại",
+    "refresh": "Làm mới",
     "search": "Tìm",
     "total": "Tổng",
     "page": "Trang",
@@ -176,6 +177,8 @@
       "sect": "Tông Môn",
       "boss": "Boss Đại Hội",
       "missions": "Nhiệm Vụ",
+      "mail": "Thư Sứ",
+      "giftcode": "Lễ Mã",
       "topup": "Nạp Tiên Ngọc",
       "admin": "Quản Trị"
     }
@@ -215,6 +218,60 @@
       "MISSION_UNKNOWN": "Nhiệm vụ không tồn tại.",
       "NOT_READY": "Chưa đạt điều kiện nhận thưởng.",
       "ALREADY_CLAIMED": "Nhiệm vụ này đã được nhận.",
+      "UNAUTHENTICATED": "Phiên đã hết hạn, vui lòng đăng nhập lại.",
+      "UNKNOWN": "Lỗi bất định."
+    }
+  },
+  "mail": {
+    "title": "Thiên Đạo Thư Các",
+    "empty": "Hộp thư trống rỗng.",
+    "selectHint": "Chọn một bức thư để đọc.",
+    "claim": "Nhận Thưởng",
+    "claimToast": "Đã nhận thưởng từ thư: {subject}",
+    "unread": "Chưa đọc",
+    "unreadBadge": "{n} chưa đọc",
+    "rewardBadge": "Quà",
+    "from": "Từ",
+    "expiresAt": "Hết hạn",
+    "status": {
+      "claimed": "Đã nhận thưởng"
+    },
+    "reward": {
+      "label": "Phần thưởng",
+      "linhThach": "Linh Thạch",
+      "tienNgoc": "Tiên Ngọc",
+      "exp": "EXP"
+    },
+    "errors": {
+      "NO_CHARACTER": "Chưa tạo nhân vật.",
+      "MAIL_NOT_FOUND": "Thư không tồn tại.",
+      "MAIL_EXPIRED": "Thư đã hết hạn.",
+      "NO_REWARD": "Thư này không có phần thưởng.",
+      "ALREADY_CLAIMED": "Thư này đã được nhận.",
+      "UNAUTHENTICATED": "Phiên đã hết hạn, vui lòng đăng nhập lại.",
+      "UNKNOWN": "Lỗi bất định."
+    }
+  },
+  "giftcode": {
+    "title": "Đổi Mã Quà Tặng",
+    "hint": "Nhập mã quà tặng để nhận thưởng. Mỗi mã chỉ đổi được một lần cho mỗi tài khoản.",
+    "placeholder": "Nhập mã…",
+    "redeem": "Đổi Quà",
+    "successToast": "Đã đổi mã {code}",
+    "lastReward": "Phần thưởng từ {code}",
+    "reward": {
+      "linhThach": "Linh Thạch",
+      "tienNgoc": "Tiên Ngọc",
+      "exp": "EXP"
+    },
+    "errors": {
+      "CODE_NOT_FOUND": "Mã không tồn tại.",
+      "CODE_EXPIRED": "Mã đã hết hạn.",
+      "CODE_REVOKED": "Mã đã bị thu hồi.",
+      "CODE_EXHAUSTED": "Mã đã hết lượt sử dụng.",
+      "ALREADY_REDEEMED": "Tài khoản đã đổi mã này.",
+      "NO_CHARACTER": "Cần tạo nhân vật trước.",
+      "INVALID_INPUT": "Mã không hợp lệ.",
       "UNAUTHENTICATED": "Phiên đã hết hạn, vui lòng đăng nhập lại.",
       "UNKNOWN": "Lỗi bất định."
     }
@@ -502,9 +559,28 @@
     "title": "Quản Trị",
     "roleLabel": "Role: {role}",
     "tab": {
+      "stats": "Tổng quan",
       "users": "Người dùng",
       "topups": "Đơn nạp",
       "audit": "Audit"
+    },
+    "stats": {
+      "users": "Người dùng",
+      "characters": "Nhân vật",
+      "economy": "Kinh tế",
+      "activity": "Hoạt động",
+      "total": "Tổng",
+      "admins": "Admin",
+      "banned": "Bị khoá",
+      "cultivating": "Đang tu luyện",
+      "bySect": "Theo Tông Môn",
+      "linhThach": "Linh Thạch lưu thông",
+      "tienNgoc": "Tiên Ngọc lưu thông",
+      "topupPending": "Topup chờ duyệt",
+      "topupApproved": "Topup đã duyệt",
+      "topupRejected": "Topup từ chối",
+      "last24hLogins": "Login 24h qua",
+      "last7dRegistrations": "Đăng ký 7 ngày qua"
     },
     "noPermission": "Bạn không có quyền vào khu này.",
     "users": {

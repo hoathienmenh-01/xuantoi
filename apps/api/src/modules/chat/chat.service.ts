@@ -1,8 +1,12 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable, Optional } from '@nestjs/common';
 import { ChatChannel } from '@prisma/client';
 import { PrismaService } from '../../common/prisma.service';
 import { RealtimeService } from '../realtime/realtime.service';
 import { MissionService } from '../mission/mission.service';
+import {
+  InMemorySlidingWindowRateLimiter,
+  RateLimiter,
+} from '../../common/rate-limiter';
 
 class ChatError extends Error {
   constructor(
@@ -29,19 +33,37 @@ export interface ChatMessageView {
 
 const MAX_HISTORY = 100;
 const MAX_TEXT_LEN = 200;
-const RATE_LIMIT_MS = 1500;
 const HISTORY_RETENTION = 500;
+
+/**
+ * Giới hạn chat mỗi người: 8 tin trong 30 giây. Áp dụng chung cho cả
+ * kênh WORLD lẫn SECT (spam 1 chỗ = rate-limit cả 2 chỗ, chặn chiến
+ * thuật đổi kênh để spam tiếp).
+ *
+ * Cross-instance: limiter phải dùng Redis sliding window nếu scale > 1
+ * replica; in-memory fallback chỉ dùng khi test/dev không có Redis.
+ */
+export const CHAT_RATE_LIMIT_WINDOW_MS = 30_000;
+export const CHAT_RATE_LIMIT_MAX = 8;
+export const CHAT_RATE_LIMITER = Symbol('CHAT_RATE_LIMITER');
 
 @Injectable()
 export class ChatService {
-  /// In-memory rate limiter: senderId -> last sent ts.
-  private readonly lastSent = new Map<string, number>();
+  private readonly limiter: RateLimiter;
 
   constructor(
     private readonly prisma: PrismaService,
     private readonly realtime: RealtimeService,
     private readonly missions: MissionService,
-  ) {}
+    @Optional() @Inject(CHAT_RATE_LIMITER) limiter?: RateLimiter,
+  ) {
+    this.limiter =
+      limiter ??
+      new InMemorySlidingWindowRateLimiter(
+        CHAT_RATE_LIMIT_WINDOW_MS,
+        CHAT_RATE_LIMIT_MAX,
+      );
+  }
 
   async historyWorld(): Promise<ChatMessageView[]> {
     return this.fetchHistory(ChatChannel.WORLD, 'world');
@@ -113,10 +135,8 @@ export class ChatService {
     });
     if (!char) throw new ChatError('NO_CHARACTER');
 
-    const now = Date.now();
-    const last = this.lastSent.get(char.id) ?? 0;
-    if (now - last < RATE_LIMIT_MS) throw new ChatError('RATE_LIMITED');
-    this.lastSent.set(char.id, now);
+    const rl = await this.limiter.check(char.id);
+    if (!rl.allowed) throw new ChatError('RATE_LIMITED');
 
     const row = await this.prisma.chatMessage.create({
       data: {

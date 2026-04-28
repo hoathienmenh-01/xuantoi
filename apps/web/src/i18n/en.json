@@ -17,6 +17,7 @@
     "yes": "Yes",
     "no": "No",
     "reload": "Reload",
+    "refresh": "Refresh",
     "search": "Search",
     "total": "Total",
     "page": "Page",
@@ -176,6 +177,8 @@
       "sect": "Sect",
       "boss": "World Boss",
       "missions": "Missions",
+      "mail": "Mail",
+      "giftcode": "Gift Code",
       "topup": "Top Up",
       "admin": "Admin"
     }
@@ -215,6 +218,60 @@
       "MISSION_UNKNOWN": "Mission not found.",
       "NOT_READY": "Requirements not met.",
       "ALREADY_CLAIMED": "Mission already claimed.",
+      "UNAUTHENTICATED": "Session expired. Please log in again.",
+      "UNKNOWN": "Unknown error."
+    }
+  },
+  "mail": {
+    "title": "Mailbox",
+    "empty": "Your mailbox is empty.",
+    "selectHint": "Select a mail to read.",
+    "claim": "Claim",
+    "claimToast": "Claimed rewards from: {subject}",
+    "unread": "Unread",
+    "unreadBadge": "{n} unread",
+    "rewardBadge": "Gift",
+    "from": "From",
+    "expiresAt": "Expires",
+    "status": {
+      "claimed": "Claimed"
+    },
+    "reward": {
+      "label": "Rewards",
+      "linhThach": "Spirit Stones",
+      "tienNgoc": "Jade",
+      "exp": "EXP"
+    },
+    "errors": {
+      "NO_CHARACTER": "No character created yet.",
+      "MAIL_NOT_FOUND": "Mail not found.",
+      "MAIL_EXPIRED": "Mail has expired.",
+      "NO_REWARD": "This mail has no rewards.",
+      "ALREADY_CLAIMED": "Mail already claimed.",
+      "UNAUTHENTICATED": "Session expired. Please log in again.",
+      "UNKNOWN": "Unknown error."
+    }
+  },
+  "giftcode": {
+    "title": "Redeem Gift Code",
+    "hint": "Enter a gift code to claim rewards. Each code can be used once per account.",
+    "placeholder": "Enter code…",
+    "redeem": "Redeem",
+    "successToast": "Redeemed code {code}",
+    "lastReward": "Rewards from {code}",
+    "reward": {
+      "linhThach": "Spirit Stones",
+      "tienNgoc": "Jade",
+      "exp": "EXP"
+    },
+    "errors": {
+      "CODE_NOT_FOUND": "Code not found.",
+      "CODE_EXPIRED": "Code has expired.",
+      "CODE_REVOKED": "Code has been revoked.",
+      "CODE_EXHAUSTED": "Code has been fully claimed.",
+      "ALREADY_REDEEMED": "You have already redeemed this code.",
+      "NO_CHARACTER": "Create a character first.",
+      "INVALID_INPUT": "Invalid code.",
       "UNAUTHENTICATED": "Session expired. Please log in again.",
       "UNKNOWN": "Unknown error."
     }
@@ -502,9 +559,28 @@
     "title": "Admin",
     "roleLabel": "Role: {role}",
     "tab": {
+      "stats": "Overview",
       "users": "Users",
       "topups": "Top-ups",
       "audit": "Audit"
+    },
+    "stats": {
+      "users": "Users",
+      "characters": "Characters",
+      "economy": "Economy",
+      "activity": "Activity",
+      "total": "Total",
+      "admins": "Admins",
+      "banned": "Banned",
+      "cultivating": "Cultivating",
+      "bySect": "By Sect",
+      "linhThach": "Spirit Stones in circulation",
+      "tienNgoc": "Tien Ngoc in circulation",
+      "topupPending": "Top-ups pending",
+      "topupApproved": "Top-ups approved",
+      "topupRejected": "Top-ups rejected",
+      "last24hLogins": "Logins last 24h",
+      "last7dRegistrations": "Registrations last 7d"
     },
     "noPermission": "You do not have access to this area.",
     "users": {

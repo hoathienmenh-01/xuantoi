@@ -14,6 +14,9 @@ import { TopupModule } from './modules/topup/topup.module';
 import { AdminModule } from './modules/admin/admin.module';
 import { OpsModule } from './modules/ops/ops.module';
 import { MissionModule } from './modules/mission/mission.module';
+import { GiftCodeModule } from './modules/giftcode/giftcode.module';
+import { MailModule } from './modules/mail/mail.module';
+import { HealthModule } from './modules/health/health.module';
 import { RedisModule } from './common/redis.module';
 
 @Module({
@@ -34,6 +37,9 @@ import { RedisModule } from './common/redis.module';
     AdminModule,
     OpsModule,
     MissionModule,
+    GiftCodeModule,
+    MailModule,
+    HealthModule,
   ],
 })
 export class AppModule {}
