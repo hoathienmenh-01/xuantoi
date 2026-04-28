@@ -85,6 +85,15 @@ function handleErr(e: unknown): void {
 
 const unread = computed(() => mails.value.filter((m) => !m.readAt).length);
 
+function hasAnyReward(m: MailView): boolean {
+  return (
+    m.rewardLinhThach !== '0' ||
+    m.rewardTienNgoc > 0 ||
+    m.rewardExp !== '0' ||
+    m.rewardItems.length > 0
+  );
+}
+
 function rewardSummary(m: MailView): string {
   const parts: string[] = [];
   if (m.rewardLinhThach !== '0')
@@ -198,12 +207,7 @@ function formatDate(iso: string): string {
           </div>
 
           <div
-            v-if="
-              selected.rewardLinhThach !== '0' ||
-              selected.rewardTienNgoc > 0 ||
-              selected.rewardExp !== '0' ||
-              selected.rewardItems.length
-            "
+            v-if="hasAnyReward(selected)"
             class="mt-3 text-[12px] text-ink-200 border border-ink-300/30 rounded p-2"
           >
             {{ t('mail.reward.label') }}: {{ rewardSummary(selected) }}
