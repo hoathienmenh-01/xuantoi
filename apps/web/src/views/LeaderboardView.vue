@@ -7,6 +7,7 @@ import { onMounted, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { realmByKey, fullRealmName } from '@xuantoi/shared';
 import AppShell from '@/components/shell/AppShell.vue';
+import SkeletonTable from '@/components/ui/SkeletonTable.vue';
 import { fetchLeaderboardPower, type LeaderboardRow } from '@/api/leaderboard';
 
 const { t } = useI18n();
@@ -49,9 +50,12 @@ onMounted(load);
         <span class="text-xs text-ink-300">{{ t('leaderboard.subtitle') }}</span>
       </header>
 
-      <div v-if="loading" class="py-8 text-center text-sm text-ink-300">
-        {{ t('leaderboard.loading') }}
-      </div>
+      <SkeletonTable
+        v-if="loading"
+        :rows="10"
+        :cols="5"
+        test-id="leaderboard-skeleton"
+      />
       <div v-else-if="error" class="py-8 text-center text-sm text-red-400">
         {{ t('leaderboard.error') }}
         <button

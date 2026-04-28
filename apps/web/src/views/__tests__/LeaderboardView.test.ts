@@ -77,7 +77,7 @@ describe('LeaderboardView', () => {
     fetchMock.mockReset();
   });
 
-  it('hiển thị loading state khi đang fetch', async () => {
+  it('hiển thị skeleton loader khi đang fetch (G13 — L5)', async () => {
     let resolveFetch: (rows: LeaderboardRow[]) => void = () => {};
     fetchMock.mockReturnValue(
       new Promise<LeaderboardRow[]>((r) => {
@@ -86,9 +86,11 @@ describe('LeaderboardView', () => {
     );
     const w = mountView();
     await w.vm.$nextTick();
-    expect(w.text()).toContain('Đang truy vấn');
+    expect(w.find('[data-testid="leaderboard-skeleton"]').exists()).toBe(true);
+    expect(w.find('[data-testid="leaderboard-table"]').exists()).toBe(false);
     resolveFetch([]);
     await flushPromises();
+    expect(w.find('[data-testid="leaderboard-skeleton"]').exists()).toBe(false);
   });
 
   it('empty state khi rows rỗng', async () => {
