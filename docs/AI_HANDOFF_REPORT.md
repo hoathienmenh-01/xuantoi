@@ -1,12 +1,12 @@
 # AI Handoff Report — Xuân Tôi
 
-> **Snapshot**: `main` @ commit `ce6da28` (28 Apr 2026, sau khi PR #33..#40 merged).
-> **Người viết**: AI engineer session 28/4 (audit chuỗi PR #33..#40 + cập nhật report).
+> **Snapshot**: `main` @ commit `4d8af10` (28 Apr 2026, sau khi PR #33..#44 merged).
+> **Người viết**: AI engineer session 28/4 (audit chuỗi PR #33..#40 + replay PR #42/#43 + i18n re-audit).
 > **Đối tượng đọc**: AI kế nhiệm sẽ tiếp tục đưa dự án tới beta / production.
 >
 > Báo cáo trung thực. Mọi tuyên bố "đã xong" đều có PR + file + test chứng minh. Khi chưa verify runtime, ghi rõ **"Needs runtime smoke"**.
 >
-> **Trạng thái audit (28/4 session 3)**: 8 PR (#33→#40) đã merge `main`. PR #41 (audit docs) đã merge `main`. PR #42 (M1 mission VN tz) + PR #43 (M5 ledger index) merged vào feature branch của PR #41 nhưng **không** vào `main` trực tiếp (auto-retarget không kích hoạt khi squash-merge) → cần PR replay (`devin/<ts>-replay-pr-42-43`) bring 2 commit vào `main`. Smoke E2E session 3 đã chạy trên branch tip combined — pass 6/6. Xem `## Recent Changes`.
+> **Trạng thái (28/4 session 3)**: PR #33→#44 đã merge `main`. PR #44 replay PR #42 (M1 mission VN tz) + PR #43 (M5 ledger index) vào `main`, smoke E2E pass 6/6. PR F (L1 i18n re-audit) đang mở — fix 12 admin key vẫn còn English trong `vi.json`. Xem `## Recent Changes`.
 
 ---
 
@@ -792,7 +792,7 @@ _(Không có lỗi làm app không chạy / mất tiền / auth hỏng tại com
 
 | # | Issue | Status / Fix |
 |---|---|---|
-| L1 | Hard-code VN/EN còn lẻ tẻ. | **Open** — grep `[À-ỹ]` + `[A-Z][a-z]+ [A-Z]` trong `.vue/.ts` + thay bằng `t()`. Cần re-audit sau khi thêm settings/profile/shop/boss-admin (~75 key mới). |
+| L1 | Hard-code VN/EN còn lẻ tẻ. | **Resolved (PR F)** — audit cuối: 554/554 key và vi.json/en.json sync, 400 used key all resolve. Fix 12 key admin vẫn English (`roleLabel`, `tab.audit`, `users.col.role`, `users.banned`, `roleChangeConfirm`, `roleChangedToast`, `topups.col.user/status/note`, `audit.col.actor/action/meta`). Các "identical en≡vi" còn lại (locale names, EXP, HP/MP, WS, OK, Boss, A Linh, currency names) là đúng ý đồ — universal/native term. |
 | L2 | Market fee 5% hard-code. | **Open** — đưa ra `config` namespace. |
 | L3 | Proverbs loading screen chỉ 30+ câu — lặp nhanh. | **Open** — mở rộng corpus. |
 | L4 | Không có tên item localized (FE `MissionView` hiển thị `itemKey ×qty`). | **Open** — thêm helper `itemName(key, locale)`. |
@@ -1018,13 +1018,14 @@ Admin hiện tại có thể vào `/admin` → Users → tìm → **Set role = A
 - **File**: `apps/api/src/modules/admin/admin.guard.ts` thêm `RequireAdmin` decorator/guard phân biệt. Update controller cho grant/approve/broadcast/spawn-boss yêu cầu ADMIN; giữ MOD cho ban/role-set + chat moderation. Test guard.
 - **Risk**: medium — đổi quyền thực tế, phải đồng bộ FE check.
 
-#### PR F — L1 i18n gap re-audit
-- **File**: grep `[À-ỹ]` trong `apps/web/src/**/*.{vue,ts}`, fix bằng `t()`. Thêm helper `itemName(key, locale)` cho mission/mail/giftcode/shop reward render.
-- **Risk**: thấp, chỉ đổi template.
+#### ~~PR F — L1 i18n gap re-audit~~ **Done tại PR (này)**
+- Audit `apps/web/src/i18n/{vi,en}.json` 554/554 key sync, 400 used key all resolve, 0 missing.
+- Fix 12 key admin vẫn English trong `vi.json` (roleLabel, tab.audit, users.col.role, users.banned, roleChangeConfirm, roleChangedToast, topups.col.user/status/note, audit.col.actor/action/meta) → dịch sang Việt.
+- Helper `itemName(key, locale)` (L4) vẫn open — tách thành PR riêng khi có catalog item l10n.
 
 #### Thứ tự đề xuất cho AI tiếp theo
-**A (smoke) → B (Vitest+Playwright) → ~~C (timezone)~~ → ~~D (index)~~ → E (guard split) → F (i18n)**.  
-(C đã Done tại PR #42; D đã Done tại PR #43.)
+**~~A (smoke)~~ → B (Vitest+Playwright) → ~~C (timezone)~~ → ~~D (index)~~ → E (guard split) → ~~F (i18n)~~**.  
+(A Done qua PR #44 smoke E2E pass 6/6; C Done tại PR #42; D Done tại PR #43; F Done tại PR này.) **Nên làm tiếp B (Vitest+Playwright wire) hoặc E (admin guard split).**
 
 #### Post-beta backlog
 Leaderboard / Alchemy / Refinery / Arena / Pet / Companion / Event / Battle Pass / `forgot-password` / `mission:progress` WS / `ADMIN_REVOKE` endpoint.
