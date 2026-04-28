@@ -183,6 +183,13 @@ async function logout(): Promise<void> {
           禮 {{ t('shell.nav.giftcode') }}
         </RouterLink>
         <RouterLink
+          to="/leaderboard"
+          class="px-3 py-2 rounded hover:bg-ink-700/60"
+          active-class="bg-ink-700/60 text-ink-50"
+        >
+          榜 {{ t('shell.nav.leaderboard') }}
+        </RouterLink>
+        <RouterLink
           to="/topup"
           class="px-3 py-2 rounded hover:bg-ink-700/60 relative"
           active-class="bg-ink-700/60 text-ink-50"

@@ -205,6 +205,7 @@
       "missions": "Nhiệm Vụ",
       "mail": "Thư Sứ",
       "giftcode": "Lễ Mã",
+      "leaderboard": "Phong Thần Bảng",
       "topup": "Nạp Tiên Ngọc",
       "settings": "Tâm Pháp",
       "admin": "Quản Trị"
@@ -212,6 +213,25 @@
     "badge": {
       "bossActive": "Boss đang xuất thế",
       "topupPending": "Đơn nạp đang chờ duyệt"
+    },
+    "sect": {
+      "thanh_van": "Thanh Vân Môn",
+      "huyen_thuy": "Huyền Thuỷ Cung",
+      "tu_la": "Tu La Tông"
+    }
+  },
+  "leaderboard": {
+    "title": "Phong Thần Bảng",
+    "subtitle": "Top 50 đạo hữu mạnh nhất — sort theo cảnh giới và lực.",
+    "loading": "Đang truy vấn thiên cơ…",
+    "error": "Không truy vấn được bảng.",
+    "retry": "Thử lại",
+    "empty": "Chưa có đạo hữu nào lên bảng.",
+    "col": {
+      "name": "Đạo Hiệu",
+      "realm": "Cảnh Giới",
+      "sect": "Tông Môn",
+      "power": "Lực"
     }
   },
   "profile": {
