@@ -3,6 +3,7 @@ import { CurrencyKind, Prisma } from '@prisma/client';
 import { PrismaService } from '../../common/prisma.service';
 import { CurrencyService } from '../character/currency.service';
 import { InventoryService } from '../inventory/inventory.service';
+import { RealtimeService } from '../realtime/realtime.service';
 
 export class MailError extends Error {
   constructor(
@@ -89,6 +90,7 @@ export class MailService {
     private readonly prisma: PrismaService,
     private readonly currency: CurrencyService,
     private readonly inventory: InventoryService,
+    private readonly realtime: RealtimeService,
   ) {}
 
   async inbox(userId: string): Promise<MailView[]> {
@@ -192,7 +194,7 @@ export class MailService {
     this.validateInput(input);
     const exists = await this.prisma.character.findUnique({
       where: { id: input.recipientCharacterId },
-      select: { id: true },
+      select: { id: true, userId: true },
     });
     if (!exists) throw new MailError('RECIPIENT_NOT_FOUND');
     const row = await this.prisma.mail.create({
@@ -209,13 +211,22 @@ export class MailService {
         createdByAdminId: input.createdByAdminId ?? null,
       },
     });
-    return toView(row, new Date());
+    const view = toView(row, new Date());
+    this.realtime.emitToUser(exists.userId, 'mail:new', {
+      mailId: view.id,
+      subject: view.subject,
+      senderName: view.senderName,
+      hasReward: view.claimable,
+    });
+    return view;
   }
 
   /** Gửi cho TẤT CẢ nhân vật hiện có. Trả về số thư đã tạo. */
   async broadcast(input: MailBroadcastInput): Promise<number> {
     this.validateInput(input);
-    const chars = await this.prisma.character.findMany({ select: { id: true } });
+    const chars = await this.prisma.character.findMany({
+      select: { id: true, userId: true },
+    });
     if (chars.length === 0) return 0;
     await this.prisma.mail.createMany({
       data: chars.map((c) => ({
@@ -231,6 +242,18 @@ export class MailService {
         createdByAdminId: input.createdByAdminId ?? null,
       })),
     });
+    const hasReward =
+      (input.rewardLinhThach ?? 0n) > 0n ||
+      (input.rewardTienNgoc ?? 0) > 0 ||
+      (input.rewardExp ?? 0n) > 0n ||
+      (input.rewardItems ?? []).length > 0;
+    for (const c of chars) {
+      this.realtime.emitToUser(c.userId, 'mail:new', {
+        subject: input.subject,
+        senderName: input.senderName ?? 'Thiên Đạo Sứ Giả',
+        hasReward,
+      });
+    }
     return chars.length;
   }
 

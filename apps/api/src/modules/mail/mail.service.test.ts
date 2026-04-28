@@ -21,7 +21,7 @@ beforeAll(() => {
   const chars = new CharacterService(prisma, realtime);
   const currency = new CurrencyService(prisma);
   const inventory = new InventoryService(prisma, realtime, chars);
-  mail = new MailService(prisma, currency, inventory);
+  mail = new MailService(prisma, currency, inventory, realtime);
 });
 
 beforeEach(async () => {

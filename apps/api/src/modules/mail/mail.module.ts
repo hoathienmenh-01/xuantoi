@@ -5,9 +5,10 @@ import { PrismaService } from '../../common/prisma.service';
 import { AuthModule } from '../auth/auth.module';
 import { CharacterModule } from '../character/character.module';
 import { InventoryModule } from '../inventory/inventory.module';
+import { RealtimeModule } from '../realtime/realtime.module';
 
 @Module({
-  imports: [AuthModule, CharacterModule, InventoryModule],
+  imports: [AuthModule, CharacterModule, InventoryModule, RealtimeModule],
   controllers: [MailController],
   providers: [MailService, PrismaService],
   exports: [MailService],

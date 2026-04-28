@@ -1,6 +1,7 @@
 import { Module, OnModuleInit } from '@nestjs/common';
 import { BullModule } from '@nestjs/bullmq';
 import { PrismaService } from '../../common/prisma.service';
+import { MailModule } from '../mail/mail.module';
 import { OPS_QUEUE } from './ops.queue';
 import { OpsService } from './ops.service';
 import { OpsProcessor } from './ops.processor';
@@ -15,6 +16,7 @@ import { OpsProcessor } from './ops.processor';
       }),
     }),
     BullModule.registerQueue({ name: OPS_QUEUE }),
+    MailModule,
   ],
   providers: [OpsProcessor, OpsService, PrismaService],
   exports: [OpsService],

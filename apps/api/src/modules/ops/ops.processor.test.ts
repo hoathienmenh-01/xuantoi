@@ -1,20 +1,32 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import type { Job } from 'bullmq';
 import { PrismaService } from '../../common/prisma.service';
-import { TEST_DATABASE_URL, wipeAll } from '../../test-helpers';
+import { TEST_DATABASE_URL, makeUserChar, wipeAll } from '../../test-helpers';
+import { CharacterService } from '../character/character.service';
+import { CurrencyService } from '../character/currency.service';
+import { InventoryService } from '../inventory/inventory.service';
+import { MailService } from '../mail/mail.service';
+import { RealtimeService } from '../realtime/realtime.service';
 import { OpsProcessor } from './ops.processor';
 import {
   LOGIN_ATTEMPT_TTL_DAYS,
+  MAIL_CLAIMED_TTL_DAYS,
   REFRESH_TOKEN_STALE_TTL_DAYS,
 } from './ops.queue';
 
 let prisma: PrismaService;
 let processor: OpsProcessor;
+let mail: MailService;
 
 beforeAll(() => {
   process.env.DATABASE_URL = TEST_DATABASE_URL;
   prisma = new PrismaService();
-  processor = new OpsProcessor(prisma);
+  const realtime = new RealtimeService();
+  const chars = new CharacterService(prisma, realtime);
+  const currency = new CurrencyService(prisma);
+  const inventory = new InventoryService(prisma, realtime, chars);
+  mail = new MailService(prisma, currency, inventory, realtime);
+  processor = new OpsProcessor(prisma, mail);
 });
 
 beforeEach(async () => {
@@ -164,6 +176,36 @@ describe('OpsProcessor.process (prune)', () => {
 
     const count = await prisma.adminAuditLog.count();
     expect(count).toBe(1);
+  });
+
+  it('xoá Mail đã claim > 90 ngày, giữ ≤ 90 ngày', async () => {
+    const u = await makeUserChar(prisma);
+    // Mail đã claim cũ > 90 ngày → xoá.
+    await prisma.mail.create({
+      data: {
+        recipientId: u.characterId,
+        senderName: 'X',
+        subject: 'old',
+        body: 'b',
+        claimedAt: new Date(Date.now() - (MAIL_CLAIMED_TTL_DAYS + 5) * DAY),
+      },
+    });
+    // Mail đã claim mới → giữ.
+    await prisma.mail.create({
+      data: {
+        recipientId: u.characterId,
+        senderName: 'X',
+        subject: 'fresh',
+        body: 'b',
+        claimedAt: new Date(Date.now() - 5 * DAY),
+      },
+    });
+
+    await processor.process(pruneJob());
+
+    const remaining = await prisma.mail.findMany();
+    expect(remaining).toHaveLength(1);
+    expect(remaining[0].subject).toBe('fresh');
   });
 
   it('chạy lại 2 lần không lỗi (idempotent)', async () => {
