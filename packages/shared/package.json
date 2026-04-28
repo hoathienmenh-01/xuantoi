@@ -46,6 +46,11 @@
       "import": "./dist/items.js",
       "require": "./dist/items.cjs"
     },
+    "./missions": {
+      "types": "./dist/missions.d.ts",
+      "import": "./dist/missions.js",
+      "require": "./dist/missions.cjs"
+    },
     "./topup": {
       "types": "./dist/topup.d.ts",
       "import": "./dist/topup.js",
