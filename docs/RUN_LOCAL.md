@@ -1,0 +1,135 @@
+# Xuân Tôi — Run Local
+
+Hướng dẫn dựng môi trường dev đầy đủ trên 1 máy. Quá trình gồm: cài dep → bật infra Docker → migrate DB → bootstrap admin → chạy web + api song song. Tổng thời gian sạch khoảng 5–10 phút.
+
+## Yêu cầu hệ thống
+
+| Thành phần | Phiên bản tối thiểu |
+|---|---|
+| Node.js | `>= 20` (khuyến nghị 20.x LTS) |
+| pnpm | `>= 9` (`packageManager` đã pin `9.15.1`) |
+| Docker | bất kỳ phiên bản hỗ trợ Compose v2 |
+| RAM rảnh | ~ 2 GB (Postgres + Redis + MinIO + MailHog + 2 dev server) |
+
+> Chỉ cần **Docker Desktop** trên Mac/Win, hoặc `docker.io` + `docker compose` trên Linux. Không cần cài Postgres / Redis trực tiếp.
+
+## 1. Clone + cài deps
+
+```bash
+git clone https://github.com/hoathienmenh-01/xuantoi.git
+cd xuantoi
+pnpm install
+```
+
+## 2. Bật infra Docker
+
+```bash
+pnpm infra:up
+```
+
+Spin up 4 container (xem `infra/docker-compose.dev.yml`):
+
+| Service | Port | Credential dev |
+|---|---|---|
+| Postgres 16 | 5432 | `mtt` / `mtt`, db `mtt` |
+| Redis 7 | 6379 | (no auth) |
+| MinIO | 9000 (S3) / 9001 (UI) | `admin` / `admin12345` |
+| MailHog | 1025 (SMTP) / 8025 (UI) | (no auth) |
+
+Tắt: `pnpm infra:down`. Volume `infra_pgdata` + `infra_minio` persist giữa lần `up`/`down`. Để xoá sạch: `docker compose -f infra/docker-compose.dev.yml down -v`.
+
+## 3. Tạo file env
+
+```bash
+cp apps/api/.env.example apps/api/.env
+cp apps/web/.env.example apps/web/.env
+```
+
+Chỉnh `apps/api/.env`:
+
+- `INITIAL_ADMIN_EMAIL=admin@xt.local`
+- `INITIAL_ADMIN_PASSWORD=<password tối thiểu 8 ký tự>`
+- (giữ nguyên `JWT_*`, `DATABASE_URL`, `REDIS_URL` cho dev)
+
+> Production cần `JWT_ACCESS_SECRET` + `JWT_REFRESH_SECRET` ≥ 32 ký tự ngẫu nhiên — xem `docs/DEPLOY.md` và `docs/SECURITY.md`.
+
+## 4. Sinh Prisma client + migrate
+
+```bash
+pnpm --filter @xuantoi/api prisma:generate
+pnpm --filter @xuantoi/api prisma:migrate     # dev: tạo migration mới nếu schema thay đổi
+# hoặc trên môi trường mới đã có sẵn migration:
+pnpm --filter @xuantoi/api exec prisma migrate deploy
+```
+
+Lần đầu chạy `prisma:migrate` sẽ áp dụng toàn bộ migration trong `apps/api/prisma/migrations/`.
+
+## 5. Bootstrap admin đầu tiên + 3 tông môn
+
+```bash
+pnpm --filter @xuantoi/api bootstrap
+```
+
+Script idempotent (xem `apps/api/scripts/bootstrap.ts`):
+
+- Tạo user ADMIN nếu chưa có (đọc `INITIAL_ADMIN_EMAIL` + `INITIAL_ADMIN_PASSWORD`).
+- Nếu user đã có với role PLAYER → promote ADMIN, **không** đổi password.
+- Upsert 3 sect: Thanh Vân Môn, Huyền Thuỷ Cung, Tu La Điện.
+
+Chạy lại an toàn — không tạo duplicate, không reset password admin có sẵn.
+
+> Đã có admin nhưng không nhớ password? Hiện không có script reset — dùng `prisma studio` (`pnpm --filter @xuantoi/api exec prisma studio`) cập nhật `passwordHash` thủ công, hoặc xoá user rồi chạy lại bootstrap.
+
+## 6. Chạy web + api song song
+
+```bash
+pnpm dev
+```
+
+Hoặc chạy riêng từng app trong 2 tab:
+
+```bash
+pnpm --filter @xuantoi/api dev
+pnpm --filter @xuantoi/web dev
+```
+
+URL mặc định:
+
+- Web (Vite): http://localhost:5173
+- API (Nest): http://localhost:3000 (prefix `/api`)
+- WS: `ws://localhost:3000/ws`
+- MailHog UI: http://localhost:8025
+- MinIO console: http://localhost:9001
+
+## 7. Test, lint, typecheck, build
+
+```bash
+pnpm typecheck                                       # Vue + Nest + shared
+pnpm lint                                            # eslint
+pnpm --filter @xuantoi/api test                      # Vitest API (real Postgres + Redis)
+pnpm --filter @xuantoi/shared test                   # Vitest shared (Zod / catalog)
+pnpm build                                           # api + web + shared
+```
+
+Lưu ý: API test dùng database `mtt` thật. Test sẽ `wipeAll` trước mỗi case → **không** chạy chung lúc API dev đang phục vụ user thật. Để tách: dùng env `TEST_DATABASE_URL` trỏ vào DB riêng.
+
+## 8. Reset DB sạch
+
+```bash
+pnpm --filter @xuantoi/api exec prisma migrate reset --force --skip-seed
+pnpm --filter @xuantoi/api bootstrap
+```
+
+`migrate reset` xoá toàn bộ data + reapply migration. Sau đó cần chạy lại `bootstrap` để có admin + sect.
+
+## 9. Tài khoản dev tham khảo
+
+Sau khi `bootstrap`:
+
+- Admin: `INITIAL_ADMIN_EMAIL` + `INITIAL_ADMIN_PASSWORD` → vào `/admin` ở UI.
+- Tạo player thường: đăng ký bình thường ở `/auth` rồi onboarding.
+- Promote 1 user nào đó lên ADMIN (đã có): `pnpm --filter @xuantoi/api exec ts-node scripts/promote-admin.ts user@email.local`.
+
+## 10. Các vấn đề thường gặp
+
+Xem `docs/TROUBLESHOOTING.md`.

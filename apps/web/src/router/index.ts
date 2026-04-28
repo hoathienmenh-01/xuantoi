@@ -34,6 +34,11 @@ const routes: RouteRecordRaw[] = [
     component: () => import('@/views/MarketView.vue'),
   },
   {
+    path: '/shop',
+    name: 'shop',
+    component: () => import('@/views/ShopView.vue'),
+  },
+  {
     path: '/sect',
     name: 'sect',
     component: () => import('@/views/SectView.vue'),
@@ -67,6 +72,11 @@ const routes: RouteRecordRaw[] = [
     path: '/admin',
     name: 'admin',
     component: () => import('@/views/AdminView.vue'),
+  },
+  {
+    path: '/settings',
+    name: 'settings',
+    component: () => import('@/views/SettingsView.vue'),
   },
   {
     path: '/:pathMatch(.*)*',

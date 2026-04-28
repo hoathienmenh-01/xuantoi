@@ -174,13 +174,55 @@
       "dungeon": "Luyện Khí Đường",
       "inventory": "Linh Bảo Các",
       "market": "Phường Thị",
+      "shop": "NPC Tiệm",
       "sect": "Tông Môn",
       "boss": "Boss Đại Hội",
       "missions": "Nhiệm Vụ",
       "mail": "Thư Sứ",
       "giftcode": "Lễ Mã",
       "topup": "Nạp Tiên Ngọc",
+      "settings": "Tâm Pháp",
       "admin": "Quản Trị"
+    }
+  },
+  "settings": {
+    "title": "Tâm Pháp Đường",
+    "subtitle": "Quản lý tài khoản, mật khẩu và phiên đăng nhập.",
+    "account": {
+      "title": "Thông Tin Đạo Hữu",
+      "email": "Email",
+      "role": "Vai Trò",
+      "createdAt": "Ngày nhập đạo"
+    },
+    "password": {
+      "title": "Đổi Mật Khẩu",
+      "hint": "Đổi xong sẽ tự logout toàn bộ thiết bị, hãy đăng nhập lại bằng mật khẩu mới.",
+      "old": "Mật khẩu hiện tại",
+      "new": "Mật khẩu mới",
+      "confirm": "Nhập lại mật khẩu mới",
+      "submit": "Cập nhật mật khẩu",
+      "empty": "Vui lòng nhập đủ mật khẩu cũ và mới.",
+      "mismatch": "Hai lần nhập mật khẩu mới không khớp.",
+      "tooShort": "Mật khẩu mới tối thiểu 8 ký tự.",
+      "success": "Đã đổi mật khẩu. Vui lòng đăng nhập lại."
+    },
+    "locale": {
+      "title": "Ngôn Ngữ",
+      "changed": "Đã đổi ngôn ngữ."
+    },
+    "logoutAll": {
+      "title": "Đăng xuất khỏi tất cả thiết bị",
+      "hint": "Thu hồi mọi phiên đăng nhập (kể cả thiết bị đang dùng). Trong vòng 1 access TTL (~15 phút) các thiết bị khác sẽ bị logout.",
+      "submit": "Đăng xuất tất cả",
+      "confirm": "Bạn chắc chắn muốn đăng xuất khỏi mọi thiết bị?",
+      "success": "Đã thu hồi {revoked} phiên đăng nhập."
+    },
+    "errors": {
+      "OLD_PASSWORD_WRONG": "Mật khẩu cũ không đúng.",
+      "PASSWORD_TOO_WEAK": "Mật khẩu mới quá yếu (tối thiểu 8 ký tự).",
+      "UNAUTHENTICATED": "Hết phiên, vui lòng đăng nhập lại.",
+      "RATE_LIMITED": "Quá nhiều yêu cầu, thử lại sau.",
+      "UNKNOWN": "Có lỗi xảy ra."
     }
   },
   "mission": {
@@ -424,6 +466,30 @@
       "UNKNOWN": "Có lỗi xảy ra, mời thử lại."
     }
   },
+  "shop": {
+    "title": "NPC Tiệm",
+    "subtitle": "Mua đan dược và trang bị phổ thông từ NPC.",
+    "balance": "Linh Thạch",
+    "qty": "Số lượng",
+    "buy": "Mua",
+    "empty": "Tiệm trống.",
+    "nonStackable": "1 cái / lượt mua",
+    "buyOk": "Đã mua {qty} × {name} với {price} linh thạch.",
+    "currency": {
+      "linhThach": "linh thạch",
+      "tienNgoc": "tiên ngọc"
+    },
+    "errors": {
+      "loadFail": "Tải danh sách tiệm thất bại.",
+      "INSUFFICIENT_FUNDS": "Không đủ linh thạch.",
+      "ITEM_NOT_IN_SHOP": "Vật phẩm không có trong tiệm.",
+      "INVALID_QTY": "Số lượng không hợp lệ.",
+      "NON_STACKABLE_QTY_GT_1": "Vật phẩm này chỉ mua 1 cái mỗi lần.",
+      "NO_CHARACTER": "Bạn chưa tạo nhân vật.",
+      "UNAUTHENTICATED": "Vui lòng đăng nhập lại.",
+      "UNKNOWN": "Có lỗi xảy ra, mời thử lại."
+    }
+  },
   "sect": {
     "title": "Tông Môn",
     "tab": {
@@ -562,7 +628,8 @@
       "stats": "Tổng quan",
       "users": "Người dùng",
       "topups": "Đơn nạp",
-      "audit": "Audit"
+      "audit": "Audit",
+      "boss": "Boss"
     },
     "stats": {
       "users": "Người dùng",
@@ -643,6 +710,16 @@
         "meta": "Meta"
       }
     },
+    "boss": {
+      "title": "Triệu hồi Boss thế giới",
+      "hint": "Bỏ trống bossKey để tự xoay theo thứ tự catalog. Nếu đang có boss ACTIVE, bật \"Force\" để expire boss cũ rồi spawn boss mới.",
+      "bossKey": "Boss key (vd: huyet_ma)",
+      "level": "Cấp độ (1-10)",
+      "force": "Force (expire boss đang có)",
+      "spawn": "Triệu hồi",
+      "spawned": "Đã triệu hồi {name} Lv.{level}",
+      "currentlyActive": "Đang có boss ACTIVE: {name} Lv.{level}"
+    },
     "errors": {
       "UNAUTHENTICATED": "Hết phiên, hãy đăng nhập lại.",
       "FORBIDDEN": "Không đủ quyền.",
@@ -650,6 +727,9 @@
       "ALREADY_PROCESSED": "Đơn đã được xử lý.",
       "INVALID_INPUT": "Tham số không hợp lệ (vượt giới hạn / âm quá mức).",
       "CANNOT_TARGET_SELF": "Không thể tự thao tác lên bản thân.",
+      "BOSS_ALREADY_ACTIVE": "Đang có boss ACTIVE. Bật Force để thay.",
+      "INVALID_BOSS_KEY": "Boss key không có trong catalog.",
+      "INVALID_LEVEL": "Cấp độ phải là số nguyên 1..10.",
       "UNKNOWN": "Có lỗi xảy ra."
     }
   }

@@ -31,7 +31,10 @@ export class BossError extends Error {
       | 'STAMINA_LOW'
       | 'MP_LOW'
       | 'HP_LOW'
-      | 'SKILL_NOT_USABLE',
+      | 'SKILL_NOT_USABLE'
+      | 'BOSS_ALREADY_ACTIVE'
+      | 'INVALID_BOSS_KEY'
+      | 'INVALID_LEVEL',
   ) {
     super(code);
   }
@@ -377,11 +380,21 @@ export class BossService implements OnModuleInit, OnModuleDestroy {
     await this.spawnNew();
   }
 
-  private async spawnNew(): Promise<void> {
-    // Đếm tổng số boss đã spawn để rotate.
-    const totalSpawned = await this.prisma.worldBoss.count();
-    const def = BOSSES[totalSpawned % BOSSES.length];
-    const level = Math.min(10, 1 + Math.floor(totalSpawned / BOSSES.length));
+  private async spawnNew(
+    overrides: { def?: BossDef; level?: number } = {},
+  ): Promise<{ id: string; bossKey: string; level: number; maxHp: bigint }> {
+    let def: BossDef;
+    let level: number;
+    if (overrides.def) {
+      def = overrides.def;
+      level = overrides.level ?? 1;
+    } else {
+      // Auto-rotate: đếm tổng số boss đã spawn để chọn def.
+      // Level: ưu tiên override (admin truyền), fallback về auto-rotate.
+      const totalSpawned = await this.prisma.worldBoss.count();
+      def = BOSSES[totalSpawned % BOSSES.length];
+      level = overrides.level ?? Math.min(10, 1 + Math.floor(totalSpawned / BOSSES.length));
+    }
     const maxHp = BigInt(def.baseMaxHp) * BigInt(level);
 
     const created = await this.prisma.worldBoss.create({
@@ -409,6 +422,90 @@ export class BossService implements OnModuleInit, OnModuleDestroy {
       expiresAt: created.expiresAt.toISOString(),
     });
     this.logger.log(`Boss spawn: ${created.name} Lv.${created.level} maxHp=${maxHp}`);
+    return { id: created.id, bossKey: created.bossKey, level: created.level, maxHp };
+  }
+
+  /**
+   * Admin force-spawn 1 boss mới. Nếu đã có boss ACTIVE và `force=false` →
+   * throw BOSS_ALREADY_ACTIVE. Nếu force=true → expire boss cũ rồi spawn.
+   *
+   * Ghi `AdminAuditLog` action `BOSS_SPAWN` với meta đầy đủ.
+   */
+  async adminSpawn(
+    actorId: string,
+    opts: { bossKey?: string; level?: number; force?: boolean } = {},
+  ): Promise<{ id: string; bossKey: string; level: number; maxHp: string }> {
+    const level = opts.level ?? 1;
+    if (!Number.isInteger(level) || level < 1 || level > 10) {
+      throw new BossError('INVALID_LEVEL');
+    }
+    let def: BossDef | undefined;
+    if (opts.bossKey) {
+      def = bossByKey(opts.bossKey);
+      if (!def) throw new BossError('INVALID_BOSS_KEY');
+    }
+
+    const active = await this.prisma.worldBoss.findFirst({
+      where: { status: BossStatus.ACTIVE },
+      orderBy: { spawnedAt: 'desc' },
+    });
+    // replacedBossId chỉ ghi vào audit khi force-expire thực sự diễn ra
+    // (flip.count > 0). Trường hợp race với player kill boss giữa findFirst
+    // và update → flip=0 → audit log không nói dối là admin đã thay boss đó.
+    let replacedBossId: string | null = null;
+    if (active) {
+      if (!opts.force) throw new BossError('BOSS_ALREADY_ACTIVE');
+      // Optimistic lock: chỉ flip ACTIVE → EXPIRED. Nếu giữa findFirst và đây
+      // boss đã bị defeat (DEFEATED) bởi player thì skip — không ghi đè
+      // historical record. updateMany với status=ACTIVE filter là cách
+      // an toàn để tránh race condition này.
+      const flip = await this.prisma.worldBoss.updateMany({
+        where: { id: active.id, status: BossStatus.ACTIVE },
+        data: { status: BossStatus.EXPIRED, defeatedAt: new Date() },
+      });
+      if (flip.count > 0) {
+        replacedBossId = active.id;
+        // Phát thưởng EXPIRED 60% pool cho người tham chiến — KHÔNG được
+        // skip kể cả khi admin force, nếu không người chơi đã đầu tư
+        // stamina/MP/thời gian sẽ mất trắng phần thưởng (Devin Review
+        // #36 #3153247323). Khớp đúng pattern heartbeat() line 355-363.
+        const activeDef = bossByKey(active.bossKey);
+        if (activeDef) {
+          const slices = await this.distributeRewardsExpired(active.id, activeDef);
+          this.realtime.broadcast('boss:end', {
+            id: active.id,
+            status: 'EXPIRED',
+            rewards: slices,
+          });
+        } else {
+          this.realtime.broadcast('boss:end', {
+            id: active.id,
+            status: BossStatus.EXPIRED,
+          });
+        }
+      }
+    }
+
+    const spawned = await this.spawnNew({ def, level });
+    await this.prisma.adminAuditLog.create({
+      data: {
+        actorUserId: actorId,
+        action: 'BOSS_SPAWN',
+        meta: {
+          bossId: spawned.id,
+          bossKey: spawned.bossKey,
+          level: spawned.level,
+          forced: !!opts.force,
+          replacedBossId,
+        } as Prisma.InputJsonValue,
+      },
+    });
+    return {
+      id: spawned.id,
+      bossKey: spawned.bossKey,
+      level: spawned.level,
+      maxHp: spawned.maxHp.toString(),
+    };
   }
 
   private async broadcastBossUpdate(bossId: string, _hp: bigint): Promise<void> {

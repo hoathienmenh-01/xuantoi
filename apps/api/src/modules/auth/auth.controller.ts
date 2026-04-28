@@ -150,6 +150,19 @@ export class AuthController {
     return { ok: true, data: { ok: true } };
   }
 
+  @Post('logout-all')
+  @HttpCode(200)
+  async logoutAll(
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const userId = await this.auth.userIdFromAccess(req.cookies?.[ACCESS_COOKIE]);
+    if (!userId) fail('UNAUTHENTICATED', HttpStatus.UNAUTHORIZED);
+    const r = await this.auth.logoutAll(userId);
+    this.clearAuthCookies(res);
+    return { ok: true, data: r };
+  }
+
   private setAuthCookies(res: Response, access: string, refresh: string): void {
     const isProd = process.env.NODE_ENV === 'production';
     const accessTtl = Number(process.env.JWT_ACCESS_TTL ?? 15 * 60);

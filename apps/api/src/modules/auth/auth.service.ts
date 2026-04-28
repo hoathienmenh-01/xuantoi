@@ -190,6 +190,19 @@ export class AuthService {
     return minted;
   }
 
+  /**
+   * Revoke ALL refresh tokens của user → các thiết bị khác sẽ logout
+   * trong vòng 1 access TTL (mặc định 15 phút).
+   * Không bump passwordVersion vì password chưa đổi.
+   */
+  async logoutAll(userId: string): Promise<{ revoked: number }> {
+    const r = await this.prisma.refreshToken.updateMany({
+      where: { userId, revokedAt: null },
+      data: { revokedAt: new Date() },
+    });
+    return { revoked: r.count };
+  }
+
   /** Revoke the presented refresh token (logout). Idempotent. */
   async logout(presented: string | undefined): Promise<void> {
     if (!presented) return;
