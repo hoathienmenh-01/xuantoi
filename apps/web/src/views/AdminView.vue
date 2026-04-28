@@ -61,6 +61,8 @@ const topupNote = ref('');
 
 // Audit tab
 const auditPage = ref(0);
+const auditActionFilter = ref('');
+const auditEmailFilter = ref('');
 const audits = ref<AdminAuditRow[]>([]);
 const auditTotal = ref(0);
 
@@ -155,7 +157,10 @@ async function refreshTopups(): Promise<void> {
 async function refreshAudit(): Promise<void> {
   loading.value = true;
   try {
-    const r = await adminListAudit(auditPage.value);
+    const filters: { action?: string; email?: string } = {};
+    if (auditActionFilter.value) filters.action = auditActionFilter.value;
+    if (auditEmailFilter.value) filters.email = auditEmailFilter.value;
+    const r = await adminListAudit(auditPage.value, filters);
     audits.value = r.rows;
     auditTotal.value = r.total;
   } catch (e) {
@@ -594,6 +599,23 @@ const isAdmin = () => game.character?.role === 'ADMIN';
 
       <!-- AUDIT TAB -->
       <section v-else-if="tab === 'audit'" class="space-y-3">
+        <div class="flex gap-2 items-center text-sm flex-wrap">
+          <input
+            v-model="auditActionFilter"
+            data-testid="admin-audit-action-filter"
+            :placeholder="t('admin.audit.filter.actionPlaceholder')"
+            class="px-2 py-1 bg-ink-700/40 border border-ink-300/30 rounded"
+            @keydown.enter="auditPage = 0; refreshAudit()"
+          />
+          <input
+            v-model="auditEmailFilter"
+            data-testid="admin-audit-email-filter"
+            :placeholder="t('admin.audit.filter.emailPlaceholder')"
+            class="px-2 py-1 bg-ink-700/40 border border-ink-300/30 rounded"
+            @keydown.enter="auditPage = 0; refreshAudit()"
+          />
+          <MButton @click="auditPage = 0; refreshAudit()">{{ t('common.search') }}</MButton>
+        </div>
         <table class="w-full text-sm">
           <thead class="text-ink-300 text-xs">
             <tr class="text-left">

@@ -427,7 +427,10 @@ export class AdminService {
 
   // ---------- audit ----------
 
-  async listAudit(page: number): Promise<{
+  async listAudit(
+    page: number,
+    filters: { actionPrefix?: string; actorEmail?: string } = {},
+  ): Promise<{
     rows: {
       id: string;
       actorUserId: string;
@@ -440,13 +443,28 @@ export class AdminService {
     page: number;
     pageSize: number;
   }> {
+    const conditions: Prisma.AdminAuditLogWhereInput[] = [];
+    if (filters.actionPrefix) {
+      conditions.push({ action: { startsWith: filters.actionPrefix } });
+    }
+    if (filters.actorEmail) {
+      const matchUsers = await this.prisma.user.findMany({
+        where: { email: { contains: filters.actorEmail, mode: 'insensitive' } },
+        select: { id: true },
+      });
+      const ids = matchUsers.map((u) => u.id);
+      conditions.push({ actorUserId: ids.length > 0 ? { in: ids } : '__none__' });
+    }
+    const where: Prisma.AdminAuditLogWhereInput =
+      conditions.length > 0 ? { AND: conditions } : {};
     const [rows, total] = await Promise.all([
       this.prisma.adminAuditLog.findMany({
+        where,
         orderBy: { createdAt: 'desc' },
         skip: page * PAGE_SIZE,
         take: PAGE_SIZE,
       }),
-      this.prisma.adminAuditLog.count(),
+      this.prisma.adminAuditLog.count({ where }),
     ]);
     const actorIds = Array.from(new Set(rows.map((r) => r.actorUserId)));
     const actors = await this.prisma.user.findMany({

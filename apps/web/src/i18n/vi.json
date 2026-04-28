@@ -779,6 +779,10 @@
         "actor": "Người thực hiện",
         "action": "Hành động",
         "meta": "Chi tiết"
+      },
+      "filter": {
+        "actionPlaceholder": "Lọc theo hành động (vd: user., topup.)",
+        "emailPlaceholder": "Lọc theo email người thực hiện"
       }
     },
     "boss": {
