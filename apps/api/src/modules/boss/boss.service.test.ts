@@ -217,6 +217,17 @@ describe('BossService', () => {
       expect(BOSSES.some((b) => b.key === r.bossKey)).toBe(true);
     });
 
+    it('không truyền bossKey + có level → tôn trọng level admin chọn (không bị auto-rotate ghi đè)', async () => {
+      const admin = await prisma.user.create({
+        data: { email: `admin-${Date.now()}@xt.local`, passwordHash: 'x', role: 'ADMIN' },
+      });
+      const r = await boss.adminSpawn(admin.id, { level: 5 });
+      expect(r.level).toBe(5);
+      const w = await prisma.worldBoss.findUniqueOrThrow({ where: { id: r.id } });
+      expect(w.level).toBe(5);
+      expect(w.maxHp).toBe(BigInt(bossByKey(r.bossKey)!.baseMaxHp) * 5n);
+    });
+
     it('boss ACTIVE đang có + force=false → throw BOSS_ALREADY_ACTIVE', async () => {
       const admin = await prisma.user.create({
         data: { email: `admin-${Date.now()}@xt.local`, passwordHash: 'x', role: 'ADMIN' },

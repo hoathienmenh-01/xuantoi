@@ -389,10 +389,11 @@ export class BossService implements OnModuleInit, OnModuleDestroy {
       def = overrides.def;
       level = overrides.level ?? 1;
     } else {
-      // Auto-rotate: đếm tổng số boss đã spawn để chọn def + level.
+      // Auto-rotate: đếm tổng số boss đã spawn để chọn def.
+      // Level: ưu tiên override (admin truyền), fallback về auto-rotate.
       const totalSpawned = await this.prisma.worldBoss.count();
       def = BOSSES[totalSpawned % BOSSES.length];
-      level = Math.min(10, 1 + Math.floor(totalSpawned / BOSSES.length));
+      level = overrides.level ?? Math.min(10, 1 + Math.floor(totalSpawned / BOSSES.length));
     }
     const maxHp = BigInt(def.baseMaxHp) * BigInt(level);
 
