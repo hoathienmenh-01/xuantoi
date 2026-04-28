@@ -8,6 +8,7 @@ import { useToastStore } from '@/stores/toast';
 import { claimMail, listMail, readMail, type MailView } from '@/api/mail';
 import AppShell from '@/components/shell/AppShell.vue';
 import MButton from '@/components/ui/MButton.vue';
+import { formatItemRewardList } from '@/lib/itemName';
 
 const auth = useAuthStore();
 const game = useGameStore();
@@ -104,9 +105,7 @@ function rewardSummary(m: MailView): string {
   if (m.rewardExp !== '0')
     parts.push(`${m.rewardExp} ${t('mail.reward.exp')}`);
   if (m.rewardItems.length) {
-    parts.push(
-      m.rewardItems.map((it) => `${it.itemKey} ×${it.qty}`).join(', '),
-    );
+    parts.push(formatItemRewardList(m.rewardItems, t));
   }
   return parts.length > 0 ? parts.join(' · ') : '—';
 }

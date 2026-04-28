@@ -8,6 +8,7 @@ import { useToastStore } from '@/stores/toast';
 import { redeemGiftCode, type GiftCodeRedeemResult } from '@/api/giftcode';
 import AppShell from '@/components/shell/AppShell.vue';
 import MButton from '@/components/ui/MButton.vue';
+import { itemName } from '@/lib/itemName';
 
 const auth = useAuthStore();
 const game = useGameStore();
@@ -91,7 +92,7 @@ async function onRedeem(): Promise<void> {
             + {{ last.grantedExp }} {{ t('giftcode.reward.exp') }}
           </li>
           <li v-for="it in last.grantedItems" :key="it.itemKey">
-            + {{ it.qty }}× {{ it.itemKey }}
+            + {{ it.qty }}× {{ itemName(it.itemKey, t) }}
           </li>
         </ul>
       </div>

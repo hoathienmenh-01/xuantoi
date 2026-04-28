@@ -4,7 +4,6 @@ import { useI18n } from 'vue-i18n';
 import { RouterLink, useRouter } from 'vue-router';
 import {
   SKILL_BASIC_ATTACK,
-  itemByKey,
   skillsForSect,
   type SectKey,
   type SkillDef,
@@ -21,6 +20,7 @@ import {
 import { on } from '@/ws/client';
 import AppShell from '@/components/shell/AppShell.vue';
 import MButton from '@/components/ui/MButton.vue';
+import { itemName } from '@/lib/itemName';
 
 const auth = useAuthStore();
 const game = useGameStore();
@@ -209,9 +209,7 @@ function handleErr(e: unknown): void {
   });
 }
 
-function itemName(key: string): string {
-  return itemByKey(key)?.name ?? key;
-}
+
 
 function timeLeftText(iso: string): string {
   const ms = new Date(iso).getTime() - Date.now();
@@ -315,12 +313,12 @@ function timeLeftText(iso: string): string {
         <div class="text-xs space-y-1 text-ink-100">
           <div>{{ t('boss.rewardTop1') }}
             <span class="text-violet-300">
-              {{ boss.topDropPool.map(itemName).join(' / ') }}
+              {{ boss.topDropPool.map((k) => itemName(k, t)).join(' / ') }}
             </span>
           </div>
           <div>{{ t('boss.rewardTop23') }}
             <span class="text-emerald-300">
-              {{ boss.midDropPool.map(itemName).join(' / ') }}
+              {{ boss.midDropPool.map((k) => itemName(k, t)).join(' / ') }}
             </span>
           </div>
           <div>{{ t('boss.rewardTop410') }}</div>
@@ -383,7 +381,7 @@ function timeLeftText(iso: string): string {
             #{{ r.rank }} · {{ r.characterName }} ·
             <span class="text-amber-300">⛀ {{ r.linhThach }}</span>
             <span v-if="r.items.length > 0" class="text-violet-300 ml-2">
-              + {{ r.items.map((i) => itemName(i.itemKey) + (i.qty > 1 ? ` x${i.qty}` : '')).join(', ') }}
+              + {{ r.items.map((i) => itemName(i.itemKey, t) + (i.qty > 1 ? ` x${i.qty}` : '')).join(', ') }}
             </span>
           </li>
         </ul>
