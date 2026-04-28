@@ -181,9 +181,39 @@ model Character {
 
   inventory        InventoryItem[]
   ledger           CurrencyLedger[]
+  missionProgress  MissionProgress[]
 
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
+}
+
+enum MissionPeriod {
+  DAILY
+  WEEKLY
+  ONCE
+}
+
+/// Tiến độ nhiệm vụ của từng character theo catalog tĩnh (`packages/shared/src/missions.ts`).
+/// Mỗi (character, missionKey) có 1 hàng; cron reset sẽ đưa `currentAmount=0`,
+/// `claimed=false`, cập nhật `windowEnd` cho DAILY/WEEKLY. Mission `ONCE` không reset.
+model MissionProgress {
+  id            String        @id @default(cuid())
+  characterId   String
+  character     Character     @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  missionKey    String
+  period        MissionPeriod
+  currentAmount Int           @default(0)
+  goalAmount    Int
+  claimed       Boolean       @default(false)
+  claimedAt     DateTime?
+  startedAt     DateTime      @default(now())
+  /// Mốc cuối của cửa sổ hiện tại (DAILY/WEEKLY). null với ONCE.
+  windowEnd     DateTime?
+  updatedAt     DateTime      @updatedAt
+
+  @@unique([characterId, missionKey])
+  @@index([characterId, claimed])
+  @@index([period, windowEnd])
 }
 
 model InventoryItem {

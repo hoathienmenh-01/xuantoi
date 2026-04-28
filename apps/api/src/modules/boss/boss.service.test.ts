@@ -7,7 +7,12 @@ import { CharacterService } from '../character/character.service';
 import { CurrencyService } from '../character/currency.service';
 import { InventoryService } from '../inventory/inventory.service';
 import { BossService } from './boss.service';
-import { TEST_DATABASE_URL, makeUserChar, wipeAll } from '../../test-helpers';
+import {
+  TEST_DATABASE_URL,
+  makeMissionService,
+  makeUserChar,
+  wipeAll,
+} from '../../test-helpers';
 
 let prisma: PrismaService;
 let boss: BossService;
@@ -19,7 +24,8 @@ beforeAll(() => {
   const chars = new CharacterService(prisma, realtime);
   const inventory = new InventoryService(prisma, realtime, chars);
   const currency = new CurrencyService(prisma);
-  boss = new BossService(prisma, realtime, chars, inventory, currency);
+  const missions = makeMissionService(prisma);
+  boss = new BossService(prisma, realtime, chars, inventory, currency, missions);
 });
 
 beforeEach(async () => {

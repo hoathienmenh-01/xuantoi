@@ -20,6 +20,7 @@ import { RealtimeService } from '../realtime/realtime.service';
 import { CharacterService } from '../character/character.service';
 import { CurrencyService } from '../character/currency.service';
 import { InventoryService } from '../inventory/inventory.service';
+import { MissionService } from '../mission/mission.service';
 
 export interface EncounterState {
   monsterIndex: number;
@@ -78,6 +79,7 @@ export class CombatService {
     private readonly chars: CharacterService,
     private readonly inventory: InventoryService,
     private readonly currency: CurrencyService,
+    private readonly missions: MissionService,
   ) {}
 
   listDungeons() {
@@ -326,6 +328,19 @@ export class CombatService {
         linhThach: linhThachGain.toString(),
         loot: lootView,
       };
+    }
+
+    // Mission tracking — dựa trên transition. Một turn có thể vừa kill monster
+    // vừa (nếu là quái cuối) clear dungeon. Không throw nếu mission lỗi.
+    try {
+      if (monsterHp <= 0) {
+        await this.missions.track(char.id, 'KILL_MONSTER', 1);
+      }
+      if (nextStatus === EncounterStatus.WON) {
+        await this.missions.track(char.id, 'CLEAR_DUNGEON', 1);
+      }
+    } catch {
+      // bỏ qua
     }
 
     const charState = await this.chars.findByUser(userId);

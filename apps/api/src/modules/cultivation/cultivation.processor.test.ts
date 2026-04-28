@@ -8,7 +8,12 @@ import {
 import { PrismaService } from '../../common/prisma.service';
 import { RealtimeService } from '../realtime/realtime.service';
 import { CultivationProcessor } from './cultivation.processor';
-import { TEST_DATABASE_URL, makeUserChar, wipeAll } from '../../test-helpers';
+import {
+  TEST_DATABASE_URL,
+  makeMissionService,
+  makeUserChar,
+  wipeAll,
+} from '../../test-helpers';
 
 let prisma: PrismaService;
 let processor: CultivationProcessor;
@@ -17,7 +22,8 @@ beforeAll(() => {
   process.env.DATABASE_URL = TEST_DATABASE_URL;
   prisma = new PrismaService();
   const realtime = new RealtimeService(); // unbound — emitToUser sẽ no-op.
-  processor = new CultivationProcessor(prisma, realtime);
+  const missions = makeMissionService(prisma);
+  processor = new CultivationProcessor(prisma, realtime, missions);
 });
 
 beforeEach(async () => {

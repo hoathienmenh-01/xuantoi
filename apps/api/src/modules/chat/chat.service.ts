@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { ChatChannel } from '@prisma/client';
 import { PrismaService } from '../../common/prisma.service';
 import { RealtimeService } from '../realtime/realtime.service';
+import { MissionService } from '../mission/mission.service';
 
 class ChatError extends Error {
   constructor(
@@ -39,6 +40,7 @@ export class ChatService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly realtime: RealtimeService,
+    private readonly missions: MissionService,
   ) {}
 
   async historyWorld(): Promise<ChatMessageView[]> {
@@ -144,6 +146,13 @@ export class ChatService {
     } else {
       this.realtime.emitToRoom(`sect:${scopeKey}`, 'chat:msg', view);
     }
+
+    try {
+      await this.missions.track(char.id, 'CHAT_MESSAGE', 1);
+    } catch {
+      // bỏ qua — chat đã thành công, mission fail không rollback.
+    }
+
     return view;
   }
 
