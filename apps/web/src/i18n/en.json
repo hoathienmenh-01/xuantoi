@@ -174,12 +174,14 @@
       "dungeon": "Sparring Hall",
       "inventory": "Inventory",
       "market": "Market",
+      "shop": "NPC Shop",
       "sect": "Sect",
       "boss": "World Boss",
       "missions": "Missions",
       "mail": "Mail",
       "giftcode": "Gift Code",
       "topup": "Top Up",
+      "settings": "Settings",
       "admin": "Admin"
     }
   },
@@ -193,6 +195,46 @@
     "spirit": "Spirit",
     "speed": "Speed",
     "luck": "Luck"
+  },
+  "settings": {
+    "title": "Settings",
+    "subtitle": "Manage your account, password and active sessions.",
+    "account": {
+      "title": "Account",
+      "email": "Email",
+      "role": "Role",
+      "createdAt": "Joined"
+    },
+    "password": {
+      "title": "Change Password",
+      "hint": "Changing password logs out all devices. You will need to sign in again with the new password.",
+      "old": "Current password",
+      "new": "New password",
+      "confirm": "Confirm new password",
+      "submit": "Update password",
+      "empty": "Please fill in both current and new passwords.",
+      "mismatch": "New passwords do not match.",
+      "tooShort": "New password must be at least 8 characters.",
+      "success": "Password updated. Please sign in again."
+    },
+    "locale": {
+      "title": "Language",
+      "changed": "Language changed."
+    },
+    "logoutAll": {
+      "title": "Sign out everywhere",
+      "hint": "Revoke all sessions including this one. Other devices will be logged out within ~15 minutes.",
+      "submit": "Sign out everywhere",
+      "confirm": "Are you sure you want to sign out of all devices?",
+      "success": "Revoked {revoked} session(s)."
+    },
+    "errors": {
+      "OLD_PASSWORD_WRONG": "Current password is incorrect.",
+      "PASSWORD_TOO_WEAK": "New password is too weak (min 8 characters).",
+      "UNAUTHENTICATED": "Session expired, please sign in again.",
+      "RATE_LIMITED": "Too many requests, try again later.",
+      "UNKNOWN": "Something went wrong."
+    }
   },
   "mission": {
     "title": "Mission Log",
@@ -435,6 +477,30 @@
       "UNKNOWN": "Something went wrong, please retry."
     }
   },
+  "shop": {
+    "title": "NPC Shop",
+    "subtitle": "Buy common pills and starter gear from the NPC vendor.",
+    "balance": "Linh Thạch",
+    "qty": "Qty",
+    "buy": "Buy",
+    "empty": "Shop is empty.",
+    "nonStackable": "1 per purchase",
+    "buyOk": "Bought {qty} × {name} for {price} linh thạch.",
+    "currency": {
+      "linhThach": "linh thạch",
+      "tienNgoc": "tiên ngọc"
+    },
+    "errors": {
+      "loadFail": "Failed to load shop.",
+      "INSUFFICIENT_FUNDS": "Not enough linh thạch.",
+      "ITEM_NOT_IN_SHOP": "Item not available in shop.",
+      "INVALID_QTY": "Invalid quantity.",
+      "NON_STACKABLE_QTY_GT_1": "This item can only be bought 1 at a time.",
+      "NO_CHARACTER": "You have not created a character.",
+      "UNAUTHENTICATED": "Session expired. Please log in again.",
+      "UNKNOWN": "Something went wrong, please retry."
+    }
+  },
   "sect": {
     "title": "Sect",
     "tab": {
@@ -573,7 +639,8 @@
       "stats": "Overview",
       "users": "Users",
       "topups": "Top-ups",
-      "audit": "Audit"
+      "audit": "Audit",
+      "boss": "Boss"
     },
     "stats": {
       "users": "Users",
@@ -654,6 +721,16 @@
         "meta": "Meta"
       }
     },
+    "boss": {
+      "title": "Spawn World Boss",
+      "hint": "Leave bossKey empty to auto-rotate by catalog. If a boss is ACTIVE, enable Force to expire it before spawning a new one.",
+      "bossKey": "Boss key (e.g. huyet_ma)",
+      "level": "Level (1-10)",
+      "force": "Force (expire current boss)",
+      "spawn": "Spawn",
+      "spawned": "Spawned {name} Lv.{level}",
+      "currentlyActive": "Active boss: {name} Lv.{level}"
+    },
     "errors": {
       "UNAUTHENTICATED": "Session expired, please sign in again.",
       "FORBIDDEN": "Not enough permissions.",
@@ -661,6 +738,9 @@
       "ALREADY_PROCESSED": "Order already processed.",
       "INVALID_INPUT": "Invalid parameters (out of range / too negative).",
       "CANNOT_TARGET_SELF": "Cannot target yourself.",
+      "BOSS_ALREADY_ACTIVE": "A boss is already active. Enable Force to replace it.",
+      "INVALID_BOSS_KEY": "Boss key not found in catalog.",
+      "INVALID_LEVEL": "Level must be an integer 1..10.",
       "UNKNOWN": "Something went wrong."
     }
   }

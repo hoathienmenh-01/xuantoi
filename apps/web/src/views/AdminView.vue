@@ -14,12 +14,14 @@ import {
   adminListUsers,
   adminRejectTopup,
   adminSetRole,
+  adminSpawnBoss,
   adminStats,
   type AdminAuditRow,
   type AdminStats,
   type AdminUserRow,
   type Role,
 } from '@/api/admin';
+import { getCurrentBoss, type BossView } from '@/api/boss';
 import type { TopupOrderView } from '@/api/topup';
 import AppShell from '@/components/shell/AppShell.vue';
 import MButton from '@/components/ui/MButton.vue';
@@ -30,7 +32,7 @@ const toast = useToastStore();
 const router = useRouter();
 const { t } = useI18n();
 
-type Tab = 'stats' | 'users' | 'topups' | 'audit';
+type Tab = 'stats' | 'users' | 'topups' | 'audit' | 'boss';
 const tab = ref<Tab>('stats');
 const stats = ref<AdminStats | null>(null);
 
@@ -56,6 +58,13 @@ const auditPage = ref(0);
 const audits = ref<AdminAuditRow[]>([]);
 const auditTotal = ref(0);
 
+// Boss tab
+const bossKey = ref('');
+const bossLevel = ref<number>(1);
+const bossForce = ref(false);
+const currentBoss = ref<BossView | null>(null);
+const bossSpawning = ref(false);
+
 const loading = ref(false);
 
 onMounted(async () => {
@@ -78,6 +87,7 @@ onMounted(async () => {
 watch(tab, async (curTab) => {
   if (curTab === 'stats') await refreshStats();
   else if (curTab === 'users') await refreshUsers();
+  else if (curTab === 'boss') await refreshCurrentBoss();
   else if (curTab === 'topups') await refreshTopups();
   else if (curTab === 'audit') await refreshAudit();
 });
@@ -197,6 +207,35 @@ async function rejectTopup(o: TopupOrderView): Promise<void> {
   }
 }
 
+async function refreshCurrentBoss(): Promise<void> {
+  try {
+    currentBoss.value = await getCurrentBoss();
+  } catch {
+    currentBoss.value = null;
+  }
+}
+
+async function spawnBoss(): Promise<void> {
+  if (bossSpawning.value) return;
+  bossSpawning.value = true;
+  try {
+    const r = await adminSpawnBoss({
+      bossKey: bossKey.value.trim() || undefined,
+      level: bossLevel.value,
+      force: bossForce.value,
+    });
+    toast.push({
+      type: 'success',
+      text: t('admin.boss.spawned', { name: r.bossKey, level: r.level }),
+    });
+    await refreshCurrentBoss();
+  } catch (e) {
+    handleErr(e);
+  } finally {
+    bossSpawning.value = false;
+  }
+}
+
 function handleErr(e: unknown): void {
   const code = (e as { code?: string }).code ?? 'ERR';
   const text = t(`admin.errors.${code}`, '__missing__');
@@ -219,7 +258,7 @@ const isAdmin = () => game.character?.role === 'ADMIN';
 
       <nav class="flex gap-1 border-b border-ink-300/30 text-sm">
         <button
-          v-for="tk in (['stats','users','topups','audit'] as const)"
+          v-for="tk in (['stats','users','topups','audit','boss'] as const)"
           :key="tk"
           class="px-3 py-2"
           :class="tab === tk ? 'border-b-2 border-amber-300 text-ink-50' : 'text-ink-300'"
@@ -455,7 +494,7 @@ const isAdmin = () => game.character?.role === 'ADMIN';
       </section>
 
       <!-- AUDIT TAB -->
-      <section v-else class="space-y-3">
+      <section v-else-if="tab === 'audit'" class="space-y-3">
         <table class="w-full text-sm">
           <thead class="text-ink-300 text-xs">
             <tr class="text-left">
@@ -482,6 +521,42 @@ const isAdmin = () => game.character?.role === 'ADMIN';
             <button @click="auditPage++; refreshAudit()">{{ t('common.pageNext') }}</button>
           </div>
         </div>
+      </section>
+
+      <!-- BOSS TAB -->
+      <section v-else class="space-y-3 max-w-xl">
+        <h2 class="text-lg text-amber-200">{{ t('admin.boss.title') }}</h2>
+        <p class="text-xs text-ink-300">{{ t('admin.boss.hint') }}</p>
+        <div v-if="currentBoss" class="text-sm text-ink-200 bg-ink-700/30 border border-ink-300/20 rounded p-2">
+          {{ t('admin.boss.currentlyActive', { name: currentBoss.name, level: currentBoss.level }) }}
+        </div>
+        <div class="space-y-2 text-sm">
+          <label class="block">
+            <span class="text-ink-300">{{ t('admin.boss.bossKey') }}</span>
+            <input
+              v-model="bossKey"
+              class="w-full bg-ink-700/40 border border-ink-300/30 rounded px-2 py-1 mt-1"
+              placeholder="huyet_ma"
+            />
+          </label>
+          <label class="block">
+            <span class="text-ink-300">{{ t('admin.boss.level') }}</span>
+            <input
+              v-model.number="bossLevel"
+              type="number"
+              min="1"
+              max="10"
+              class="w-32 bg-ink-700/40 border border-ink-300/30 rounded px-2 py-1 mt-1"
+            />
+          </label>
+          <label class="flex items-center gap-2 text-ink-200">
+            <input v-model="bossForce" type="checkbox" />
+            <span>{{ t('admin.boss.force') }}</span>
+          </label>
+        </div>
+        <MButton :disabled="bossSpawning || !isAdmin()" @click="spawnBoss()">
+          {{ t('admin.boss.spawn') }}
+        </MButton>
       </section>
     </div>
   </AppShell>

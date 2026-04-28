@@ -82,9 +82,16 @@ Xem chi tiết spec trong tài liệu `docs/04_TECH_STACK_VA_DATA_MODEL.md` và 
 
 ## Tài liệu developer
 
+- [`docs/RUN_LOCAL.md`](./docs/RUN_LOCAL.md) — dựng môi trường dev đầy đủ (infra, migrate, bootstrap, dev server).
+- [`docs/DEPLOY.md`](./docs/DEPLOY.md) — deploy api + web ra production (env, build, migrate, smoke checklist).
+- [`docs/ADMIN_GUIDE.md`](./docs/ADMIN_GUIDE.md) — admin ops: duyệt topup, grant currency, gift code, mail, ban.
+- [`docs/SECURITY.md`](./docs/SECURITY.md) — auth, secret, money invariant, threat model.
+- [`docs/TROUBLESHOOTING.md`](./docs/TROUBLESHOOTING.md) — lỗi thường gặp khi dev/deploy.
+- [`docs/API.md`](./docs/API.md) — danh sách endpoint REST + WS event.
 - [`docs/SEEDING.md`](./docs/SEEDING.md) — static catalog Item / Skill / Dungeon / Mission / Realm + cách thêm mới.
 - [`docs/BALANCE.md`](./docs/BALANCE.md) — công thức EXP / damage / drop + bảng tra 28 cảnh giới.
 - [`docs/BETA_CHECKLIST.md`](./docs/BETA_CHECKLIST.md) — roadmap & cut-line để chuẩn bị beta.
+- [`docs/AI_HANDOFF_REPORT.md`](./docs/AI_HANDOFF_REPORT.md) — handoff cho session AI tiếp theo.
 
 ## License
 

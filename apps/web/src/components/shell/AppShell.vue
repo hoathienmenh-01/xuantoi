@@ -114,6 +114,13 @@ async function logout(): Promise<void> {
           坊 {{ t('shell.nav.market') }}
         </RouterLink>
         <RouterLink
+          to="/shop"
+          class="px-3 py-2 rounded hover:bg-ink-700/60"
+          active-class="bg-ink-700/60 text-ink-50"
+        >
+          肆 {{ t('shell.nav.shop') }}
+        </RouterLink>
+        <RouterLink
           to="/sect"
           class="px-3 py-2 rounded hover:bg-ink-700/60"
           active-class="bg-ink-700/60 text-ink-50"
@@ -160,6 +167,13 @@ async function logout(): Promise<void> {
           active-class="bg-ink-700/60 text-ink-50"
         >
           ⛧ {{ t('shell.nav.topup') }}
+        </RouterLink>
+        <RouterLink
+          to="/settings"
+          class="px-3 py-2 rounded hover:bg-ink-700/60"
+          active-class="bg-ink-700/60 text-ink-50"
+        >
+          設 {{ t('shell.nav.settings') }}
         </RouterLink>
         <RouterLink
           v-if="isStaff"
