@@ -125,6 +125,16 @@
         "TOPUP_PENDING": "Top-up {code} is pending approval — check Settings.",
         "CULTIVATE_IDLE": "You're not cultivating — tap ‘Cultivate’ to absorb qi."
       }
+    },
+    "onboarding": {
+      "title": "Beginner Guide",
+      "go": "Go",
+      "steps": {
+        "character": "Create your character — pick a Dao name.",
+        "sect": "Join a sect — choose one of three.",
+        "cultivate": "Start Cultivating to absorb spirit qi.",
+        "breakthrough": "Complete your first breakthrough — leave Mortal."
+      }
     }
   },
   "notFound": {
