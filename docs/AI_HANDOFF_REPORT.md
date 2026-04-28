@@ -6,7 +6,7 @@
 >
 > Báo cáo trung thực. Mọi tuyên bố "đã xong" đều có PR + file + test chứng minh. Khi chưa verify runtime, ghi rõ **"Needs runtime smoke"**.
 >
-> **Trạng thái audit (28/4 session 2)**: 8 PR (#33→#40) đã merge vào `main`, CI xanh trên từng PR. Đã smoke local (typecheck/lint/test/build) thông qua mỗi PR; **chưa** smoke E2E trên `main` sau cùng. Xem `## Recent Changes (PR #33→#40)`.
+> **Trạng thái audit (28/4 session 3)**: 8 PR (#33→#40) đã merge `main`. PR #41 (audit docs) đã merge `main`. PR #42 (M1 mission VN tz) + PR #43 (M5 ledger index) merged vào feature branch của PR #41 nhưng **không** vào `main` trực tiếp (auto-retarget không kích hoạt khi squash-merge) → cần PR replay (`devin/<ts>-replay-pr-42-43`) bring 2 commit vào `main`. Smoke E2E session 3 đã chạy trên branch tip combined — pass 6/6. Xem `## Recent Changes`.
 
 ---
 
@@ -766,7 +766,7 @@ _(Không có lỗi làm app không chạy / mất tiền / auth hỏng tại com
 
 | # | Issue | File | Impact | Status / Fix |
 |---|---|---|---|---|
-| H1 | Chưa có smoke E2E sau khi PR #33→#40 merged vào main (bổ sung shop / settings / profile / boss admin / item ledger). | — | Có thể có regression không bắt được bằng unit test. | **Open** — Needs runtime smoke. Chạy full auth → onboard → cultivate → combat → mission claim → mail claim → giftcode → shop buy → settings change-password → profile view → admin boss spawn (force) → kiểm `ItemLedger`/`CurrencyLedger` consistency. |
+| ~~H1~~ | ~~Chưa có smoke E2E sau khi PR #33→#40 merged vào main.~~ | — | — | **Resolved** (28/4 session 3) — smoke E2E pass 6/6: register/onboard, mission VN tz windowEnd=17:00Z, shop buy + ItemLedger + CurrencyLedger row, settings change-password + logout-all, profile public view, admin boss spawn + AdminAuditLog, inventory↔ledger consistency. Xem `test-report.md` (deliverable session). |
 | ~~H2~~ | ~~Không có seed script tạo admin đầu tiên.~~ | `apps/api/scripts/bootstrap.ts` | — | **Resolved** by **PR #33** (`pnpm --filter @xuantoi/api bootstrap`, idempotent, 7 test). |
 | ~~H3~~ | ~~Không có seed sect (Thanh Vân Môn, Huyền Thuỷ Cung, Tu La Điện).~~ | `apps/api/scripts/bootstrap.ts:DEFAULT_SECTS` | — | **Resolved** by **PR #33**. |
 | ~~H4~~ | ~~`InventoryService` không có test unit.~~ | `apps/api/src/modules/inventory/inventory.service.test.ts` | — | **Resolved** by **PR #34** (19 test). |
