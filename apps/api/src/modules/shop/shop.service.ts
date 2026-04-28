@@ -88,7 +88,13 @@ export class ShopService {
           meta: { itemKey, qty, unitPrice: shopEntry.price },
           actorUserId: userId,
         });
-        await this.inventory.grantTx(tx, character.id, [{ itemKey, qty }]);
+        await this.inventory.grantTx(tx, character.id, [{ itemKey, qty }], {
+          reason: 'SHOP_BUY',
+          refType: 'NPC_SHOP',
+          refId: itemKey,
+          actorUserId: userId,
+          extra: { unitPrice: shopEntry.price },
+        });
       });
     } catch (e) {
       if (

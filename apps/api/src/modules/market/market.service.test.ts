@@ -202,6 +202,64 @@ describe('MarketService', () => {
     });
   });
 
+  it('ItemLedger: post → MARKET_SELL POST -qty, buy → MARKET_BUY +qty cho buyer', async () => {
+    const seller = await makeUserChar(prisma, { linhThach: 0n });
+    const buyer = await makeUserChar(prisma, { linhThach: 5_000n });
+    const inv = await giveItem(seller.characterId, 5);
+
+    const listing = await market.post(seller.userId, {
+      inventoryItemId: inv.id,
+      qty: 3,
+      pricePerUnit: 100n,
+    });
+
+    // Sau post: 1 dòng ledger MARKET_SELL POST cho seller.
+    const sellerLedgerAfterPost = await prisma.itemLedger.findMany({
+      where: { characterId: seller.characterId },
+    });
+    expect(sellerLedgerAfterPost).toHaveLength(1);
+    expect(sellerLedgerAfterPost[0]?.qtyDelta).toBe(-3);
+    expect(sellerLedgerAfterPost[0]?.reason).toBe('MARKET_SELL');
+    expect(sellerLedgerAfterPost[0]?.refType).toBe('Listing');
+    expect(sellerLedgerAfterPost[0]?.refId).toBe(listing.id);
+    expect(sellerLedgerAfterPost[0]?.meta).toMatchObject({ stage: 'POST' });
+
+    await market.buy(buyer.userId, listing.id);
+
+    // Sau buy: thêm 1 dòng MARKET_BUY +3 cho buyer.
+    const buyerLedger = await prisma.itemLedger.findMany({
+      where: { characterId: buyer.characterId },
+    });
+    expect(buyerLedger).toHaveLength(1);
+    expect(buyerLedger[0]?.qtyDelta).toBe(3);
+    expect(buyerLedger[0]?.reason).toBe('MARKET_BUY');
+    expect(buyerLedger[0]?.refType).toBe('Listing');
+    expect(buyerLedger[0]?.refId).toBe(listing.id);
+  });
+
+  it('ItemLedger: cancel → MARKET_SELL CANCEL +qty (refund cho seller)', async () => {
+    const seller = await makeUserChar(prisma);
+    const inv = await giveItem(seller.characterId, 5);
+    const listing = await market.post(seller.userId, {
+      inventoryItemId: inv.id,
+      qty: 3,
+      pricePerUnit: 100n,
+    });
+    await market.cancel(seller.userId, listing.id);
+    const ledger = await prisma.itemLedger.findMany({
+      where: { characterId: seller.characterId },
+      orderBy: { createdAt: 'asc' },
+    });
+    // 2 dòng: POST -3 + CANCEL +3.
+    expect(ledger).toHaveLength(2);
+    expect(ledger[1]?.qtyDelta).toBe(3);
+    expect(ledger[1]?.reason).toBe('MARKET_SELL');
+    expect(ledger[1]?.meta).toMatchObject({ stage: 'CANCEL' });
+    // Sum = 0 (item đã về túi).
+    const sum = ledger.reduce((acc, r) => acc + r.qtyDelta, 0);
+    expect(sum).toBe(0);
+  });
+
   it('cancel: không phải owner → NOT_OWNER', async () => {
     const seller = await makeUserChar(prisma);
     const stranger = await makeUserChar(prisma);

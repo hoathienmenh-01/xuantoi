@@ -255,6 +255,12 @@ export class MissionService {
           tx,
           char.id,
           r.items.map((it) => ({ itemKey: it.itemKey, qty: it.qty })),
+          {
+            reason: 'MISSION_CLAIM',
+            refType: 'MissionProgress',
+            refId: row.id,
+            extra: { missionKey },
+          },
         );
       }
     });

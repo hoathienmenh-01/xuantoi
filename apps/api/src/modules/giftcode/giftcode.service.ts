@@ -275,7 +275,12 @@ export class GiftCodeService {
         });
       }
       if (items.length > 0) {
-        await this.inventory.grantTx(tx, char.id, items);
+        await this.inventory.grantTx(tx, char.id, items, {
+          reason: 'GIFTCODE_REDEEM',
+          refType: 'GiftCode',
+          refId: row.id,
+          extra: { code: row.code },
+        });
       }
     });
 
