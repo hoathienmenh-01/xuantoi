@@ -18,6 +18,7 @@ import { GiftCodeModule } from './modules/giftcode/giftcode.module';
 import { MailModule } from './modules/mail/mail.module';
 import { ShopModule } from './modules/shop/shop.module';
 import { HealthModule } from './modules/health/health.module';
+import { NextActionModule } from './modules/next-action/next-action.module';
 import { RedisModule } from './common/redis.module';
 
 @Module({
@@ -42,6 +43,7 @@ import { RedisModule } from './common/redis.module';
     MailModule,
     ShopModule,
     HealthModule,
+    NextActionModule,
   ],
 })
 export class AppModule {}

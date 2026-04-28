@@ -110,7 +110,22 @@
       "notAtPeakToast": "Not enough accumulated qi to break through."
     },
     "lastTick": "Last tick: +{gain} EXP · {time}",
-    "loadingChar": "Loading character…"
+    "loadingChar": "Loading character…",
+    "nextAction": {
+      "title": "Next Actions",
+      "loading": "Checking your status…",
+      "go": "Go",
+      "items": {
+        "NO_CHARACTER": "You haven't onboarded yet — complete character creation first.",
+        "BREAKTHROUGH_READY": "Qi is full! Ready to break through to the next realm.",
+        "MISSION_CLAIMABLE": "{count} mission(s) ready to claim.",
+        "MAIL_UNCLAIMED": "{count} mail(s) with rewards waiting.",
+        "MAIL_UNREAD": "{count} unread mail(s).",
+        "BOSS_ACTIVE": "A boss is live: {name} Lv.{level}.",
+        "TOPUP_PENDING": "Top-up {code} is pending approval — check Settings.",
+        "CULTIVATE_IDLE": "You're not cultivating — tap ‘Cultivate’ to absorb qi."
+      }
+    }
   },
   "notFound": {
     "title": "404 · Lost in the Void",

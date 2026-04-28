@@ -6,7 +6,7 @@
 >
 > Báo cáo trung thực. Mọi tuyên bố "đã xong" đều có PR + file + test chứng minh. Khi chưa verify runtime, ghi rõ **"Needs runtime smoke"**.
 >
-> **Trạng thái (28/4 session 4)**: PR #33→#47 đã merge `main`. PR #46 (audit + commit blueprint 04/05) + PR #47 (H5 Vitest + Playwright scaffold) đã merge. PR E (M8 admin guard split) đang mở. Roadmap kế tiếp sau PR E: closed-beta polish + smart features từ §21. Xem `## Recent Changes` + §21.
+> **Trạng thái (28/4 session 4)**: PR #33→#48 đã merge `main`. PR #46 (audit + commit blueprint 04/05) + PR #48 (M8 admin guard split `@RequireAdmin`) đã merge. PR #49 (smart next-action panel) đang mở. Roadmap kế tiếp: closed-beta polish + smart features từ §21. Xem `## Recent Changes` + §21.
 >
 > **Blueprint gốc 04/05**: nay đã được commit vào `docs/04_TECH_STACK_VA_DATA_MODEL.md` + `docs/05_KICH_BAN_BUILD_VA_PROMPT_AI.md` kèm banner **"Historical blueprint, NOT the current source of truth"**. Khi có conflict giữa 04/05 và code hiện tại + report này → **tin code & report**, KHÔNG rollback hoặc rewrite project theo 04/05.
 
@@ -58,13 +58,32 @@
 
 ---
 
-## Recent Changes (PR #33→#47 + PR E)
+## Recent Changes (PR #33→#46 + PR #48 + PR #49)
 
-Mỗi PR đều `Merged` vào `main`, CI xanh (3/3 check), branch base = `main`. Smoke local (typecheck/lint/test/build) đã chạy ở mỗi PR; smoke E2E 6/6 đã pass tại PR #44 (snapshot `4d8af10`). PR #45 chỉ là text-only fix vi.json 12 key admin → không cần re-smoke runtime. Blueprint 04/05 commit vào `docs/` ở session 4 — không đổi code/test.
+Mỗi PR đều `Merged` vào `main` (hoặc open + CI xanh), branch base = `main`. Smoke local (typecheck/lint/test/build) đã chạy ở mỗi PR; smoke E2E 6/6 đã pass tại PR #44 (snapshot `4d8af10`). PR #45 chỉ là text-only fix vi.json 12 key admin → không cần re-smoke runtime. Blueprint 04/05 commit vào `docs/` ở session 4 — không đổi code/test.
 
-### PR E — `feat(api): split ADMIN vs MOD permission (M8)`
+### PR #49 — `feat: smart next-action panel cho HomeView (smart onboarding)`
 
-- **Branch**: `devin/1777398980-pr-e-admin-guard-split`. **Base**: `main` (sau PR #46 + #47 merge). **Status**: Open / awaiting CI.
+- **Branch**: `devin/1777399841-smart-next-action`. **Base**: `main`. **Status**: Open / awaiting CI.
+- **Mục tiêu**: Smart next-action (prompt §20 mục 2) — hiển thị "Nên làm gì tiếp?" trên HomeView dựa state: NO_CHARACTER / BREAKTHROUGH_READY / MISSION_CLAIMABLE / MAIL_UNCLAIMED / MAIL_UNREAD / BOSS_ACTIVE / TOPUP_PENDING / CULTIVATE_IDLE. Giá trị cao cho onboarding closed beta, risk low.
+- **File**:
+  - `apps/api/src/modules/next-action/next-action.service.ts` (new) — pure-read Prisma queries, sort theo priority 1..5 ASC.
+  - `apps/api/src/modules/next-action/next-action.controller.ts` (new) — `GET /me/next-actions` yêu cầu cookie `xt_access`.
+  - `apps/api/src/modules/next-action/next-action.module.ts` (new).
+  - `apps/api/src/modules/next-action/next-action.service.test.ts` (new, 13 test integration Postgres).
+  - `apps/api/src/app.module.ts` — mount `NextActionModule`.
+  - `apps/web/src/api/nextAction.ts` (new) — client `getNextActions()`.
+  - `apps/web/src/components/NextActionPanel.vue` (new) — panel render từng action với priority color (1=rose, 2-3=amber, 4-5=ink).
+  - `apps/web/src/views/HomeView.vue` — import + render `<NextActionPanel>`.
+  - `apps/web/src/i18n/vi.json` + `en.json` — thêm `home.nextAction.title|loading|go|items.*`.
+- **Logic ưu tiên**: P1 `NO_CHARACTER`/`BREAKTHROUGH_READY`/`MISSION_CLAIMABLE` · P2 `MAIL_UNCLAIMED` · P3 `MAIL_UNREAD`+`BOSS_ACTIVE` · P4 `TOPUP_PENDING` · P5 `CULTIVATE_IDLE` fallback. Mail expired / boss expired không gợi ý.
+- **Tests**: API total `235 pass` (+13 next-action). Shared `47`. Build xanh. Typecheck/lint xanh.
+- **Risk**: **low** — endpoint read-only, không side-effect, không migration. Nếu API fail → panel ẩn (empty actions).
+- **Rollback**: revert PR. Không ảnh hưởng schema/data.
+
+### PR #48 — `feat(api): split ADMIN vs MOD permission via @RequireAdmin (M8)`
+
+- **Branch**: `devin/1777398980-pr-e-admin-guard-split`. **Base**: `main`. **Status**: **Merged** (CI 2/2 xanh). **Resolve M8**.
 - **Mục tiêu**: M8 — fine-grained role split. Trước PR E, `AdminGuard` chấp nhận cả ADMIN + MOD cho mọi endpoint admin, dẫn tới MOD có quyền grant/approve/broadcast/spawn ngang ADMIN. Giờ MOD chỉ đọc + ban (PLAYER); ADMIN-only cho 9 action ảnh hưởng tài sản/policy.
 - **File**:
   - `apps/api/src/modules/admin/require-admin.decorator.ts` (new) — `RequireAdmin()` decorator + `REQUIRE_ADMIN_KEY`.
