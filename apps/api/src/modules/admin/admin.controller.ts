@@ -16,6 +16,7 @@ import { Role, TopupStatus } from '@prisma/client';
 import { z } from 'zod';
 import { AdminGuard } from './admin.guard';
 import { AdminError, AdminService } from './admin.service';
+import { GiftCodeError, GiftCodeService } from '../giftcode/giftcode.service';
 import { MailError, MailService } from '../mail/mail.service';
 
 function fail(code: string, status = HttpStatus.BAD_REQUEST): never {
@@ -38,6 +39,20 @@ const GrantInput = z.object({
 });
 const TopupActionInput = z.object({
   note: z.string().max(200).default(''),
+});
+
+const GiftItemZ = z.object({
+  itemKey: z.string().min(1).max(80),
+  qty: z.number().int().positive().max(999),
+});
+const GiftCreateZ = z.object({
+  code: z.string().min(4).max(32).regex(/^[A-Za-z0-9_-]+$/),
+  rewardLinhThach: z.string().regex(/^\d+$/).default('0'),
+  rewardTienNgoc: z.number().int().min(0).default(0),
+  rewardExp: z.string().regex(/^\d+$/).default('0'),
+  rewardItems: z.array(GiftItemZ).max(10).default([]),
+  maxRedeems: z.number().int().positive().max(1_000_000).optional(),
+  expiresAt: z.string().datetime().optional(),
 });
 
 const MailItemZ = z.object({
@@ -65,6 +80,7 @@ type AdminReq = Request & { userId: string; role: Role };
 export class AdminController {
   constructor(
     private readonly admin: AdminService,
+    private readonly giftCodes: GiftCodeService,
     private readonly mailService: MailService,
   ) {}
 
@@ -172,6 +188,46 @@ export class AdminController {
     return { ok: true, data: r };
   }
 
+  @Get('giftcodes')
+  async giftList(@Query('limit') limit: string | undefined) {
+    const l = Math.max(1, Math.min(500, Number.parseInt(limit ?? '100', 10) || 100));
+    const r = await this.giftCodes.list(l);
+    return { ok: true, data: { codes: r } };
+  }
+
+  @Post('giftcodes')
+  @HttpCode(200)
+  async giftCreate(@Req() req: AdminReq, @Body() body: unknown) {
+    const parsed = GiftCreateZ.safeParse(body);
+    if (!parsed.success) fail('INVALID_INPUT');
+    try {
+      const code = await this.giftCodes.create({
+        code: parsed.data.code,
+        rewardLinhThach: BigInt(parsed.data.rewardLinhThach),
+        rewardTienNgoc: parsed.data.rewardTienNgoc,
+        rewardExp: BigInt(parsed.data.rewardExp),
+        rewardItems: parsed.data.rewardItems,
+        maxRedeems: parsed.data.maxRedeems ?? null,
+        expiresAt: parsed.data.expiresAt ? new Date(parsed.data.expiresAt) : null,
+        createdByAdminId: req.userId,
+      });
+      return { ok: true, data: { code } };
+    } catch (e) {
+      this.handleErr(e);
+    }
+  }
+
+  @Post('giftcodes/:code/revoke')
+  @HttpCode(200)
+  async giftRevoke(@Param('code') code: string) {
+    try {
+      const r = await this.giftCodes.revoke(code);
+      return { ok: true, data: { code: r } };
+    } catch (e) {
+      this.handleErr(e);
+    }
+  }
+
   @Post('mail/send')
   @HttpCode(200)
   async mailSend(@Req() req: AdminReq, @Body() body: unknown) {
@@ -229,6 +285,18 @@ export class AdminController {
             : e.code === 'ALREADY_PROCESSED'
               ? HttpStatus.CONFLICT
               : HttpStatus.BAD_REQUEST;
+      fail(e.code, status);
+    }
+    if (e instanceof GiftCodeError) {
+      const status =
+        e.code === 'CODE_NOT_FOUND' || e.code === 'NO_CHARACTER'
+          ? HttpStatus.NOT_FOUND
+          : e.code === 'ALREADY_REDEEMED' ||
+              e.code === 'CODE_EXPIRED' ||
+              e.code === 'CODE_REVOKED' ||
+              e.code === 'CODE_EXHAUSTED'
+            ? HttpStatus.CONFLICT
+            : HttpStatus.BAD_REQUEST;
       fail(e.code, status);
     }
     if (e instanceof MailError) {
