@@ -1,7 +1,7 @@
 # AI Handoff Report — Xuân Tôi
 
-> **Snapshot**: `main` @ commit `2ae4cc0` (28 Apr 2026 20:25 UTC, sau khi PR #52 audit + PR #53 replay PR #47 merged. Thêm PR #54 đang mở cho smart admin economy alerts — cập nhật khi merge).
-> **Người viết**: AI engineer session 28/4 sess.5 (PR #52 audit + PR #53 replay PR #47 + PR #54 smart admin economy alerts G4).
+> **Snapshot**: `main` @ commit (post-PR #54 merged 28 Apr 2026 20:35 UTC — cập nhật SHA khi PR #55 rebase). PR #54 (G4 smart admin economy alerts) merged. Thêm **PR #55 (G1 mở rộng vitest coverage badges + auth)** đang mở — cập nhật khi merge.
+> **Người viết**: AI engineer session 28/4 sess.5 (PR #52 audit + PR #53 replay PR #47 + PR #54 G4 smart admin economy alerts + PR #55 G1 vitest coverage).
 > **Đối tượng đọc**: AI kế nhiệm sẽ tiếp tục đưa dự án tới beta / production.
 >
 > Báo cáo trung thực. Mọi tuyên bố "đã xong" đều có PR + file + test chứng minh. Khi chưa verify runtime, ghi rõ **"Needs runtime smoke"**.
@@ -73,9 +73,20 @@
 
 Mỗi PR đều `Merged` vào `main` (trừ PR #47 — xem cảnh báo), branch base = `main`. Smoke local (typecheck/lint/test/build) đã chạy ở mỗi PR; smoke E2E 6/6 đã pass tại PR #44 (snapshot `4d8af10`).
 
-### PR #54 — `feat(admin): smart economy alerts (negative currency / inventory / stale topup PENDING)` (G4)
+### PR #55 — `test(web): expand vitest coverage — useBadgesStore (9) + useAuthStore (7)` (G1)
 
-- **Branch**: `devin/1777407655-smart-admin-economy-alerts`. **Base**: `main` (post-PR #53 `2ae4cc0`). **Status**: Open (CI pending).
+- **Branch**: `devin/1777408281-g1-vitest-coverage`. **Base**: `main` (post-PR #54). **Status**: Open (CI pending).
+- **Mục tiêu**: G1 từ §21 — mở rộng vitest coverage cho stores quan trọng vẫn chưa có test (`badges` — sidebar badge logic 60s polling từ PR #51, `auth` — login/register/logout/hydrate). Reuse vitest infra từ PR #53.
+- **File**:
+  - `apps/web/src/stores/__tests__/badges.test.ts` (new) — 9 test: default state, refresh populate counters, string→number coercion, NaN→0 fallback, error swallow + state preserve, 60s polling tick, idempotent start(), stop() halt, stop() pre-start no-op.
+  - `apps/web/src/stores/__tests__/auth.test.ts` (new) — 7 test: default state, hydrate(), isAdmin gate, login() loading toggle + payload, login() reject reset loading, register() defaults, logout() clear user.
+- **Tests**: web vitest 17 → **33** (+16 / +94%). Không đổi source code, chỉ thêm test.
+- **Risk**: zero — test-only PR.
+- **Rollback**: revert. Không ảnh hưởng runtime.
+
+### PR #54 — `feat(admin): smart economy alerts (negative currency / inventory / stale topup PENDING)` (G4) — **Merged**
+
+- **Branch**: `devin/1777407655-smart-admin-economy-alerts`. **Base**: `main` (post-PR #53 `2ae4cc0`). **Status**: **Merged** (28/4 20:33 UTC, CI 3/3 xanh gồm Devin Review).
 - **Mục tiêu**: Smart admin / economy safety (prompt §3-4) — phát hiện sớm 3 loại bất thường kinh tế trong closed beta:
   1. Character có currency âm (`linhThach < 0` OR `tienNgoc < 0` OR `tienNgocKhoa < 0`) — invariant violation, cần alert ngay.
   2. InventoryItem có `qty < 1` — nhẽ lạnh nhưng vẫn invariant (qty=0 nên bị xóa).
@@ -1190,7 +1201,8 @@ Admin hiện tại có thể vào `/admin` → Users → tìm → **Set role = A
 - **G1 (high value, low risk)**: Mở rộng vitest coverage cho `HomeView` (next-action panel render), `AppShell` (badge logic 60s polling), `MissionView` (claim button enable/disable). Reuse vitest infra của PR B.
 - **G2 (medium, low)**: L4 helper `itemName(key, locale)` cho `MissionView/MailView/GiftCodeView/ShopView` — dịch tên item theo i18n.
 - **G3 (medium, medium)**: M3 WS `mission:progress` push (throttled `emitToUser` tại `MissionService.track*`).
-- ~~**G4 (smart admin)**: Admin Overview tab thêm alert nếu currency âm / item qty âm / topup pending >24h.~~ — **Done** by **PR #54** (Open, chờ CI). Endpoint `GET /admin/economy/alerts` + Stats tab panel + 7 test.
+- ~~**G4 (smart admin)**: Admin Overview tab thêm alert nếu currency âm / item qty âm / topup pending >24h.~~ — **Done & Merged** by **PR #54**. Endpoint `GET /admin/economy/alerts` + Stats tab panel + 7 vitest test.
+- ~~**G1 (high value, low risk)**: Mở rộng vitest coverage cho stores~~ — **Partial Done** by **PR #55** (Open). Đã cover `useBadgesStore` (badge logic 60s polling) + `useAuthStore`. Còn lại (next): render-level test cho `HomeView` next-action panel + `MissionView` claim flow (cần setup vue-test-utils mount + i18n stub).
 - **G5 (post-beta backlog)**: leaderboard, `ADMIN_REVOKE` endpoint (L7), Alchemy/Refinery/Arena.
 
 Không còn issue **High** mở trên main; chỉ còn **Medium** (M3/M6/M7/M9/M10/M11) và **Low** (L2/L3/L4/L5/L6/L7).
