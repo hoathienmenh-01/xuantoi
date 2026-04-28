@@ -58,7 +58,7 @@
 
 ---
 
-## Recent Changes (PR #33→#45)
+## Recent Changes (PR #33→#45 + PR B)
 
 Mỗi PR đều `Merged` vào `main`, CI xanh (3/3 check), branch base = `main`. Smoke local (typecheck/lint/test/build) đã chạy ở mỗi PR; smoke E2E 6/6 đã pass tại PR #44 (snapshot `4d8af10`). PR #45 chỉ là text-only fix vi.json 12 key admin → không cần re-smoke runtime. Blueprint 04/05 commit vào `docs/` ở session 4 — không đổi code/test.
 
@@ -139,6 +139,15 @@ Mỗi PR đều `Merged` vào `main`, CI xanh (3/3 check), branch base = `main`.
 - **Migration / seed**: không (Schema đã có sẵn).
 - **Risk**: stock infinite, không daily limit (intentional). Không có rate-limit.
 - **Follow-up**: PR #40 hook `ItemLedger` cho shop (đã làm — có dòng `SHOP_BUY` qua `grantTx`).
+
+### PR B — `feat(web,test): wire Vitest minimal + Playwright golden path scaffold (H5 resolved partial)`
+
+- **Branch**: `devin/1777398483-h5-vitest-playwright` (stack on PR #46). **Status**: PR pending. **CI**: chờ chạy.
+- **Mục tiêu**: Đóng gap H5 (web chưa có Vitest + Playwright).
+- **File new**: `apps/web/vitest.config.ts`, `apps/web/playwright.config.ts`, `apps/web/e2e/golden.spec.ts`, `apps/web/src/stores/__tests__/toast.test.ts` (9 test), `apps/web/src/stores/__tests__/game.test.ts` (8 test).
+- **File edit**: `apps/web/package.json` — `test: vitest run` (thay `echo`), `test:watch`, `e2e`, `e2e:install`; devDep `vitest@^2.1.9`, `@vue/test-utils@^2.4.6`, `@playwright/test@^1.49.0`, `happy-dom@^15.11.6`.
+- **Test**: 17/17 vitest pass local (`pnpm --filter @xuantoi/web test`). CI đã có step `pnpm test` recursive → tự động pickup vitest của web không cần sửa `.github/workflows/ci.yml`. Playwright spec `e2e/golden.spec.ts`: 1 smoke (`/auth` renders) + 1 golden path full (gated `E2E_FULL=1`).
+- **Risk**: green — chỉ thêm test infrastructure. `pnpm test` cho web sẽ chạy trong ~2s. Playwright không add vào CI — cần download browser binary; để follow-up khi muốn run E2E trong CI. Rollback = revert commit.
 
 ### PR #45 — `i18n(vi): translate 12 admin keys still in English (L1 resolved)`
 
@@ -826,7 +835,7 @@ _(Không có lỗi làm app không chạy / mất tiền / auth hỏng tại com
 | ~~H2~~ | ~~Không có seed script tạo admin đầu tiên.~~ | `apps/api/scripts/bootstrap.ts` | — | **Resolved** by **PR #33** (`pnpm --filter @xuantoi/api bootstrap`, idempotent, 7 test). |
 | ~~H3~~ | ~~Không có seed sect (Thanh Vân Môn, Huyền Thuỷ Cung, Tu La Điện).~~ | `apps/api/scripts/bootstrap.ts:DEFAULT_SECTS` | — | **Resolved** by **PR #33**. |
 | ~~H4~~ | ~~`InventoryService` không có test unit.~~ | `apps/api/src/modules/inventory/inventory.service.test.ts` | — | **Resolved** by **PR #34** (19 test). |
-| H5 | Web chưa có Vitest + E2E Playwright. | `apps/web` | Regression FE không bắt được. | **Open** — Wire Vitest minimal + 1 Playwright happy path (login → home → cultivate 1 tick → mission claim → shop buy). |
+| ~~H5~~ | ~~Web chưa có Vitest + E2E Playwright.~~ | `apps/web/vitest.config.ts`, `apps/web/playwright.config.ts`, `apps/web/src/stores/__tests__/*.test.ts`, `apps/web/e2e/golden.spec.ts` | — | **Resolved partial** by **PR B** — Vitest wired + 17 store test (toast 9 + game 8) chạy trong CI qua `pnpm test` recursive. Playwright wired + 1 smoke test (`/auth` page renders) + 1 golden path spec gated bởi `E2E_FULL=1` (require full stack — api + web + postgres + redis). **Follow-up**: chạy golden path E2E trong CI hoặc local để verify register → onboard → cultivate → mission claim thực tế. |
 
 ### Medium
 
