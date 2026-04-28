@@ -1,7 +1,7 @@
 # AI Handoff Report — Xuân Tôi
 
-> **Snapshot**: `main` @ commit `82e6212` (28 Apr 2026 20:00 UTC, sau khi PR #52 audit-session-5 merged + replay-gap PR #47 được giải quyết bằng PR B — cập nhật khi PR B merge).
-> **Người viết**: AI engineer session 28/4 sess.5 (PR #52 audit + PR B replay PR #47 vitest/playwright).
+> **Snapshot**: `main` @ commit `2ae4cc0` (28 Apr 2026 20:25 UTC, sau khi PR #52 audit + PR #53 replay PR #47 merged. Thêm PR #54 đang mở cho smart admin economy alerts — cập nhật khi merge).
+> **Người viết**: AI engineer session 28/4 sess.5 (PR #52 audit + PR #53 replay PR #47 + PR #54 smart admin economy alerts G4).
 > **Đối tượng đọc**: AI kế nhiệm sẽ tiếp tục đưa dự án tới beta / production.
 >
 > Báo cáo trung thực. Mọi tuyên bố "đã xong" đều có PR + file + test chứng minh. Khi chưa verify runtime, ghi rõ **"Needs runtime smoke"**.
@@ -69,9 +69,40 @@
 
 ---
 
-## Recent Changes (PR #33→#51 + replay-gap PR #47)
+## Recent Changes (PR #33→#54)
 
 Mỗi PR đều `Merged` vào `main` (trừ PR #47 — xem cảnh báo), branch base = `main`. Smoke local (typecheck/lint/test/build) đã chạy ở mỗi PR; smoke E2E 6/6 đã pass tại PR #44 (snapshot `4d8af10`).
+
+### PR #54 — `feat(admin): smart economy alerts (negative currency / inventory / stale topup PENDING)` (G4)
+
+- **Branch**: `devin/1777407655-smart-admin-economy-alerts`. **Base**: `main` (post-PR #53 `2ae4cc0`). **Status**: Open (CI pending).
+- **Mục tiêu**: Smart admin / economy safety (prompt §3-4) — phát hiện sớm 3 loại bất thường kinh tế trong closed beta:
+  1. Character có currency âm (`linhThach < 0` OR `tienNgoc < 0` OR `tienNgocKhoa < 0`) — invariant violation, cần alert ngay.
+  2. InventoryItem có `qty < 1` — nhẽ lạnh nhưng vẫn invariant (qty=0 nên bị xóa).
+  3. TopupOrder PENDING > `staleHours` (mặc định 24h) — admin lười duyệt.
+- **File**:
+  - `apps/api/src/modules/admin/admin.service.ts` — thêm method `getEconomyAlerts(staleHours = 24)` (read-only, `Promise.all` 3 query, `take: 100` per group).
+  - `apps/api/src/modules/admin/admin.controller.ts` — thêm route `GET /admin/economy/alerts?staleHours=24` (clamp 1..720). Mặc định AdminGuard → MOD+ADMIN đọc được.
+  - `apps/api/src/modules/admin/economy-alerts.test.ts` (new) — 7 vitest test (empty DB, neg linhThach, neg tienNgoc+tienNgocKhoa, neg inventory qty 0/-2, stale topup default, custom staleHours, sanity).
+  - `apps/web/src/api/admin.ts` — thêm interface `AdminEconomyAlerts` + `adminEconomyAlerts(staleHours = 24)`.
+  - `apps/web/src/views/AdminView.vue` — Stats tab thêm panel `Economy alerts` với 3 group (rose / rose / amber). `refreshStats()` đổi thành `Promise.all([adminStats(), adminEconomyAlerts()])`.
+  - `apps/web/src/i18n/{vi,en}.json` — thêm `admin.alerts.{title,subtitle,allClear,negativeCurrency,negativeInventory,stalePendingTopups}`.
+- **Tests**: API +7 (không đổi existing). Web vitest 17 vẫn pass. Typecheck/lint/build xanh.
+- **Risk**: **low** — endpoint read-only, không side-effect, không migration. Nếu API fail → alerts panel ẩn (handleErr toạt).
+- **Rollback**: revert PR. Không ảnh hưởng schema/data.
+
+### PR #53 — `feat(web,test): replay PR #47 — wire Vitest minimal + Playwright golden path scaffold (H5)` — PR B replay
+
+- **Branch**: `devin/1777406837-replay-pr47-vitest-playwright`. **Base**: `main` (post-PR #52 `82e6212`). **Status**: **Merged** (commit `2ae4cc0`).
+- Cherry-pick `32a33a6` từ feature branch vào main, conflict `docs/AI_HANDOFF_REPORT.md` resolved take `--ours`. Đã fix `apps/web/package.json` test từ `echo skipped` thành `vitest run`.
+- **File**: `apps/web/{vitest,playwright}.config.ts`, `apps/web/e2e/golden.spec.ts`, `apps/web/src/stores/__tests__/{toast,game}.test.ts` (17 test tổng).
+- **CI**: 3/3 xanh.
+
+### PR #52 — `docs(handoff): audit session 5 — bump snapshot to 68fa1a3 + flag PR #47 replay-gap` — audit only
+
+- **Branch**: `devin/1777406465-audit-session-5-pr50-51-pr47-replay-gap`. **Base**: `main`. **Status**: **Merged** (commit `82e6212`).
+- Discovery chính: PR #47 GitHub status `closed (merged)` nhưng commit `4ed913a` chỉ tồn tại trên feature branch, KHÔNG vào main → vitest/playwright config + 17 test chưa từng có ở main. Fix PR #50/#51 status Open → Merged trong report; §16 H5 → Open (replay needed); §21 PR B retitle "Replay PR #47".
+- **CI**: 2/2 xanh.
 
 ### PR #51 — `feat(web): sidebar badges (mission claimable / boss active / topup pending) từ /me/next-actions`
 
@@ -1159,7 +1190,7 @@ Admin hiện tại có thể vào `/admin` → Users → tìm → **Set role = A
 - **G1 (high value, low risk)**: Mở rộng vitest coverage cho `HomeView` (next-action panel render), `AppShell` (badge logic 60s polling), `MissionView` (claim button enable/disable). Reuse vitest infra của PR B.
 - **G2 (medium, low)**: L4 helper `itemName(key, locale)` cho `MissionView/MailView/GiftCodeView/ShopView` — dịch tên item theo i18n.
 - **G3 (medium, medium)**: M3 WS `mission:progress` push (throttled `emitToUser` tại `MissionService.track*`).
-- **G4 (smart admin)**: Admin Overview tab thêm alert nếu currency âm / item qty âm / topup pending >24h.
+- ~~**G4 (smart admin)**: Admin Overview tab thêm alert nếu currency âm / item qty âm / topup pending >24h.~~ — **Done** by **PR #54** (Open, chờ CI). Endpoint `GET /admin/economy/alerts` + Stats tab panel + 7 test.
 - **G5 (post-beta backlog)**: leaderboard, `ADMIN_REVOKE` endpoint (L7), Alchemy/Refinery/Arena.
 
 Không còn issue **High** mở trên main; chỉ còn **Medium** (M3/M6/M7/M9/M10/M11) và **Low** (L2/L3/L4/L5/L6/L7).
@@ -1176,7 +1207,19 @@ Leaderboard / Alchemy / Refinery / Arena / Pet / Companion / Event / Battle Pass
 
 ---
 
-### Session 5 audit log (28/4 19:56–20:08 UTC — PR #52 + PR B replay)
+### Session 5 audit log (28/4 19:56–20:25 UTC — PR #52 + PR #53 + PR #54)
+
+**PR #54 — G4 smart admin economy alerts**
+- Branch mới base off main (sau PR #53 merge tại `2ae4cc0`).
+- API: `AdminService.getEconomyAlerts(staleHours)` + route `GET /admin/economy/alerts`. 7 vitest test cover 3 loại alert + custom staleHours + empty DB.
+- FE: `adminEconomyAlerts()` client + Stats tab panel render 3 group; reuse `refreshStats()` flow.
+- i18n: `admin.alerts.*` vi/en.
+- Local: `pnpm typecheck` + `pnpm lint` + `pnpm build` xanh. `pnpm --filter @xuantoi/web test` 17/17 pass. `pnpm --filter @xuantoi/api test` skip local vì không có Postgres (CI sẽ chạy).
+- Risk: low — read-only endpoint, không schema/migration.
+
+---
+
+### Session 5 audit log (28/4 19:56–20:08 UTC — PR #52 + PR B replay) [histórico]
 
 **PR B — Replay PR #47 (cherry-pick `32a33a6` vào main)**
 - Branch mới base off main (sau khi PR #52 merge tại `82e6212`).
