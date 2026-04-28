@@ -28,8 +28,8 @@ describe('InventoryService', () => {
   describe('grant + list', () => {
     it('grant non-stackable: tạo row mới mỗi lần', async () => {
       const u = await makeUserChar(prisma);
-      await inv.grant(u.characterId, [{ itemKey: 'so_kiem', qty: 1 }]);
-      await inv.grant(u.characterId, [{ itemKey: 'so_kiem', qty: 1 }]);
+      await inv.grant(u.characterId, [{ itemKey: 'so_kiem', qty: 1 }], { reason: 'ADMIN_GRANT' });
+      await inv.grant(u.characterId, [{ itemKey: 'so_kiem', qty: 1 }], { reason: 'ADMIN_GRANT' });
 
       const list = await inv.list(u.characterId);
       const swords = list.filter((x) => x.itemKey === 'so_kiem');
@@ -39,8 +39,8 @@ describe('InventoryService', () => {
 
     it('grant stackable: gộp qty vào row hiện có (nếu chưa equip)', async () => {
       const u = await makeUserChar(prisma);
-      await inv.grant(u.characterId, [{ itemKey: 'huyet_chi_dan', qty: 3 }]);
-      await inv.grant(u.characterId, [{ itemKey: 'huyet_chi_dan', qty: 5 }]);
+      await inv.grant(u.characterId, [{ itemKey: 'huyet_chi_dan', qty: 3 }], { reason: 'ADMIN_GRANT' });
+      await inv.grant(u.characterId, [{ itemKey: 'huyet_chi_dan', qty: 5 }], { reason: 'ADMIN_GRANT' });
 
       const list = await inv.list(u.characterId);
       const pills = list.filter((x) => x.itemKey === 'huyet_chi_dan');
@@ -50,7 +50,7 @@ describe('InventoryService', () => {
 
     it('grant: itemKey không tồn tại trong catalog → bỏ qua, không tạo row', async () => {
       const u = await makeUserChar(prisma);
-      await inv.grant(u.characterId, [{ itemKey: 'khong_ton_tai', qty: 1 }]);
+      await inv.grant(u.characterId, [{ itemKey: 'khong_ton_tai', qty: 1 }], { reason: 'ADMIN_GRANT' });
       const rows = await prisma.inventoryItem.findMany({ where: { characterId: u.characterId } });
       expect(rows).toHaveLength(0);
     });
@@ -68,7 +68,7 @@ describe('InventoryService', () => {
   describe('equip / unequip', () => {
     it('equip: item có slot → set equippedSlot, list trả về đúng slot', async () => {
       const u = await makeUserChar(prisma);
-      await inv.grant(u.characterId, [{ itemKey: 'so_kiem', qty: 1 }]);
+      await inv.grant(u.characterId, [{ itemKey: 'so_kiem', qty: 1 }], { reason: 'ADMIN_GRANT' });
       const item = await prisma.inventoryItem.findFirstOrThrow({
         where: { characterId: u.characterId, itemKey: 'so_kiem' },
       });
@@ -82,8 +82,8 @@ describe('InventoryService', () => {
 
     it('equip swap: trang bị mới ở cùng slot → tháo cái cũ tự động', async () => {
       const u = await makeUserChar(prisma);
-      await inv.grant(u.characterId, [{ itemKey: 'so_kiem', qty: 1 }]);
-      await inv.grant(u.characterId, [{ itemKey: 'huyen_kiem', qty: 1 }]);
+      await inv.grant(u.characterId, [{ itemKey: 'so_kiem', qty: 1 }], { reason: 'ADMIN_GRANT' });
+      await inv.grant(u.characterId, [{ itemKey: 'huyen_kiem', qty: 1 }], { reason: 'ADMIN_GRANT' });
       const so = await prisma.inventoryItem.findFirstOrThrow({
         where: { characterId: u.characterId, itemKey: 'so_kiem' },
       });
@@ -104,7 +104,7 @@ describe('InventoryService', () => {
 
     it('equip item không có slot (đan dược) → NOT_EQUIPPABLE', async () => {
       const u = await makeUserChar(prisma);
-      await inv.grant(u.characterId, [{ itemKey: 'huyet_chi_dan', qty: 1 }]);
+      await inv.grant(u.characterId, [{ itemKey: 'huyet_chi_dan', qty: 1 }], { reason: 'ADMIN_GRANT' });
       const pill = await prisma.inventoryItem.findFirstOrThrow({
         where: { characterId: u.characterId, itemKey: 'huyet_chi_dan' },
       });
@@ -116,7 +116,7 @@ describe('InventoryService', () => {
     it('equip item của character khác → INVENTORY_ITEM_NOT_FOUND', async () => {
       const a = await makeUserChar(prisma);
       const b = await makeUserChar(prisma);
-      await inv.grant(a.characterId, [{ itemKey: 'so_kiem', qty: 1 }]);
+      await inv.grant(a.characterId, [{ itemKey: 'so_kiem', qty: 1 }], { reason: 'ADMIN_GRANT' });
       const sword = await prisma.inventoryItem.findFirstOrThrow({
         where: { characterId: a.characterId },
       });
@@ -127,7 +127,7 @@ describe('InventoryService', () => {
 
     it('unequip: gỡ item khỏi slot, item vẫn còn trong inventory', async () => {
       const u = await makeUserChar(prisma);
-      await inv.grant(u.characterId, [{ itemKey: 'so_kiem', qty: 1 }]);
+      await inv.grant(u.characterId, [{ itemKey: 'so_kiem', qty: 1 }], { reason: 'ADMIN_GRANT' });
       const sword = await prisma.inventoryItem.findFirstOrThrow({
         where: { characterId: u.characterId, itemKey: 'so_kiem' },
       });
@@ -160,7 +160,7 @@ describe('InventoryService', () => {
   describe('use', () => {
     it('use đan HP: hồi máu, capped at hpMax, qty giảm 1', async () => {
       const u = await makeUserChar(prisma, { hp: 50, hpMax: 100 });
-      await inv.grant(u.characterId, [{ itemKey: 'huyet_chi_dan', qty: 3 }]); // hp +60
+      await inv.grant(u.characterId, [{ itemKey: 'huyet_chi_dan', qty: 3 }], { reason: 'ADMIN_GRANT' }); // hp +60
       const pill = await prisma.inventoryItem.findFirstOrThrow({
         where: { characterId: u.characterId, itemKey: 'huyet_chi_dan' },
       });
@@ -175,7 +175,7 @@ describe('InventoryService', () => {
 
     it('use đan có qty=1: xoá hẳn record', async () => {
       const u = await makeUserChar(prisma, { hp: 10, hpMax: 100 });
-      await inv.grant(u.characterId, [{ itemKey: 'huyet_chi_dan', qty: 1 }]);
+      await inv.grant(u.characterId, [{ itemKey: 'huyet_chi_dan', qty: 1 }], { reason: 'ADMIN_GRANT' });
       const pill = await prisma.inventoryItem.findFirstOrThrow({
         where: { characterId: u.characterId, itemKey: 'huyet_chi_dan' },
       });
@@ -188,7 +188,7 @@ describe('InventoryService', () => {
 
     it('use đan EXP: tăng exp', async () => {
       const u = await makeUserChar(prisma, { exp: 100n });
-      await inv.grant(u.characterId, [{ itemKey: 'co_thien_dan', qty: 1 }]); // exp +500
+      await inv.grant(u.characterId, [{ itemKey: 'co_thien_dan', qty: 1 }], { reason: 'ADMIN_GRANT' }); // exp +500
       const pill = await prisma.inventoryItem.findFirstOrThrow({
         where: { characterId: u.characterId, itemKey: 'co_thien_dan' },
       });
@@ -201,7 +201,7 @@ describe('InventoryService', () => {
 
     it('use item không có effect (vũ khí) → NOT_USABLE', async () => {
       const u = await makeUserChar(prisma);
-      await inv.grant(u.characterId, [{ itemKey: 'so_kiem', qty: 1 }]);
+      await inv.grant(u.characterId, [{ itemKey: 'so_kiem', qty: 1 }], { reason: 'ADMIN_GRANT' });
       const sword = await prisma.inventoryItem.findFirstOrThrow({
         where: { characterId: u.characterId, itemKey: 'so_kiem' },
       });
@@ -213,7 +213,7 @@ describe('InventoryService', () => {
     it('use item của character khác → INVENTORY_ITEM_NOT_FOUND', async () => {
       const a = await makeUserChar(prisma);
       const b = await makeUserChar(prisma);
-      await inv.grant(a.characterId, [{ itemKey: 'huyet_chi_dan', qty: 1 }]);
+      await inv.grant(a.characterId, [{ itemKey: 'huyet_chi_dan', qty: 1 }], { reason: 'ADMIN_GRANT' });
       const pill = await prisma.inventoryItem.findFirstOrThrow({
         where: { characterId: a.characterId },
       });
@@ -229,7 +229,7 @@ describe('InventoryService', () => {
       await inv.grant(u.characterId, [
         { itemKey: 'so_kiem', qty: 1 }, // atk +5
         { itemKey: 'pham_giap', qty: 1 }, // def +4
-      ]);
+      ], { reason: 'ADMIN_GRANT' });
       const sword = await prisma.inventoryItem.findFirstOrThrow({
         where: { characterId: u.characterId, itemKey: 'so_kiem' },
       });
@@ -247,7 +247,7 @@ describe('InventoryService', () => {
 
     it('item không equip không cộng vào bonus', async () => {
       const u = await makeUserChar(prisma);
-      await inv.grant(u.characterId, [{ itemKey: 'so_kiem', qty: 1 }]);
+      await inv.grant(u.characterId, [{ itemKey: 'so_kiem', qty: 1 }], { reason: 'ADMIN_GRANT' });
       const bonus = await inv.equipBonus(u.characterId);
       expect(bonus.atk).toBe(0);
     });
@@ -260,7 +260,7 @@ describe('InventoryService', () => {
         await inv.grantTx(tx, u.characterId, [
           { itemKey: 'huyet_chi_dan', qty: 2 },
           { itemKey: 'huyet_chi_dan', qty: 3 },
-        ]);
+        ], { reason: 'ADMIN_GRANT' });
       });
       const rows = await prisma.inventoryItem.findMany({
         where: { characterId: u.characterId, itemKey: 'huyet_chi_dan' },
