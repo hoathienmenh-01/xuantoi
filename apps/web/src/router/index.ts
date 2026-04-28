@@ -44,6 +44,11 @@ const routes: RouteRecordRaw[] = [
     component: () => import('@/views/BossView.vue'),
   },
   {
+    path: '/mail',
+    name: 'mail',
+    component: () => import('@/views/MailView.vue'),
+  },
+  {
     path: '/topup',
     name: 'topup',
     component: () => import('@/views/TopupView.vue'),

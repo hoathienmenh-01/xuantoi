@@ -21,7 +21,8 @@ export type LedgerReason =
   | 'ADMIN_GRANT'
   | 'ADMIN_TOPUP_APPROVE'
   | 'BOSS_REWARD'
-  | 'COMBAT_LOOT';
+  | 'COMBAT_LOOT'
+  | 'MAIL_CLAIM';
 
 export interface CurrencyApplyInput {
   characterId: string;

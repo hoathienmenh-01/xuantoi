@@ -6,10 +6,11 @@ import { AuthModule } from '../auth/auth.module';
 import { CharacterModule } from '../character/character.module';
 import { TopupModule } from '../topup/topup.module';
 import { RealtimeModule } from '../realtime/realtime.module';
+import { MailModule } from '../mail/mail.module';
 import { PrismaService } from '../../common/prisma.service';
 
 @Module({
-  imports: [AuthModule, CharacterModule, TopupModule, RealtimeModule],
+  imports: [AuthModule, CharacterModule, TopupModule, RealtimeModule, MailModule],
   controllers: [AdminController],
   providers: [AdminService, AdminGuard, PrismaService],
 })
