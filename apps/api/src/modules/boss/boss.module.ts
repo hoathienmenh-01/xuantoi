@@ -7,6 +7,7 @@ import { AuthModule } from '../auth/auth.module';
 import { CharacterModule } from '../character/character.module';
 import { InventoryModule } from '../inventory/inventory.module';
 import { MissionModule } from '../mission/mission.module';
+import { AdminModule } from '../admin/admin.module';
 
 @Module({
   imports: [
@@ -15,6 +16,7 @@ import { MissionModule } from '../mission/mission.module';
     CharacterModule,
     InventoryModule,
     MissionModule,
+    AdminModule,
   ],
   controllers: [BossController],
   providers: [BossService, PrismaService],

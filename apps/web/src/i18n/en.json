@@ -562,7 +562,8 @@
       "stats": "Overview",
       "users": "Users",
       "topups": "Top-ups",
-      "audit": "Audit"
+      "audit": "Audit",
+      "boss": "Boss"
     },
     "stats": {
       "users": "Users",
@@ -643,6 +644,16 @@
         "meta": "Meta"
       }
     },
+    "boss": {
+      "title": "Spawn World Boss",
+      "hint": "Leave bossKey empty to auto-rotate by catalog. If a boss is ACTIVE, enable Force to expire it before spawning a new one.",
+      "bossKey": "Boss key (e.g. huyet_ma)",
+      "level": "Level (1-10)",
+      "force": "Force (expire current boss)",
+      "spawn": "Spawn",
+      "spawned": "Spawned {name} Lv.{level}",
+      "currentlyActive": "Active boss: {name} Lv.{level}"
+    },
     "errors": {
       "UNAUTHENTICATED": "Session expired, please sign in again.",
       "FORBIDDEN": "Not enough permissions.",
@@ -650,6 +661,9 @@
       "ALREADY_PROCESSED": "Order already processed.",
       "INVALID_INPUT": "Invalid parameters (out of range / too negative).",
       "CANNOT_TARGET_SELF": "Cannot target yourself.",
+      "BOSS_ALREADY_ACTIVE": "A boss is already active. Enable Force to replace it.",
+      "INVALID_BOSS_KEY": "Boss key not found in catalog.",
+      "INVALID_LEVEL": "Level must be an integer 1..10.",
       "UNKNOWN": "Something went wrong."
     }
   }

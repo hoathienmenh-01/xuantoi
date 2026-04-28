@@ -144,3 +144,26 @@ export async function adminStats(): Promise<AdminStats> {
   const { data } = await apiClient.get<Envelope<AdminStats>>('/admin/stats');
   return unwrap(data);
 }
+
+export interface AdminBossSpawnInput {
+  bossKey?: string;
+  level?: number;
+  force?: boolean;
+}
+
+export interface AdminBossSpawnResult {
+  id: string;
+  bossKey: string;
+  level: number;
+  maxHp: string;
+}
+
+export async function adminSpawnBoss(
+  input: AdminBossSpawnInput,
+): Promise<AdminBossSpawnResult> {
+  const { data } = await apiClient.post<Envelope<AdminBossSpawnResult>>(
+    '/boss/admin/spawn',
+    input,
+  );
+  return unwrap(data);
+}

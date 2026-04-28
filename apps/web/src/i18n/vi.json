@@ -562,7 +562,8 @@
       "stats": "Tổng quan",
       "users": "Người dùng",
       "topups": "Đơn nạp",
-      "audit": "Audit"
+      "audit": "Audit",
+      "boss": "Boss"
     },
     "stats": {
       "users": "Người dùng",
@@ -643,6 +644,16 @@
         "meta": "Meta"
       }
     },
+    "boss": {
+      "title": "Triệu hồi Boss thế giới",
+      "hint": "Bỏ trống bossKey để tự xoay theo thứ tự catalog. Nếu đang có boss ACTIVE, bật \"Force\" để expire boss cũ rồi spawn boss mới.",
+      "bossKey": "Boss key (vd: huyet_ma)",
+      "level": "Cấp độ (1-10)",
+      "force": "Force (expire boss đang có)",
+      "spawn": "Triệu hồi",
+      "spawned": "Đã triệu hồi {name} Lv.{level}",
+      "currentlyActive": "Đang có boss ACTIVE: {name} Lv.{level}"
+    },
     "errors": {
       "UNAUTHENTICATED": "Hết phiên, hãy đăng nhập lại.",
       "FORBIDDEN": "Không đủ quyền.",
@@ -650,6 +661,9 @@
       "ALREADY_PROCESSED": "Đơn đã được xử lý.",
       "INVALID_INPUT": "Tham số không hợp lệ (vượt giới hạn / âm quá mức).",
       "CANNOT_TARGET_SELF": "Không thể tự thao tác lên bản thân.",
+      "BOSS_ALREADY_ACTIVE": "Đang có boss ACTIVE. Bật Force để thay.",
+      "INVALID_BOSS_KEY": "Boss key không có trong catalog.",
+      "INVALID_LEVEL": "Cấp độ phải là số nguyên 1..10.",
       "UNKNOWN": "Có lỗi xảy ra."
     }
   }
