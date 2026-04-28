@@ -451,11 +451,17 @@ export class BossService implements OnModuleInit, OnModuleDestroy {
     });
     if (active) {
       if (!opts.force) throw new BossError('BOSS_ALREADY_ACTIVE');
-      await this.prisma.worldBoss.update({
-        where: { id: active.id },
+      // Optimistic lock: chỉ flip ACTIVE → EXPIRED. Nếu giữa findFirst và đây
+      // boss đã bị defeat (DEFEATED) bởi player thì skip — không ghi đè
+      // historical record. updateMany với status=ACTIVE filter là cách
+      // an toàn để tránh race condition này.
+      const flip = await this.prisma.worldBoss.updateMany({
+        where: { id: active.id, status: BossStatus.ACTIVE },
         data: { status: BossStatus.EXPIRED, defeatedAt: new Date() },
       });
-      this.realtime.broadcast('boss:end', { id: active.id, status: BossStatus.EXPIRED });
+      if (flip.count > 0) {
+        this.realtime.broadcast('boss:end', { id: active.id, status: BossStatus.EXPIRED });
+      }
     }
 
     const spawned = await this.spawnNew({ def, level });

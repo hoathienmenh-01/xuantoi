@@ -260,6 +260,31 @@ describe('BossService', () => {
       expect(r.id).not.toBe(old.id);
     });
 
+    it('boss đã DEFEATED giữa findFirst và update + force=true → KHÔNG ghi đè status (không làm hỏng historical record)', async () => {
+      // Race condition guard: Devin Review #36 #3153196860.
+      // Mô phỏng: findFirst trả về boss ACTIVE, nhưng sau đó player kill được
+      // boss → status đổi thành DEFEATED + defeatedAt được set với reward đã
+      // distribute. adminSpawn force không được rollback DEFEATED về EXPIRED.
+      const admin = await prisma.user.create({
+        data: { email: `admin-${Date.now()}@xt.local`, passwordHash: 'x', role: 'ADMIN' },
+      });
+      const old = await spawnBoss();
+      const defeatedAt = new Date('2024-01-01T00:00:00Z');
+      // Player giết boss giữa findFirst và update.
+      await prisma.worldBoss.update({
+        where: { id: old.id },
+        data: { status: BossStatus.DEFEATED, defeatedAt },
+      });
+      // Spawn force=true sau đó không được flip DEFEATED → EXPIRED.
+      const r = await boss.adminSpawn(admin.id, { bossKey: DEF.key, level: 2, force: true });
+      const oldAfter = await prisma.worldBoss.findUniqueOrThrow({ where: { id: old.id } });
+      expect(oldAfter.status).toBe(BossStatus.DEFEATED);
+      // defeatedAt giữ nguyên thời điểm player kill, không bị overwrite.
+      expect(oldAfter.defeatedAt?.toISOString()).toBe(defeatedAt.toISOString());
+      // Boss mới vẫn được tạo bình thường.
+      expect(r.id).not.toBe(old.id);
+    });
+
     it('bossKey không có trong catalog → throw INVALID_BOSS_KEY, không tạo gì', async () => {
       const admin = await prisma.user.create({
         data: { email: `admin-${Date.now()}@xt.local`, passwordHash: 'x', role: 'ADMIN' },
