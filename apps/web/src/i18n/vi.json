@@ -125,6 +125,16 @@
         "TOPUP_PENDING": "Đơn nạp {code} đang chờ duyệt — kiểm tra Cài Đặt.",
         "CULTIVATE_IDLE": "Đạo hữu chưa nhập định — bấm ‘Nhập Định’ để hấp thụ linh khí."
       }
+    },
+    "onboarding": {
+      "title": "Tân Thủ Chỉ Nam",
+      "go": "Đi",
+      "steps": {
+        "character": "Khai lập đạo hiệu — chọn tên cho nhân vật.",
+        "sect": "Bái nhập tông môn — chọn 1 trong 3 tông.",
+        "cultivate": "Bắt đầu Nhập Định để hấp thụ linh khí.",
+        "breakthrough": "Hoàn thành đột phá đầu tiên — vượt qua Phàm Nhân."
+      }
     }
   },
   "notFound": {
