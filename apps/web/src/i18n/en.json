@@ -205,6 +205,7 @@
       "missions": "Missions",
       "mail": "Mail",
       "giftcode": "Gift Code",
+      "leaderboard": "Leaderboard",
       "topup": "Top Up",
       "settings": "Settings",
       "admin": "Admin"
@@ -212,6 +213,25 @@
     "badge": {
       "bossActive": "World boss is live",
       "topupPending": "Top-up order pending approval"
+    },
+    "sect": {
+      "thanh_van": "Thanh Vân Sect",
+      "huyen_thuy": "Huyền Thuỷ Palace",
+      "tu_la": "Tu La Sect"
+    }
+  },
+  "leaderboard": {
+    "title": "Leaderboard",
+    "subtitle": "Top 50 cultivators — sorted by realm and power.",
+    "loading": "Querying the heavens…",
+    "error": "Failed to load leaderboard.",
+    "retry": "Retry",
+    "empty": "No cultivators on the board yet.",
+    "col": {
+      "name": "Name",
+      "realm": "Realm",
+      "sect": "Sect",
+      "power": "Power"
     }
   },
   "profile": {

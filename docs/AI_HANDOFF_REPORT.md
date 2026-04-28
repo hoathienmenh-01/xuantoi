@@ -1,7 +1,7 @@
 # AI Handoff Report — Xuân Tôi
 
-> **Snapshot**: `main` @ commit (post-PR #54 + #55 + #56 + #57 merged 28 Apr 2026, cập nhật SHA khi PR #58 merge). Đang mở: **PR #58 G3 onboarding checklist (+8 test)**.
-> **Người viết**: AI engineer session 28/4 sess.5 (PR #52 audit + PR #53 replay + PR #54 G4 + PR #55 G1 store + PR #56 G1 render + PR G2 itemName + PR G3 onboarding checklist).
+> **Snapshot**: `main` @ commit (post-PR #54 + #55 + #56 + #57 + #58 merged 28 Apr 2026, cập nhật SHA khi PR #59 merge). Đang mở: **PR #59 G6 leaderboard (+13 test API+FE)**.
+> **Người viết**: AI engineer session 28/4 sess.5 (PR #52 audit + PR #53 replay + PR #54 G4 + PR #55 G1 store + PR #56 G1 render + PR #57 G2 itemName + PR G3 onboarding + PR G6 leaderboard).
 > **Đối tượng đọc**: AI kế nhiệm sẽ tiếp tục đưa dự án tới beta / production.
 >
 > Báo cáo trung thực. Mọi tuyên bố "đã xong" đều có PR + file + test chứng minh. Khi chưa verify runtime, ghi rõ **"Needs runtime smoke"**.
@@ -73,40 +73,55 @@
 
 Mỗi PR đều `Merged` vào `main` (trừ PR #47 — xem cảnh báo), branch base = `main`. Smoke local (typecheck/lint/test/build) đã chạy ở mỗi PR; smoke E2E 6/6 đã pass tại PR #44 (snapshot `4d8af10`).
 
-### PR G3 — `feat(web): smart onboarding checklist (HomeView panel, derived from character state)` — prompt §1
+### PR G6 — `feat(api,web): basic leaderboard (top 50 by realm + power)` — prompt §9 beta
 
-- **Branch**: `devin/1777409659-g3-onboarding-checklist`. **Base**: `main` (post-PR #56). **Status**: Open (CI pending).
-- **Mục tiêu**: Smart onboarding (§1 prompt user) — hiển thị "Tân Thủ Chỉ Nam" panel trên `HomeView` với 4 step derived từ `game.character` — KHÔNG cần backend tracking riêng. Tự ẩn khi player hoàn thành cả 4.
+- **Branch**: `devin/1777410153-g6-leaderboard`. **Base**: `main` (post-PR #54 + #55 + #56 + #57). **Status**: Open (CI pending).
+- **Mục tiêu**: Smart beta feature §9 prompt user — "Basic leaderboard nếu dữ liệu đã có". Gameplay loop tư tiên cần motivation: thấy rõ mình ở đâu so với đạo hữu khác.
+- **Files BE**:
+  - `apps/api/src/modules/leaderboard/leaderboard.service.ts` (new) — `topByPower(limit=50)`, sort theo `realmByKey().order DESC → realmStage DESC → power DESC → level DESC`, clamp 1..100.
+  - `apps/api/src/modules/leaderboard/leaderboard.controller.ts` (new) — `GET /leaderboard/power?limit=50` auth guard (cookie `xt_access`).
+  - `apps/api/src/modules/leaderboard/leaderboard.module.ts` (new) + register vào `app.module.ts`.
+  - `apps/api/src/modules/leaderboard/leaderboard.service.test.ts` (new) — 7 vitest test (sort, exclude banned, clamp, default, fields, sect).
+- **Files FE**:
+  - `apps/web/src/api/leaderboard.ts` (new), `apps/web/src/views/LeaderboardView.vue` (new) — loading/error/empty state, top 3 highlight, format realm + sect + power.
+  - `apps/web/src/views/__tests__/LeaderboardView.test.ts` (new) — 6 vitest test.
+  - `apps/web/src/router/index.ts` — `/leaderboard` route.
+  - `apps/web/src/components/shell/AppShell.vue` — nav link “概 Phong Thần Bảng”.
+  - `apps/web/src/i18n/vi.json` + `en.json` — `leaderboard.*` + `shell.sect.*` + `shell.nav.leaderboard`.
+- **Tests**: API +7, web vitest 50 → 56 (+6). Total +13 test.
+- **Risk**: low-medium. Endpoint mới auth-required, fetch all non-banned (cap 1000) + sort JS — OK cho closed beta. Khi scale > 1000 chars, thay bằng raw SQL precomputed `realmOrder`. Đã note trong service docstring.
+- **Rollback**: revert PR. Mất route + nav link + i18n key (không vỡ dữ liệu).
+
+### PR G2 — `feat(web): itemName(key, t?) helper + dedupe rendering across views` (G2/L4) — **Merged as PR #57**
+
+- **Branch**: `devin/1777409048-g2-itemname-helper`. **Base**: `main` (post-PR #54 + #55). **Status**: Open (CI pending).
+- **Mục tiêu**: G2/L4 từ §21 — tập trung logic resolve display name cho item key vào 1 helper. Trước đây `MailView`/`MissionView`/`GiftCodeView` show raw `it.itemKey` (vd `so_kiem`, `linh_dan`) thay vì tên Việt ("Sơ Kiếm", "Linh Đan"). `BossView` có helper inline riêng (DRY violation).
 - **Files**:
-  - `apps/web/src/components/OnboardingChecklist.vue` (new) — 4 step: Khai lập đạo hiệu (`character != null`), Bái nhập tông môn (`sectKey != null`), Bắt đầu nhập định (`cultivating`), Đột phá đầu (`realmKey !== 'phamnhan'` hoặc `realmStage > 0`). Mỗi step chưa done có button "Đi" → `router.push` tới route phù hợp (`/onboarding`, `/sect`, `/`).
-  - `apps/web/src/views/HomeView.vue` — chèn component précédé `NextActionPanel`.
-  - `apps/web/src/i18n/vi.json` + `en.json` — 8 key mới `home.onboarding.title` / `.go` / `.steps.{character|sect|cultivate|breakthrough}`.
-  - `apps/web/src/components/__tests__/OnboardingChecklist.test.ts` (new) — 8 vitest test cover render visibility, counter, từng step done/undone, hide khi all done, click button → router.push.
-- **Tests**: web vitest 50 → 58 (+8). Pure additive.
-- **i18n**: vi + en đóng hộp 4 step. Tự nhiên tiếng Việt ("Khai lập đạo hiệu", "Bái nhập tông môn") đúng tông *tù tiên*.
-- **Risk**: low — component pure derived từ store state, ko fetch API mới, ko đổi schema. Worst case panel hiển nhầm → player ignore.
-- **Rollback**: revert PR. `HomeView` quay lại state cũ (không có panel onboarding).
+  - `apps/web/src/lib/itemName.ts` (new, 51 LOC) — `itemName(key, t?)`, `formatItemReward({itemKey, qty}, t?)`, `formatItemRewardList(items, t?)`. Priority resolution: i18n `items.<key>` → `itemByKey(key)?.name` (catalog) → raw `key`.
+  - `apps/web/src/lib/__tests__/itemName.test.ts` (new) — 11 vitest test cover 3 nhánh resolution + qty=1/qty>1 + empty list.
+  - `apps/web/src/views/MailView.vue` — dedupe inline format → `formatItemRewardList(m.rewardItems, t)`.
+  - `apps/web/src/views/MissionView.vue` — dedupe inline format → `formatItemRewardList(m.rewards.items, t)`.
+  - `apps/web/src/views/GiftCodeView.vue` — raw `it.itemKey` → `itemName(it.itemKey, t)` trong template list.
+  - `apps/web/src/views/BossView.vue` — bỏ inline `function itemName()` + import `itemByKey`. Dùng `itemName(k, t)` từ `@/lib/itemName`. Fix `.map(itemName)` callback signature → `.map((k) => itemName(k, t))`.
+- **i18n**: helper rằng `items.<key>` (vd `items.so_kiem`) cho lối override per-locale tương lai. Hiện chưa thêm key trong `vi.json`/`en.json` (catalog name VN đủ dùng) — nhưng hạ tầng sẵn sàng.
+- **Tests**: web vitest 39 → 50 (+11). Không đổi runtime contract — chỉ thay đổi phần display.
+- **Risk**: low — thay đổi chỉ ở lớp render. Logic lấy `itemByKey(key)?.name` giống đúng lối BossView đang dùng, BossView đã verify production runtime PR #44 smoke E2E.
+- **Rollback**: revert. Tất cả view fallback về raw key (không crash, chỉ mất bản dịch).
 
-### PR G1-render — `test(web): render-level vitest cho NextActionPanel (6)` (G1 step 2) — **Merged as PR #56**
+### PR #55 — `test(web): expand vitest coverage — useBadgesStore (9) + useAuthStore (7)` (G1) — **Merged**
 
-- **Branch**: `devin/1777408703-g1-render-tests`. **Base**: `main` (post-PR #54 + #55). **Status**: Open (CI pending), rebased after PR #55 merge.
-- **Mục tiêu**: G1 step 2 — mở rộng vitest sang render-level test bằng `@vue/test-utils@^2.4.6` + `happy-dom`. Component `NextActionPanel` là bản thể hiện smart onboarding chính của `HomeView` (§3 prompt user) — cần test render contract.
+- **Branch**: `devin/1777408281-g1-vitest-coverage`. **Base**: `main` (post-PR #54). **Status**: Open (CI pending).
+- **Mục tiêu**: G1 từ §21 — mở rộng vitest coverage cho stores quan trọng vẫn chưa có test (`badges` — sidebar badge logic 60s polling từ PR #51, `auth` — login/register/logout/hydrate). Reuse vitest infra từ PR #53.
 - **File**:
-  - `apps/web/src/components/__tests__/NextActionPanel.test.ts` (new) — 6 test:
-    1. Section ẩn khi `actions=[]` (sau resolve, ngoài loading).
-    2. Render danh sách + label translated + interpolation `{count}`/`{name, level}`.
-    3. Priority class branch: p≤1 rose, p≤3 amber, p>3 ink (default mute).
-    4. Click "Đi ngay" gọi `router.push(action.route)`.
-    5. API reject → actions=[] silent, section ẩn.
-    6. `defineExpose({refresh})` reload danh sách.
-  - Mock `@/api/nextAction` + `vue-router` qua `vi.mock`. i18n stub bằng `createI18n({legacy:false})` với messages tối thiểu.
-- **Tests**: web vitest 17 → 23 (test base off main post-PR #54). Khi PR #55 merge → 23+16=39.
-- **Risk**: zero — test-only.
-- **Rollback**: revert.
+  - `apps/web/src/stores/__tests__/badges.test.ts` (new) — 9 test: default state, refresh populate counters, string→number coercion, NaN→0 fallback, error swallow + state preserve, 60s polling tick, idempotent start(), stop() halt, stop() pre-start no-op.
+  - `apps/web/src/stores/__tests__/auth.test.ts` (new) — 7 test: default state, hydrate(), isAdmin gate, login() loading toggle + payload, login() reject reset loading, register() defaults, logout() clear user.
+- **Tests**: web vitest 17 → **33** (+16 / +94%). Không đổi source code, chỉ thêm test.
+- **Risk**: zero — test-only PR.
+- **Rollback**: revert. Không ảnh hưởng runtime.
 
 ### PR #54 — `feat(admin): smart economy alerts (negative currency / inventory / stale topup PENDING)` (G4) — **Merged**
 
-- **Branch**: `devin/1777407655-smart-admin-economy-alerts`. **Base**: `main` (post-PR #53 `2ae4cc0`). **Status**: **Merged** (28/4 20:33 UTC, CI 3/3 xanh gồm Devin Review). Merge SHA `d9fbbf1`.
+- **Branch**: `devin/1777407655-smart-admin-economy-alerts`. **Base**: `main` (post-PR #53 `2ae4cc0`). **Status**: **Merged** (28/4 20:33 UTC, CI 3/3 xanh gồm Devin Review).
 - **Mục tiêu**: Smart admin / economy safety (prompt §3-4) — phát hiện sớm 3 loại bất thường kinh tế trong closed beta:
   1. Character có currency âm (`linhThach < 0` OR `tienNgoc < 0` OR `tienNgocKhoa < 0`) — invariant violation, cần alert ngay.
   2. InventoryItem có `qty < 1` — nhẽ lạnh nhưng vẫn invariant (qty=0 nên bị xóa).
@@ -1218,13 +1233,11 @@ Admin hiện tại có thể vào `/admin` → Users → tìm → **Set role = A
 (A Done qua PR #44 smoke E2E pass 6/6; B Done tại PR replay PR #47 [session 5]; C Done tại PR #42; D Done tại PR #43; E Done tại PR #48; F Done tại PR #45.)
 
 **Ưu tiên hành động sau PR B**: chuyển sang smart-feature tiếp hoặc closed-beta polish:
-- ~~**G1 (high value, low risk)**: Mở rộng vitest coverage cho `HomeView` (next-action panel render), `AppShell` (badge logic 60s polling), `MissionView` (claim button enable/disable). Reuse vitest infra của PR B.~~ — **Done** by **PR #55 + PR G1-render**:
-  - PR #55: useBadgesStore (9 test) + useAuthStore (7 test). Cover badge logic 60s polling + auth flow.
-  - PR G1-render: NextActionPanel render-level (6 test). Cover smart onboarding panel HomeView.
-  - Còn lại (low priority): `MissionView` claim flow render — tốn setup AppShell stub + multi-store mock, ROI giảm. Skip cho closed beta.
+- **G1 (high value, low risk)**: Mở rộng vitest coverage cho `HomeView` (next-action panel render), `AppShell` (badge logic 60s polling), `MissionView` (claim button enable/disable). Reuse vitest infra của PR B.
 - **G2 (medium, low)**: L4 helper `itemName(key, locale)` cho `MissionView/MailView/GiftCodeView/ShopView` — dịch tên item theo i18n.
 - **G3 (medium, medium)**: M3 WS `mission:progress` push (throttled `emitToUser` tại `MissionService.track*`).
-- ~~**G4 (smart admin)**: Admin Overview tab thêm alert nếu currency âm / item qty âm / topup pending >24h.~~ — **Done** by **PR #54** (Open, chờ CI). Endpoint `GET /admin/economy/alerts` + Stats tab panel + 7 test.
+- ~~**G4 (smart admin)**: Admin Overview tab thêm alert nếu currency âm / item qty âm / topup pending >24h.~~ — **Done & Merged** by **PR #54**. Endpoint `GET /admin/economy/alerts` + Stats tab panel + 7 vitest test.
+- ~~**G1 (high value, low risk)**: Mở rộng vitest coverage cho stores~~ — **Partial Done** by **PR #55** (Open). Đã cover `useBadgesStore` (badge logic 60s polling) + `useAuthStore`. Còn lại (next): render-level test cho `HomeView` next-action panel + `MissionView` claim flow (cần setup vue-test-utils mount + i18n stub).
 - **G5 (post-beta backlog)**: leaderboard, `ADMIN_REVOKE` endpoint (L7), Alchemy/Refinery/Arena.
 
 Không còn issue **High** mở trên main; chỉ còn **Medium** (M3/M6/M7/M9/M10/M11) và **Low** (L2/L3/L4/L5/L6/L7).
