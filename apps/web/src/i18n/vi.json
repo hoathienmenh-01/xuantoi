@@ -110,7 +110,22 @@
       "notAtPeakToast": "Chưa đủ duyên đột phá, mời tích thêm linh khí."
     },
     "lastTick": "Tick gần nhất: +{gain} EXP · {time}",
-    "loadingChar": "Đang tải đạo cơ…"
+    "loadingChar": "Đang tải đạo cơ…",
+    "nextAction": {
+      "title": "Đạo Lộ Gợi Ý",
+      "loading": "Đang xét vận trình…",
+      "go": "Đi ngay",
+      "items": {
+        "NO_CHARACTER": "Đạo hữu chưa khai lập đạo hiệu — hãy hoàn thành Khai Đạo trước.",
+        "BREAKTHROUGH_READY": "Linh khí đã đầy! Sẵn sàng đột phá lên cảnh giới mới.",
+        "MISSION_CLAIMABLE": "Có {count} nhiệm vụ chờ nhận thưởng.",
+        "MAIL_UNCLAIMED": "Có {count} thư mang quà chưa nhận.",
+        "MAIL_UNREAD": "Có {count} thư mới chưa đọc.",
+        "BOSS_ACTIVE": "Boss đang xuất thế: {name} Lv.{level}.",
+        "TOPUP_PENDING": "Đơn nạp {code} đang chờ duyệt — kiểm tra Cài Đặt.",
+        "CULTIVATE_IDLE": "Đạo hữu chưa nhập định — bấm ‘Nhập Định’ để hấp thụ linh khí."
+      }
+    }
   },
   "notFound": {
     "title": "404 · Lạc Đạo",
