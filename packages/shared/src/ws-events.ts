@@ -20,6 +20,7 @@ export type WsEventType =
   | 'boss:end'
   | 'boss:defeated'
   | 'mail:new'
+  | 'mission:progress'
   | 'pong'
   // client → server
   | 'ping'
@@ -69,3 +70,30 @@ export const WS_RECONNECT_MAX_ATTEMPTS = 10;
 
 export const CULTIVATION_TICK_MS = 30_000;
 export const CULTIVATION_TICK_BASE_EXP = 5;
+
+/**
+ * Push throttle khi emit `mission:progress`. Mỗi user nhận tối đa 1 frame
+ * trong cửa sổ này — frame thừa bị drop để tránh spam khi nhiều mission
+ * được increment liên tiếp (vd cultivation tick + boss attack hit cùng giây).
+ */
+export const MISSION_PROGRESS_PUSH_THROTTLE_MS = 500;
+
+/**
+ * Payload của event `mission:progress`. Mỗi frame là một snapshot delta
+ * những mission vừa được track (currentAmount tăng) cho 1 character.
+ * FE merge vào store để cập nhật UI mà không cần refetch full list.
+ */
+export interface MissionProgressFramePayload {
+  characterId: string;
+  changes: MissionProgressChange[];
+}
+
+export interface MissionProgressChange {
+  missionKey: string;
+  /** 'DAILY' | 'WEEKLY' | 'ONCE' (giữ string để shared không phụ thuộc Prisma). */
+  period: string;
+  currentAmount: number;
+  goalAmount: number;
+  /** `currentAmount >= goalAmount && !claimed`. */
+  completable: boolean;
+}

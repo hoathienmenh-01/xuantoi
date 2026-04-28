@@ -1,4 +1,4 @@
-import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { MISSIONS, missionByKey } from '@xuantoi/shared';
 import { PrismaService } from '../../common/prisma.service';
 import {
@@ -185,6 +185,60 @@ describe('MissionService — track', () => {
     // daily vẫn tiếp tục trừ bounds
     const daily = list.find((m) => m.key === 'daily_boss_hit_3')!;
     expect(daily.currentAmount).toBe(3);
+  });
+
+  it('track: gọi MissionWsEmitter.pushProgress với userId + changes (M3)', async () => {
+    const { RealtimeService } = await import('../realtime/realtime.service');
+    const { MissionWsEmitter } = await import('./mission-ws.emitter');
+    const { makeMissionService } = await import('../../test-helpers');
+    const realtime = new RealtimeService();
+    const emitSpy = vi
+      .spyOn(realtime, 'emitToUser')
+      .mockImplementation(() => {});
+    const clock = { t: 1_000_000 };
+    const emitter = new MissionWsEmitter(realtime, 500, () => clock.t);
+    const missionsWithEmit = makeMissionService(prisma, emitter);
+
+    const u = await makeUserChar(prisma);
+    await missionsWithEmit.track(u.characterId, 'CULTIVATE_SECONDS', 300);
+
+    expect(emitSpy).toHaveBeenCalledTimes(1);
+    const [emittedUserId, emittedType, emittedPayload] = emitSpy.mock.calls[0];
+    expect(emittedUserId).toBe(u.userId);
+    expect(emittedType).toBe('mission:progress');
+    expect(emittedPayload).toMatchObject({
+      characterId: u.characterId,
+      changes: expect.arrayContaining([
+        expect.objectContaining({
+          missionKey: 'daily_cultivate_600s',
+          currentAmount: 300,
+          goalAmount: 600,
+          completable: false,
+        }),
+        expect.objectContaining({
+          missionKey: 'weekly_cultivate_18000s',
+          currentAmount: 300,
+          completable: false,
+        }),
+      ]),
+    });
+
+    // Lần track thứ 2 trong throttle window → không emit thêm.
+    clock.t += 100;
+    await missionsWithEmit.track(u.characterId, 'CULTIVATE_SECONDS', 50);
+    expect(emitSpy).toHaveBeenCalledTimes(1);
+
+    // Sau cửa sổ → emit lại snapshot mới (350).
+    clock.t += 600;
+    await missionsWithEmit.track(u.characterId, 'CULTIVATE_SECONDS', 50);
+    expect(emitSpy).toHaveBeenCalledTimes(2);
+    const second = emitSpy.mock.calls[1][2] as {
+      changes: Array<{ missionKey: string; currentAmount: number }>;
+    };
+    expect(
+      second.changes.find((c) => c.missionKey === 'daily_cultivate_600s')
+        ?.currentAmount,
+    ).toBe(400);
   });
 });
 
