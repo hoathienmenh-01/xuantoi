@@ -12,6 +12,7 @@ import { SectModule } from './modules/sect/sect.module';
 import { BossModule } from './modules/boss/boss.module';
 import { TopupModule } from './modules/topup/topup.module';
 import { AdminModule } from './modules/admin/admin.module';
+import { OpsModule } from './modules/ops/ops.module';
 import { RedisModule } from './common/redis.module';
 
 @Module({
@@ -30,6 +31,7 @@ import { RedisModule } from './common/redis.module';
     BossModule,
     TopupModule,
     AdminModule,
+    OpsModule,
   ],
 })
 export class AppModule {}

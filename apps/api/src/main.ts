@@ -1,7 +1,7 @@
 import 'reflect-metadata';
 import { NestFactory } from '@nestjs/core';
 import cookieParser from 'cookie-parser';
-import helmet from 'helmet';
+import helmet, { type HelmetOptions } from 'helmet';
 import { AppModule } from './app.module';
 import { AllExceptionsFilter } from './common/all-exceptions.filter';
 
@@ -56,12 +56,57 @@ function corsConfig(): { origin: string[] | boolean; credentials: boolean } {
   return { origin: ['http://localhost:5173'], credentials: true };
 }
 
+/**
+ * Helmet config.
+ *
+ * Dev: tắt CSP — Vite dev server inline script / HMR / eval sẽ bị CSP chặn.
+ *
+ * Production: bật CSP với policy chặt phù hợp cho một REST + WebSocket API
+ * không serve HTML. Nếu sau này host web static cùng domain, cần relax
+ * `script-src`/`connect-src` theo domain CDN / WS endpoint.
+ */
+function helmetConfig(): HelmetOptions {
+  if (process.env.NODE_ENV !== 'production') {
+    return { contentSecurityPolicy: false };
+  }
+  return {
+    contentSecurityPolicy: {
+      useDefaults: true,
+      directives: {
+        defaultSrc: ["'self'"],
+        // API không render HTML → không cho inline script/style.
+        scriptSrc: ["'self'"],
+        styleSrc: ["'self'"],
+        imgSrc: ["'self'", 'data:'],
+        connectSrc: ["'self'"],
+        fontSrc: ["'self'", 'data:'],
+        objectSrc: ["'none'"],
+        baseUri: ["'self'"],
+        formAction: ["'self'"],
+        frameAncestors: ["'none'"],
+        upgradeInsecureRequests: [],
+      },
+    },
+    // Giúp cache CDN phân biệt theo origin khi cần.
+    crossOriginResourcePolicy: { policy: 'same-site' },
+    // API trả JSON/WS, không cần allow cross-origin iframe/embed.
+    crossOriginEmbedderPolicy: false,
+    referrerPolicy: { policy: 'no-referrer' },
+    // HSTS 180 days, include subdomain (khi HTTPS-only).
+    hsts: {
+      maxAge: 15552000,
+      includeSubDomains: true,
+      preload: false,
+    },
+  };
+}
+
 async function bootstrap(): Promise<void> {
   assertProductionSecrets();
   const app = await NestFactory.create(AppModule, {
     cors: corsConfig(),
   });
-  app.use(helmet({ contentSecurityPolicy: false }));
+  app.use(helmet(helmetConfig()));
   app.use(cookieParser());
   app.setGlobalPrefix('api');
   app.useGlobalFilters(new AllExceptionsFilter());
