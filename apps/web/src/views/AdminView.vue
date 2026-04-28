@@ -27,6 +27,7 @@ import { getCurrentBoss, type BossView } from '@/api/boss';
 import type { TopupOrderView } from '@/api/topup';
 import AppShell from '@/components/shell/AppShell.vue';
 import MButton from '@/components/ui/MButton.vue';
+import SkeletonBlock from '@/components/ui/SkeletonBlock.vue';
 
 const auth = useAuthStore();
 const game = useGameStore();
@@ -275,7 +276,23 @@ const isAdmin = () => game.character?.role === 'ADMIN';
 
       <!-- STATS TAB -->
       <section v-if="tab === 'stats'" class="space-y-4">
-        <div v-if="!stats" class="text-ink-300 text-sm">{{ t('common.loading') }}</div>
+        <div
+          v-if="!stats"
+          data-testid="admin-stats-skeleton"
+          class="grid grid-cols-1 md:grid-cols-3 gap-3"
+          aria-hidden="true"
+        >
+          <div
+            v-for="i in 3"
+            :key="i"
+            class="bg-ink-700/30 border border-ink-300/20 rounded p-3 space-y-2"
+          >
+            <SkeletonBlock height="h-4" width="w-1/3" />
+            <SkeletonBlock height="h-3" width="w-full" />
+            <SkeletonBlock height="h-3" width="w-3/4" />
+            <SkeletonBlock height="h-3" width="w-2/3" />
+          </div>
+        </div>
         <div v-else class="grid grid-cols-1 md:grid-cols-3 gap-3">
           <div class="bg-ink-700/30 border border-ink-300/20 rounded p-3">
             <h3 class="text-sm text-amber-200">{{ t('admin.stats.users') }}</h3>

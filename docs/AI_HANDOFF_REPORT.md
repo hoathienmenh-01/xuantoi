@@ -1,6 +1,6 @@
 # AI Handoff Report — Xuân Tôi
 
-> **Snapshot**: `main` @ `81706a9` (Merge PR #61 audit session 6, 28 Apr 2026 22:05 UTC). PR #52..#61 đã merge `main`. **6 PR Pending merge**: #62 (G8 — M11 profile rate-limit, CI ✅ 3/3), #63 (G9 — M3 WS `mission:progress`, CI ✅ 3/3), #64 (G10 — H6 wire Playwright smoke vào CI, CI ✅ 5/5), #65 (G11 — FE handler `mission:progress` stacked trên #63, CI ✅ 3/3), #66 (G12 — L7 admin revoke inventory, CI ✅ 3/3), **#67 (G13 — L5 skeleton loaders cho LeaderboardView + ProfileView)**.
+> **Snapshot**: `main` @ `81706a9` (Merge PR #61 audit session 6, 28 Apr 2026 22:05 UTC). PR #52..#61 đã merge `main`. **7 PR Pending merge**: #62 (G8 — M11 profile rate-limit, CI ✅ 3/3), #63 (G9 — M3 WS `mission:progress`, CI ✅ 3/3), #64 (G10 — H6 wire Playwright smoke vào CI, CI ✅ 5/5), #65 (G11 — FE handler `mission:progress` stacked trên #63, CI ✅ 3/3), #66 (G12 — L7 admin revoke inventory, CI ✅ 3/3), #67 (G13 — L5 skeleton loaders Leaderboard+Profile, CI ✅ 3/3), **#68 (G14 — L5 skeleton loaders MissionView+AdminView stacked trên #67)**.
 > **Người viết**: AI engineer session 28/4 sess.6 (audit refresh sau khi PR #58/#59/#60 đã merge — header report cũ vẫn ghi #59/#60 "Open" → đó là tồn tại lỗi thời và đã được fix bởi PR docs này).
 > **Đối tượng đọc**: AI kế nhiệm sẽ tiếp tục đưa dự án tới beta / production.
 >
@@ -83,6 +83,27 @@
 ## Recent Changes (PR #33→#60 — tất cả đã merge `main`)
 
 Mỗi PR đều `Merged` vào `main`, branch base = `main`. Smoke local (typecheck/lint/test/build) đã chạy ở mỗi PR; smoke E2E 6/6 đã pass tại PR #44 (snapshot `4d8af10`).
+
+### PR #68 — `feat(web): skeleton loaders for MissionView + AdminView stats (L5 cont.)` — **Pending merge**
+
+- **Branch**: `devin/1777417631-g14-skeleton-mission-admin`. **Base**: PR #67 branch (`devin/1777417180-g13-skeleton-loaders`) — sẽ auto-rebase main sau khi #67 merge. **Status**: **Pending merge**.
+- **Mục tiêu** (L5 — UX polish, tiếp): Sau PR #67 đã có `SkeletonBlock` + `SkeletonTable` cho Leaderboard/Profile, mở rộng sang MissionView (list mission khi đang fetch lần đầu) + AdminView stats tab.
+- **Giải pháp**:
+  - **`MissionView.vue`**: replace `<div v-if="loading && missions.length === 0">{{ t('common.loadingData') }}</div>` bằng `<ul data-testid="mission-skeleton">` chứa 4 li, mỗi li có 3 SkeletonBlock (title h-5/w-1/3, badge h-4/w-12 rounded-full, body h-3/w-full + h-2/w-2/3) → match layout mission-card thật.
+  - **`AdminView.vue`** stats tab: replace `<div v-if="!stats">` bằng grid 3 card skeleton, mỗi card 4 SkeletonBlock (title + 3 stat lines) — match grid 3 card stats thật (Users / Characters / Topup).
+- **Files**:
+  - `apps/web/src/views/MissionView.vue` (+18 / -3)
+  - `apps/web/src/views/AdminView.vue` (+18 / -1)
+  - `apps/web/src/components/__tests__/SkeletonViewWiring.test.ts` (new, 100 line, 3 test)
+- **Tests**: web pass **72/72** local (was 69 sau PR #67, +3 wiring patterns).
+- **Local verified**: `pnpm typecheck` ✅ · `pnpm lint` ✅ · `pnpm test` ✅ all (47 + 268 + 72 = **387 pass**) · `pnpm build` ✅.
+- **Risk**: low. UI-only.
+- **Backward compat**: Skeleton ẩn khi `loading=false` hoặc `stats!=null`, identical hành vi cũ.
+- **Runtime smoke**: Needs runtime smoke — mở `/mission` (lần đầu chậm) thấy skeleton 4 card; `/admin` tab Stats (lần đầu chậm) thấy 3 card skeleton.
+- **Rollback**: revert.
+- **Bước tiếp**: G15 — L2 market fee 5% → config env `MARKET_FEE_PCT`, hoặc M6/M7 (mission analytics, mail unread badge BE check).
+
+---
 
 ### PR #67 — `feat(web): skeleton loaders for Leaderboard + Profile views (L5)` — **Pending merge**
 

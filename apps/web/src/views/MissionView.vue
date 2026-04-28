@@ -13,6 +13,7 @@ import {
 } from '@/api/mission';
 import AppShell from '@/components/shell/AppShell.vue';
 import MButton from '@/components/ui/MButton.vue';
+import SkeletonBlock from '@/components/ui/SkeletonBlock.vue';
 import { formatItemRewardList } from '@/lib/itemName';
 
 const auth = useAuthStore();
@@ -180,9 +181,25 @@ function rewardSummary(m: MissionProgressView): string {
       </MButton>
     </div>
 
-    <div v-if="loading && missions.length === 0" class="text-ink-300 text-sm">
-      {{ t('common.loadingData') }}
-    </div>
+    <ul
+      v-if="loading && missions.length === 0"
+      data-testid="mission-skeleton"
+      class="space-y-3"
+      aria-hidden="true"
+    >
+      <li
+        v-for="i in 4"
+        :key="i"
+        class="border border-ink-300/40 rounded p-4 bg-ink-700/30 space-y-2"
+      >
+        <div class="flex items-center gap-3">
+          <SkeletonBlock height="h-5" width="w-1/3" />
+          <SkeletonBlock height="h-4" width="w-12" rounded="rounded-full" />
+        </div>
+        <SkeletonBlock height="h-3" width="w-full" />
+        <SkeletonBlock height="h-2" width="w-2/3" />
+      </li>
+    </ul>
 
     <div v-else-if="filtered.length === 0" class="text-ink-300 text-sm">
       {{ t('mission.empty') }}
