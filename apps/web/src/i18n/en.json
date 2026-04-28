@@ -275,6 +275,18 @@
     "ORE": "Ore",
     "MISC": "Misc"
   },
+  "quality": {
+    "PHAM": "Mortal",
+    "LINH": "Spirit",
+    "HUYEN": "Mystic",
+    "TIEN": "Immortal",
+    "THAN": "Divine"
+  },
+  "listingStatus": {
+    "ACTIVE": "Active",
+    "SOLD": "Sold",
+    "CANCELLED": "Cancelled"
+  },
   "market": {
     "title": "Market",
     "tab": {

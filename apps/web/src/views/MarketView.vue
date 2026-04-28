@@ -4,7 +4,6 @@ import { useI18n } from 'vue-i18n';
 import { useRouter } from 'vue-router';
 import {
   QUALITY_COLOR,
-  QUALITY_LABEL_VI,
   type ItemKind,
 } from '@xuantoi/shared';
 import { useAuthStore } from '@/stores/auth';
@@ -211,7 +210,7 @@ function handleErr(e: unknown): void {
               {{ l.item.name }}
             </span>
             <span class="text-[10px] text-ink-300">
-              {{ QUALITY_LABEL_VI[l.item.quality] }} · ×{{ l.qty }}
+              {{ t('quality.' + l.item.quality) }} · ×{{ l.qty }}
             </span>
           </div>
           <p class="text-xs text-ink-300">{{ l.item.description }}</p>
@@ -306,7 +305,7 @@ function handleErr(e: unknown): void {
               'bg-ink-700/60 text-ink-300': l.status !== 'ACTIVE',
             }"
           >
-            {{ l.status }}
+            {{ t('listingStatus.' + l.status) }}
           </span>
         </div>
         <div class="text-right">

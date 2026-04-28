@@ -5,7 +5,6 @@ import { useRouter } from 'vue-router';
 import {
   EQUIP_SLOTS,
   QUALITY_COLOR,
-  QUALITY_LABEL_VI,
   type EquipSlot,
   type ItemDef,
 } from '@xuantoi/shared';
@@ -173,7 +172,7 @@ function handleErr(e: unknown): void {
                 {{ it.item.name }}
               </span>
               <span class="text-[10px] text-ink-300">
-                {{ QUALITY_LABEL_VI[it.item.quality] }} ·
+                {{ t('quality.' + it.item.quality) }} ·
                 {{ it.item.kind }} ·
                 ×{{ it.qty }}
               </span>

@@ -275,6 +275,18 @@
     "ORE": "Quặng",
     "MISC": "Khác"
   },
+  "quality": {
+    "PHAM": "Phàm",
+    "LINH": "Linh",
+    "HUYEN": "Huyền",
+    "TIEN": "Tiên",
+    "THAN": "Thần"
+  },
+  "listingStatus": {
+    "ACTIVE": "Đang bán",
+    "SOLD": "Đã bán",
+    "CANCELLED": "Đã gỡ"
+  },
   "market": {
     "title": "Phường Thị",
     "tab": {

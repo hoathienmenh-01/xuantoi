@@ -170,7 +170,7 @@ watch(currentSectId, async (id, prev) => {
         class="px-2 py-1 rounded bg-ink-50 text-ink-900 text-xs disabled:opacity-50"
         :disabled="sending || !text.trim() || (tab === 'SECT' && !inSect)"
       >
-        Gửi
+        {{ t('chat.send') }}
       </button>
     </form>
   </div>
