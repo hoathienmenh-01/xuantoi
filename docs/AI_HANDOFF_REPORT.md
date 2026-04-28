@@ -6,7 +6,7 @@
 >
 > Báo cáo trung thực. Mọi tuyên bố "đã xong" đều có PR + file + test chứng minh. Khi chưa verify runtime, ghi rõ **"Needs runtime smoke"**.
 >
-> **Trạng thái (28/4 session 4)**: PR #33→#45 đã merge `main`. PR #45 fix 12 admin key i18n vi.json (L1 resolved). Hiện **không còn PR open**. Roadmap kế tiếp: **PR B (H5 — Vitest minimal + Playwright golden path)** hoặc **PR E (M8 — admin guard split ADMIN vs MOD)**. Xem `## Recent Changes` + §21.
+> **Trạng thái (28/4 session 4)**: PR #33→#47 đã merge `main`. PR #46 (audit + commit blueprint 04/05) + PR #47 (H5 Vitest + Playwright scaffold) đã merge. PR E (M8 admin guard split) đang mở. Roadmap kế tiếp sau PR E: closed-beta polish + smart features từ §21. Xem `## Recent Changes` + §21.
 >
 > **Blueprint gốc 04/05**: nay đã được commit vào `docs/04_TECH_STACK_VA_DATA_MODEL.md` + `docs/05_KICH_BAN_BUILD_VA_PROMPT_AI.md` kèm banner **"Historical blueprint, NOT the current source of truth"**. Khi có conflict giữa 04/05 và code hiện tại + report này → **tin code & report**, KHÔNG rollback hoặc rewrite project theo 04/05.
 
@@ -58,9 +58,26 @@
 
 ---
 
-## Recent Changes (PR #33→#45)
+## Recent Changes (PR #33→#47 + PR E)
 
 Mỗi PR đều `Merged` vào `main`, CI xanh (3/3 check), branch base = `main`. Smoke local (typecheck/lint/test/build) đã chạy ở mỗi PR; smoke E2E 6/6 đã pass tại PR #44 (snapshot `4d8af10`). PR #45 chỉ là text-only fix vi.json 12 key admin → không cần re-smoke runtime. Blueprint 04/05 commit vào `docs/` ở session 4 — không đổi code/test.
+
+### PR E — `feat(api): split ADMIN vs MOD permission (M8)`
+
+- **Branch**: `devin/1777398980-pr-e-admin-guard-split`. **Base**: `main` (sau PR #46 + #47 merge). **Status**: Open / awaiting CI.
+- **Mục tiêu**: M8 — fine-grained role split. Trước PR E, `AdminGuard` chấp nhận cả ADMIN + MOD cho mọi endpoint admin, dẫn tới MOD có quyền grant/approve/broadcast/spawn ngang ADMIN. Giờ MOD chỉ đọc + ban (PLAYER); ADMIN-only cho 9 action ảnh hưởng tài sản/policy.
+- **File**:
+  - `apps/api/src/modules/admin/require-admin.decorator.ts` (new) — `RequireAdmin()` decorator + `REQUIRE_ADMIN_KEY`.
+  - `apps/api/src/modules/admin/admin.guard.ts` — inject `Reflector`, đọc metadata `requireAdmin`; nếu set + role !== ADMIN → throw `ADMIN_ONLY` 403.
+  - `apps/api/src/modules/admin/admin.controller.ts` — apply `@RequireAdmin()` cho 8 endpoint POST: role / grant / approve-topup / reject-topup / giftcode-create / giftcode-revoke / mail-send / mail-broadcast.
+  - `apps/api/src/modules/boss/boss.controller.ts` — apply `@RequireAdmin()` cho `POST /boss/admin/spawn`.
+  - `apps/api/src/modules/admin/admin.guard.test.ts` (new, 8 test) — UNAUTHENTICATED, FORBIDDEN cho user không tồn tại / banned / PLAYER, ADMIN pass default + RequireAdmin, MOD pass default, MOD reject (`ADMIN_ONLY`) khi RequireAdmin.
+  - `apps/web/src/i18n/vi.json` + `apps/web/src/i18n/en.json` — thêm key `admin.errors.ADMIN_ONLY`.
+- **MOD vẫn được**: `GET /admin/users|topups|audit|stats|giftcodes` (read-only) + `POST /admin/users/:id/ban` (service `setBanned` đã có hierarchy: MOD chỉ ban được PLAYER).
+- **Tests**: API total `230 pass` (+8 admin guard test). Shared `47 pass`. Web `17 pass` (vitest). Build xanh.
+- **Risk**: low — chỉ thắt chặt MOD; ADMIN không đổi behavior. Service-layer guard (cũ) vẫn còn = defense-in-depth. Không migration, không data change.
+- **Rollback**: revert PR. AdminGuard fallback về behavior cũ (ADMIN + MOD pass).
+
 
 ### PR #33 — `feat(api): bootstrap admin đầu tiên + seed 3 tông môn (H2 + H3)`
 
@@ -202,10 +219,10 @@ Mỗi PR đều `Merged` vào `main`, CI xanh (3/3 check), branch base = `main`.
 
 ### Audit gap (chưa được cover trong PR #33→#45)
 
-- **E2E Playwright** vẫn chưa có (H5 còn) — đề xuất ưu tiên kế tiếp.
-- **Web Vitest** vẫn chưa wire (H5 còn) — đề xuất ưu tiên kế tiếp.
-- **Smoke runtime** sau PR #45: không cần thiết (text-only). Smoke E2E gần nhất là sau PR #44 — PASS 6/6.
-- **PR E (M8 admin guard split ADMIN vs MOD)** — chưa làm.
+- **E2E Playwright** scaffolded (PR #47) — wired `playwright.config.ts` + `golden.spec.ts` (smoke + golden path gated `E2E_FULL=1`); chưa add CI matrix.
+- **Web Vitest** wired (PR #47) — 17 test pass cho 2 store (toast, game).
+- **Smoke runtime** sau PR #47: không cần thiết (chỉ thêm test infrastructure). Smoke E2E gần nhất là sau PR #44 — PASS 6/6.
+- **PR E (M8 admin guard split ADMIN vs MOD)** — đã làm xong (PR đang open hoặc đã merge tuỳ thời điểm).
 - **Helper `itemName(key, locale)` (L4)** — chưa làm; tách PR riêng khi cần catalog item l10n cho `MissionView/MailView/GiftCodeView/ShopView`.
 
 ---
@@ -839,7 +856,7 @@ _(Không có lỗi làm app không chạy / mất tiền / auth hỏng tại com
 | ~~M5~~ | ~~`CurrencyLedger.actorUserId` chưa index.~~ | **Resolved** by **PR #43** — thêm `@@index([actorUserId, createdAt])` cho cả `CurrencyLedger` và `ItemLedger`. Migration `20260428112804_actor_user_id_index` (ADD INDEX only). |
 | M6 | LogsModule (G3 cũ) chưa build — không có `/logs/me` endpoint. | **Open** — low priority, chỉ khi cần UI xem log action. |
 | M7 | CSP production-ready nhưng chưa test deploy với CDN/asset domain khác. | **Open** — khi deploy: review `script-src`, `connect-src`. |
-| M8 | Admin guard kiểm `role === 'ADMIN' \|\| 'MOD'` — MOD có quyền broad gần ADMIN (grant currency, approve topup, broadcast mail, spawn boss). | **Open** — split fine-grained permission: MOD chỉ đọc + chat moderation; ADMIN mới grant/approve/broadcast/spawn. |
+| M8 | Admin guard kiểm `role === 'ADMIN' \|\| 'MOD'` — MOD có quyền broad gần ADMIN (grant currency, approve topup, broadcast mail, spawn boss). | **Resolved** by PR E — thêm `@RequireAdmin()` decorator + reflector trong `AdminGuard`; ADMIN-only cho grant / role-set / approve-topup / reject-topup / giftcode-create / giftcode-revoke / mail-send / mail-broadcast / boss-admin-spawn. MOD vẫn được: GET (read) + ban (đã có hierarchy MOD↦PLAYER ở service). 8 unit test thuê reflector cho guard. |
 | M9 | Settings logout-all không bump `passwordVersion` → access token cũ (15m) vẫn valid ở thiết bị khác. | **Open** (intentional trade-off, document trong `SECURITY.md`) — nếu cần force ngay, bump `passwordVersion` hoặc implement revocation list. |
 | M10 | Shop không có rate-limit + stock infinite + không daily limit. | **Open** — closed beta acceptable; sau beta thêm `dailyLimit`. |
 | M11 | `GET /character/profile/:id` không có rate-limit riêng → enumerate cuid khó nhưng không bị chặn. | **Open** — low (cuid khó brute), thêm middleware sau. |
@@ -1004,7 +1021,7 @@ Admin hiện tại có thể vào `/admin` → Users → tìm → **Set role = A
 ### Before Closed Beta
 
 6. ~~**M5 — `CurrencyLedger.actorUserId` index**~~: **Done** by **PR #43** (cover cả `ItemLedger.actorUserId`).
-7. **M8 — Admin guard split**: ADMIN-only cho grant/approve/broadcast/spawn-boss; MOD chỉ read + chat moderation.
+7. ~~**M8 — Admin guard split**~~: **Done** by **PR E** — `@RequireAdmin()` decorator + reflector. ADMIN-only cho 9 action có ảnh hưởng tài sản/policy.
 8. **L1 — i18n gap audit run cuối** + l10n tên item (`itemName(key, locale)`).
 9. **Mobile responsive verify** trên iPhone SE viewport.
 10. **Health/CSP staging deploy** — verify `connectSrc` cho WS endpoint thực tế.
@@ -1070,9 +1087,12 @@ Admin hiện tại có thể vào `/admin` → Users → tìm → **Set role = A
 - **Test**: không thêm test riêng — ADD INDEX không đổi logic. 269 test cũ vẫn pass.
 - **Risk**: thấp — ADD INDEX an toàn, không khoá bảng (Postgres `CREATE INDEX` non-concurrent phù hợp vì bảng cuối `migrate deploy` size nhỏ).
 
-#### PR E — M8 Admin guard split (ADMIN vs MOD)
-- **File**: `apps/api/src/modules/admin/admin.guard.ts` thêm `RequireAdmin` decorator/guard phân biệt. Update controller cho grant/approve/broadcast/spawn-boss yêu cầu ADMIN; giữ MOD cho ban/role-set + chat moderation. Test guard.
-- **Risk**: medium — đổi quyền thực tế, phải đồng bộ FE check.
+#### ~~PR E — M8 Admin guard split (ADMIN vs MOD)~~ — Done
+- **File**: `apps/api/src/modules/admin/require-admin.decorator.ts` (new), `apps/api/src/modules/admin/admin.guard.ts` (refactor: inject `Reflector`, đọc metadata `requireAdmin`), `apps/api/src/modules/admin/admin.controller.ts` (apply `@RequireAdmin()` cho 8 endpoint), `apps/api/src/modules/boss/boss.controller.ts` (apply cho `POST /boss/admin/spawn`). Test: `apps/api/src/modules/admin/admin.guard.test.ts` (8 unit test với mocked `Reflector`).
+- **Endpoints ADMIN-only**: `POST /admin/users/:id/role`, `POST /admin/users/:id/grant`, `POST /admin/topups/:id/approve`, `POST /admin/topups/:id/reject`, `POST /admin/giftcodes`, `POST /admin/giftcodes/:code/revoke`, `POST /admin/mail/send`, `POST /admin/mail/broadcast`, `POST /boss/admin/spawn`.
+- **Endpoints MOD-allowed**: tất cả `GET /admin/*` (read-only) + `POST /admin/users/:id/ban` (đã có hierarchy MOD↦PLAYER ở `AdminService.setBanned`).
+- **i18n**: thêm key `admin.errors.ADMIN_ONLY` cho `vi.json` + `en.json`.
+- **Risk**: low — đổi quyền chỉ thắt chặt MOD, không ảnh hưởng PLAYER. ADMIN không bị ảnh hưởng. Service-layer guard (đã có sẵn cho `setRole` ADMIN-only + `grant`/`setBanned` hierarchy) là defense-in-depth.
 
 #### ~~PR F — L1 i18n gap re-audit~~ **Done (PR #45, merged commit `e99a35f`)**
 - Audit `apps/web/src/i18n/{vi,en}.json` 554/554 key sync, 400 used key all resolve, 0 missing.
@@ -1083,7 +1103,7 @@ Admin hiện tại có thể vào `/admin` → Users → tìm → **Set role = A
 **~~A (smoke)~~ → B (Vitest+Playwright) → ~~C (timezone)~~ → ~~D (index)~~ → E (guard split) → ~~F (i18n)~~**.  
 (A Done qua PR #44 smoke E2E pass 6/6; C Done tại PR #42; D Done tại PR #43; F Done tại PR #45.)
 
-**Ưu tiên hành động**: làm tiếp **B (Vitest minimal + Playwright golden path — H5)** trước, vì H5 hiện là issue **High** duy nhất còn mở. Sau B → **E (admin guard split ADMIN vs MOD)** để hạ M8.
+**Ưu tiên hành động sau PR E**: chuyển sang smart-feature (smart next-action / smart admin dashboard / mission notification badge) hoặc closed-beta polish (mobile responsive verify, helper `itemName(key, locale)` cho L4). Không còn issue **High** mở; chỉ còn **Medium** (M2/M3/M6/M7/M9/M10) và **Low** (L2/L3/L4).
 
 Các hạng mục smart-feature đề xuất (không bắt buộc — AI tự quyết theo prompt user):
 - **Smart next-action / onboarding checklist** (§16 của prompt user mục 1–2): /home giợ widget "Nên làm gì tiếp?" dựa trên state (đủ EXP đột phá, mission claim-able, mail unread, boss đang mở, …).

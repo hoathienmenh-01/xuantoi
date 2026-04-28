@@ -16,6 +16,7 @@ import { BossError, BossService } from './boss.service';
 import { AuthService } from '../auth/auth.service';
 import { PrismaService } from '../../common/prisma.service';
 import { AdminGuard } from '../admin/admin.guard';
+import { RequireAdmin } from '../admin/require-admin.decorator';
 
 const ACCESS_COOKIE = 'xt_access';
 
@@ -81,6 +82,7 @@ export class BossController {
   @Post('admin/spawn')
   @HttpCode(200)
   @UseGuards(AdminGuard)
+  @RequireAdmin()
   async adminSpawn(@Req() req: AdminReq, @Body() body: unknown) {
     const parsed = AdminSpawnInput.safeParse(body);
     if (!parsed.success) fail('INVALID_INPUT');
