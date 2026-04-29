@@ -121,6 +121,36 @@ describe('applyMissionProgressFrame', () => {
     expect(next).toBe(cur);
   });
 
+  it('stale frame KHÔNG được regress completable từ true → false (fix Devin Review #63)', () => {
+    // Scenario: HTTP refresh/claim đặt completable=true (currentAmount=600).
+    // Sau đó WS frame stale đến với currentAmount=300, completable=false.
+    // Nếu guard chỉ check currentAmount + completable equality, frame này sẽ
+    // pass guard và set completable=false → ẩn nút claim cho đến refresh sau.
+    const cur = [
+      mkMission({
+        key: 'k',
+        currentAmount: 600,
+        completable: true,
+      }),
+    ];
+    const next = applyMissionProgressFrame(
+      cur,
+      FRAME([
+        {
+          missionKey: 'k',
+          period: 'DAILY',
+          currentAmount: 300,
+          goalAmount: 600,
+          completable: false,
+        },
+      ]),
+    );
+    // Stale frame phải bị bỏ qua hoàn toàn (kể cả completable).
+    expect(next).toBe(cur);
+    expect(next[0].completable).toBe(true);
+    expect(next[0].currentAmount).toBe(600);
+  });
+
   it('mission key không tồn tại trong list → bỏ qua, không tạo mới', () => {
     const cur = [mkMission({ key: 'k', currentAmount: 100 })];
     const next = applyMissionProgressFrame(

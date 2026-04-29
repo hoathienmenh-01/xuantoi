@@ -16,6 +16,10 @@ import type { MissionProgressView } from '@/api/mission';
  *  - `currentAmount` trong frame KHÔNG được lùi: nếu giá trị frame nhỏ hơn local
  *    (do frame stale do reorder), giữ local. Đây là invariant của server (track
  *    luôn monotonic), nhưng FE thêm guard cho an toàn.
+ *  - **Stale frame guard chỉ dựa trên `currentAmount`**: nếu frame không tăng
+ *    `currentAmount`, toàn bộ frame là stale — bỏ qua cả `completable`. Tránh
+ *    case HTTP response (refresh/claim) đến trước WS frame cũ làm regress
+ *    `completable` true → false, ẩn nút claim đến khi refresh sau.
  *
  * Trả về array MỚI (immutable update) — caller có thể gán trực tiếp vào ref.
  */
@@ -30,13 +34,13 @@ export function applyMissionProgressFrame(
   const next = current.map((m) => {
     const ch = byKey.get(m.key);
     if (!ch) return m;
-    if (ch.currentAmount <= m.currentAmount && m.completable === ch.completable) {
-      return m; // No-op: stale or duplicate frame.
+    if (ch.currentAmount <= m.currentAmount) {
+      return m; // No-op: stale or duplicate frame (don't trust completable either).
     }
     mutated = true;
     return {
       ...m,
-      currentAmount: Math.max(m.currentAmount, ch.currentAmount),
+      currentAmount: ch.currentAmount,
       completable: ch.completable && !m.claimed,
     };
   });
