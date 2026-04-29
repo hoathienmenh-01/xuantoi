@@ -73,7 +73,11 @@ SIZE_HUMAN="$(du -h "$OUT" | cut -f1)"
 echo "[backup-db] Done: $OUT ($SIZE_HUMAN, $SIZE_BYTES bytes)"
 
 # Quick verification: gunzip preview head 5 lines must contain PostgreSQL marker.
-if ! gunzip -c "$OUT" | head -5 | grep -q -- "-- PostgreSQL database dump"; then
+# Capture into variable trước khi grep — `gunzip -c | head -5` dưới `pipefail`
+# sẽ fail với exit 141 (SIGPIPE) khi dump > pipe buffer (~64KB) vì head đóng stdin
+# trước khi gunzip flush xong. `|| true` ngăn pipefail propagate vào dòng if.
+HEADER="$(gunzip -c "$OUT" | head -5 || true)"
+if ! printf '%s' "$HEADER" | grep -q -- "-- PostgreSQL database dump"; then
   echo "WARN: backup file does not contain expected PostgreSQL marker" >&2
   echo "WARN: verify manually with: gunzip -c $OUT | head -20" >&2
   exit 5
