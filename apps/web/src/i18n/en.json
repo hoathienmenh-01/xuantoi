@@ -816,7 +816,8 @@
       "allClear": "All clear — no anomalies.",
       "negativeCurrency": "Negative currency",
       "negativeInventory": "Inventory qty < 1",
-      "stalePendingTopups": "Stale PENDING topups"
+      "stalePendingTopups": "Stale PENDING topups",
+      "badgeTooltip": "{count} economy alerts need attention"
     },
     "noPermission": "You do not have access to this area.",
     "users": {

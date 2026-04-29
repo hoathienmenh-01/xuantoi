@@ -1,11 +1,12 @@
 <script setup lang="ts">
-import { onMounted, ref, watch } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useRouter } from 'vue-router';
 import { useAuthStore } from '@/stores/auth';
 import { useGameStore } from '@/stores/game';
 import { useToastStore } from '@/stores/toast';
 import { isSelfTarget, canChangeRole, canTargetUser } from '@/lib/adminGuards';
+import { countEconomyAlerts } from '@/lib/adminAlerts';
 import {
   adminApproveTopup,
   adminBanUser,
@@ -46,6 +47,15 @@ type Tab = 'stats' | 'users' | 'topups' | 'audit' | 'giftcodes' | 'boss';
 const tab = ref<Tab>('stats');
 const stats = ref<AdminStats | null>(null);
 const alerts = ref<AdminEconomyAlerts | null>(null);
+
+/**
+ * Smart admin alerts badge: tổng số bất thường economy hiện tại.
+ * Hiển thị red dot trên nav button Stats khi > 0 — admin biết ngay
+ * có vấn đề cần xử lý mà không cần mở từng tab.
+ */
+const alertsCount = computed(() => countEconomyAlerts(alerts.value));
+
+let alertsPollTimer: ReturnType<typeof setInterval> | null = null;
 
 // Users tab
 const userQuery = ref('');
@@ -118,6 +128,18 @@ onMounted(async () => {
     return;
   }
   await refreshStats();
+  // Smart polling: re-fetch alerts mỗi 60s để badge stats luôn cập nhật
+  // dù admin đang ở tab khác. Stats panel chính chỉ refresh khi đóng/mở tab.
+  alertsPollTimer = setInterval(() => {
+    void refreshAlertsOnly();
+  }, 60_000);
+});
+
+onBeforeUnmount(() => {
+  if (alertsPollTimer !== null) {
+    clearInterval(alertsPollTimer);
+    alertsPollTimer = null;
+  }
 });
 
 watch(tab, async (curTab) => {
@@ -139,6 +161,18 @@ async function refreshStats(): Promise<void> {
     handleErr(e);
   } finally {
     loading.value = false;
+  }
+}
+
+/**
+ * Refresh chỉ alerts — dùng cho polling 60s, không đổi `loading` để tránh
+ * nhấp nháy UI khi admin đang thao tác ở tab khác. Lỗi im lặng (next poll sẽ retry).
+ */
+async function refreshAlertsOnly(): Promise<void> {
+  try {
+    alerts.value = await adminEconomyAlerts();
+  } catch {
+    // ignore — next 60s poll sẽ retry
   }
 }
 
@@ -450,11 +484,17 @@ const isAdmin = () => game.character?.role === 'ADMIN';
         <button
           v-for="tk in (['stats','users','topups','audit','giftcodes','boss'] as const)"
           :key="tk"
-          class="px-3 py-2"
+          class="px-3 py-2 relative"
           :class="tab === tk ? 'border-b-2 border-amber-300 text-ink-50' : 'text-ink-300'"
           @click="tab = tk"
         >
           {{ t(`admin.tab.${tk}`) }}
+          <span
+            v-if="tk === 'stats' && alertsCount > 0"
+            data-testid="admin-tab-stats-alerts-badge"
+            class="ml-1 inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-rose-500 text-ink-50 text-[10px] font-bold align-middle"
+            :title="t('admin.alerts.badgeTooltip', { count: alertsCount })"
+          >{{ alertsCount }}</span>
         </button>
       </nav>
 
