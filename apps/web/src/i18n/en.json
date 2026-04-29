@@ -720,6 +720,12 @@
     "noPermission": "You do not have access to this area.",
     "users": {
       "searchPlaceholder": "Search email or dao name…",
+      "filter": {
+        "allRoles": "All roles",
+        "allStatus": "All statuses",
+        "active": "Active",
+        "banned": "Banned"
+      },
       "col": {
         "email": "Email",
         "name": "Dao Name",

@@ -42,6 +42,8 @@ const alerts = ref<AdminEconomyAlerts | null>(null);
 // Users tab
 const userQuery = ref('');
 const userPage = ref(0);
+const userRoleFilter = ref<'' | Role>('');
+const userBannedFilter = ref<'' | 'true' | 'false'>('');
 const users = ref<AdminUserRow[]>([]);
 const userTotal = ref(0);
 const grantOpen = ref<string | null>(null);
@@ -116,7 +118,11 @@ async function refreshStats(): Promise<void> {
 async function refreshUsers(): Promise<void> {
   loading.value = true;
   try {
-    const r = await adminListUsers(userQuery.value, userPage.value);
+    const filters: { role?: Role; banned?: boolean } = {};
+    if (userRoleFilter.value) filters.role = userRoleFilter.value;
+    if (userBannedFilter.value === 'true') filters.banned = true;
+    else if (userBannedFilter.value === 'false') filters.banned = false;
+    const r = await adminListUsers(userQuery.value, userPage.value, filters);
     users.value = r.rows;
     userTotal.value = r.total;
   } catch (e) {
@@ -391,13 +397,34 @@ const isAdmin = () => game.character?.role === 'ADMIN';
 
       <!-- USERS TAB -->
       <section v-else-if="tab === 'users'" class="space-y-3">
-        <div class="flex gap-2 items-center text-sm">
+        <div class="flex gap-2 items-center text-sm flex-wrap">
           <input
             v-model="userQuery"
             :placeholder="t('admin.users.searchPlaceholder')"
-            class="px-2 py-1 bg-ink-700/40 border border-ink-300/30 rounded flex-1"
+            class="px-2 py-1 bg-ink-700/40 border border-ink-300/30 rounded flex-1 min-w-[200px]"
             @keydown.enter="userPage = 0; refreshUsers()"
           />
+          <select
+            v-model="userRoleFilter"
+            data-testid="admin-users-role-filter"
+            class="px-2 py-1 bg-ink-700/40 border border-ink-300/30 rounded"
+            @change="userPage = 0; refreshUsers()"
+          >
+            <option value="">{{ t('admin.users.filter.allRoles') }}</option>
+            <option value="PLAYER">PLAYER</option>
+            <option value="MOD">MOD</option>
+            <option value="ADMIN">ADMIN</option>
+          </select>
+          <select
+            v-model="userBannedFilter"
+            data-testid="admin-users-banned-filter"
+            class="px-2 py-1 bg-ink-700/40 border border-ink-300/30 rounded"
+            @change="userPage = 0; refreshUsers()"
+          >
+            <option value="">{{ t('admin.users.filter.allStatus') }}</option>
+            <option value="false">{{ t('admin.users.filter.active') }}</option>
+            <option value="true">{{ t('admin.users.filter.banned') }}</option>
+          </select>
           <MButton @click="userPage = 0; refreshUsers()">{{ t('common.search') }}</MButton>
         </div>
 

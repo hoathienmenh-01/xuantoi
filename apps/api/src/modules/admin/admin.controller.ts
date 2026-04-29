@@ -91,9 +91,18 @@ export class AdminController {
   ) {}
 
   @Get('users')
-  async users(@Query('q') q: string | undefined, @Query('page') page: string | undefined) {
+  async users(
+    @Query('q') q: string | undefined,
+    @Query('page') page: string | undefined,
+    @Query('role') role: string | undefined,
+    @Query('banned') banned: string | undefined,
+  ) {
     const p = Math.max(0, Number.parseInt(page ?? '0', 10) || 0);
-    const r = await this.admin.listUsers(q, p);
+    const filters: { role?: Role; banned?: boolean } = {};
+    if (role === 'PLAYER' || role === 'MOD' || role === 'ADMIN') filters.role = role;
+    if (banned === 'true') filters.banned = true;
+    else if (banned === 'false') filters.banned = false;
+    const r = await this.admin.listUsers(q, p, filters);
     return { ok: true, data: r };
   }
 

@@ -1,6 +1,6 @@
 # AI Handoff Report — Xuân Tôi
 
-> **Snapshot**: `main` @ `81706a9` (Merge PR #61 audit session 6, 28 Apr 2026 22:05 UTC). PR #52..#61 đã merge `main`. **8 PR Pending merge**: #62 (G8 M11 profile rate-limit), #63 (G9 M3 WS mission:progress), #64 (G10 H6 Playwright CI), #65 (G11 stacked #63), #66 (G12 L7 admin revoke inventory), #67 (G13 L5 skeleton Leaderboard+Profile), #68 (G14 stacked #67), **#69 (G15 — L2 market fee config env `MARKET_FEE_PCT`)**.
+> **Snapshot**: `main` @ `81706a9` (Merge PR #61 audit session 6, 28 Apr 2026 22:05 UTC). PR #52..#61 đã merge `main`. **9 PR Pending merge**: #62 (G8), #63 (G9), #64 (G10), #65 (G11 stacked #63), #66 (G12), #67 (G13), #68 (G14 stacked #67), #69 (G15 — L2 market fee config), **#70 (G16 — admin user list filter by role/banned)**.
 > **Người viết**: AI engineer session 28/4 sess.6 (audit refresh sau khi PR #58/#59/#60 đã merge — header report cũ vẫn ghi #59/#60 "Open" → đó là tồn tại lỗi thời và đã được fix bởi PR docs này).
 > **Đối tượng đọc**: AI kế nhiệm sẽ tiếp tục đưa dự án tới beta / production.
 >
@@ -85,26 +85,30 @@
 
 Mỗi PR đều `Merged` vào `main`, branch base = `main`. Smoke local (typecheck/lint/test/build) đã chạy ở mỗi PR; smoke E2E 6/6 đã pass tại PR #44 (snapshot `4d8af10`).
 
-### PR #69 — `feat(api): MARKET_FEE_PCT từ env, validate bounds [0, 0.5] (L2)` — **Pending merge**
+### PR #70 — `feat(admin): filter user list by role / banned (G16 — admin productivity)` — **Pending merge**
 
-- **Branch**: `devin/1777417906-g15-market-fee-config`. **Base**: `main` @ `81706a9`. **Status**: **Pending merge**.
-- **Mục tiêu** (L2 — config flexibility for closed beta): Trước đây `MARKET_FEE_PCT = 0.05` hard-code trong `apps/api/src/modules/market/market.service.ts:29`. Closed beta cần khả năng tắt phí (`=0`) hoặc tinh chỉnh nhanh không cần redeploy code.
+- **Branch**: `devin/1777418369-g16-admin-user-filter`. **Base**: `main` @ `81706a9`. **Status**: **Pending merge**.
+- **Mục tiêu** (Smart admin §3 from prompt user — "Bộ lọc tìm user"): Trước đây admin user list chỉ hỗ trợ free-text search `q` (email/character name). Khi closed beta có thể có 100s user, admin cần filter theo role (PLAYER/MOD/ADMIN) và trạng thái (active/banned) để xử lý nhanh.
 - **Giải pháp**:
-  - Tách `DEFAULT_MARKET_FEE_PCT = 0.05`, `MIN_MARKET_FEE_PCT = 0`, `MAX_MARKET_FEE_PCT = 0.5` (trần 50% bảo vệ ops gõ nhầm `5` thay `0.05`).
-  - Hàm `resolveMarketFeePct(envValue)`: silent fallback DEFAULT khi env không hợp lệ (undefined/empty/NaN/out-of-range) + `console.warn`. KHÔNG throw → app vẫn boot.
-  - `MARKET_FEE_PCT = resolveMarketFeePct(process.env.MARKET_FEE_PCT)` ở module load — giữ contract export hiện tại (controller + test cũ vẫn dùng).
-  - `apps/api/.env.example`: thêm dòng `MARKET_FEE_PCT=0.05` + comment giải thích.
+  - **BE `AdminService.listUsers(q, page, filters)`**: thêm tham số `filters: { role?: Role; banned?: boolean }`. Build `Prisma.UserWhereInput.AND` từ điều kiện q + role + banned. Backward-compat: filters default `{}` nên existing call (`stats.test.ts` etc.) không cần đổi.
+  - **BE `AdminController.users`**: thêm 2 query params `role` (whitelist `PLAYER`/`MOD`/`ADMIN`, sai → bỏ qua) và `banned` (`true`/`false` → boolean, khác → bỏ qua). Validate inline để tránh inject role không hợp lệ.
+  - **FE `apps/web/src/api/admin.ts`**: extend `adminListUsers(q, page, filters)` để pass params.
+  - **FE `AdminView.vue`**: thêm 2 `<select>` cạnh ô search — role filter + banned filter. `@change` reset page=0 + refresh. data-testid để E2E test.
+  - **i18n**: thêm key `admin.users.filter.{allRoles, allStatus, active, banned}` (vi + en).
 - **Files**:
-  - `apps/api/src/modules/market/market.service.ts` (+30 / -1)
-  - `apps/api/src/modules/market/market-fee-config.test.ts` (new, 60 line, **7 test**)
-  - `apps/api/.env.example` (+4)
-- **Tests**: 7 test mới — undefined/empty fallback, valid range [0, 0.5], non-numeric warn, âm warn, > 0.5 warn (chống gõ nhầm `5`), MAX boundary (0.5) hợp lệ, NaN literal fallback. Tổng API test: **266/266** local (was 259 trên main, +7).
-- **Local verified**: `pnpm typecheck` ✅ · `pnpm lint` ✅ · `pnpm test` ✅ · `pnpm build` ✅.
-- **Risk**: low. Default value giữ 0.05 → behavior identical khi không set env. Existing market.service.test.ts vẫn pass.
-- **Backward compat**: Existing test/controller import `MARKET_FEE_PCT` không đổi.
-- **Runtime smoke**: Needs runtime smoke — set `MARKET_FEE_PCT=0` trong staging, mua listing → seller nhận 100% total; set `MARKET_FEE_PCT=0.1` → seller nhận 90%.
-- **Rollback**: revert; hoặc xóa env → fallback 0.05.
-- **Bước tiếp**: G16 — M6 mission analytics aggregate API, M7 mail unread badge BE, hoặc Smart admin filter.
+  - `apps/api/src/modules/admin/admin.service.ts` (+12 / -7)
+  - `apps/api/src/modules/admin/admin.controller.ts` (+11 / -2)
+  - `apps/api/src/modules/admin/admin-list-users-filter.test.ts` (new, 113 line, **8 test**)
+  - `apps/web/src/api/admin.ts` (+10 / -2)
+  - `apps/web/src/views/AdminView.vue` (+30 / -2)
+  - `apps/web/src/i18n/vi.json` (+6) / `en.json` (+6)
+- **Tests**: 8 test mới — không filter, role=PLAYER/MOD/ADMIN, banned=true/false, combine q+role, combine role+banned (AND logic). Tổng API test: **267/267** (was 259, +8).
+- **Local verified**: `pnpm typecheck` ✅ · `pnpm lint` ✅ · `pnpm test` ✅ all (47 + 267 + 64 = **378 pass**) · `pnpm build` ✅.
+- **Risk**: low. Backward-compat: API caller cũ không pass filter vẫn hoạt động identical. Validation whitelist chống SQL injection / Prisma enum mismatch.
+- **Backward compat**: Existing `adminListUsers(q, page)` calls không đổi — filter là optional param.
+- **Runtime smoke**: Needs runtime smoke — `/admin` tab Users → chọn "PLAYER" + "Bị khoá" → list chỉ PLAYER bị ban; reset selectors về "Tất cả..." → full list.
+- **Rollback**: revert; FE filter chỉ là UI, không persist data.
+- **Bước tiếp**: G17 — M6 mission analytics aggregate API, M7 mail unread badge BE check, hoặc thêm filter cho topup list (status đã có, thêm range date?).
 
 ---
 

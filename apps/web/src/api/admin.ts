@@ -50,9 +50,16 @@ interface Page<T> {
   pageSize: number;
 }
 
-export async function adminListUsers(q: string, page: number): Promise<Page<AdminUserRow>> {
+export async function adminListUsers(
+  q: string,
+  page: number,
+  filters: { role?: Role; banned?: boolean } = {},
+): Promise<Page<AdminUserRow>> {
+  const params: Record<string, string | number> = { q, page };
+  if (filters.role) params.role = filters.role;
+  if (filters.banned !== undefined) params.banned = filters.banned ? 'true' : 'false';
   const { data } = await apiClient.get<Envelope<Page<AdminUserRow>>>('/admin/users', {
-    params: { q, page },
+    params,
   });
   return unwrap(data);
 }

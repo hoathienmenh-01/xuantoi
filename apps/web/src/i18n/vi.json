@@ -720,6 +720,12 @@
     "noPermission": "Bạn không có quyền vào khu này.",
     "users": {
       "searchPlaceholder": "Tìm email hoặc đạo hiệu…",
+      "filter": {
+        "allRoles": "Tất cả vai trò",
+        "allStatus": "Tất cả trạng thái",
+        "active": "Hoạt động",
+        "banned": "Bị khoá"
+      },
       "col": {
         "email": "Email",
         "name": "Đạo Hiệu",
