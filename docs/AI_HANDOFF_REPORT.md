@@ -89,39 +89,50 @@
 
 ---
 
-## Recent Changes (PR #33→#93 đã merged trên main; PR #92 docs/BETA_CHECKLIST + PR #94 BE leaderboard topup/sect in-flight session 9e)
+## Recent Changes (PR #33→#93 + #92 đã merged trên main; PR #94 in-flight session 9e)
 
 ### PR #94 — `feat(api): leaderboard topup + sect — top nạp Tiên Ngọc + xếp hạng tông môn` — **Pending merge** session 9e
 
-- **Branch**: `devin/1777477707-leaderboard-topup-sect`. **Base**: `main` @ `d37b6d4` (sau PR #91 + #93 merged). **Status**: code complete + local typecheck/lint xanh + api test 382/382 (leaderboard 7→20, +13 vitest mới) + build xanh.
-- **Mục tiêu** (Recommended Roadmap §20 #11 — closed beta nice-to-have): leaderboard `power` đã có từ PR #59, nhưng `topup` (đua nạp tiên ngọc) và `sect` (đua tông môn) còn thiếu — 2 endpoint này khuyến khích economy + sect competition khá quan trọng cho closed beta.
-- **Giải pháp** (BE only):
-  - **`apps/api/src/modules/leaderboard/leaderboard.service.ts`**: thêm `topByTopup(limit)` và `topBySect(limit)`.
-    - `topByTopup`: `prisma.topupOrder.groupBy({ by: ['userId'], where: { status: 'APPROVED' }, _sum: { tienNgocAmount: true }, orderBy: { _sum: { tienNgocAmount: 'desc' } }, take: 1000 })`. Sau đó fetch `Character` (where `user.banned = false` + `userId IN [...]`), map lại theo thứ tự groupBy, skip user không có character. Trả `{ rank, characterId, name, realmKey, realmStage, totalTienNgoc, sectKey }`.
-    - `topBySect`: `prisma.sect.findMany({ orderBy: [{ treasuryLinhThach: 'desc' }, { level: 'desc' }, { createdAt: 'asc' }], include: { _count: { select: { characters: true } } }, take: limit })`. Lookup leader names. Trả `{ rank, sectId, sectKey, name, level, treasuryLinhThach (string vì BigInt), memberCount, leaderName }`.
-    - Refactor `clampLimit(limit)` helper (dùng chung cho `topByPower` luôn).
-  - **`apps/api/src/modules/leaderboard/leaderboard.controller.ts`**: thêm 2 endpoint `@Get('topup')` và `@Get('sect')` (cookie auth, query `limit?`).
-  - **`apps/api/src/modules/leaderboard/leaderboard.service.test.ts`** (+13 vitest):
-    - `topByTopup` (6 test): rỗng / sort APPROVED-only loại PENDING+REJECTED / banned excluded / orphan user không char skip / limit clamp / sectKey populated.
-    - `topBySect` (7 test): rỗng / sort treasury desc → level desc → createdAt asc / memberCount + leaderName populated / no leader → null / sect lạ name → sectKey null / limit clamp / treasuryLinhThach trả về string (BigInt-safe JSON).
-- **API contract**:
-  ```
-  GET /api/leaderboard/topup?limit=N  (1≤N≤100, default 50)
-  → { ok: true, data: { rows: [{ rank, characterId, name, realmKey, realmStage, totalTienNgoc, sectKey }] } }
-  GET /api/leaderboard/sect?limit=N
-  → { ok: true, data: { rows: [{ rank, sectId, sectKey, name, level, treasuryLinhThach (string), memberCount, leaderName }] } }
-  ```
-- **Files** (3 file, all under `apps/api/src/modules/leaderboard/`):
-  - `leaderboard.service.ts` (+105/-12 line) — `topByTopup`, `topBySect`, `clampLimit` helper, 3 thêm interface.
-  - `leaderboard.controller.ts` (+18 line) — 2 method `topByTopup`/`topBySect`.
-  - `leaderboard.service.test.ts` (+220 line, +13 vitest).
-- **Risk**: Thấp — BE only, read-only aggregate. Không touch schema/migration. Không ảnh hưởng economy. Cookie auth + clamp ngăn DOS tấn công limit lớn. groupBy đã có index `@@index([userId, status, createdAt])` ở `TopupOrder` (schema.prisma line 82) → query plan tốt.
+- **Branch**: `devin/1777477707-leaderboard-topup-sect`. **Base**: `main` @ `a5821ee` (sau PR #92 merged). **Status**: code complete + local typecheck/lint xanh + api test 382/382 (leaderboard 7→20, +13 vitest mới) + build xanh. CI GitHub 5/5 ✅.
+- **Mục tiêu** (Roadmap §20 #11 — closed beta nice-to-have): leaderboard `power` đã có từ PR #59, nhưng `topup` (đua nạp tiên ngọc) và `sect` (đua tông môn) còn thiếu — 2 endpoint này khuyến khích economy + sect competition cho closed beta.
+- **API contract**: `GET /api/leaderboard/topup?limit=N` (1≤N≤100, default 50) → rows `{ rank, characterId, name, realmKey, realmStage, totalTienNgoc, sectKey }`. `GET /api/leaderboard/sect?limit=N` → rows `{ rank, sectId, sectKey, name, level, treasuryLinhThach (string), memberCount, leaderName }`.
+- **Files**: `apps/api/src/modules/leaderboard/{service,controller,test}.ts` (+343 line, +13 vitest). Test api 369→382.
+- **Risk**: Thấp — BE only, read-only aggregate. Không touch schema/migration/economy.
+- **Bước tiếp theo**: FE consumer LeaderboardView tab Power/Topup/Sect (PR riêng FE only).
+
+### PR #92 — `docs(beta): refresh BETA_CHECKLIST.md — sync 14+ feature đã merge sau PR #59→#91` — **Merged into main** @ `a5821ee` (29/4 ~16:00 UTC, CI 5/5 ✅)
+
+- **Branch**: `devin/1777474187-docs-beta-checklist-refresh`. **Base**: `main` @ `d37b6d4` (sau PR #91 + #93 merged). **Status**: docs-only PR mở từ session 9d, conflict với cascade #91/#93 → session 9e merge main giữ session 9e snapshot + add PR #92 entry mới này.
+- **Mục tiêu** (Smart docs/handoff §7 — `docs/BETA_CHECKLIST.md` lệch nghiêm trọng): file đánh dấu nhiều mục là "🔲 Chưa làm" nhưng thực tế đã merge từ session 5-9. Test count "94 test" (api 77 + shared 17) lệch hẳn so với thực tế **557 test** (api 369 + web 133 + shared 55) — sai lệch 6×. PM/PO đọc sẽ tưởng beta chưa sẵn sàng và yêu cầu duplicate work.
+- **Phát hiện gap** (8 nhóm):
+  - **Smart beta gameplay**: thiếu list Daily Login (PR #80), Leaderboard (PR #59), Public Profile, NextActionPanel, A Linh, /activity tab (PR #91), `pnpm audit:ledger` script. Đã marker "MissionProgress chưa làm" nhưng thực tế đã merge.
+  - **Mail system + GiftCode + LogsModule** ghi pending — thực tế đã có `MailView.vue`/`GiftCodeView.vue`/`/api/logs/me` (PR #88) live + admin UI filter (PR #81/#84).
+  - **LoginAttempt prune cron + RefreshToken cleanup**: ghi pending, thực tế `apps/api/src/modules/ops/ops.processor.ts` đã có repeatable BullMQ `prune`.
+  - **Redis rate limit chat**: ghi pending, thực tế `chatRateLimiterProvider` ở `apps/api/src/modules/chat/chat.module.ts` đã có.
+  - **Health check `/health`,`/ready`**: ghi pending, thực tế `apps/api/src/modules/health/health.controller.ts` đã có 3 endpoint `/healthz`/`/readyz`/`/version`.
+  - **Test count**: 94 → **557** (auto-snapshot 29/4) + new PR #85 SettingsView logout-all 7 test, PR #80 Daily Login idempotent, PR #88 logs cursor + isolation 20 test.
+  - **PR #83 L6 confirm modal + cross-tab 401 redirect**: chưa có entry.
+  - **Admin tab**: ghi "5 tab" nhưng đã 7 tab; thiếu filter cho từng tab + role split MOD/ADMIN (PR #48).
+  - **Loading splash proverbs**: thiếu PR #87 expand 7 → 64.
+  - **Recent docs PR**: thiếu reference PR #89 (API.md), PR #90 (QA + Admin guide), PR #93 (audit session 9e refresh).
+- **Thay đổi** (1 file):
+  - `docs/BETA_CHECKLIST.md` (~120 line → ~155 line): chuyển 14 mục từ "🔲 Chưa làm" sang "✅ Đã hoàn thành"; bổ sung 12 mục thực tế đã làm chưa được liệt kê; cập nhật test count; add 7 row "smart beta gameplay" mới (Daily Login, Leaderboard, Public profile, NextActionPanel, A Linh, /activity, audit:ledger script); thêm 2 row hardening (chat rate limit, health endpoint); thêm "Recommended trước beta open" + "Đã đủ điều kiện cho closed beta" cut-line analysis.
+- **Risk**: Cực thấp — docs only, không touch code/test/migration. Beta cut-line decision lúc này chính xác phản ánh code thực.
 - **Rollback**: revert single PR.
-- **Test added**: +13 api vitest. Tổng api: 369 → **382**. Tổng test repo: ~557 → ~570.
-- **CI status (local)**: typecheck ✅ · lint ✅ · api test 382/382 ✅ (real Postgres + Redis qua `pnpm infra:up`) · web test 133/133 ✅ · shared test 55/55 ✅ · `pnpm build` ✅.
-- **Runtime smoke**: Pending — sẽ smoke khi merge: `curl -b cookie /api/leaderboard/topup` + `/api/leaderboard/sect` từ session đã login. Verify 401 khi unauth. FE consumer (LeaderboardView tab) chưa làm → endpoint chưa hữu dụng cho người chơi cho đến khi PR FE follow-up merge.
-- **`AI_HANDOFF_REPORT.md updated`**: this Recent Changes entry + §17 missing endpoints row + §20 Roadmap Immediate #11 đánh dấu BE Done.
-- **Bước tiếp theo**: FE consumer LeaderboardView tab Power/Topup/Sect (PR riêng, FE only). Hoặc task §20 #12 (forgot-password + email scaffold), #13 (backup script), #14 (mobile responsive).
+- **Test added**: 0 (docs only).
+- **CI status (local sau merge main)**: typecheck ✅ lint ✅ web test 133/133 ✅ shared test 55/55 ✅ build ✅ — không touch code nên baseline giữ nguyên từ session 9e.
+- **Runtime smoke**: N/A (docs).
+- **`AI_HANDOFF_REPORT.md updated`**: this Recent Changes entry.
+- **Bước tiếp theo**: Audit RUN_LOCAL.md / DEPLOY.md / SECURITY.md / SEEDING.md / BALANCE.md cho staleness; hoặc execute QA_CHECKLIST runtime smoke trên local (15 phút); hoặc bắt đầu task top-priority tiếp theo theo §20 (leaderboard topup/sect, forgot-password, backup script, mobile responsive).
+
+### PR #93 — `docs(handoff): session 9e audit refresh — bump snapshot 3283e42 + sync M6/G23 Merged status` — **Merged into main** @ `d37b6d4` (29/4 ~15:35 UTC, CI 4/4 ✅)
+
+- **Branch**: `devin/1777476427-audit-session-9e-refresh`. **Base**: `main` @ `3283e42`. **Status**: Merged into main; CI 4/4 ✅ (build ×2 + e2e-smoke ×2). Docs-only.
+- **Mục tiêu**: Sau khi audit session 9d (PR #86) merged, chuỗi follow-up #84/#87/#88/#89/#90/#91 đã merge cascade vào main 29/4 ~14:55 UTC nhưng report cũ vẫn ghi snapshot `bbb6718` + một số entry "Pending merge" cho M6/G23 → audit này đồng bộ trạng thái: header snapshot bbb6718 → 3283e42; §2 commit + CI gần nhất + 0 PR open; PR #91 entry status Pending merge → Merged @ 3283e42; PR #84 entry status Pending merge → Merged @ 05b05c0; §16 M6 row Resolved by PR #88 + PR #91; §17 logs/me Resolved; §20 Roadmap mark M6 BE+FE Done + add 4 NEW top-priority tasks (leaderboard topup/sect, forgot-password, backup/restore script, mobile responsive verify); §12 Tests refresh shared 47→55, web 64→133, api ~370→~369, add Logs (M6) row 20 test.
+- **Files**: 1 file (`docs/AI_HANDOFF_REPORT.md` +38/-32 line).
+- **Risk**: green — docs-only, no code/schema change.
+- **Rollback**: revert single PR.
+- **`AI_HANDOFF_REPORT.md updated`**: bản thân PR này là refresh report.
 
 ### PR #91 — `feat(web): /activity tab — M6 self audit log consumer (GET /logs/me)` — **Merged into main** @ `3283e42` (29/4 ~14:55 UTC, CI 5/5 ✅)
 
@@ -1408,7 +1419,7 @@ _(Không có lỗi làm app không chạy / mất tiền / auth hỏng tại com
 | `POST /api/_auth/logout-all` | **Có** (PR #37) | — |
 | `POST /api/_auth/forgot-password` + `POST /api/_auth/reset-password` | Thiếu | Nice-to-have beta closed |
 | `POST /api/_auth/verify-email` | Thiếu | Closed beta không cần |
-| `GET /api/leaderboard/{power,topup,sect}` | **Power**: đã có (PR #59 — `GET /leaderboard?limit=50` top by realm+power, clamp 1≤limit≤50). **Topup**: đã có BE (PR #94 — `GET /leaderboard/topup` group sum tienNgoc by approved order, exclude banned, skip user không char). **Sect**: đã có BE (PR #94 — `GET /leaderboard/sect` order treasuryLinhThach desc → level desc → createdAt asc + leader name + sectKey + memberCount). | Power FE done; topup/sect FE chưa có (LeaderboardView chỉ render `power` tab). |
+| `GET /api/leaderboard/{power,topup,sect}` | **Power**: đã có (PR #59 — `GET /leaderboard?limit=50` top by realm+power, clamp 1≤limit≤50). Topup/sect chưa có. | Power done; topup/sect Nice-to-have post-beta. |
 | `WS mission:progress` (server-push tracker) | **Có** (PR #63 BE emitter throttle 500ms + PR #65 FE handler `MissionView`) | — |
 | ~~`GET /api/logs/me` (G3 cũ)~~ | ~~Thiếu~~ | **Resolved by PR #88** (Merged into main @ `c6da89a`) — `apps/api/src/modules/logs/` module + 20 vitest. **FE `/activity` tab consumer**: Resolved by PR #91 (Merged into main @ `3283e42`) — `apps/web/src/views/ActivityView.vue` + 10 vitest. |
 | `POST /api/admin/inventory/revoke` (`ADMIN_REVOKE` ledger) | **Có** (PR #66 — endpoint + 9 vitest) | — |
@@ -1532,7 +1543,7 @@ Admin hiện tại có thể vào `/admin` → Users → tìm → **Set role = A
 8. ~~**M6 — FE `/activity` tab consumer**~~ — **Done by PR #91** (Merged into main @ `3283e42`, 29/4 ~14:55 UTC, CI 5/5 ✅) — `apps/web/src/views/ActivityView.vue` + sidebar link + 10 vitest.
 9. ~~**Docs refresh API.md / QA_CHECKLIST.md / ADMIN_GUIDE.md / TROUBLESHOOTING.md**~~ — **Done by PR #89** (API.md `537a4d6`) + **PR #90** (QA_CHECKLIST.md + ADMIN_GUIDE.md + TROUBLESHOOTING.md `1cbf349`).
 10. **(NEW) Runtime smoke tích hợp toàn bộ PR #46→#91 merge cascade** — **Needs runtime smoke**. Checklist (15 phút, theo `docs/QA_CHECKLIST.md`): register/login (verify rate-limit 5/IP/15min), HomeView (next-action panel + onboarding checklist + DailyLoginCard claim flow), sidebar badges polling 60s, leaderboard render top 50 + tap-name → profile, admin economy alerts panel, mission claim + WS `mission:progress` real-time, mail unread badge hydrate trên login, NPC shop buy + ledger row, market post/cancel/buy với `MARKET_FEE_PCT` env, admin giftcode panel filter q/status + create + revoke (PR #81 + duplicate error rõ PR #84 `CODE_EXISTS`), admin user filter role+banned, admin audit filter action+actor, admin topup filter date+email, admin inventory revoke + `ADMIN_REVOKE` ledger, `pnpm audit:ledger` script, MarketView skeleton, SettingsView logout-all confirm modal, AuthView proverbs corpus đa dạng (PR #87), **`/activity` tab — currency tab + item tab + load more cursor + delta sign coloring + reason i18n + NO_CHARACTER guard** (PR #91 M6 FE consumer).
-11. ~~**`GET /api/leaderboard/topup` + `/sect`**~~ — **BE Done by PR #94** (Pending merge session 9e) — `apps/api/src/modules/leaderboard/leaderboard.{service,controller}.ts` thêm 2 method `topByTopup` (groupBy TopupOrder status=APPROVED, sort tổng tienNgocAmount desc, exclude banned, skip user không character) + `topBySect` (Sect findMany order treasuryLinhThach desc → level desc → createdAt asc, leaderName lookup). API: `GET /api/leaderboard/topup?limit=N` + `GET /api/leaderboard/sect?limit=N` (cookie auth + clamp 1≤limit≤100, default 50). Test: +13 vitest → tổng leaderboard 7→**20**, total api 369→**382**. FE consumer chưa làm — sẽ tạo PR sau (LeaderboardView tab switcher Power/Topup/Sect).
+11. ~~**`GET /api/leaderboard/topup` + `/sect`**~~ — **BE Done by PR #94** (Pending merge session 9e) — `apps/api/src/modules/leaderboard/{service,controller,test}.ts` thêm `topByTopup` (groupBy TopupOrder APPROVED, sum tienNgocAmount desc, exclude banned, skip user không char) + `topBySect` (Sect findMany order treasuryLinhThach desc → level desc → createdAt asc, leaderName + sectKey + memberCount). API: `GET /api/leaderboard/topup?limit=N` + `GET /api/leaderboard/sect?limit=N`. Test: +13 vitest (api 369→382). FE consumer (LeaderboardView tab Power/Topup/Sect) chưa làm — PR riêng FE only.
 12. **(NEW Top Priority) `POST /api/_auth/forgot-password` + `reset-password` + email scaffold qua Mailhog** (closed beta nice-to-have): self-service reset password thay vì admin DB flow. Risk thấp (chỉ thêm endpoint + token model). Value cao cho beta UX.
 13. **(NEW Top Priority) Backup/restore script Postgres** + `docs/BACKUP_RESTORE.md` cho production readiness §8 (closed beta safety): `pnpm backup:db` + `pnpm restore:db`. Risk thấp.
 14. **(NEW Top Priority) Mobile responsive verify pass trên iPhone SE viewport (375×667)** + UX polish layout: AppShell sidebar collapse, AdminView table horizontal scroll, MissionView card stack, MarketView 2-col → 1-col, ActivityView entry layout. Risk thấp (CSS-only).
