@@ -5,6 +5,7 @@ import { useRouter } from 'vue-router';
 import { useAuthStore } from '@/stores/auth';
 import { useGameStore } from '@/stores/game';
 import { useToastStore } from '@/stores/toast';
+import { isSelfTarget, canChangeRole, canTargetUser } from '@/lib/adminGuards';
 import {
   adminApproveTopup,
   adminBanUser,
@@ -197,6 +198,10 @@ async function refreshAudit(): Promise<void> {
 }
 
 async function toggleBan(u: AdminUserRow): Promise<void> {
+  if (!canTargetUser({ actorUserId: auth.user?.id, targetUserId: u.id }).allowed) {
+    toast.push({ type: 'error', text: t('errors.CANNOT_TARGET_SELF') });
+    return;
+  }
   const action = u.banned ? t('admin.users.actionUnlock') : t('admin.users.actionLock');
   if (!confirm(t('admin.users.banConfirm', { action, email: u.email }))) return;
   try {
@@ -210,7 +215,27 @@ async function toggleBan(u: AdminUserRow): Promise<void> {
 
 async function changeRole(u: AdminUserRow, role: Role): Promise<void> {
   if (u.role === role) return;
-  if (!confirm(t('admin.users.roleChangeConfirm', { email: u.email, role }))) return;
+  const guard = canChangeRole({
+    actorRole: game.character?.role,
+    actorUserId: auth.user?.id,
+    targetUserId: u.id,
+  });
+  if (!guard.allowed) {
+    toast.push({
+      type: 'error',
+      text:
+        guard.reason === 'SELF_TARGET'
+          ? t('errors.CANNOT_TARGET_SELF')
+          : t('admin.noPermission'),
+    });
+    // Force-refresh để revert select về role cũ trên UI.
+    await refreshUsers();
+    return;
+  }
+  if (!confirm(t('admin.users.roleChangeConfirm', { email: u.email, role }))) {
+    await refreshUsers();
+    return;
+  }
   try {
     await adminSetRole(u.id, role);
     toast.push({ type: 'success', text: t('admin.users.roleChangedToast') });
@@ -221,10 +246,19 @@ async function changeRole(u: AdminUserRow, role: Role): Promise<void> {
 }
 
 function openGrant(u: AdminUserRow): void {
+  if (!canTargetUser({ actorUserId: auth.user?.id, targetUserId: u.id }).allowed) {
+    toast.push({ type: 'error', text: t('errors.CANNOT_TARGET_SELF') });
+    return;
+  }
   grantOpen.value = u.id;
   grantLinhThach.value = '0';
   grantTienNgoc.value = 0;
   grantReason.value = '';
+}
+
+/** Chính tài khoản đang đăng nhập? Dùng cho `:disabled` ở UI. */
+function isSelfRow(u: AdminUserRow): boolean {
+  return isSelfTarget(auth.user?.id, u.id);
 }
 
 async function submitGrant(): Promise<void> {
@@ -527,8 +561,20 @@ const isAdmin = () => game.character?.role === 'ADMIN';
               </tr>
             </thead>
             <tbody>
-              <tr v-for="u in users" :key="u.id" class="border-t border-ink-300/20">
-                <td class="py-1 truncate max-w-[14rem]">{{ u.email }}</td>
+              <tr
+                v-for="u in users"
+                :key="u.id"
+                class="border-t border-ink-300/20"
+                :class="isSelfRow(u) ? 'bg-amber-500/5' : ''"
+                :data-self="isSelfRow(u) ? 'true' : 'false'"
+              >
+                <td class="py-1 truncate max-w-[14rem]">
+                  {{ u.email }}
+                  <span
+                    v-if="isSelfRow(u)"
+                    class="ml-1 rounded bg-amber-500/20 px-1 text-[10px] uppercase tracking-widest text-amber-200"
+                  >{{ t('admin.users.selfBadge') }}</span>
+                </td>
                 <td>{{ u.character?.name ?? '—' }}</td>
                 <td>{{ u.character ? `${u.character.realmKey} ${u.character.realmStage}` : '—' }}</td>
                 <td>{{ u.character?.linhThach ?? '—' }}</td>
@@ -536,8 +582,10 @@ const isAdmin = () => game.character?.role === 'ADMIN';
                 <td>
                   <select
                     :value="u.role"
-                    :disabled="!isAdmin()"
-                    class="bg-ink-700/40 border border-ink-300/30 rounded text-xs px-1"
+                    :disabled="!isAdmin() || isSelfRow(u)"
+                    :data-testid="`admin-users-role-select-${u.id}`"
+                    :title="isSelfRow(u) ? t('admin.users.selfDemoteBlocked') : ''"
+                    class="bg-ink-700/40 border border-ink-300/30 rounded text-xs px-1 disabled:cursor-not-allowed disabled:opacity-60"
                     @change="changeRole(u, ($event.target as HTMLSelectElement).value as Role)"
                   >
                     <option value="PLAYER">PLAYER</option>
@@ -554,10 +602,22 @@ const isAdmin = () => game.character?.role === 'ADMIN';
                   </span>
                 </td>
                 <td class="space-x-1">
-                  <button class="text-xs text-amber-200 underline" @click="openGrant(u)">
+                  <button
+                    class="text-xs text-amber-200 underline disabled:cursor-not-allowed disabled:opacity-60 disabled:no-underline"
+                    :disabled="isSelfRow(u)"
+                    :title="isSelfRow(u) ? t('admin.users.selfDemoteBlocked') : ''"
+                    :data-testid="`admin-users-grant-btn-${u.id}`"
+                    @click="openGrant(u)"
+                  >
                     {{ t('admin.users.grantBtn') }}
                   </button>
-                  <button class="text-xs text-red-200 underline" @click="toggleBan(u)">
+                  <button
+                    class="text-xs text-red-200 underline disabled:cursor-not-allowed disabled:opacity-60 disabled:no-underline"
+                    :disabled="isSelfRow(u)"
+                    :title="isSelfRow(u) ? t('admin.users.selfDemoteBlocked') : ''"
+                    :data-testid="`admin-users-ban-btn-${u.id}`"
+                    @click="toggleBan(u)"
+                  >
                     {{ u.banned ? t('admin.users.unlock') : t('admin.users.lock') }}
                   </button>
                 </td>
