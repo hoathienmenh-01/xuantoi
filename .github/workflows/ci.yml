@@ -73,3 +73,59 @@ jobs:
 
       - name: Build
         run: pnpm build
+
+  e2e-smoke:
+    # Smoke Playwright trên build artifact (`vite preview`) — KHÔNG cần Postgres/Redis.
+    # Bắt regression UI khi `/auth` không render đúng input email/password (vd CSP,
+    # bundling, route, store init). Golden full path (E2E_FULL=1) vẫn skip — cần
+    # api+web+pg+redis chạy đồng thời, sẽ thêm trong PR riêng nếu cần CI mở rộng.
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile=false
+
+      - name: Build shared
+        run: pnpm --filter @xuantoi/shared build
+
+      - name: Build web
+        run: pnpm --filter @xuantoi/web build
+
+      - name: Cache Playwright browsers
+        id: pw-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-playwright-${{ hashFiles('apps/web/package.json', 'pnpm-lock.yaml') }}
+
+      - name: Install Playwright browsers
+        if: steps.pw-cache.outputs.cache-hit != 'true'
+        run: pnpm --filter @xuantoi/web exec playwright install --with-deps chromium
+
+      - name: Install Playwright deps (cached browsers)
+        if: steps.pw-cache.outputs.cache-hit == 'true'
+        run: pnpm --filter @xuantoi/web exec playwright install-deps chromium
+
+      - name: Run e2e smoke
+        run: pnpm --filter @xuantoi/web exec playwright test --project=chromium
+
+      - name: Upload Playwright artifacts on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: |
+            apps/web/test-results/
+            apps/web/playwright-report/
+          if-no-files-found: ignore
+          retention-days: 7

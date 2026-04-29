@@ -1,6 +1,6 @@
 # AI Handoff Report — Xuân Tôi
 
-> **Snapshot**: `main` @ `e102c6b` (Merge PR #62 G8 profile rate-limit, 28 Apr 2026). PR #52..#62 đã merge `main`. **11 PR Pending merge**: #63..#72 + **#73 (G19 — admin topup list filter range date + email)**.
+> **Snapshot**: `main` @ `81706a9` (Merge PR #61 audit session 6, 28 Apr 2026 22:05 UTC). PR #52..#61 đã merge `main`. **3 PR Pending merge**: #62 (G8 — M11 profile rate-limit, CI ✅ 3/3), #63 (G9 — M3 WS mission:progress, CI ✅ 3/3), #64 (G10 — H6 wire Playwright smoke vào CI).
 > **Người viết**: AI engineer session 28/4 sess.6 (audit refresh sau khi PR #58/#59/#60 đã merge — header report cũ vẫn ghi #59/#60 "Open" → đó là tồn tại lỗi thời và đã được fix bởi PR docs này).
 > **Đối tượng đọc**: AI kế nhiệm sẽ tiếp tục đưa dự án tới beta / production.
 >
@@ -10,7 +10,7 @@
 >
 > **Trạng thái (28/4 session 6)**: PR #33..#60 đã merge `main`. PR #59 thêm leaderboard (BE + FE + 7 test). PR #60 thêm rate-limit `POST /auth/register` per-IP (+2 test) — security hardening. Vitest scaffold (PR B / replay PR #47) đã trên main; web test set hiện 64 test (toast 9 + game 8 + auth 7 + badges 9 + NextActionPanel 6 + OnboardingChecklist 8 + itemName 11 + LeaderboardView 6).
 >
-> Roadmap kế tiếp (xem §20/§21): ~~M11 rate-limit `GET /character/profile/:id`~~ → **Pending merge PR #62** — còn lại: M3 WS `mission:progress` push, H6 wire Playwright vào CI, L5 skeleton loaders, L7 `POST /admin/inventory/revoke`, L2 market fee 5% → config, hoặc smart features tiếp từ prompt user.
+> Roadmap kế tiếp (xem §20/§21): ~~M11 rate-limit profile~~ → PR #62 Pending merge; ~~M3 WS `mission:progress`~~ → PR #63 Pending merge; ~~H6 Playwright CI~~ → PR #64 Pending merge — còn lại: L5 skeleton loaders, L7 `POST /admin/inventory/revoke`, L2 market fee 5% → config, M6/M7/M9/M10, FE handler `mission:progress` event, smart features tiếp từ prompt user.
 >
 > **Note replay-gap PR #47** đã closed bởi PR #53 (cherry-pick `32a33a6` vào main) — không còn drift giữa GitHub PR status và `main`.
 >
@@ -1035,7 +1035,9 @@ _(Không có lỗi làm app không chạy / mất tiền / auth hỏng tại com
 | M8 | Admin guard kiểm `role === 'ADMIN' \|\| 'MOD'` — MOD có quyền broad gần ADMIN (grant currency, approve topup, broadcast mail, spawn boss). | **Resolved** by PR E — thêm `@RequireAdmin()` decorator + reflector trong `AdminGuard`; ADMIN-only cho grant / role-set / approve-topup / reject-topup / giftcode-create / giftcode-revoke / mail-send / mail-broadcast / boss-admin-spawn. MOD vẫn được: GET (read) + ban (đã có hierarchy MOD↦PLAYER ở service). 8 unit test thuê reflector cho guard. |
 | M9 | Settings logout-all không bump `passwordVersion` → access token cũ (15m) vẫn valid ở thiết bị khác. | **Open** (intentional trade-off, document trong `SECURITY.md`) — nếu cần force ngay, bump `passwordVersion` hoặc implement revocation list. |
 | M10 | Shop không có rate-limit + stock infinite + không daily limit. | **Open** — closed beta acceptable; sau beta thêm `dailyLimit`. |
-| ~~M11~~ | ~~`GET /character/profile/:id` không có rate-limit riêng.~~ | **Resolved by PR #62** — reuse `RateLimiter` interface, DI token `PROFILE_RATE_LIMITER`, key `rl:profile:ip:${ip}`, **120 req/IP/15min**. Production dùng `RedisSlidingWindowRateLimiter`, test/no-redis fallback `InMemorySlidingWindowRateLimiter`. Thêm 3 vitest test (over-limit + per-IP isolation + constants). Files: `apps/api/src/modules/character/{character.controller.ts,character.module.ts,character.controller.test.ts}`. **Pending merge** — chi tiết xem `Recent Changes` PR #62. |
+| ~~M11~~ | ~~Profile endpoint không có rate-limit.~~ | **Resolved by PR #62** (Pending merge) — reuse `RateLimiter`, 120 req/IP/15min, +3 test. |
+| ~~M3~~ | ~~Mission progress không push WS → FE polling.~~ | **Resolved by PR #63** (Pending merge) — `MissionWsEmitter` 500ms throttle per-user, +7 test. |
+| ~~H6~~ | ~~Playwright spec tồn tại nhưng chưa chạy trong CI.~~ | **Resolved by PR #64** (Pending merge) — thêm job `e2e-smoke` vào `.github/workflows/ci.yml` (vite preview + Playwright chromium + cache browser); golden full path vẫn skip cho đến khi thêm orchestration api+web+pg+redis. |
 
 ### Low
 
@@ -1293,8 +1295,11 @@ Admin hiện tại có thể vào `/admin` → Users → tìm → **Set role = A
 - ~~**G5 (post-beta backlog)**: leaderboard~~ — **Done** (PR #59). Còn `ADMIN_REVOKE` endpoint (L7), Alchemy/Refinery/Arena (post-beta).
 - ~~**G6 (basic leaderboard)**~~ — **Done** (PR #59 — `GET /api/leaderboard?limit=N` + `LeaderboardView` route `/leaderboard`).
 - ~~**G7 (register IP rate-limit)**~~ — **Done** (PR #60 — 5 register/IP/15min, Redis distributed prod, in-memory fallback).
-- ~~**G8 (next safe task)**: M11 — rate-limit `GET /character/profile/:id`~~ — **Pending merge PR #62**. Reuse `RateLimiter` interface + new DI token `PROFILE_RATE_LIMITER` (key prefix `rl:profile`, 120 req/IP/15min). +3 vitest test (over-limit + per-IP isolation + constants).
-- **G9 (next safe task)**: M3 — WS `mission:progress` push throttled (≥500ms/event) tại `MissionService.track*` với `RealtimeService.emitToUser`. ~3 vitest test (throttle, payload shape, không emit khi alreadyClaimed).
+- ~~**G8**: M11 — rate-limit profile~~ → **Pending merge PR #62** (CI 3/3 xanh).
+- ~~**G9**: M3 — WS mission:progress throttled push~~ → **Pending merge PR #63** (CI 3/3 xanh).
+- ~~**G10**: H6 — wire Playwright smoke vào GitHub Actions CI~~ → **Pending merge PR #64**.
+- **G11 (next safe task)**: FE handler cho event `mission:progress` — wire `socket.on('mission:progress', ...)` vào `apps/web/src/stores/realtime.ts` hoặc mới `apps/web/src/stores/mission.ts` để update progress bar real-time. Risk: low. +1-2 test web (vitest).
+- **G12 (next safe task)**: L5 — skeleton loaders cho `MissionView`, `LeaderboardView`, `ProfileView`, `MarketView`, `BossView`. Component nhỏ reusable. +N test web.
 
 Không còn issue **High** mở trên main (H6 Playwright CI wire là Medium effort, **Open**); chỉ còn **Medium** (M3/M6/M7/M9/M10) và **Low** (L2/L3/L5/L6/L7 — L4 done PR #57, M11 done PR #62 pending merge).
 
@@ -1310,29 +1315,57 @@ Các hạng mục smart-feature đề xuất (không bắt buộc — AI tự qu
 
 ---
 
-### Session 6 audit log (28/4 22:05 UTC — PR #61 docs + PR #62 G8 M11 profile rate-limit)
+### Session 6 audit log (28/4 22:35 UTC — PR #64 G10 H6 Playwright CI smoke)
+
+**PR #64 — G10: wire Playwright smoke vào GitHub Actions CI (H6 resolved)**
+
+- **Branch**: `devin/1777415420-g10-playwright-ci`. **Base**: `main` @ `81706a9`. **Status**: **Pending merge** (CI chưa mở).
+- **Mục tiêu**: H6 — spec Playwright `apps/web/e2e/golden.spec.ts` (một smoke + một golden) đã tồn tại từ PR #44, nhưng chưa có job CI chạy. Sau PR này: mỗi push/PR đều chạy smoke `auth page renders register/login tabs` → bắt regression CSP/bundling/route/store-init.
+- **Giải pháp**:
+  - `apps/web/playwright.config.ts`: thêm `webServer.command = 'pnpm vite preview --port 4173 --strictPort'` và `webServer.url = 'http://localhost:4173'`. Đổi baseURL mặc định từ 5173 → 4173 (preview port). User local muốn dùng `pnpm dev`: set `PLAYWRIGHT_BASE_URL=http://localhost:5173 PLAYWRIGHT_SKIP_WEBSERVER=1`.
+  - `.github/workflows/ci.yml`: thêm job `e2e-smoke` (15-min timeout) parallel với job `build`. Steps: checkout → pnpm setup → install → build shared+web → cache `~/.cache/ms-playwright` (key based on `package.json`+`pnpm-lock.yaml` hash) → install chromium → chạy `playwright test --project=chromium` → upload artifacts on failure.
+  - Golden full path (`E2E_FULL=1`) vẫn skip default — cần api+web+pg+redis khởi động đồng thời, là PR riêng.
+- **Files**:
+  - `apps/web/playwright.config.ts` (rewrite, +20 / -1)
+  - `.github/workflows/ci.yml` (+55 / -0)
+- **Tests**: smoke pass local 1/2 (1 skipped — `E2E_FULL` chưa set, expected). Tổng test workspace vẫn 370 vitest (smoke Playwright không đếm).
+- **Local verified**: `pnpm --filter @xuantoi/web build` ✅ · `playwright install chromium --with-deps` ✅ · `playwright test --project=chromium` ✅ 1 passed + 1 skipped trong 3.8s.
+- **CI**: chờ push branch.
+- **Risk**: low.
+  - Browser cache key gắn với `package.json`+`pnpm-lock.yaml` — khi bản Playwright đổi lạ tải (~120MB ~30s).
+  - Webserver auto-start qua `vite preview` — strictPort 4173 → fail sớm nếu trung.
+  - Không ảnh hưởng test set hiện có.
+  - User local quen `pnpm --filter @xuantoi/web e2e` với dev server: cần cheatsheet trong docs/RUN_LOCAL.md (TODO follow-up).
+- **Backward compat**: spec nội dung không đổi. Default baseURL changed 5173→4173 — user local có thể cần set env nếu đang dùng dev mode.
+- **Runtime smoke**: Đã chạy local thành công. CI sẽ chạy thử lần đầu khi push.
+- **Rollback**: revert. CI quay về chỉ build/typecheck/lint/test (không có e2e smoke).
+- **Bước tiếp**: G11 — FE handler `mission:progress` (PR nhỏ, polish UX cho M3).
+
+---
+
+### Session 6 audit log (28/4 22:25 UTC — PR #63 G9 M3 WS mission:progress)
+
+**PR #63 — G9: WS `mission:progress` throttled push (M3 resolved)**
+
+- **Branch**: `devin/1777414636-g9-ws-mission-progress`. **Base**: `main` @ `81706a9`. **Status**: **Pending merge** (CI ✅ 3/3 xanh — build + Devin Review).
+- **Mục tiêu**: M3 — sau khi `MissionService.track(...)` increment progress, push một frame `mission:progress` qua WebSocket cho user owner.
+- **Files chi tiết**: `packages/shared/src/ws-events.ts` (+30/-0); `apps/api/src/modules/mission/mission-ws.emitter.ts` (new 47 line); `mission.service.ts` (+45/-10); `mission.module.ts` (rewrite +20); `test-helpers.ts` (+5/-3); `mission-ws.emitter.test.ts` (new 96 line, 6 test); `mission.service.test.ts` (+58/-1, 1 integration test). +7 test tổng.
+- **Tests local**: API 266/266; throttle verified.
+- **Risk**: low; `wsEmitter @Optional()` default null backward-compat full.
+- **Bước tiếp**: G10 đã mở PR #64.
+
+---
+
+### Session 6 audit log (28/4 22:05 UTC — PR #62 G8 M11 profile rate-limit)
 
 **PR #62 — G8: rate-limit `GET /character/profile/:id` per-IP (M11 resolved)**
 
-- **Branch**: `devin/1777414051-g8-profile-rate-limit`. **Base**: `main` @ `81706a9` (sau PR #61). **Status**: **Pending merge** (CI chưa mở, chờ push).
-- **Mục tiêu**: M11 — chock chot endpoint công khai duy nhất cho lấy thông tin player public profile. Trước khi fix, attacker login đã có access token có thể enumerate `cuid` với `O(n)` request để dò ra toàn bộ player + power/realm/sect. Cùng pattern PR #60 (register rate-limit).
-- **Giải pháp**:
-  - Thêm 3 const + 1 DI token vào `apps/api/src/modules/character/character.controller.ts`: `PROFILE_RATE_LIMIT_WINDOW_MS = 15*60*1000`, `PROFILE_RATE_LIMIT_MAX = 120`, `PROFILE_RATE_LIMITER = 'CHARACTER_PROFILE_RATE_LIMITER'`.
-  - `CharacterController` constructor inject `@Optional() @Inject(PROFILE_RATE_LIMITER) profileLimiter?: RateLimiter` (4th arg) + fallback `InMemorySlidingWindowRateLimiter` (cho test không pass DI).
-  - `profile()` method: sau `requireUserId()` (lớp 1 cookie auth), check `limiter.check(\`ip:${req.ip}\`)` → `RATE_LIMITED` HTTP 429 nếu vượt → không query DB.
-  - `apps/api/src/modules/character/character.module.ts`: factory provider tạo `RedisSlidingWindowRateLimiter` (prefix `rl:profile`) nếu có `REDIS_CONNECTION`, fallback in-memory.
-- **Files**:
-  - `apps/api/src/modules/character/character.controller.ts` (+30 / -2): thêm imports `Inject/Optional/RateLimiter/InMemory*`, 3 const + token export, constructor 4th param + private `profileLimiter`, `profile()` thêm 3 dong rate-limit check.
-  - `apps/api/src/modules/character/character.module.ts` (+30 / -8): refactor thêm `profileLimiterProvider` factory.
-  - `apps/api/src/modules/character/character.controller.test.ts` (new, 105 line): 3 vitest test — (1) trên `max+1` request cùng IP → `HttpException` 429 + body `{ok:false,error:{code:'RATE_LIMITED'}}` + không call DB; (2) IP khác không bị limit chéo (per-IP isolation); (3) constants = 120/15min. Mock `AuthService.userIdFromAccess` + `CharacterService.findPublicProfile`, không cần DB.
-- **Tests**: API local pass **262/262** (mới: 259 → 262, +3). Shared 47/47 · Web 64/64 · Build xanh.
-- **CI**: chờ push branch.
-- **Risk**: low. Per-IP only (không khóa session player). 120 req/15 phút đủ rộng cho các flow bình thường (leaderboard 50 tên + chat tap-name + boss damage list). Production multi-instance dùng Redis distributed key.
-- **Backward compat**: `CharacterController` constructor 3 param required cũ, limiter 4th `@Optional()` → test cũ (nếu có) không bị ảnh hưởng signature.
-- **i18n**: KHÔNG cần thêm key. FE đã có `auth.errors.RATE_LIMITED` + `chat.errors.RATE_LIMITED` + `topup.errors.RATE_LIMITED`. Profile page hiện tại (`apps/web/src/api/character.ts:getPublicProfile`) swallow error → hiển thị `notFound` khi rate-limited (nói cách khác: graceful degradation — người dùng bình thường không bao giờ hit limit). Follow-up nhỏ: cải tiến FE để hiện thị toast `RATE_LIMITED` riêng khi cần.
-- **Runtime smoke**: Needs runtime smoke (BE rate-limit verify bằng curl). Nhưng xanh ở mức unit-test (3 test); hành vi `RateLimiter` đã được cover trong `rate-limiter.test.ts` + `auth.service.test.ts` PR #60 từ trước → risk thực rất low.
-- **Rollback**: revert. Profile endpoint quay về behavior cũ (không rate-limit).
-- **Bước tiếp**: G9 — M3 WS `mission:progress` throttled push.
+- **Branch**: `devin/1777414051-g8-profile-rate-limit`. **Base**: `main` @ `81706a9`. **Status**: **Pending merge** (CI ✅ 3/3 xanh — build + Devin Review).
+- **Mục tiêu**: M11 — anti-scrape cho profile endpoint công khai (sau cookie auth).
+- **Files**: `character.controller.ts` (+30/-2); `character.module.ts` (+30/-8); `character.controller.test.ts` (new 105 line, 3 test).
+- **Tests local**: API 262/262; behavior 429 + per-IP isolation verified.
+- **Risk**: low; pattern y hệt PR #60.
+- **Bước tiếp**: G9 đã mở PR #63.
 
 ---
 
