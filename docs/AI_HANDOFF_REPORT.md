@@ -85,32 +85,57 @@
 
 ---
 
-## Recent Changes (PR #33→#81 — tất cả đã merge `main`; L5 mission claim vitest in-flight)
+## Recent Changes (PR #33→#83 — tất cả đã merge `main`; G23 + L6b in-flight)
+
+### PR — `test(web): SettingsView logout-all confirm modal integration — 7 test (L6b)` — **Pending merge**
+
+- **Branch**: `devin/1777467454-l6b-settings-logout-vitest`. **Base**: `main` @ `<L6 merge commit>` (sau khi PR #83 L6 merged). **Status**: code complete + local typecheck/lint/web test/build xanh; PR mở session 9c.
+- **Mục tiêu** (Smart testing/QA §5 — Render-level integration vitest cho L6 logout-all flow): PR #83 đã thêm `ConfirmModal.vue` + 13 unit test cho component nhưng **không** có integration test cho `SettingsView` xác minh modal được wire đúng (open trên nút logout-all, gọi `logoutAll()` đúng lúc, navigate `/auth` sau success, map error code qua i18n). Gap test có thể regress khi sửa SettingsView tương lai.
+- **Giải pháp** (test only, không sửa prod code):
+  - `apps/web/src/views/__tests__/SettingsView.test.ts` (new, ~225 line): mount full SettingsView với mock `@/api/auth` (`logoutAll`, `changePassword`), mock `vue-router` (`replace`), mock toast/auth/game store, stub AppShell. 7 test cases covering: (1) initial render không hiện modal + không gọi API; (2) click `[data-testid="settings-logout-all-btn"]` mở modal `[data-testid="logout-all-confirm-modal"]` mà không gọi API; (3) cancel modal đóng + không gọi API; (4) confirm gọi `logoutAll`, toast success, `router.replace('/auth')`, đóng modal; (5) error có code map qua `settings.errors.${code}` → toast text; (6) error code unmapped → fallback `settings.errors.UNKNOWN`; (7) phím Escape khi modal mở → đóng modal + không gọi API.
+- **Files** (1 file new):
+  - `apps/web/src/views/__tests__/SettingsView.test.ts` (+225 line)
+- **Risk**: Rất thấp — pure test add, no prod code touched. Mock pattern theo template `MissionView.test.ts` / `LeaderboardView.test.ts`.
+- **Rollback**: revert single PR.
+- **Test added**: +7 vitest web. Tổng web 116 → 123.
+- **CI status (local)**: typecheck ✅, lint ✅, web test ✅ (123/123), build ✅.
+- **`AI_HANDOFF_REPORT.md updated`**: Recent Changes (this entry).
+
+### PR #84 — `feat(api,web): giftcode duplicate code → CODE_EXISTS error (G23)` — **Pending merge** (CI 3/3 ✅)
+
+- **Branch**: `devin/1777467022-g23-giftcode-duplicate-error`. **Base**: `main` @ L6 merge commit. **Status**: code complete + local typecheck/lint/test/build xanh; PR mở session 9c, CI 3/3 ✅ (build, e2e-smoke, Devin Review).
+- **Mục tiêu** (Smart UX polish §6 — UX nit phát hiện trong G22 testing PR #81): Khi admin tạo giftcode trùng code, BE trả về `INVALID_INPUT` chung — FE hiện toast generic `Tham số không hợp lệ` rất khó hiểu.
+- **Giải pháp** (5 file, ~40 line +/-):
+  - `apps/api/src/modules/giftcode/giftcode.service.ts`: thêm `'CODE_EXISTS'` vào `GiftCodeErrorCode` union; `create()` line 148 throw `CODE_EXISTS` thay `INVALID_INPUT` khi duplicate.
+  - `apps/api/src/modules/admin/admin.controller.ts`: `handleErr` map `CODE_EXISTS` → HTTP 409 CONFLICT.
+  - `apps/web/src/i18n/{vi,en}.json`: thêm 6 key `admin.errors.{CODE_EXISTS, CODE_NOT_FOUND, CODE_EXPIRED, CODE_REVOKED, CODE_EXHAUSTED, ALREADY_REDEEMED}`. FE `AdminView.handleErr` đã có pattern lookup → tự pickup.
+  - `apps/api/src/modules/giftcode/giftcode.service.test.ts`: test "từ chối code trùng" assertion đổi `INVALID_INPUT` → `CODE_EXISTS`.
+- **Risk**: Thấp — error code rename, status 400 → 409 đúng semantic, FE check `error.code` field nên không bị ảnh hưởng HTTP status.
+- **Test**: 1 test rename + assert đổi. Tổng api 349/349 (giữ nguyên số test).
+- **CI**: 3/3 GitHub xanh.
+- **`AI_HANDOFF_REPORT.md updated`**: Recent Changes (this entry).
 
 Mỗi PR đều `Merged` vào `main`, branch base = `main`. Smoke local (typecheck/lint/test/build) đã chạy ở mỗi PR; smoke E2E 6/6 đã pass tại PR #44 (snapshot `4d8af10`); H6 Playwright golden path đã wire CI matrix qua PR #64.
 
-### PR — `feat(api,web): giftcode duplicate code → CODE_EXISTS error (G23)` — **Pending merge**
+### PR #83 — `feat(web): logout-all confirm modal — replace window.confirm() (L6)` — **Merged into main** (CI 5/5)
 
-- **Branch**: `devin/1777467022-g23-giftcode-duplicate-error`. **Base**: `main` @ `45e42dc` (sau khi PR #82 L5 merged). **Status**: code complete + local typecheck/lint/test/build xanh; PR mở session 9c, CI sẽ chạy.
-- **Mục tiêu** (Smart UX polish §6 — UX nit phát hiện trong G22 testing): Khi admin tạo giftcode trùng code, BE trả về `INVALID_INPUT` chung — FE hiện toast generic `Tham số không hợp lệ (vượt giới hạn / âm quá mức)` rất khó hiểu. Cần phân loại lỗi để toast rõ ràng hơn.
+- **Branch**: `devin/1777466552-l6-logout-all-confirm-modal` → merged 29/4 ~12:50 UTC. CI: build ×2 ✅, e2e-smoke ×2 ✅, Devin Review ✅.
+- **Mục tiêu** (Smart UX polish §6 + Recommended Roadmap L6 — replace `window.confirm()` cho logout-all): SettingsView trước đây dùng native `window.confirm()` để confirm logout-all-devices — UX kém (browser-styled, không tích hợp i18n đầy đủ với title, không support keyboard escape gracefully, không thể disable trong loading). Closed beta cần modal đẹp tích hợp design system.
 - **Giải pháp**:
-  - **`apps/api/src/modules/giftcode/giftcode.service.ts`**: thêm `'CODE_EXISTS'` vào union `GiftCodeErrorCode`. Tại check duplicate (line 148): thay `throw new GiftCodeError('INVALID_INPUT')` → `throw new GiftCodeError('CODE_EXISTS')`. Các check khác (regex format, reward bounds, items > 10, qty bounds, maxRedeems <= 0) vẫn dùng `INVALID_INPUT`.
-  - **`apps/api/src/modules/admin/admin.controller.ts`**: thêm `e.code === 'CODE_EXISTS'` vào nhóm trả `HttpStatus.CONFLICT` (cùng nhóm `ALREADY_REDEEMED`/`CODE_EXPIRED`/`CODE_REVOKED`/`CODE_EXHAUSTED`).
-  - **`apps/web/src/i18n/{vi,en}.json`** (admin.errors): thêm 6 key mới (`CODE_EXISTS`, `CODE_NOT_FOUND`, `CODE_EXPIRED`, `CODE_REVOKED`, `CODE_EXHAUSTED`, `ALREADY_REDEEMED`) với message rõ ràng. FE `AdminView.handleErr` đã có pattern `t('admin.errors.${code}', '__missing__')` — không cần code change FE.
-- **Test thay đổi**: `apps/api/src/modules/giftcode/giftcode.service.test.ts` test "từ chối code trùng" trước expect `INVALID_INPUT`, giờ expect `CODE_EXISTS` (case-insensitive normalize giữ nguyên).
-- **Files** (5 thay đổi):
-  - `apps/api/src/modules/giftcode/giftcode.service.ts` (+1 enum / -1 +1 throw)
-  - `apps/api/src/modules/admin/admin.controller.ts` (+1 line trong handleErr)
-  - `apps/api/src/modules/giftcode/giftcode.service.test.ts` (test rename + assertion)
-  - `apps/web/src/i18n/vi.json` (+6 key)
-  - `apps/web/src/i18n/en.json` (+6 key)
-- **Risk**: Thấp — error code rename, không thay đổi behavior chính (vẫn từ chối tạo, không tạo row trùng). Status code đổi từ 400 → 409 cho duplicate (semantic đúng hơn). Các caller khác không dependent vào status code cụ thể (FE check `code` field trong error envelope).
-- **Rollback**: revert single PR.
-- **Test added/modified**: 1 test rename + assert đổi `INVALID_INPUT` → `CODE_EXISTS`. Tổng api 349 → 349 (cùng số test, đổi assertion).
-- **CI status (local)**: typecheck ✅, lint ✅, web test ✅ (103/103), api test ✅ (349/349), shared test ✅ (47/47), build ✅.
-- **`AI_HANDOFF_REPORT.md updated`**: Recent Changes (this entry).
+  - **`apps/web/src/components/ui/ConfirmModal.vue`** (new, ~115 line): reusable confirm modal component với props `open / title / message / confirmText / cancelText / danger / loading / testId`. Emits `confirm` + `cancel`. Features: Teleport to body, backdrop click-self → cancel, Escape key → cancel (cả hai bị block khi `loading=true`), `danger=true` style đỏ cho phá huỷ flow, fallback i18n `common.confirm` / `common.cancel`. Slot mặc định để mở rộng khi cần custom body.
+  - **`apps/web/src/views/SettingsView.vue`** (modified): remove `window.confirm(t('settings.logoutAll.confirm'))` ở `submitLogoutAll`; thay bằng `<ConfirmModal>` ở cuối `<template>` với `danger` + `loading=submittingLogoutAll`. Thêm state `logoutAllConfirmOpen` + helpers `openLogoutAllConfirm` / `cancelLogoutAllConfirm`. Logout button gắn `data-testid="settings-logout-all-btn"`.
+- **i18n**: tận dụng key có sẵn (`common.confirm` / `common.cancel` / `common.loading` đã có). Không thêm key mới.
+- **Files** (3 thay đổi):
+  - `apps/web/src/components/ui/ConfirmModal.vue` (new)
+  - `apps/web/src/views/SettingsView.vue` (modified)
+  - `apps/web/src/components/__tests__/ConfirmModal.test.ts` (new, 13 vitest)
+- **Risk**: Thấp — pure FE work, không có migration / không đụng economy / không thay đổi BE / không thay đổi API contract. Logout-all flow giữ nguyên semantics: button click → confirm modal → user confirm → call `POST /auth/logout-all` → toast + router replace `/auth`. Modal cancel/escape/backdrop → đóng modal không gọi API.
+- **Rollback**: Revert single PR; không cần migration rollback.
+- **Test added**: +13 vitest web cho `ConfirmModal` (open/close, render title+message, default i18n label, custom label override, click confirm/cancel emit, loading disable + text "Đang xử lý…", Escape emit cancel, Escape khi loading bị block, backdrop click-self emit cancel, danger=true class red vs danger=false class amber, custom testId prefix, cleanup keydown listener khi unmount). Tổng web 103 → 116.
+- **CI status (local)**: typecheck ✅ (3 project), lint ✅, web test ✅ (116/116), api test ✅ (349/349 sau khi `pnpm infra:up` + `prisma migrate deploy`), shared test ✅ (47/47), build ✅. CI GitHub sẽ chạy 5/5 check.
+- **`AI_HANDOFF_REPORT.md updated`**: Recent Changes (this entry), Known Issues §17 L6 → Pending merge.
 
-### PR — `test(web): MissionView claim flow vitest — 9 test (L5)` — **Pending merge**
+### PR #82 — `test(web): MissionView claim flow vitest — 9 test (L5)` — **Merged into main** @ `45e42dc` (29/4 ~12:30 UTC, CI 5/5 xanh)
 
 - **Branch**: `devin/1777465473-l5-mission-claim-vitest`. **Base**: `main` @ `ec37f10` (sau khi PR #80/#81 merged). **Status**: code complete + local typecheck/lint/web test/shared test/build xanh; PR mở session 9c, CI sẽ chạy.
 - **Mục tiêu** (Smart testing/QA §5 + Recommended Roadmap L5 — render-level vitest cho mission claim flow): `MissionView.vue` (268 line) trước đây không có vitest riêng — coverage chỉ qua `lib/missionProgress.test.ts` (pure function `applyMissionProgressFrame`). FE `MissionView` có nhiều state-driven branches (claim button enable/disable, `claimed` badge, sort theo claimable/pending/done, tab filter DAILY/WEEKLY/ONCE, WS `mission:progress` live update) — gap test có thể regress khi refactor mission UI tương lai.
@@ -1163,8 +1188,8 @@ _(Không có lỗi làm app không chạy / mất tiền / auth hỏng tại com
 | L3 | Proverbs loading screen chỉ 30+ câu — lặp nhanh. | **Open** — mở rộng corpus. |
 | ~~L4~~ | ~~Không có tên item localized.~~ | **Resolved** by **PR #57** — `apps/web/src/lib/itemName.ts` helper + 11 vitest test, dedupe across `MissionView`/`MailView`/`GiftCodeView`/`ShopView`. |
 | ~~L5~~ | ~~Một số view chưa skeleton loader.~~ | **Resolved** — `LeaderboardView` + `ProfileView` (PR #67 merged), `MissionView` + `AdminView` (PR #68 merged), `MarketView` (PR #77 merged). Skeleton coverage đầy đủ trên tất cả view chính. |
-| L5b | `MissionView.vue` (268 line) chưa có vitest riêng — coverage chỉ qua `lib/missionProgress.test.ts`. | **Pending merge** — PR L5-mission-claim-vitest (session 9c) thêm `apps/web/src/views/__tests__/MissionView.test.ts` với 9 test bao claim button enable/disable, claimed badge, click claim happy path, error handler, WS `mission:progress` apply, sort, tab filter, empty state. |
-| L6 | Settings dùng `window.confirm()` cho logout-all. | **Open** — nhẹ nhàng, post-beta thay bằng modal đẹp. |
+| ~~L5b~~ | ~~`MissionView.vue` (268 line) chưa có vitest riêng.~~ | **Resolved by PR #82** (Merged into main @ `45e42dc`) — `apps/web/src/views/__tests__/MissionView.test.ts` +9 vitest cover claim button enable/disable, claimed badge, click claim happy path, error handler, WS `mission:progress` apply, sort, tab filter, empty state. |
+| L6 | Settings dùng `window.confirm()` cho logout-all. | **Pending merge** — PR L6-logout-all-confirm-modal (session 9c) tạo `apps/web/src/components/ui/ConfirmModal.vue` reusable + thay `window.confirm()` trong `SettingsView.submitLogoutAll`. +13 vitest. |
 | ~~L7~~ | ~~`ADMIN_REVOKE` reason đã định nghĩa trong `ItemLedger` nhưng chưa có endpoint admin thực thi.~~ | **Resolved by PR #66** (Merged into main) — `POST /admin/inventory/revoke` endpoint, ledger reason `ADMIN_REVOKE`, audit log. File: `apps/api/src/modules/admin/admin.service.ts`. +9 test. |
 
 ---
