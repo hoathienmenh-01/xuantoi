@@ -161,11 +161,45 @@ export class GiftCodeService {
     return toView(row);
   }
 
-  async list(limit = 100): Promise<GiftCodeView[]> {
+  async list(
+    limit = 100,
+    filters: { q?: string; status?: 'ACTIVE' | 'REVOKED' | 'EXPIRED' | 'EXHAUSTED' } = {},
+  ): Promise<GiftCodeView[]> {
+    const ands: Prisma.GiftCodeWhereInput[] = [];
+    if (filters.q) {
+      ands.push({ code: { contains: filters.q.toUpperCase(), mode: 'insensitive' } });
+    }
+    if (filters.status === 'REVOKED') {
+      ands.push({ revokedAt: { not: null } });
+    } else if (filters.status === 'EXPIRED') {
+      ands.push({ revokedAt: null, expiresAt: { lt: new Date() } });
+    } else if (filters.status === 'EXHAUSTED') {
+      // maxRedeems != null AND redeemCount >= maxRedeems
+      // Prisma không filter trực tiếp được — fetch rồi filter, hoặc dùng raw.
+      // Vì list giới hạn 500 rows, fetch full + filter ở app layer.
+      const rows = await this.prisma.giftCode.findMany({
+        where: { revokedAt: null, maxRedeems: { not: null } },
+        orderBy: { createdAt: 'desc' },
+        take: Math.min(Math.max(1, limit), 500),
+      });
+      return rows.filter((r) => r.maxRedeems !== null && r.redeemCount >= r.maxRedeems).map(toView);
+    } else if (filters.status === 'ACTIVE') {
+      ands.push({
+        revokedAt: null,
+        OR: [{ expiresAt: null }, { expiresAt: { gte: new Date() } }],
+      });
+    }
     const rows = await this.prisma.giftCode.findMany({
+      where: ands.length > 0 ? { AND: ands } : undefined,
       orderBy: { createdAt: 'desc' },
       take: Math.min(Math.max(1, limit), 500),
     });
+    // ACTIVE còn loại exhaust (Prisma không filter compare 2 cột → app layer).
+    if (filters.status === 'ACTIVE') {
+      return rows
+        .filter((r) => r.maxRedeems === null || r.redeemCount < r.maxRedeems)
+        .map(toView);
+    }
     return rows.map(toView);
   }
 
