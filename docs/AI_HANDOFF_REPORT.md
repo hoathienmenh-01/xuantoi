@@ -89,9 +89,36 @@
 
 ---
 
-## Recent Changes (PR #33→#89 — tất cả đã merge `main`; L3 PR #87 + M6 PR #88 in-flight session 9d)
+## Recent Changes (PR #33→#89 + PR #87 merged; M6 PR #88 + docs QA_CHECKLIST refresh in-flight session 9d)
 
-### PR #87 — `feat(shared): proverbs corpus expand 7 → 64 + corpus invariants test (L3)` — **Pending merge** (CI 5/5 ✅)
+### PR — `docs(qa): refresh QA_CHECKLIST.md — add Daily Login (M9), Leaderboard, Audit log self-view (M6), WS mission progress, logout-all confirm modal, fix /api/healthz path` — **Pending merge**
+
+- **Branch**: `devin/1777472509-docs-qa-checklist-refresh`. **Base**: `main` @ `89e3fb6` (sau PR #87 L3 merged). **Status**: docs-only PR session 9d, sau khi PR #89 + #87 đã merge và PR #88 sắp merge.
+- **Mục tiêu** (Smart docs/handoff §7 — `docs/QA_CHECKLIST.md` lệch thực tế): checklist hiện tại (137 dòng, 13 section) chưa cover các flow mới đã merge từ session 8/9 — QA/operator dùng để smoke release sẽ miss feature mới hoặc test sai endpoint. Cụ thể gap:
+  - **§4 Mission**: thiếu WS push real-time (PR #63 `mission:progress`).
+  - **§4b Daily Login (PR #80, M9)**: hoàn toàn không có section — DailyLoginCard claim/idempotency/reset TZ chưa có check.
+  - **§7b Leaderboard (PR #59)**: không có check render top-50 theo `(realm, power)` + tap-name → profile.
+  - **§10 Admin**: ghi "5 tab" nhưng thực tế đã có 7 tab; thiếu check filter `q + status` cho Giftcodes (PR #81 G22), filter `q + from + to` cho Topups (PR #67), filter `role + banned` Users, inventory revoke + `ADMIN_REVOKE` ledger (PR #66), economy alerts (PR #54), giftcode duplicate `CODE_EXISTS` (PR #84 G23).
+  - **§12 Session integrity**: ghi nguyên `Logout tất cả thiết bị` nhưng không phân biệt confirm modal (PR #83 L6 — `ConfirmModal.vue`) vs `window.confirm` cũ; thiếu cross-tab 401 redirect.
+  - **§13 Audit log self-view (PR #88, M6)**: hoàn toàn không có section — `GET /logs/me` ledger reading chưa có check.
+  - **Post-smoke checks**: path `/_health/healthz|readyz|version` sai — code thực `@Controller()` không có prefix → routes `/api/healthz`, `/api/readyz`, `/api/version`.
+- **Files** (1 thay đổi): `docs/QA_CHECKLIST.md` (+30/-4 line).
+  - §4 Mission: thêm bullet WS `mission:progress` 2-tab test.
+  - §4b mới: Daily Login (4 bullet — card render, claim +100 LT, idempotent claim 2nd time, reset `Asia/Ho_Chi_Minh`).
+  - §7b mới: Leaderboard (3 bullet — top render, row data, tap-name → profile rate-limit).
+  - §10 Admin: tăng từ 4 → 9 bullet (7 tab, filter Giftcodes + Topups + Users, inventory revoke ledger, economy alerts).
+  - §12 Session: confirm modal explicit (Huỷ vs Xác nhận); cross-tab 401 redirect.
+  - §13 mới: Audit log self-view (4 bullet — currency list DESC, item qtyDelta sign, pagination cursor, isolation A↔B).
+  - Post-smoke: fix path `/_health/...` → `/api/healthz|readyz|version` đúng response shape.
+- **Risk**: Cực thấp — docs only, không touch code/test/migration. QA/operator có spec đúng để smoke.
+- **Rollback**: revert single PR.
+- **Test added**: 0 (docs only).
+- **CI status (local)**: lint OK (markdown), no code change.
+- **Runtime smoke**: N/A (docs).
+- **`AI_HANDOFF_REPORT.md updated`**: this Recent Changes entry.
+- **Bước tiếp theo**: FE tab "Hoạt động" wire `GET /logs/me` (sau khi PR #88 merge) hoặc execute checklist này thật để smoke `Runtime smoke tích hợp` của Roadmap §20.
+
+### PR #87 — `feat(shared): proverbs corpus expand 7 → 64 + corpus invariants test (L3)` — **Merged into main** (29/4 session 9d, CI 5/5 ✅)
 
 - **Branch**: `devin/1777469379-l3-proverbs-expand`. **Base**: `main` @ `05b05c0` (sau khi PR #84 G23 merged). **Status**: code complete + CI 5/5 ✅; merged main vào branch để giải quyết conflict report.
 - **Mục tiêu** (Smart UX polish §6 + Recommended Roadmap L3 — proverbs loading screen ít lặp): `packages/shared/src/proverbs.ts` chỉ có **7 câu** (thiếu so với mức thoải mái cho loading splash) → người chơi mở `AuthView` thấy lặp lại nhanh, mất cảm giác cổ phong. Header report cũ ghi nhầm "30+ câu" — thực tế chỉ 7. Closed beta cần corpus rộng để loading screen đa dạng.

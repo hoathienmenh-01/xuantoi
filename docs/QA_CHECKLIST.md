@@ -37,6 +37,14 @@ Manual smoke test checklist trước mỗi release closed beta. Mục tiêu: ~15
 - [ ] Progress bar mỗi mission hiển thị đúng `currentAmount / goalAmount`.
 - [ ] Mission đã đạt goal nhưng chưa claim → button "Nhận" active; click → currency/linh thạch tăng + toast.
 - [ ] Mission sau claim: disable button, move xuống dưới hoặc fade.
+- [ ] WS push: mở 2 tab cùng user → claim ở tab 1 → tab 2 progress bar update real-time (event `mission:progress`, throttle 500ms — PR #63).
+
+## 4b. Daily Login Reward (1 phút, sau PR #80, M9)
+
+- [ ] `/home` (hoặc tab Hoạt động) hiển thị card "Điểm danh hôm nay" với streak hiện tại + reward kế tiếp (LinhThạch).
+- [ ] Button "Nhận" active nếu `canClaimToday=true`; click → +100 LT (lần đầu) + toast "Đã nhận".
+- [ ] Click "Nhận" lần 2 cùng ngày → response `{ claimed: false }`, không cộng thêm currency, button disabled.
+- [ ] Reset theo `MISSION_RESET_TZ` (default `Asia/Ho_Chi_Minh`) — sang 00:00 VN ngày kế tiếp button bật lại.
 
 ## 5. Mail (2 phút)
 
@@ -58,6 +66,12 @@ Manual smoke test checklist trước mỗi release closed beta. Mục tiêu: ~15
 - [ ] `/shop` NPC — list ≥ 5 item; click "Mua" → linh thạch trừ đúng, item vào inventory.
 - [ ] (Optional) Đăng 1 item lên `/market` — sau đó cancel → item trở về inventory.
 
+## 7b. Leaderboard (1 phút, sau PR #59)
+
+- [ ] `/leaderboard` (hoặc tab tương ứng) hiển thị top theo `(realm, power)` desc, default 50 entry.
+- [ ] Mỗi row: rank, tên character, sect, realm/stage, power.
+- [ ] Click vào tên → chuyển `/character/profile/:id` (PR #62 — public profile, rate limit per-IP 120/15min).
+
 ## 8. Sect + Boss (2 phút)
 
 - [ ] `/sect` — hiển thị thông tin tông môn đã chọn + danh sách thành viên.
@@ -72,7 +86,11 @@ Manual smoke test checklist trước mỗi release closed beta. Mục tiêu: ~15
 
 ## 10. Admin (1 phút, chỉ khi account là ADMIN)
 
-- [ ] `/admin` load; 5 tab: Overview / Users / Topups / Giftcodes / Mail / Boss / Audit.
+- [ ] `/admin` load; 7 tab: Overview / Users / Topups / Giftcodes / Mail / Boss / Audit.
+- [ ] Tab Giftcodes: filter `q + status` (PR #81 G22) — search code, filter `ACTIVE/REVOKED/EXPIRED`; create giftcode mới với `code` đã tồn tại → response error `CODE_EXISTS` (PR #84 G23) hiển thị toast tiếng Việt rõ ràng.
+- [ ] Tab Topups: filter `q + from + to` (search email + date range).
+- [ ] Tab Users: filter `role + banned`; click 1 user → tab Inventory → click "Revoke" item → ledger entry `ADMIN_REVOKE` xuất hiện trong tab Audit (PR #66).
+- [ ] Tab Overview: economy alerts panel hiển thị nếu có anomaly (currency âm, ledger inconsistent — PR #54).
 - [ ] Tab Users: list user; role change work cho ADMIN (sau PR #48, MOD chỉ ban được PLAYER).
 - [ ] Tab Topups: approve 1 pending → user thấy tiên ngọc tăng.
 - [ ] Tab Audit: log có entry vừa tạo (role change + topup approve).
@@ -87,15 +105,23 @@ Manual smoke test checklist trước mỗi release closed beta. Mục tiêu: ~15
 
 - [ ] Refresh (`F5`) khi đã login → còn nguyên session, character load tự động.
 - [ ] Đổi password ở `/settings` → session cũ revoke, redirect `/auth`.
-- [ ] Settings → "Logout tất cả thiết bị" → token hiện tại invalid, redirect `/auth`.
+- [ ] Settings → "Logout tất cả thiết bị" → **mở confirm modal** (PR #83 L6 — không phải `window.confirm`); click "Huỷ" → modal đóng, không gọi API; click "Xác nhận" → token hiện tại invalid, redirect `/auth`.
+- [ ] Mở 2 tab cùng user → "Logout tất cả" ở tab 1 → tab 2 next request → 401 → redirect `/auth`.
+
+## 13. Audit log self-view (1 phút, sau PR #88, M6)
+
+- [ ] Tab/page "Hoạt động" gọi `GET /logs/me?type=currency&limit=20` → list giao dịch LinhThạch/TiênNgọc gần nhất, đúng thứ tự `createdAt DESC`.
+- [ ] Switch type=`item` → list ItemLedger với `qtyDelta` có dấu (+/-) đúng theo equip/use/buy/admin revoke.
+- [ ] Cuộn xuống cuối list → fetch nextCursor → trang 2 không trùng/sót entry.
+- [ ] User A không thể thấy log của user B (test bằng cookie swap).
 
 ---
 
 ## Post-smoke checks
 
-- [ ] Check `/_health/healthz` → `{ ok: true }`.
-- [ ] Check `/_health/readyz` → `{ ok: true, db, redis, queue }` đều OK.
-- [ ] Check `/_health/version` → commit SHA khớp deploy.
+- [ ] Check `GET /api/healthz` → `{ ok: true, uptimeMs, ts }`.
+- [ ] Check `GET /api/readyz` → `{ ok: true }` (200) hoặc `503` nếu DB/Redis fail.
+- [ ] Check `GET /api/version` → `{ name, version, commit, node, ts }` — `commit` SHA khớp deploy.
 - [ ] Admin audit log tab không có `ERROR`/`CRITICAL` entry.
 - [ ] Browser DevTools → Network tab không có request 5xx (4xx cho unauthenticated là OK).
 
