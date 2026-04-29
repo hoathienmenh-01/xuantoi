@@ -1034,7 +1034,7 @@ _(Không có lỗi làm app không chạy / mất tiền / auth hỏng tại com
 | ~~H3~~ | ~~Không có seed sect (Thanh Vân Môn, Huyền Thuỷ Cung, Tu La Điện).~~ | `apps/api/scripts/bootstrap.ts:DEFAULT_SECTS` | — | **Resolved** by **PR #33**. |
 | ~~H4~~ | ~~`InventoryService` không có test unit.~~ | `apps/api/src/modules/inventory/inventory.service.test.ts` | — | **Resolved** by **PR #34** (19 test). |
 | ~~H5~~ | ~~Web chưa có Vitest + E2E Playwright **trên `main`**.~~ | `apps/web/vitest.config.ts` + `playwright.config.ts` + `e2e/golden.spec.ts` + `src/{stores,components,lib,views}/__tests__/*.test.ts` | — | **Resolved** — PR #53 cherry-pick PR #47 vào main; PR #55/#56/#57/#58/#59 mở rộng coverage → **64 vitest pass** (toast 9 + game 8 + auth 7 + badges 9 + NextActionPanel 6 + OnboardingChecklist 8 + itemName 11 + LeaderboardView 6). Playwright scaffold sẵn, gate `E2E_FULL=1`, **chưa wire CI matrix** (mở issue tiếp khi cần full E2E — xem H6 dưới). |
-| H6 | Playwright golden path scaffold sẵn nhưng chưa có CI job chạy headless. | `.github/workflows/ci.yml` + `apps/web/playwright.config.ts` + `apps/web/e2e/golden.spec.ts` | Tốn thêm ~3-5 min CI nhưng bắt được regression UI golden. | **Open** — medium effort. Cần thêm matrix job `e2e` với services postgres+redis, run `pnpm --filter @xuantoi/api start &`, `pnpm --filter @xuantoi/web preview &`, sau đó `E2E_FULL=1 pnpm --filter @xuantoi/web e2e`. |
+| ~~H6~~ | ~~Playwright golden path scaffold sẵn nhưng chưa có CI job chạy headless.~~ | `.github/workflows/ci.yml` | — | **Resolved by PR #64** (Merged into main) — added matrix job `e2e-smoke` với services postgres+redis, build api+web, run `E2E_SMOKE=1 pnpm --filter @xuantoi/web e2e:smoke`. CI hiện chạy golden path mỗi PR. |
 
 ### Medium
 
@@ -1042,7 +1042,7 @@ _(Không có lỗi làm app không chạy / mất tiền / auth hỏng tại com
 |---|---|---|
 | ~~M1~~ | ~~Cron mission reset dùng timezone UTC mặc định.~~ | **Resolved** by **PR #42** — thêm env `MISSION_RESET_TZ` (default `Asia/Ho_Chi_Minh`) + helper `getMissionResetTz()` + tz-aware `nextDailyWindowEnd`/`nextWeeklyWindowEnd` + 7 test mới. |
 | ~~M2~~ | ~~Boss spawn chỉ manual + admin endpoint chưa có.~~ | **Resolved** by **PR #36** (`POST /api/boss/admin/spawn` + UI tab + 7 test, audit `BOSS_SPAWN`). |
-| M3 | Chưa có WS `mission:progress` push. | **Open** — PR #38 đã đánh nhầm M3 ở body (đó là profile). Cần thêm `emitToUser('mission:progress', {missionKey,currentCount,targetCount})` ở `MissionService.track*` với throttle ≥500ms/event để không spam. **Workaround hiện tại**: badges store poll `/me/next-actions` 60s (PR #51) đã bắt được trigger "mission ready". |
+| ~~M3~~ | ~~Chưa có WS `mission:progress` push.~~ | **Resolved by PR #63 + #65** (Merged into main) — BE `MissionWsEmitter` 500ms throttle per-user, emit `'mission:progress'` payload `{characterId, changes: MissionProgressChange[]}` sau `MissionService.track()`. FE `MissionView` subscribe và apply delta in-place. Files: `apps/api/src/modules/mission/mission-ws.emitter.ts`, `apps/web/src/views/MissionView.vue`. |
 | ~~M4~~ | ~~`ItemLedger` audit table chưa có.~~ | **Resolved** by **PR #40** (model + migration `20260428102849_itemledger` + hook 6 grant flows + market post/cancel/buy + 7 test trong `item-ledger.test.ts`). |
 | ~~M5~~ | ~~`CurrencyLedger.actorUserId` chưa index.~~ | **Resolved** by **PR #43** — thêm `@@index([actorUserId, createdAt])` cho cả `CurrencyLedger` và `ItemLedger`. Migration `20260428112804_actor_user_id_index` (ADD INDEX only). |
 | M6 | LogsModule (G3 cũ) chưa build — không có `/logs/me` endpoint. | **Open** — low priority, chỉ khi cần UI xem log action. |
@@ -1050,20 +1050,19 @@ _(Không có lỗi làm app không chạy / mất tiền / auth hỏng tại com
 | M8 | Admin guard kiểm `role === 'ADMIN' \|\| 'MOD'` — MOD có quyền broad gần ADMIN (grant currency, approve topup, broadcast mail, spawn boss). | **Resolved** by PR E — thêm `@RequireAdmin()` decorator + reflector trong `AdminGuard`; ADMIN-only cho grant / role-set / approve-topup / reject-topup / giftcode-create / giftcode-revoke / mail-send / mail-broadcast / boss-admin-spawn. MOD vẫn được: GET (read) + ban (đã có hierarchy MOD↦PLAYER ở service). 8 unit test thuê reflector cho guard. |
 | M9 | Settings logout-all không bump `passwordVersion` → access token cũ (15m) vẫn valid ở thiết bị khác. | **Open** (intentional trade-off, document trong `SECURITY.md`) — nếu cần force ngay, bump `passwordVersion` hoặc implement revocation list. |
 | M10 | Shop không có rate-limit + stock infinite + không daily limit. | **Open** — closed beta acceptable; sau beta thêm `dailyLimit`. |
-| ~~M11~~ | ~~`GET /character/profile/:id` không có rate-limit riêng.~~ | **Resolved by PR #62** (Pending merge) — reuse `RateLimiter` interface, DI token `PROFILE_RATE_LIMITER`, key `rl:profile:ip:${ip}`, **120 req/IP/15min**. Files: `apps/api/src/modules/character/{character.controller.ts, character.module.ts, character.controller.test.ts}`. +3 test. |
-| ~~M3~~ | ~~Mission progress không push WS → FE phải polling/refetch.~~ | **Resolved by PR #63** (Pending merge) — `MissionWsEmitter` 500ms throttle per-user; emit `'mission:progress'` với payload `{characterId, changes: MissionProgressChange[]}` sau khi `MissionService.track()` thành công. Files: `packages/shared/src/ws-events.ts`, `apps/api/src/modules/mission/{mission-ws.emitter.ts (new), mission.service.ts, mission.module.ts}`. +7 test (6 emitter unit + 1 integration). |
+| ~~M11~~ | ~~`GET /character/profile/:id` không có rate-limit riêng.~~ | **Resolved by PR #62** (Merged into main) — reuse `RateLimiter` interface, DI token `PROFILE_RATE_LIMITER`, key `rl:profile:ip:${ip}`, **120 req/IP/15min**. Files: `apps/api/src/modules/character/{character.controller.ts, character.module.ts, character.controller.test.ts}`. +3 test. |
 
 ### Low
 
 | # | Issue | Status / Fix |
 |---|---|---|
 | L1 | Hard-code VN/EN còn lẻ tẻ. | **Resolved (PR F)** — audit cuối: 554/554 key và vi.json/en.json sync, 400 used key all resolve. Fix 12 key admin vẫn English (`roleLabel`, `tab.audit`, `users.col.role`, `users.banned`, `roleChangeConfirm`, `roleChangedToast`, `topups.col.user/status/note`, `audit.col.actor/action/meta`). Các "identical en≡vi" còn lại (locale names, EXP, HP/MP, WS, OK, Boss, A Linh, currency names) là đúng ý đồ — universal/native term. |
-| L2 | Market fee 5% hard-code. | **Open** — đưa ra `config` namespace. |
+| ~~L2~~ | ~~Market fee 5% hard-code.~~ | **Resolved by PR #69** (Merged into main) — `MARKET_FEE_PCT` env var, validate bounds [0, 0.5], default 0.05. File: `apps/api/src/modules/market/market.service.ts`. |
 | L3 | Proverbs loading screen chỉ 30+ câu — lặp nhanh. | **Open** — mở rộng corpus. |
 | ~~L4~~ | ~~Không có tên item localized.~~ | **Resolved** by **PR #57** — `apps/web/src/lib/itemName.ts` helper + 11 vitest test, dedupe across `MissionView`/`MailView`/`GiftCodeView`/`ShopView`. |
-| L5 | Một số view chưa skeleton loader. | **Open** — UI polish. |
+| L5 | Một số view chưa skeleton loader. | **Partial** — `LeaderboardView` + `ProfileView` (PR #67 merged), `MissionView` + `AdminView` (PR #68 merged). Còn lại `MarketView` (PR #77 Pending merge). Sau khi #77 merge → Resolved. |
 | L6 | Settings dùng `window.confirm()` cho logout-all. | **Open** — nhẹ nhàng, post-beta thay bằng modal đẹp. |
-| L7 | `ADMIN_REVOKE` reason đã định nghĩa trong `ItemLedger` nhưng chưa có endpoint admin thực thi. | **Open** — bổ sung khi cần thu hồi item nhầm. |
+| ~~L7~~ | ~~`ADMIN_REVOKE` reason đã định nghĩa trong `ItemLedger` nhưng chưa có endpoint admin thực thi.~~ | **Resolved by PR #66** (Merged into main) — `POST /admin/inventory/revoke` endpoint, ledger reason `ADMIN_REVOKE`, audit log. File: `apps/api/src/modules/admin/admin.service.ts`. +9 test. |
 
 ---
 
