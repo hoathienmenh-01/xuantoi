@@ -89,9 +89,41 @@
 
 ---
 
-## Recent Changes (PR #33→#89 + PR #87 + PR #88 merged; docs sync PR #90 in-flight session 9d)
+## Recent Changes (PR #33→#90 + PR #87/#88 merged; FE M6 consumer PR #91 in-flight session 9d)
 
-### PR #90 — `docs(qa,admin): refresh QA_CHECKLIST.md + ADMIN_GUIDE.md + fix /api/_auth/* path bugs` — **Pending merge** (CI 5/5 ✅ on initial commit; extending scope with admin guide + path fix)
+### PR #91 — `feat(web): /activity tab — M6 self audit log consumer (GET /logs/me)` — **Pending merge**
+
+- **Branch**: `devin/1777473333-fe-logs-tab`. **Base**: `main` @ `c6da89a` (sau PR #88 + #90 merged). **Status**: code complete + local typecheck/lint/test 369/133/55 + build xanh.
+- **Mục tiêu** (Recommended Roadmap §20 — FE consumer cho M6 sau khi PR #88 merged): BE `GET /logs/me` đã live nhưng FE chưa có view nào tiêu thụ → endpoint chưa hữu dụng cho người chơi. Thêm tab "Hoạt Động" trong sidebar để player tự xem ledger thu/chi linh thạch + tiên ngọc + xuất nhập linh bảo (replace flow "support tra DB tay").
+- **Giải pháp** (FE only, không touch BE/schema):
+  - **`apps/web/src/api/logs.ts`** (new, ~70 line): `fetchLogsMe({ type, limit, cursor })` wrap `GET /logs/me`. Type `LogEntry = LogEntryCurrency | LogEntryItem` mirror BE `apps/api/src/modules/logs/logs.service.ts`. Envelope unwrap throw `Error & {code}` (cùng pattern `leaderboard.ts`).
+  - **`apps/web/src/views/ActivityView.vue`** (new, ~225 line): tab toggle `currency|item` (default currency), keyset pagination "Xem thêm" button (không infinite scroll để tránh phụ thuộc IntersectionObserver), signed delta display (dương `+N` xanh, âm `-N` đỏ, 0 xám), reason map qua i18n `activity.reasons.${REASON}` fallback raw key, item name lookup qua `itemByKey()` từ `@xuantoi/shared`, currency label `LINH_THACH/TIEN_NGOC` qua i18n, error code map qua `activity.errors.${code}` fallback `UNKNOWN`. Skeleton 6 dòng khi loading lần đầu. Empty state khi `entries.length === 0`. Auth guard `router.replace('/auth')` nếu chưa login.
+  - **`apps/web/src/router/index.ts`**: thêm route `/activity` lazy-loaded.
+  - **`apps/web/src/components/shell/AppShell.vue`**: thêm sidebar link `帳 Hoạt Động` giữa `Nạp Tiên Ngọc` và `Tâm Pháp`.
+  - **i18n**: thêm `activity.*` block (vi + en) — tabs, loading, loadMore, empty, errors UNAUTHENTICATED/NO_CHARACTER/INVALID_CURSOR/UNKNOWN, currencyLabel LINH_THACH/TIEN_NGOC, reasons cho 24 ledger reason code (CULTIVATE_TICK, BREAKTHROUGH_*, MISSION_REWARD, DAILY_LOGIN, MAIL_CLAIM, GIFTCODE_REDEEM, TOPUP_APPROVED, ADMIN_GRANT/REVOKE, MARKET_LIST/CANCEL/BUY/SELL/FEE, SHOP_BUY/SELL, SECT_DONATE, INVENTORY_EQUIP/UNEQUIP/USE, BOSS_REWARD, DUNGEON_DROP, ACHIEVEMENT). Reason không có key → fallback raw string (tương lai BE thêm reason mới không crash UI).
+  - **`apps/web/src/views/__tests__/ActivityView.test.ts`** (new, ~285 line, 10 vitest): (1) skeleton khi đang fetch, (2) empty state, (3) currency delta dương `+N` xanh, (4) currency delta âm `-N` đỏ, (5) switch tab item gọi `type=item` reset entries, (6) item qtyDelta âm với item name từ catalog, (7) load more với cursor append, (8) error map qua i18n, (9) error code lạ → fallback UNKNOWN, (10) reason không có key → fallback raw không crash.
+- **API contract consumed**:
+  ```
+  GET /logs/me?type=currency|item&limit=20&cursor=<opaque>
+  → { ok: true, data: { entries: LogEntry[], nextCursor: string | null } }
+  ```
+- **Files** (5 file new + 3 file modified):
+  - `apps/web/src/api/logs.ts` (new, 70 line)
+  - `apps/web/src/views/ActivityView.vue` (new, 225 line)
+  - `apps/web/src/views/__tests__/ActivityView.test.ts` (new, 285 line, 10 vitest)
+  - `apps/web/src/router/index.ts` (+5 line, route)
+  - `apps/web/src/components/shell/AppShell.vue` (+7 line, sidebar link)
+  - `apps/web/src/i18n/vi.json` (+50 line, `activity.*` block)
+  - `apps/web/src/i18n/en.json` (+50 line, `activity.*` block)
+- **Risk**: Thấp — FE only, không thay schema/migration/BE. Read-only consumer của endpoint stable đã có 20 vitest cover (PR #88). Reason mapping fallback raw → BE thêm reason code mới không crash. Item catalog lookup fallback raw key.
+- **Rollback**: revert single PR. Không có data migration. Sidebar link biến mất, route 404 → người chơi quay lại flow cũ (không có hoạt động).
+- **Test added**: +10 web vitest. Tổng web: 123 → 133.
+- **CI status (local)**: typecheck ✅ lint ✅ test 369 (api) / 133 (web) / 55 (shared) ✅ build ✅. CI GitHub: chờ.
+- **Runtime smoke**: Pending — sẽ smoke khi merge: open `/activity`, verify currency tab render, switch tab item, load more, check delta sign + reason translation, test empty state cho character chưa có ledger entry.
+- **`AI_HANDOFF_REPORT.md updated`**: this Recent Changes entry.
+- **Bước tiếp theo**: Audit other docs (RUN_LOCAL.md / DEPLOY.md / SECURITY.md / BETA_CHECKLIST.md / SEEDING.md / BALANCE.md) hoặc execute QA_CHECKLIST.md runtime smoke (15 phút).
+
+### PR #90 — `docs(qa,admin): refresh QA_CHECKLIST.md + ADMIN_GUIDE.md + fix /api/_auth/* path bugs` — **Merged into main** (CI 5/5 ✅, session 9d)
 
 - **Branch**: `devin/1777472509-docs-qa-checklist-refresh`. **Base**: `main` @ `89e3fb6` (sau PR #87 L3 merged). **Status**: docs-only PR session 9d, sau khi PR #89 + #87 + #88 merged.
 - **Mục tiêu** (Smart docs/handoff §7 — đồng bộ docs sau cascade PR #59/#63/#66/#67/#71/#80/#81/#83/#84/#88; fix path bugs `/api/auth/*` → `/api/_auth/*`):
