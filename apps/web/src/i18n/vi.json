@@ -816,7 +816,8 @@
       "allClear": "Tất cả ổn — không có bất thường.",
       "negativeCurrency": "Currency âm",
       "negativeInventory": "Inventory qty < 1",
-      "stalePendingTopups": "Topup PENDING quá hạn"
+      "stalePendingTopups": "Topup PENDING quá hạn",
+      "badgeTooltip": "{count} cảnh báo kinh tế cần xem"
     },
     "noPermission": "Bạn không có quyền vào khu này.",
     "users": {
