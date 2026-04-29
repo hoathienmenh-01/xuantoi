@@ -20,11 +20,14 @@ BACKUP_DIR="${BACKUP_DIR:-./backups}"
 USE_DOCKER="${USE_DOCKER:-auto}"
 TIMESTAMP="$(date +%Y%m%d-%H%M%S)"
 
+# Mask password trong DATABASE_URL khi log/echo (không leak credentials vào cron/CI log file).
+SAFE_URL="$(printf '%s' "$DATABASE_URL" | sed -E 's|://([^:]+):[^@]+@|://\1:***@|')"
+
 # Parse DB name from URL (sau dấu / cuối, trước ?).
 DB_PATH="${DATABASE_URL##*/}"
 DB_NAME="${DB_PATH%%\?*}"
 if [[ -z "$DB_NAME" ]]; then
-  echo "FATAL: cannot parse DB name from DATABASE_URL=$DATABASE_URL" >&2
+  echo "FATAL: cannot parse DB name from DATABASE_URL=$SAFE_URL" >&2
   exit 2
 fi
 
@@ -44,7 +47,7 @@ if [[ "$USE_DOCKER" == "auto" ]]; then
   fi
 fi
 
-echo "[backup-db] DATABASE_URL=$DATABASE_URL"
+echo "[backup-db] DATABASE_URL=$SAFE_URL"
 echo "[backup-db] Writing to: $OUT"
 echo "[backup-db] Strategy: $([[ "$USE_DOCKER" == "1" ]] && echo "docker exec" || echo "host pg_dump")"
 

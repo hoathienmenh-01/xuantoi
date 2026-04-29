@@ -24,6 +24,9 @@ DATABASE_URL="${DATABASE_URL:-postgresql://mtt:mtt@localhost:5432/mtt}"
 ASSUME_YES="${ASSUME_YES:-0}"
 USE_DOCKER="${USE_DOCKER:-auto}"
 
+# Mask password trong DATABASE_URL khi log/echo (không leak credentials vào cron/CI log file).
+SAFE_URL="$(printf '%s' "$DATABASE_URL" | sed -E 's|://([^:]+):[^@]+@|://\1:***@|')"
+
 if [[ ! -f "$BACKUP_FILE" ]]; then
   echo "FATAL: backup file not found: $BACKUP_FILE" >&2
   exit 2
@@ -38,7 +41,7 @@ fi
 DB_PATH="${DATABASE_URL##*/}"
 DB_NAME="${DB_PATH%%\?*}"
 if [[ -z "$DB_NAME" ]]; then
-  echo "FATAL: cannot parse DB name from DATABASE_URL=$DATABASE_URL" >&2
+  echo "FATAL: cannot parse DB name from DATABASE_URL=$SAFE_URL" >&2
   exit 4
 fi
 
@@ -54,7 +57,7 @@ if [[ "$USE_DOCKER" == "auto" ]]; then
   fi
 fi
 
-echo "[restore-db] DATABASE_URL=$DATABASE_URL"
+echo "[restore-db] DATABASE_URL=$SAFE_URL"
 echo "[restore-db] Backup file: $BACKUP_FILE"
 echo "[restore-db] Strategy: $([[ "$USE_DOCKER" == "1" ]] && echo "docker exec" || echo "host psql")"
 echo
