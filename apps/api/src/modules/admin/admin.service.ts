@@ -315,7 +315,7 @@ export class AdminService {
         select: { id: true },
       });
       const ids = matchUsers.map((u) => u.id);
-      conditions.push({ userId: ids.length > 0 ? { in: ids } : '__none__' });
+      conditions.push({ userId: { in: ids } });
     }
     const where: Prisma.TopupOrderWhereInput =
       conditions.length > 0 ? { AND: conditions } : {};
@@ -453,7 +453,7 @@ export class AdminService {
         select: { id: true },
       });
       const ids = matchUsers.map((u) => u.id);
-      conditions.push({ actorUserId: ids.length > 0 ? { in: ids } : '__none__' });
+      conditions.push({ actorUserId: { in: ids } });
     }
     const where: Prisma.AdminAuditLogWhereInput =
       conditions.length > 0 ? { AND: conditions } : {};
