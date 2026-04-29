@@ -10,6 +10,7 @@ export type GiftCodeErrorCode =
   | 'CODE_EXPIRED'
   | 'CODE_REVOKED'
   | 'CODE_EXHAUSTED'
+  | 'CODE_EXISTS'
   | 'ALREADY_REDEEMED'
   | 'INVALID_INPUT';
 
@@ -144,7 +145,7 @@ export class GiftCodeService {
     }
 
     const existing = await this.prisma.giftCode.findUnique({ where: { code } });
-    if (existing) throw new GiftCodeError('INVALID_INPUT');
+    if (existing) throw new GiftCodeError('CODE_EXISTS');
 
     const row = await this.prisma.giftCode.create({
       data: {
