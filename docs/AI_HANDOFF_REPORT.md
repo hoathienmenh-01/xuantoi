@@ -89,9 +89,22 @@
 
 ---
 
-## Recent Changes (PR #33→#95 đã merged trên main; PR #96 backup/restore reliability fixes in-flight session 9e)
+## Recent Changes (PR #33→#96 đã merged trên main; PR #97 mobile responsive in-flight session 9e)
 
-### PR #96 — `fix(scripts): backup/restore reliability — SIGPIPE-safe verify + pg_terminate_backend trước DROP` — **Pending merge** session 9e
+### PR #97 — `fix(web): mobile responsive — AppShell sidebar drawer + AdminView tables overflow-x-auto` — **Pending merge** session 9e
+
+- **Branch**: `devin/1777479151-mobile-responsive-polish`. **Base**: `main` @ `253c4b1` (sau PR #96 merged). **Status**: code complete + typecheck/lint/web test 133/133/build all xanh local.
+- **Mục tiêu** (Roadmap §20 #14 — closed beta UX polish): trên iPhone SE (375×667 viewport), AppShell sidebar `hidden md:flex` ẩn hoàn toàn → user mobile không thể navigate. AdminView 4 table có 6-9 cột → overflow ngang silent (rows bị chen ép vì không có wrapper scroll).
+- **Giải pháp** (CSS-only):
+  1. **AppShell mobile drawer** (`apps/web/src/components/shell/AppShell.vue`): thêm hamburger button `md:hidden` góc top-left header (data-testid `shell-mobile-toggle`, aria-label dùng i18n key `shell.nav.toggle`), state `mobileNavOpen` ref + watch `route.fullPath` auto-close khi navigate. Sidebar đổi từ `hidden md:flex` → responsive: `fixed md:static` + `transform translate-x-0/-translate-x-full md:translate-x-0` slide-in animation từ trái + backdrop `bg-black/60` click để close.
+  2. **AdminView tables** (`apps/web/src/views/AdminView.vue`): wrap 4 table (users, topup, audit, giftcode) bằng `<div class="overflow-x-auto">` + thêm `min-w-[640px]`/`min-w-[560px]` cho phép horizontal scroll thay vì ép column.
+  3. **i18n key `shell.nav.toggle`** (vi: "Mở menu điều hướng", en: "Toggle navigation menu") cho aria-label hamburger button.
+- **Files**: `apps/web/src/components/shell/AppShell.vue` (+30 line layout/state), `apps/web/src/views/AdminView.vue` (4 wrap × ~3 line + ESLint --fix re-indent), `apps/web/src/i18n/{vi,en}.json` (+1 key mỗi file).
+- **Tests**: 133/133 web vitest unchanged (CSS-only, không touch logic).
+- **Risk**: Thấp — CSS + state nhỏ, no schema/API/data change. Rollback: revert single PR.
+- **Bước tiếp theo (mobile)**: MissionView/MarketView đã dùng flex-wrap (acceptable trên 375px), ActivityView chưa kiểm tra runtime trên emulator. Có thể follow-up PR khác sau khi runtime smoke verify.
+
+### PR #96 — `fix(scripts): backup/restore reliability — SIGPIPE-safe verify + pg_terminate_backend trước DROP` — **Merged into main** @ `253c4b1` session 9e (CI 5/5 ✅)
 
 - **Branch**: `devin/1777480220-backup-restore-reliability-fixes`. **Base**: `main` (sau PR #95 merged). **Status**: code complete + scripts smoke pass live (verify dump 1.67MB decompressed + restore với active connection blocking).
 - **Mục tiêu**: 2 bug functional Devin Review tìm được sau khi PR #95 merged:
@@ -1565,7 +1578,7 @@ Admin hiện tại có thể vào `/admin` → Users → tìm → **Set role = A
 11. ~~**`GET /api/leaderboard/topup` + `/sect`**~~ — **BE Done by PR #94** (Pending merge session 9e) — `apps/api/src/modules/leaderboard/{service,controller,test}.ts` thêm `topByTopup` (groupBy TopupOrder APPROVED, sum tienNgocAmount desc, exclude banned, skip user không char) + `topBySect` (Sect findMany order treasuryLinhThach desc → level desc → createdAt asc, leaderName + sectKey + memberCount). API: `GET /api/leaderboard/topup?limit=N` + `GET /api/leaderboard/sect?limit=N`. Test: +13 vitest (api 369→382). FE consumer (LeaderboardView tab Power/Topup/Sect) chưa làm — PR riêng FE only.
 12. **(NEW Top Priority) `POST /api/_auth/forgot-password` + `reset-password` + email scaffold qua Mailhog** (closed beta nice-to-have): self-service reset password thay vì admin DB flow. Risk thấp (chỉ thêm endpoint + token model). Value cao cho beta UX.
 13. ~~**Backup/restore script Postgres** + `docs/BACKUP_RESTORE.md`~~ — **Done by PR #95** (Pending merge session 9e) — `scripts/backup-db.sh` + `scripts/restore-db.sh` + `pnpm backup:db` + `pnpm restore:db` npm scripts + `docs/BACKUP_RESTORE.md` (TL;DR + workflow + cron mẫu + disaster recovery checklist). Tested live: backup 21 table → 5966 byte gzip → restore success. Credentials masked trong stdout/log (Devin Review fix).
-14. **(NEW Top Priority) Mobile responsive verify pass trên iPhone SE viewport (375×667)** + UX polish layout: AppShell sidebar collapse, AdminView table horizontal scroll, MissionView card stack, MarketView 2-col → 1-col, ActivityView entry layout. Risk thấp (CSS-only).
+14. ~~**Mobile responsive iPhone SE viewport (375×667)**~~ — **Partial Done by PR #97** (Pending merge session 9e) — AppShell hamburger + drawer sidebar `md:hidden` toggle với aria-label `shell.nav.toggle` (vi/en) + watch route auto-close + backdrop click; AdminView 4 table (users/topup/audit/giftcode) wrap `overflow-x-auto` + `min-w-[640px]/[560px]`. **Còn lại (post-PR #97)**: MissionView/MarketView đã dùng flex-wrap (acceptable nhưng chưa runtime verify trên emulator), ActivityView entry layout chưa kiểm tra → follow-up PR sau khi runtime smoke. **Needs runtime smoke** trên Chrome DevTools mobile emulator hoặc thiết bị thật iPhone SE.
 15. **M10 — Shop daily limit** + per-item rate-limit (post-beta nice-to-have).
 16. **M7 — CSP production CDN review** (chỉ khi triển khai prod).
 17. **M9 (auth) — Settings logout-all `passwordVersion` bump** (intentional trade-off post-beta — document trong `docs/SECURITY.md` hiện đã có).

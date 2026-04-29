@@ -1,10 +1,10 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted } from 'vue';
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useAuthStore } from '@/stores/auth';
 import { useGameStore } from '@/stores/game';
 import { useBadgesStore } from '@/stores/badges';
-import { useRouter } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 import ChatPanel from './ChatPanel.vue';
 import LocaleSwitcher from './LocaleSwitcher.vue';
 
@@ -13,6 +13,21 @@ const auth = useAuthStore();
 const game = useGameStore();
 const badges = useBadgesStore();
 const router = useRouter();
+const route = useRoute();
+
+const mobileNavOpen = ref(false);
+function toggleMobileNav(): void {
+  mobileNavOpen.value = !mobileNavOpen.value;
+}
+function closeMobileNav(): void {
+  mobileNavOpen.value = false;
+}
+watch(
+  () => route.fullPath,
+  () => {
+    mobileNavOpen.value = false;
+  },
+);
 
 onMounted(() => {
   badges.start();
@@ -43,6 +58,16 @@ async function logout(): Promise<void> {
     <header
       class="h-14 flex items-center gap-4 px-4 border-b border-ink-300/40 bg-ink-700/60 backdrop-blur"
     >
+      <button
+        type="button"
+        class="md:hidden text-ink-100 hover:text-amber-200 px-2 py-1 -ml-2"
+        :aria-label="t('shell.nav.toggle')"
+        :aria-expanded="mobileNavOpen"
+        data-testid="shell-mobile-toggle"
+        @click="toggleMobileNav()"
+      >
+        <span aria-hidden="true" class="text-xl leading-none">{{ mobileNavOpen ? '✕' : '☰' }}</span>
+      </button>
       <div class="text-lg tracking-widest font-bold">{{ t('app.brand') }}</div>
       <div class="text-sm text-ink-300 hidden md:block">{{ t('app.tagline') }}</div>
 
@@ -93,9 +118,21 @@ async function logout(): Promise<void> {
       </div>
     </header>
 
+    <!-- Mobile nav backdrop -->
+    <div
+      v-if="mobileNavOpen"
+      class="md:hidden fixed inset-0 z-40 bg-black/60"
+      data-testid="shell-mobile-backdrop"
+      @click="closeMobileNav()"
+    />
+
     <div class="flex-1 grid grid-cols-1 md:grid-cols-[14rem_minmax(0,1fr)_18rem]">
       <!-- Sidebar trái -->
-      <aside class="hidden md:flex flex-col border-r border-ink-300/30 bg-ink-700/30 p-3 gap-1 text-sm">
+      <aside
+        class="flex flex-col border-r border-ink-300/30 bg-ink-700/95 md:bg-ink-700/30 p-3 gap-1 text-sm fixed md:static inset-y-0 left-0 w-60 md:w-auto z-50 transform md:transform-none transition-transform duration-200 overflow-y-auto md:overflow-visible"
+        :class="mobileNavOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'"
+        data-testid="shell-sidebar"
+      >
         <RouterLink
           to="/home"
           class="px-3 py-2 rounded hover:bg-ink-700/60"
