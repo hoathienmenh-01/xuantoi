@@ -512,57 +512,59 @@ const isAdmin = () => game.character?.role === 'ADMIN';
           <MButton @click="userPage = 0; refreshUsers()">{{ t('common.search') }}</MButton>
         </div>
 
-        <table class="w-full text-sm">
-          <thead class="text-ink-300 text-xs">
-            <tr class="text-left">
-              <th class="py-1">{{ t('admin.users.col.email') }}</th>
-              <th>{{ t('admin.users.col.name') }}</th>
-              <th>{{ t('admin.users.col.realm') }}</th>
-              <th>{{ t('admin.users.col.linhThach') }}</th>
-              <th>{{ t('admin.users.col.tienNgoc') }}</th>
-              <th>{{ t('admin.users.col.role') }}</th>
-              <th>{{ t('admin.users.col.status') }}</th>
-              <th></th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="u in users" :key="u.id" class="border-t border-ink-300/20">
-              <td class="py-1 truncate max-w-[14rem]">{{ u.email }}</td>
-              <td>{{ u.character?.name ?? '—' }}</td>
-              <td>{{ u.character ? `${u.character.realmKey} ${u.character.realmStage}` : '—' }}</td>
-              <td>{{ u.character?.linhThach ?? '—' }}</td>
-              <td>{{ u.character?.tienNgoc ?? '—' }}</td>
-              <td>
-                <select
-                  :value="u.role"
-                  :disabled="!isAdmin()"
-                  class="bg-ink-700/40 border border-ink-300/30 rounded text-xs px-1"
-                  @change="changeRole(u, ($event.target as HTMLSelectElement).value as Role)"
-                >
-                  <option value="PLAYER">PLAYER</option>
-                  <option value="MOD">MOD</option>
-                  <option value="ADMIN">ADMIN</option>
-                </select>
-              </td>
-              <td>
-                <span
-                  class="px-1.5 py-0.5 rounded text-[10px]"
-                  :class="u.banned ? 'bg-red-700/40 text-red-200' : 'bg-emerald-700/40 text-emerald-200'"
-                >
-                  {{ u.banned ? t('admin.users.banned') : t('admin.users.ok') }}
-                </span>
-              </td>
-              <td class="space-x-1">
-                <button class="text-xs text-amber-200 underline" @click="openGrant(u)">
-                  {{ t('admin.users.grantBtn') }}
-                </button>
-                <button class="text-xs text-red-200 underline" @click="toggleBan(u)">
-                  {{ u.banned ? t('admin.users.unlock') : t('admin.users.lock') }}
-                </button>
-              </td>
-            </tr>
-          </tbody>
-        </table>
+        <div class="overflow-x-auto">
+          <table class="w-full text-sm min-w-[640px]">
+            <thead class="text-ink-300 text-xs">
+              <tr class="text-left">
+                <th class="py-1">{{ t('admin.users.col.email') }}</th>
+                <th>{{ t('admin.users.col.name') }}</th>
+                <th>{{ t('admin.users.col.realm') }}</th>
+                <th>{{ t('admin.users.col.linhThach') }}</th>
+                <th>{{ t('admin.users.col.tienNgoc') }}</th>
+                <th>{{ t('admin.users.col.role') }}</th>
+                <th>{{ t('admin.users.col.status') }}</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="u in users" :key="u.id" class="border-t border-ink-300/20">
+                <td class="py-1 truncate max-w-[14rem]">{{ u.email }}</td>
+                <td>{{ u.character?.name ?? '—' }}</td>
+                <td>{{ u.character ? `${u.character.realmKey} ${u.character.realmStage}` : '—' }}</td>
+                <td>{{ u.character?.linhThach ?? '—' }}</td>
+                <td>{{ u.character?.tienNgoc ?? '—' }}</td>
+                <td>
+                  <select
+                    :value="u.role"
+                    :disabled="!isAdmin()"
+                    class="bg-ink-700/40 border border-ink-300/30 rounded text-xs px-1"
+                    @change="changeRole(u, ($event.target as HTMLSelectElement).value as Role)"
+                  >
+                    <option value="PLAYER">PLAYER</option>
+                    <option value="MOD">MOD</option>
+                    <option value="ADMIN">ADMIN</option>
+                  </select>
+                </td>
+                <td>
+                  <span
+                    class="px-1.5 py-0.5 rounded text-[10px]"
+                    :class="u.banned ? 'bg-red-700/40 text-red-200' : 'bg-emerald-700/40 text-emerald-200'"
+                  >
+                    {{ u.banned ? t('admin.users.banned') : t('admin.users.ok') }}
+                  </span>
+                </td>
+                <td class="space-x-1">
+                  <button class="text-xs text-amber-200 underline" @click="openGrant(u)">
+                    {{ t('admin.users.grantBtn') }}
+                  </button>
+                  <button class="text-xs text-red-200 underline" @click="toggleBan(u)">
+                    {{ u.banned ? t('admin.users.unlock') : t('admin.users.lock') }}
+                  </button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
 
         <div class="flex justify-between text-xs text-ink-300">
           <span>{{ t('common.total') }}: {{ userTotal }}</span>
@@ -661,42 +663,44 @@ const isAdmin = () => game.character?.role === 'ADMIN';
           <MButton @click="topupPage = 0; refreshTopups()">{{ t('common.search') }}</MButton>
         </div>
 
-        <table class="w-full text-sm">
-          <thead class="text-ink-300 text-xs">
-            <tr class="text-left">
-              <th class="py-1">{{ t('admin.topups.col.code') }}</th>
-              <th>{{ t('admin.topups.col.user') }}</th>
-              <th>{{ t('admin.topups.col.package') }}</th>
-              <th>{{ t('admin.topups.col.price') }}</th>
-              <th>{{ t('admin.topups.col.tienNgoc') }}</th>
-              <th>{{ t('admin.topups.col.status') }}</th>
-              <th>{{ t('admin.topups.col.createdAt') }}</th>
-              <th>{{ t('admin.topups.col.note') }}</th>
-              <th></th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="o in topups" :key="o.id" class="border-t border-ink-300/20">
-              <td class="py-1 font-mono text-amber-200">{{ o.transferCode }}</td>
-              <td class="truncate max-w-[12rem]">{{ o.userEmail }}</td>
-              <td>{{ o.packageName }}</td>
-              <td>{{ o.priceVND.toLocaleString('vi-VN') }} ₫</td>
-              <td>{{ o.tienNgocAmount }}</td>
-              <td>{{ o.status }}</td>
-              <td class="text-ink-300">{{ new Date(o.createdAt).toLocaleString('vi-VN') }}</td>
-              <td class="text-ink-300">{{ o.note || '—' }}</td>
-              <td v-if="o.status === 'PENDING'" class="space-x-1">
-                <button class="text-xs text-emerald-200 underline" @click="approveTopup(o)">
-                  {{ t('admin.topups.approve') }}
-                </button>
-                <button class="text-xs text-red-200 underline" @click="rejectTopup(o)">
-                  {{ t('admin.topups.reject') }}
-                </button>
-              </td>
-              <td v-else class="text-ink-300 text-xs">{{ o.approvedByEmail ?? '—' }}</td>
-            </tr>
-          </tbody>
-        </table>
+        <div class="overflow-x-auto">
+          <table class="w-full text-sm min-w-[640px]">
+            <thead class="text-ink-300 text-xs">
+              <tr class="text-left">
+                <th class="py-1">{{ t('admin.topups.col.code') }}</th>
+                <th>{{ t('admin.topups.col.user') }}</th>
+                <th>{{ t('admin.topups.col.package') }}</th>
+                <th>{{ t('admin.topups.col.price') }}</th>
+                <th>{{ t('admin.topups.col.tienNgoc') }}</th>
+                <th>{{ t('admin.topups.col.status') }}</th>
+                <th>{{ t('admin.topups.col.createdAt') }}</th>
+                <th>{{ t('admin.topups.col.note') }}</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="o in topups" :key="o.id" class="border-t border-ink-300/20">
+                <td class="py-1 font-mono text-amber-200">{{ o.transferCode }}</td>
+                <td class="truncate max-w-[12rem]">{{ o.userEmail }}</td>
+                <td>{{ o.packageName }}</td>
+                <td>{{ o.priceVND.toLocaleString('vi-VN') }} ₫</td>
+                <td>{{ o.tienNgocAmount }}</td>
+                <td>{{ o.status }}</td>
+                <td class="text-ink-300">{{ new Date(o.createdAt).toLocaleString('vi-VN') }}</td>
+                <td class="text-ink-300">{{ o.note || '—' }}</td>
+                <td v-if="o.status === 'PENDING'" class="space-x-1">
+                  <button class="text-xs text-emerald-200 underline" @click="approveTopup(o)">
+                    {{ t('admin.topups.approve') }}
+                  </button>
+                  <button class="text-xs text-red-200 underline" @click="rejectTopup(o)">
+                    {{ t('admin.topups.reject') }}
+                  </button>
+                </td>
+                <td v-else class="text-ink-300 text-xs">{{ o.approvedByEmail ?? '—' }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
 
         <div class="flex justify-between text-xs text-ink-300">
           <span>{{ t('common.total') }}: {{ topupTotal }}</span>
@@ -727,24 +731,26 @@ const isAdmin = () => game.character?.role === 'ADMIN';
           />
           <MButton @click="auditPage = 0; refreshAudit()">{{ t('common.search') }}</MButton>
         </div>
-        <table class="w-full text-sm">
-          <thead class="text-ink-300 text-xs">
-            <tr class="text-left">
-              <th class="py-1">{{ t('admin.audit.col.at') }}</th>
-              <th>{{ t('admin.audit.col.actor') }}</th>
-              <th>{{ t('admin.audit.col.action') }}</th>
-              <th>{{ t('admin.audit.col.meta') }}</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="a in audits" :key="a.id" class="border-t border-ink-300/20">
-              <td class="py-1 text-ink-300">{{ new Date(a.createdAt).toLocaleString('vi-VN') }}</td>
-              <td>{{ a.actorEmail ?? a.actorUserId }}</td>
-              <td><b>{{ a.action }}</b></td>
-              <td class="text-xs text-ink-300 font-mono">{{ JSON.stringify(a.meta) }}</td>
-            </tr>
-          </tbody>
-        </table>
+        <div class="overflow-x-auto">
+          <table class="w-full text-sm min-w-[560px]">
+            <thead class="text-ink-300 text-xs">
+              <tr class="text-left">
+                <th class="py-1">{{ t('admin.audit.col.at') }}</th>
+                <th>{{ t('admin.audit.col.actor') }}</th>
+                <th>{{ t('admin.audit.col.action') }}</th>
+                <th>{{ t('admin.audit.col.meta') }}</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="a in audits" :key="a.id" class="border-t border-ink-300/20">
+                <td class="py-1 text-ink-300">{{ new Date(a.createdAt).toLocaleString('vi-VN') }}</td>
+                <td>{{ a.actorEmail ?? a.actorUserId }}</td>
+                <td><b>{{ a.action }}</b></td>
+                <td class="text-xs text-ink-300 font-mono">{{ JSON.stringify(a.meta) }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
         <div class="flex justify-between text-xs text-ink-300">
           <span>{{ t('common.total') }}: {{ auditTotal }}</span>
           <div class="space-x-2">
@@ -870,69 +876,71 @@ const isAdmin = () => game.character?.role === 'ADMIN';
           </div>
         </div>
 
-        <table class="w-full text-sm" data-testid="admin-giftcode-table">
-          <thead class="text-ink-300 text-xs">
-            <tr class="text-left">
-              <th class="py-1">{{ t('admin.giftcodes.col.code') }}</th>
-              <th>{{ t('admin.giftcodes.col.rewards') }}</th>
-              <th>{{ t('admin.giftcodes.col.redeemed') }}</th>
-              <th>{{ t('admin.giftcodes.col.expiresAt') }}</th>
-              <th>{{ t('admin.giftcodes.col.status') }}</th>
-              <th>{{ t('admin.giftcodes.col.createdAt') }}</th>
-              <th></th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-if="giftcodes.length === 0">
-              <td colspan="7" class="py-4 text-center text-ink-300 text-xs" data-testid="admin-giftcode-empty">
-                {{ t('admin.giftcodes.empty') }}
-              </td>
-            </tr>
-            <tr
-              v-for="g in giftcodes"
-              :key="g.id"
-              class="border-t border-ink-300/20"
-              :data-testid="`admin-giftcode-row-${g.code}`"
-            >
-              <td class="py-1 font-mono text-amber-200">{{ g.code }}</td>
-              <td class="text-xs">
-                <span v-if="g.rewardLinhThach !== '0'">LT {{ g.rewardLinhThach }}</span>
-                <span v-if="g.rewardTienNgoc > 0" class="ml-2">TN {{ g.rewardTienNgoc }}</span>
-                <span v-if="g.rewardExp !== '0'" class="ml-2">EXP {{ g.rewardExp }}</span>
-                <span v-if="g.rewardItems.length > 0" class="ml-2 text-ink-300">
-                  +{{ g.rewardItems.length }} {{ t('admin.giftcodes.itemsLabel') }}
-                </span>
-              </td>
-              <td>{{ g.redeemCount }}<span v-if="g.maxRedeems !== null">/{{ g.maxRedeems }}</span></td>
-              <td class="text-ink-300 text-xs">
-                {{ g.expiresAt ? new Date(g.expiresAt).toLocaleString('vi-VN') : '—' }}
-              </td>
-              <td>
-                <span
-                  class="text-xs px-2 py-0.5 rounded"
-                  :class="{
-                    'bg-emerald-700/30 text-emerald-200': giftCodeStatusOf(g) === 'ACTIVE',
-                    'bg-red-700/30 text-red-200': giftCodeStatusOf(g) === 'REVOKED',
-                    'bg-ink-700/30 text-ink-300': giftCodeStatusOf(g) === 'EXPIRED' || giftCodeStatusOf(g) === 'EXHAUSTED',
-                  }"
-                >
-                  {{ t(`admin.giftcodes.status.${giftCodeStatusOf(g)}`) }}
-                </span>
-              </td>
-              <td class="text-ink-300 text-xs">{{ new Date(g.createdAt).toLocaleString('vi-VN') }}</td>
-              <td>
-                <button
-                  v-if="isAdmin() && giftCodeStatusOf(g) === 'ACTIVE'"
-                  :data-testid="`admin-giftcode-revoke-${g.code}`"
-                  class="text-xs text-red-200 underline"
-                  @click="revokeGiftcode(g)"
-                >
-                  {{ t('admin.giftcodes.revokeBtn') }}
-                </button>
-              </td>
-            </tr>
-          </tbody>
-        </table>
+        <div class="overflow-x-auto">
+          <table class="w-full text-sm min-w-[640px]" data-testid="admin-giftcode-table">
+            <thead class="text-ink-300 text-xs">
+              <tr class="text-left">
+                <th class="py-1">{{ t('admin.giftcodes.col.code') }}</th>
+                <th>{{ t('admin.giftcodes.col.rewards') }}</th>
+                <th>{{ t('admin.giftcodes.col.redeemed') }}</th>
+                <th>{{ t('admin.giftcodes.col.expiresAt') }}</th>
+                <th>{{ t('admin.giftcodes.col.status') }}</th>
+                <th>{{ t('admin.giftcodes.col.createdAt') }}</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-if="giftcodes.length === 0">
+                <td colspan="7" class="py-4 text-center text-ink-300 text-xs" data-testid="admin-giftcode-empty">
+                  {{ t('admin.giftcodes.empty') }}
+                </td>
+              </tr>
+              <tr
+                v-for="g in giftcodes"
+                :key="g.id"
+                class="border-t border-ink-300/20"
+                :data-testid="`admin-giftcode-row-${g.code}`"
+              >
+                <td class="py-1 font-mono text-amber-200">{{ g.code }}</td>
+                <td class="text-xs">
+                  <span v-if="g.rewardLinhThach !== '0'">LT {{ g.rewardLinhThach }}</span>
+                  <span v-if="g.rewardTienNgoc > 0" class="ml-2">TN {{ g.rewardTienNgoc }}</span>
+                  <span v-if="g.rewardExp !== '0'" class="ml-2">EXP {{ g.rewardExp }}</span>
+                  <span v-if="g.rewardItems.length > 0" class="ml-2 text-ink-300">
+                    +{{ g.rewardItems.length }} {{ t('admin.giftcodes.itemsLabel') }}
+                  </span>
+                </td>
+                <td>{{ g.redeemCount }}<span v-if="g.maxRedeems !== null">/{{ g.maxRedeems }}</span></td>
+                <td class="text-ink-300 text-xs">
+                  {{ g.expiresAt ? new Date(g.expiresAt).toLocaleString('vi-VN') : '—' }}
+                </td>
+                <td>
+                  <span
+                    class="text-xs px-2 py-0.5 rounded"
+                    :class="{
+                      'bg-emerald-700/30 text-emerald-200': giftCodeStatusOf(g) === 'ACTIVE',
+                      'bg-red-700/30 text-red-200': giftCodeStatusOf(g) === 'REVOKED',
+                      'bg-ink-700/30 text-ink-300': giftCodeStatusOf(g) === 'EXPIRED' || giftCodeStatusOf(g) === 'EXHAUSTED',
+                    }"
+                  >
+                    {{ t(`admin.giftcodes.status.${giftCodeStatusOf(g)}`) }}
+                  </span>
+                </td>
+                <td class="text-ink-300 text-xs">{{ new Date(g.createdAt).toLocaleString('vi-VN') }}</td>
+                <td>
+                  <button
+                    v-if="isAdmin() && giftCodeStatusOf(g) === 'ACTIVE'"
+                    :data-testid="`admin-giftcode-revoke-${g.code}`"
+                    class="text-xs text-red-200 underline"
+                    @click="revokeGiftcode(g)"
+                  >
+                    {{ t('admin.giftcodes.revokeBtn') }}
+                  </button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
       </section>
 
       <!-- BOSS TAB -->

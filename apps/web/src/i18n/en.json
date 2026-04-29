@@ -219,7 +219,8 @@
       "topup": "Top Up",
       "settings": "Settings",
       "activity": "Activity",
-      "admin": "Admin"
+      "admin": "Admin",
+      "toggle": "Toggle navigation menu"
     },
     "badge": {
       "bossActive": "World boss is live",

@@ -219,7 +219,8 @@
       "topup": "Nạp Tiên Ngọc",
       "settings": "Tâm Pháp",
       "activity": "Hoạt Động",
-      "admin": "Quản Trị"
+      "admin": "Quản Trị",
+      "toggle": "Mở menu điều hướng"
     },
     "badge": {
       "bossActive": "Boss đang xuất thế",
