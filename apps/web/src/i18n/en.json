@@ -246,7 +246,8 @@
     },
     "badge": {
       "bossActive": "World boss is live",
-      "topupPending": "Top-up order pending approval"
+      "topupPending": "Top-up order pending approval",
+      "breakthroughReady": "Ready to break through realm"
     },
     "sect": {
       "thanh_van": "Thanh Vân Sect",
