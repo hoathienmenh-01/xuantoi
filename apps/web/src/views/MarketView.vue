@@ -20,6 +20,8 @@ import {
 import { listInventory, type InventoryView } from '@/api/inventory';
 import AppShell from '@/components/shell/AppShell.vue';
 import MButton from '@/components/ui/MButton.vue';
+import SkeletonBlock from '@/components/ui/SkeletonBlock.vue';
+import SkeletonTable from '@/components/ui/SkeletonTable.vue';
 
 const auth = useAuthStore();
 const game = useGameStore();
@@ -29,6 +31,7 @@ const { t } = useI18n();
 
 const tab = ref<'buy' | 'sell'>('buy');
 const submitting = ref(false);
+const loading = ref(true);
 
 const buyListings = ref<ListingView[]>([]);
 const myListings = ref<ListingView[]>([]);
@@ -84,6 +87,7 @@ onMounted(async () => {
   await game.fetchState().catch(() => null);
   game.bindSocket();
   await refreshAll();
+  loading.value = false;
 });
 
 async function refreshAll(): Promise<void> {
@@ -196,11 +200,17 @@ function handleErr(e: unknown): void {
         </select>
       </div>
 
-      <div v-if="buyListings.length === 0" class="text-ink-300 italic">
+      <SkeletonTable
+        v-if="loading"
+        :rows="6"
+        :cols="4"
+        test-id="market-buy-skeleton"
+      />
+      <div v-else-if="buyListings.length === 0" class="text-ink-300 italic">
         {{ t('market.noListings') }}
       </div>
       <div
-        v-for="l in buyListings"
+        v-for="l in (loading ? [] : buyListings)"
         :key="l.id"
         class="rounded border border-ink-300/40 bg-ink-700/30 p-3 flex items-center gap-3"
       >
@@ -285,11 +295,16 @@ function handleErr(e: unknown): void {
 
       <!-- Tin đã đăng -->
       <h3 class="text-base font-bold">{{ t('market.myListings') }}</h3>
-      <div v-if="myListings.length === 0" class="text-ink-300 italic">
+      <div v-if="loading" class="space-y-2" data-testid="market-mine-skeleton">
+        <SkeletonBlock height="h-12" />
+        <SkeletonBlock height="h-12" />
+        <SkeletonBlock height="h-12" />
+      </div>
+      <div v-else-if="myListings.length === 0" class="text-ink-300 italic">
         {{ t('market.noMine') }}
       </div>
       <div
-        v-for="l in myListings"
+        v-for="l in (loading ? [] : myListings)"
         :key="l.id"
         class="rounded border border-ink-300/40 bg-ink-700/30 p-3 flex items-center gap-3"
       >
