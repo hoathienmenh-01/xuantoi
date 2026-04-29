@@ -109,6 +109,15 @@
       "successToast": "Đột phá thành công, cảnh giới đã thăng.",
       "notAtPeakToast": "Chưa đủ duyên đột phá, mời tích thêm linh khí."
     },
+    "dailyLogin": {
+      "title": "Quà đăng nhập hôm nay",
+      "availableHint": "+{amount} linh thạch đang chờ đạo hữu — bấm “Nhận”.",
+      "claimedHint": "Đạo hữu đã nhận quà hôm nay. Chuỗi liên tục: {streak} ngày.",
+      "claim": "Nhận quà",
+      "claiming": "Đang nhận…",
+      "successToast": "Đã nhận +{amount} linh thạch (chuỗi {streak} ngày).",
+      "alreadyClaimedToast": "Đạo hữu đã nhận quà hôm nay rồi."
+    },
     "lastTick": "Tick gần nhất: +{gain} EXP · {time}",
     "loadingChar": "Đang tải đạo cơ…",
     "nextAction": {
@@ -119,6 +128,7 @@
         "NO_CHARACTER": "Đạo hữu chưa khai lập đạo hiệu — hãy hoàn thành Khai Đạo trước.",
         "BREAKTHROUGH_READY": "Linh khí đã đầy! Sẵn sàng đột phá lên cảnh giới mới.",
         "MISSION_CLAIMABLE": "Có {count} nhiệm vụ chờ nhận thưởng.",
+        "DAILY_LOGIN_AVAILABLE": "Quà đăng nhập hôm nay đã sẵn sàng — đến nhận linh thạch.",
         "MAIL_UNCLAIMED": "Có {count} thư mang quà chưa nhận.",
         "MAIL_UNREAD": "Có {count} thư mới chưa đọc.",
         "BOSS_ACTIVE": "Boss đang xuất thế: {name} Lv.{level}.",

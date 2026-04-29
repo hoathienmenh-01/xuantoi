@@ -20,6 +20,7 @@ import { ShopModule } from './modules/shop/shop.module';
 import { HealthModule } from './modules/health/health.module';
 import { NextActionModule } from './modules/next-action/next-action.module';
 import { LeaderboardModule } from './modules/leaderboard/leaderboard.module';
+import { DailyLoginModule } from './modules/daily-login/daily-login.module';
 import { RedisModule } from './common/redis.module';
 
 @Module({
@@ -46,6 +47,7 @@ import { RedisModule } from './common/redis.module';
     HealthModule,
     NextActionModule,
     LeaderboardModule,
+    DailyLoginModule,
   ],
 })
 export class AppModule {}
