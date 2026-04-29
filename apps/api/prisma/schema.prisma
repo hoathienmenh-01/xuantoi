@@ -111,6 +111,24 @@ model User {
   topupApprovals TopupOrder[]    @relation("TopupOrderApprover")
   auditLogs      AdminAuditLog[] @relation("AdminAuditActor")
   refreshTokens  RefreshToken[]
+  passwordResetTokens PasswordResetToken[]
+}
+
+/// Token đặt lại mật khẩu (forgot/reset-password flow).
+/// Token plaintext không bao giờ lưu trong DB; chỉ lưu argon2id hash.
+/// Token TTL ngắn (mặc định 30 phút). One-shot consume.
+model PasswordResetToken {
+  id          String    @id @default(cuid())
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /// argon2id hash của reset token plaintext.
+  hashedToken String
+  expiresAt   DateTime
+  consumedAt  DateTime?
+  createdAt   DateTime  @default(now())
+
+  @@index([userId, consumedAt])
+  @@index([expiresAt])
 }
 
 model RefreshToken {

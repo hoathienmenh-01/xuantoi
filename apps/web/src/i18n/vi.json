@@ -77,6 +77,27 @@
       "submit": "Đổi pháp",
       "success": "Đổi pháp thành công."
     },
+    "forgot": {
+      "title": "Tìm Lại Huyền Pháp",
+      "subtitle": "Đạo hữu nhập email đã khai lập, hệ thống sẽ gửi đường dẫn đặt lại huyền pháp (hiệu lực 30 phút).",
+      "email": "Tài Khoản (Email)",
+      "submit": "Gửi đường dẫn",
+      "back": "Quay về Nhập Định",
+      "sent": "Nếu email tồn tại, hệ thống đã gửi đường dẫn đặt lại. Vui lòng kiểm tra hòm thư.",
+      "devTokenNote": "(Dev) Token tạm để test:"
+    },
+    "reset": {
+      "title": "Đặt Lại Huyền Pháp",
+      "subtitle": "Đạo hữu nhập huyền pháp mới. Đường dẫn chỉ dùng được một lần.",
+      "token": "Mã Đặt Lại",
+      "tokenFromUrl": "Mã đã tự nhập từ đường dẫn email.",
+      "newPassword": "Huyền Pháp Mới",
+      "confirm": "Xác Nhận Huyền Pháp",
+      "submit": "Đặt lại huyền pháp",
+      "success": "Đã đặt lại huyền pháp. Mời đạo hữu nhập định bằng huyền pháp mới.",
+      "mismatch": "Hai lần nhập huyền pháp mới không khớp.",
+      "missingToken": "Đường dẫn thiếu mã đặt lại. Mời đạo hữu mở lại từ email."
+    },
     "errors": {
       "INVALID_CREDENTIALS": "Danh hiệu hoặc huyền pháp không chính xác.",
       "EMAIL_TAKEN": "Danh hiệu đạo đồ đã được khai lập hoặc dữ liệu không hợp lệ.",
@@ -84,6 +105,7 @@
       "OLD_PASSWORD_WRONG": "Huyền pháp cũ không đúng hoặc không tìm thấy tài khoản.",
       "RATE_LIMITED": "Đã thử quá nhiều lần. Đạo hữu vui lòng thử lại sau.",
       "UNAUTHENTICATED": "Phiên đã hết. Mời đạo hữu nhập định lại.",
+      "INVALID_RESET_TOKEN": "Đường dẫn đặt lại huyền pháp không hợp lệ hoặc đã hết hạn.",
       "UNKNOWN": "Có lỗi xảy ra, mời thử lại."
     }
   },

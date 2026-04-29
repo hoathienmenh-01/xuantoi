@@ -126,8 +126,15 @@ async function onChange(): Promise<void> {
           <label class="flex items-center gap-2 text-ink-300">
             <input v-model="lRemember" type="checkbox" /> {{ t('auth.login.remember') }}
           </label>
-          <span class="text-ink-300/80">{{ t('auth.login.note') }}</span>
+          <router-link
+            to="/auth/forgot-password"
+            class="text-ink-300 underline hover:text-ink-50"
+            data-testid="auth-forgot-link"
+          >
+            {{ t('auth.forgot.title') }}
+          </router-link>
         </div>
+        <p class="text-ink-300/70 text-xs">{{ t('auth.login.note') }}</p>
         <MButton type="submit" :loading="auth.loading" class="w-full">
           {{ t('auth.login.submit') }}
         </MButton>

@@ -77,6 +77,27 @@
       "submit": "Change",
       "success": "Password changed."
     },
+    "forgot": {
+      "title": "Recover Password",
+      "subtitle": "Enter your registered email; we'll send a one-time reset link (valid for 30 minutes).",
+      "email": "Account (Email)",
+      "submit": "Send reset link",
+      "back": "Back to Sign In",
+      "sent": "If the email exists, a reset link has been sent. Please check your inbox.",
+      "devTokenNote": "(Dev) Temporary token for testing:"
+    },
+    "reset": {
+      "title": "Set New Password",
+      "subtitle": "Enter your new password. The reset link can only be used once.",
+      "token": "Reset Code",
+      "tokenFromUrl": "Code auto-filled from the email link.",
+      "newPassword": "New Password",
+      "confirm": "Confirm Password",
+      "submit": "Reset password",
+      "success": "Password reset. Please sign in with your new password.",
+      "mismatch": "The two new password entries do not match.",
+      "missingToken": "Reset link is missing the code. Please reopen it from the email."
+    },
     "errors": {
       "INVALID_CREDENTIALS": "Account name or password is incorrect.",
       "EMAIL_TAKEN": "This account is already registered or input is invalid.",
@@ -84,6 +105,7 @@
       "OLD_PASSWORD_WRONG": "Old password is incorrect or account not found.",
       "RATE_LIMITED": "Too many attempts. Please try again later.",
       "UNAUTHENTICATED": "Session expired. Please sign in again.",
+      "INVALID_RESET_TOKEN": "Reset link is invalid or has expired.",
       "UNKNOWN": "Something went wrong, please retry."
     }
   },

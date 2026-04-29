@@ -40,6 +40,17 @@ export const ChangePasswordInput = z.object({
 });
 export type ChangePasswordInput = z.infer<typeof ChangePasswordInput>;
 
+export const ForgotPasswordInput = z.object({
+  email: Email,
+});
+export type ForgotPasswordInput = z.infer<typeof ForgotPasswordInput>;
+
+export const ResetPasswordInput = z.object({
+  token: z.string().min(16, 'Token không hợp lệ'),
+  newPassword: Password,
+});
+export type ResetPasswordInput = z.infer<typeof ResetPasswordInput>;
+
 export const PublicUser = z.object({
   id: z.string(),
   email: z.string(),
@@ -55,6 +66,7 @@ export const AuthErrorCode = z.enum([
   'OLD_PASSWORD_WRONG',
   'RATE_LIMITED',
   'UNAUTHENTICATED',
+  'INVALID_RESET_TOKEN',
 ]);
 export type AuthErrorCode = z.infer<typeof AuthErrorCode>;
 
@@ -66,4 +78,5 @@ export const AUTH_ERROR_VI: Record<AuthErrorCode, string> = {
   OLD_PASSWORD_WRONG: 'Huyền pháp cũ không đúng hoặc không tìm thấy tài khoản.',
   RATE_LIMITED: 'Đã thử quá nhiều lần. Đạo hữu vui lòng thử lại sau.',
   UNAUTHENTICATED: 'Phiên đã hết. Mời đạo hữu nhập định lại.',
+  INVALID_RESET_TOKEN: 'Đường dẫn đặt lại huyền pháp không hợp lệ hoặc đã hết hạn.',
 };

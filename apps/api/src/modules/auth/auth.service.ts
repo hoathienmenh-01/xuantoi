@@ -2,14 +2,17 @@ import { Inject, Injectable, Optional } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import * as argon2 from 'argon2';
-import { randomUUID } from 'node:crypto';
+import { randomBytes, randomUUID } from 'node:crypto';
 import type {
   ChangePasswordInput,
+  ForgotPasswordInput,
   LoginInput,
   PublicUser,
   RegisterInput,
+  ResetPasswordInput,
 } from '@xuantoi/shared';
 import { PrismaService } from '../../common/prisma.service';
+import { EmailService } from '../email/email.service';
 import {
   InMemorySlidingWindowRateLimiter,
   type RateLimiter,
@@ -23,7 +26,8 @@ export type AuthErrorCode =
   | 'RATE_LIMITED'
   | 'UNAUTHENTICATED'
   | 'SESSION_EXPIRED'
-  | 'ACCOUNT_BANNED';
+  | 'ACCOUNT_BANNED'
+  | 'INVALID_RESET_TOKEN';
 
 export class AuthError extends Error {
   constructor(public code: AuthErrorCode) {
@@ -65,6 +69,14 @@ export const REGISTER_RATE_LIMIT_WINDOW_MS = 15 * 60 * 1000;
 export const REGISTER_RATE_LIMIT_MAX = 5;
 export const REGISTER_RATE_LIMITER = 'AUTH_REGISTER_RATE_LIMITER';
 
+/** Forgot-password rate limit: tối đa 3 request/IP/15 phút (anti-spam mailflood). */
+export const FORGOT_PASSWORD_RATE_LIMIT_WINDOW_MS = 15 * 60 * 1000;
+export const FORGOT_PASSWORD_RATE_LIMIT_MAX = 3;
+export const FORGOT_PASSWORD_RATE_LIMITER = 'AUTH_FORGOT_PASSWORD_RATE_LIMITER';
+
+/** TTL token reset password (đặt lại mật khẩu) — mặc định 30 phút. */
+export const PASSWORD_RESET_TOKEN_TTL_MS = 30 * 60 * 1000;
+
 const ACCESS_TTL_SEC_DEFAULT = 15 * 60;
 const REFRESH_TTL_SEC_DEFAULT = 30 * 24 * 60 * 60;
 
@@ -78,18 +90,27 @@ const INSECURE_DEFAULTS = new Set([
 @Injectable()
 export class AuthService {
   private readonly registerLimiter: RateLimiter;
+  private readonly forgotPasswordLimiter: RateLimiter;
 
   constructor(
     private readonly prisma: PrismaService,
     private readonly jwt: JwtService,
     private readonly cfg: ConfigService,
     @Optional() @Inject(REGISTER_RATE_LIMITER) registerLimiter?: RateLimiter,
+    @Optional() @Inject(FORGOT_PASSWORD_RATE_LIMITER) forgotPasswordLimiter?: RateLimiter,
+    @Optional() private readonly email?: EmailService,
   ) {
     this.registerLimiter =
       registerLimiter ??
       new InMemorySlidingWindowRateLimiter(
         REGISTER_RATE_LIMIT_WINDOW_MS,
         REGISTER_RATE_LIMIT_MAX,
+      );
+    this.forgotPasswordLimiter =
+      forgotPasswordLimiter ??
+      new InMemorySlidingWindowRateLimiter(
+        FORGOT_PASSWORD_RATE_LIMIT_WINDOW_MS,
+        FORGOT_PASSWORD_RATE_LIMIT_MAX,
       );
   }
 
@@ -133,6 +154,127 @@ export class AuthService {
     });
     await this.recordAttempt(input.email, ctx.ip, true);
     return this.issueTokens(user, ctx);
+  }
+
+  /**
+   * Forgot-password — silent: luôn trả `{ ok: true }` cho client (không leak
+   * email exists/not). Bên trong:
+   *  - rate-limit theo IP (3 req/15 phút) — vượt → throw RATE_LIMITED.
+   *  - nếu user tồn tại + chưa banned → tạo `PasswordResetToken` mới
+   *    (revoke các token cũ chưa consumed của user trước), gửi email reset.
+   *  - nếu user không tồn tại / banned → return silently, không gửi mail.
+   *
+   * Trả `{ devToken }` chỉ khi `NODE_ENV !== 'production'` để E2E/dev test
+   * không cần vào Mailhog UI; production luôn `null`.
+   */
+  async forgotPassword(
+    input: ForgotPasswordInput,
+    ctx: AuthCtx,
+  ): Promise<{ devToken: string | null }> {
+    const rl = await this.forgotPasswordLimiter.check(`ip:${ctx.ip}`);
+    if (!rl.allowed) throw new AuthError('RATE_LIMITED');
+
+    const user = await this.prisma.user.findUnique({ where: { email: input.email } });
+    if (!user || user.banned) return { devToken: null };
+
+    // Token format: `<tokenId>.<secret>` — `tokenId` là `id` DB row (non-secret,
+    // chỉ để lookup O(1)); `secret` là 32-byte URL-safe base64 (~43 ký tự).
+    // DB lưu argon2 hash của `secret` (không lưu `tokenId`).
+    const tokenId = randomUUID();
+    const secret = randomBytes(32).toString('base64url');
+    const hashed = await argon2.hash(secret, ARGON2_OPTS);
+    const expiresAt = new Date(Date.now() + PASSWORD_RESET_TOKEN_TTL_MS);
+    const plaintext = `${tokenId}.${secret}`;
+
+    await this.prisma.$transaction([
+      // Revoke các token reset cũ chưa consumed/expired của user (one-shot per request).
+      this.prisma.passwordResetToken.updateMany({
+        where: { userId: user.id, consumedAt: null, expiresAt: { gt: new Date() } },
+        data: { consumedAt: new Date() },
+      }),
+      this.prisma.passwordResetToken.create({
+        data: { id: tokenId, userId: user.id, hashedToken: hashed, expiresAt },
+      }),
+    ]);
+
+    if (this.email) {
+      try {
+        await this.email.sendPasswordResetEmail({
+          to: user.email,
+          token: plaintext,
+          expiresAt,
+        });
+      } catch {
+        // Không throw để tránh leak email exists qua thời gian response.
+        // EmailService log error qua Logger nội bộ.
+      }
+    }
+
+    const isProd = (this.cfg.get<string>('NODE_ENV') ?? process.env.NODE_ENV) === 'production';
+    return { devToken: isProd ? null : plaintext };
+  }
+
+  /**
+   * Reset password bằng token đã gửi qua email.
+   * Token format `<tokenId>.<secret>`: split → lookup row by `tokenId` (O(1)
+   * indexed PK), rồi `argon2.verify` chỉ row đó. Không còn quét toàn bộ
+   * token active (PR #101 review fix — chống DOS bằng cách flood 51+ token
+   * khác user → đẩy token nạn nhân khỏi top-50 scan window).
+   *
+   * Side-effect (atomic):
+   *  - Mark token consumed (one-shot).
+   *  - Update user passwordHash + bump `passwordVersion` (invalidate access tokens cũ).
+   *  - Revoke tất cả refresh tokens active của user.
+   *  - Mark mọi reset token còn lại của user là consumed (revoke).
+   */
+  async resetPassword(input: ResetPasswordInput): Promise<void> {
+    const dotIdx = input.token.indexOf('.');
+    if (dotIdx <= 0 || dotIdx === input.token.length - 1) {
+      throw new AuthError('INVALID_RESET_TOKEN');
+    }
+    const tokenId = input.token.slice(0, dotIdx);
+    const secret = input.token.slice(dotIdx + 1);
+
+    const row = await this.prisma.passwordResetToken.findUnique({
+      where: { id: tokenId },
+    });
+    if (!row || row.consumedAt !== null || row.expiresAt <= new Date()) {
+      throw new AuthError('INVALID_RESET_TOKEN');
+    }
+
+    let ok = false;
+    try {
+      ok = await argon2.verify(row.hashedToken, secret);
+    } catch {
+      ok = false;
+    }
+    if (!ok) throw new AuthError('INVALID_RESET_TOKEN');
+
+    const matched = { id: row.id, userId: row.userId };
+    const user = await this.prisma.user.findUnique({ where: { id: matched.userId } });
+    if (!user || user.banned) throw new AuthError('INVALID_RESET_TOKEN');
+
+    const newHash = await argon2.hash(input.newPassword, ARGON2_OPTS);
+    const now = new Date();
+    await this.prisma.$transaction([
+      this.prisma.passwordResetToken.update({
+        where: { id: matched.id },
+        data: { consumedAt: now },
+      }),
+      // Revoke tất cả token reset khác của user (chống multi-window misuse).
+      this.prisma.passwordResetToken.updateMany({
+        where: { userId: matched.userId, consumedAt: null },
+        data: { consumedAt: now },
+      }),
+      this.prisma.user.update({
+        where: { id: matched.userId },
+        data: { passwordHash: newHash, passwordVersion: { increment: 1 } },
+      }),
+      this.prisma.refreshToken.updateMany({
+        where: { userId: matched.userId, revokedAt: null },
+        data: { revokedAt: now },
+      }),
+    ]);
   }
 
   async changePassword(userId: string, input: ChangePasswordInput): Promise<void> {

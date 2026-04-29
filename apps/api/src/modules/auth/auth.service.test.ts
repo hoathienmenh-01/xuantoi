@@ -5,6 +5,8 @@ import { PrismaService } from '../../common/prisma.service';
 import {
   AuthService,
   AuthError,
+  FORGOT_PASSWORD_RATE_LIMIT_MAX,
+  FORGOT_PASSWORD_RATE_LIMIT_WINDOW_MS,
   REGISTER_RATE_LIMIT_MAX,
   REGISTER_RATE_LIMIT_WINDOW_MS,
 } from './auth.service';
@@ -42,6 +44,7 @@ beforeAll(() => {
 
 beforeEach(async () => {
   // Wipe auth-related tables only (don't touch unrelated phase tables to keep tests fast).
+  await prisma.passwordResetToken.deleteMany({});
   await prisma.refreshToken.deleteMany({});
   await prisma.loginAttempt.deleteMany({});
   await prisma.user.deleteMany({});
@@ -50,8 +53,12 @@ beforeEach(async () => {
     REGISTER_RATE_LIMIT_WINDOW_MS,
     REGISTER_RATE_LIMIT_MAX,
   );
+  const forgotLimiter = new InMemorySlidingWindowRateLimiter(
+    FORGOT_PASSWORD_RATE_LIMIT_WINDOW_MS,
+    FORGOT_PASSWORD_RATE_LIMIT_MAX,
+  );
   const cfg = new FakeConfig();
-  auth = new AuthService(prisma, jwt, cfg, registerLimiter);
+  auth = new AuthService(prisma, jwt, cfg, registerLimiter, forgotLimiter);
 });
 
 afterAll(async () => {
@@ -260,5 +267,152 @@ describe('AuthService', () => {
   it('AuthError exposes code property', () => {
     const e = new AuthError('RATE_LIMITED');
     expect(e.code).toBe('RATE_LIMITED');
+  });
+
+  // ---------------- forgot/reset password ----------------
+
+  it('forgotPassword: user tồn tại → tạo PasswordResetToken row + return devToken (NODE_ENV != production)', async () => {
+    await auth.register({ email: 'fp1@xt.local', password: PASSWORD }, ctx);
+    const out = await auth.forgotPassword({ email: 'fp1@xt.local' }, ctx);
+    expect(typeof out.devToken).toBe('string');
+    expect((out.devToken ?? '').length).toBeGreaterThan(20);
+    const rows = await prisma.passwordResetToken.findMany({});
+    expect(rows.length).toBe(1);
+    expect(rows[0].consumedAt).toBeNull();
+    expect(rows[0].expiresAt.getTime()).toBeGreaterThan(Date.now());
+  });
+
+  it('forgotPassword: email không tồn tại → silent ok, không tạo token (chống user enumeration)', async () => {
+    const out = await auth.forgotPassword({ email: 'nobody@xt.local' }, ctx);
+    expect(out.devToken).toBeNull();
+    const rows = await prisma.passwordResetToken.findMany({});
+    expect(rows.length).toBe(0);
+  });
+
+  it('forgotPassword: user banned → silent ok, không tạo token', async () => {
+    const r = await auth.register({ email: 'fp-ban@xt.local', password: PASSWORD }, ctx);
+    await prisma.user.update({ where: { id: r.user.id }, data: { banned: true } });
+    const out = await auth.forgotPassword({ email: 'fp-ban@xt.local' }, ctx);
+    expect(out.devToken).toBeNull();
+    expect(await prisma.passwordResetToken.count({})).toBe(0);
+  });
+
+  it('forgotPassword: gọi 2 lần cho cùng user → token cũ bị mark consumed (one-shot per request)', async () => {
+    await auth.register({ email: 'fp2@xt.local', password: PASSWORD }, ctx);
+    await auth.forgotPassword({ email: 'fp2@xt.local' }, ctx);
+    await auth.forgotPassword({ email: 'fp2@xt.local' }, ctx);
+    const rows = await prisma.passwordResetToken.findMany({ orderBy: { createdAt: 'asc' } });
+    expect(rows.length).toBe(2);
+    expect(rows[0].consumedAt).not.toBeNull(); // cũ revoked
+    expect(rows[1].consumedAt).toBeNull(); // mới active
+  });
+
+  it('forgotPassword: rate limit 3/IP/15 phút → RATE_LIMITED', async () => {
+    await auth.register({ email: 'fp3@xt.local', password: PASSWORD }, ctx);
+    for (let i = 0; i < FORGOT_PASSWORD_RATE_LIMIT_MAX; i++) {
+      await auth.forgotPassword({ email: 'fp3@xt.local' }, ctx);
+    }
+    await expect(
+      auth.forgotPassword({ email: 'fp3@xt.local' }, ctx),
+    ).rejects.toMatchObject({ code: 'RATE_LIMITED' });
+  });
+
+  it('resetPassword: token hợp lệ → đổi pass + bump passwordVersion + revoke refresh tokens', async () => {
+    const r = await auth.register({ email: 'rp1@xt.local', password: PASSWORD }, ctx);
+    const userBefore = await prisma.user.findUniqueOrThrow({ where: { id: r.user.id } });
+    const fp = await auth.forgotPassword({ email: 'rp1@xt.local' }, ctx);
+    await auth.resetPassword({ token: fp.devToken!, newPassword: 'NewPass1234' });
+
+    const userAfter = await prisma.user.findUniqueOrThrow({ where: { id: r.user.id } });
+    expect(userAfter.passwordVersion).toBe(userBefore.passwordVersion + 1);
+    // Login với pass mới ok.
+    const login = await auth.login({ email: 'rp1@xt.local', password: 'NewPass1234' }, ctx);
+    expect(login.user.id).toBe(r.user.id);
+    // Refresh token cũ đã revoke.
+    await expect(auth.refresh(r.refreshToken, ctx)).rejects.toMatchObject({
+      code: 'SESSION_EXPIRED',
+    });
+    // Token đã consumed.
+    const rows = await prisma.passwordResetToken.findMany({});
+    expect(rows.length).toBe(1);
+    expect(rows[0].consumedAt).not.toBeNull();
+  });
+
+  it('resetPassword: token sai → INVALID_RESET_TOKEN, password không đổi', async () => {
+    await auth.register({ email: 'rp2@xt.local', password: PASSWORD }, ctx);
+    await auth.forgotPassword({ email: 'rp2@xt.local' }, ctx);
+    await expect(
+      auth.resetPassword({ token: 'definitely-not-the-real-token-xxxx', newPassword: 'NewPass1234' }),
+    ).rejects.toMatchObject({ code: 'INVALID_RESET_TOKEN' });
+    // Pass cũ vẫn login được.
+    const login = await auth.login({ email: 'rp2@xt.local', password: PASSWORD }, ctx);
+    expect(login.user.email).toBe('rp2@xt.local');
+  });
+
+  it('resetPassword: token đã consumed → INVALID_RESET_TOKEN (one-shot)', async () => {
+    await auth.register({ email: 'rp3@xt.local', password: PASSWORD }, ctx);
+    const fp = await auth.forgotPassword({ email: 'rp3@xt.local' }, ctx);
+    await auth.resetPassword({ token: fp.devToken!, newPassword: 'NewPass1234' });
+    // Reuse → fail.
+    await expect(
+      auth.resetPassword({ token: fp.devToken!, newPassword: 'AnotherPass1234' }),
+    ).rejects.toMatchObject({ code: 'INVALID_RESET_TOKEN' });
+  });
+
+  it('resetPassword: token đã expired → INVALID_RESET_TOKEN', async () => {
+    await auth.register({ email: 'rp4@xt.local', password: PASSWORD }, ctx);
+    const fp = await auth.forgotPassword({ email: 'rp4@xt.local' }, ctx);
+    // Force expire.
+    await prisma.passwordResetToken.updateMany({
+      data: { expiresAt: new Date(Date.now() - 60_000) },
+    });
+    await expect(
+      auth.resetPassword({ token: fp.devToken!, newPassword: 'NewPass1234' }),
+    ).rejects.toMatchObject({ code: 'INVALID_RESET_TOKEN' });
+  });
+
+  it('resetPassword: user banned sau khi xin token → INVALID_RESET_TOKEN', async () => {
+    const r = await auth.register({ email: 'rp5@xt.local', password: PASSWORD }, ctx);
+    const fp = await auth.forgotPassword({ email: 'rp5@xt.local' }, ctx);
+    await prisma.user.update({ where: { id: r.user.id }, data: { banned: true } });
+    await expect(
+      auth.resetPassword({ token: fp.devToken!, newPassword: 'NewPass1234' }),
+    ).rejects.toMatchObject({ code: 'INVALID_RESET_TOKEN' });
+  });
+
+  it('resetPassword: token format `id.secret` → lookup O(1) by id (Devin Review fix — không còn quét scan limit 50)', async () => {
+    const r = await auth.register({ email: 'rp6@xt.local', password: PASSWORD }, ctx);
+    const fp = await auth.forgotPassword({ email: 'rp6@xt.local' }, ctx);
+    expect(fp.devToken).toMatch(/^[^.]+\..+$/);
+    const [tokenId, secret] = fp.devToken!.split('.');
+    const row = await prisma.passwordResetToken.findUniqueOrThrow({ where: { id: tokenId } });
+    expect(row.userId).toBe(r.user.id);
+    // Secret không bao giờ được lưu plaintext trong DB.
+    expect(row.hashedToken).not.toContain(secret);
+    expect(row.hashedToken.startsWith('$argon2')).toBe(true);
+  });
+
+  it('resetPassword: token id đúng + secret sai → INVALID_RESET_TOKEN (không leak token row tồn tại)', async () => {
+    await auth.register({ email: 'rp7@xt.local', password: PASSWORD }, ctx);
+    const fp = await auth.forgotPassword({ email: 'rp7@xt.local' }, ctx);
+    const [tokenId] = fp.devToken!.split('.');
+    await expect(
+      auth.resetPassword({ token: `${tokenId}.wrong-secret-xxxxx`, newPassword: 'NewPass1234' }),
+    ).rejects.toMatchObject({ code: 'INVALID_RESET_TOKEN' });
+  });
+
+  it('resetPassword: token id không tồn tại → INVALID_RESET_TOKEN (chống enum)', async () => {
+    await expect(
+      auth.resetPassword({
+        token: 'nonexistent-id-xxxxx.some-secret-xxxxx',
+        newPassword: 'NewPass1234',
+      }),
+    ).rejects.toMatchObject({ code: 'INVALID_RESET_TOKEN' });
+  });
+
+  it('resetPassword: token thiếu dấu chấm → INVALID_RESET_TOKEN (format guard)', async () => {
+    await expect(
+      auth.resetPassword({ token: 'no-dot-here-xxxxxxxxx', newPassword: 'NewPass1234' }),
+    ).rejects.toMatchObject({ code: 'INVALID_RESET_TOKEN' });
   });
 });
