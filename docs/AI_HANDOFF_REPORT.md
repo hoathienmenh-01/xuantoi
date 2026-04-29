@@ -89,11 +89,36 @@
 
 ---
 
-## Recent Changes (PR #33→#98 đã merged trên main; PR #99 FE leaderboard tabs in-flight session 9f)
+## Recent Changes (PR #33→#99 đã merged trên main; PR #100 + PR #101 in-flight session 9f)
 
-### PR #99 — `feat(web): LeaderboardView tabs Power/Topup/Sect — consume PR #94 BE` — **Pending merge** session 9f
+### PR #101 — `feat(api): forgot/reset-password endpoints + EmailService scaffold (Mailhog)` — **Pending merge** session 9f
 
-- **Branch**: `devin/1777483089-fe-leaderboard-tabs`. **Base**: `main` @ `4072a3d` (sau PR #98 docs audit refresh merged). **Status**: code complete + typecheck/lint/test/build all xanh local (web 133→137 vitest, +4 net = 6 new test cover tab switch + topup table + sect table BigInt format + lazy-fetch + aria-selected, replace 3 cũ với mock 3-fn).
+- **Branch**: `devin/1777484371-auth-forgot-reset-password`. **Base**: `main` @ `5a93d22` (sau PR #99 merged). **Status**: code complete + typecheck/lint/build all xanh local; 11 vitest mới (api auth.service.test.ts) chưa run live cần `pnpm infra:up` + `prisma migrate deploy` — CI sẽ chạy đủ.
+- **Mục tiêu** (Roadmap §20 session 9f task D — closed beta nice-to-have): trước PR #101, không có cách reset password nếu user quên — chỉ có `change-password` cần old pass. Closed beta cần luồng `forgot-password` an toàn không bị user enumeration + `reset-password` one-shot token.
+- **Giải pháp** (BE-only, FE form sẽ là PR riêng):
+  1. **Prisma model** `PasswordResetToken { id, userId, hashedToken (argon2id), expiresAt, consumedAt, createdAt }` + migration `20260429180000_add_password_reset_token`. Token plaintext không lưu DB.
+  2. **`apps/api/src/modules/email/{email.service,email.module}.ts`** (mới): SMTP transactional service tách biệt `MailModule` (in-game letter system). 2 mode: `console` (mặc định, log stdout cho CI/test) vs `smtp` (nodemailer → Mailhog dev hoặc SMTP thật). `sendPasswordResetEmail()` build link `WEB_PUBLIC_URL/auth/reset-password?token=...`.
+  3. **`apps/api/src/modules/auth/auth.service.ts`**:
+     - `forgotPassword(input, ctx)`: rate-limit 3/IP/15min (anti-mailflood); silent ok khi user not exist hoặc banned (chống user enumeration); revoke token cũ chưa consumed của user, tạo token mới (32-byte URL-safe base64 plaintext, argon2id hash trong DB), TTL 30 phút; gửi email best-effort (fail-silent để response time không leak); trả `{ devToken }` khi `NODE_ENV !== 'production'` cho E2E test.
+     - `resetPassword(input)`: scan candidate token (consumedAt null + expiresAt > now, take 50, order desc), `argon2.verify` từng row tìm match (token plaintext không index được); atomic transaction: mark token consumed, mark mọi token reset khác của user consumed (chống multi-window), update `passwordHash` + bump `passwordVersion`, revoke tất cả refresh token active. Throw `INVALID_RESET_TOKEN` cho mọi fail (token sai/expired/consumed/user banned).
+  4. **`apps/api/src/modules/auth/auth.controller.ts`**: `POST /_auth/forgot-password` (body `{email}`, fail-silent ngoài rate-limit) + `POST /_auth/reset-password` (body `{token, newPassword}`, throw 400 `INVALID_RESET_TOKEN`).
+  5. **DI** `auth.module.ts`: thêm `forgotPasswordLimiterProvider` (Redis hoặc in-memory fallback) như `registerLimiterProvider`. `EmailModule` ở app.module global.
+  6. **Shared zod** `packages/shared/src/api-contracts.ts`: `ForgotPasswordInput {email}` + `ResetPasswordInput {token, newPassword}` + thêm `INVALID_RESET_TOKEN` vào `AuthErrorCode` enum + `AUTH_ERROR_VI` map.
+  7. **Vitest BE** `auth.service.test.ts` (+11 it): forgot ok devToken, forgot user-not-exist silent, forgot banned silent, forgot dual-call revoke cũ, forgot rate-limit `RATE_LIMITED`; reset ok bump passwordVersion + revoke refresh, reset wrong token, reset consumed (one-shot), reset expired, reset user banned post-token.
+  8. **Env scaffold** `apps/api/.env.example`: thêm `SMTP_HOST/PORT/USER/PASS/FROM` + `MAIL_TRANSPORT=console` + `WEB_PUBLIC_URL`. Mailhog đã có sẵn trong `infra/docker-compose.dev.yml` (port 1025/8025).
+  9. **Deps**: `apps/api/package.json` thêm `nodemailer` + `@types/nodemailer`.
+- **Files**: `apps/api/prisma/schema.prisma` (+15), `apps/api/prisma/migrations/20260429180000_add_password_reset_token/migration.sql` (mới, +20), `apps/api/src/modules/email/{email.service,email.module}.ts` (mới, +119), `apps/api/src/modules/auth/{auth.service,auth.controller,auth.module}.ts` (+150), `apps/api/src/modules/auth/auth.service.test.ts` (+125, +11 it), `apps/api/src/app.module.ts` (+2), `apps/api/.env.example` (+13), `apps/api/package.json` + `pnpm-lock.yaml` (nodemailer dep), `packages/shared/src/api-contracts.ts` (+18).
+- **Tests local**: typecheck ✅, lint ✅, web vitest 137/137 (không touch web), api build ✅. API 11 vitest mới skip vì cần infra:up — CI sẽ run.
+- **Risk**: Thấp/Vừa. Migration thêm 1 table mới (không touch table cũ). Không thay đổi schema User. Endpoint mới mở public không yêu cầu auth (đúng thiết kế forgot-password). Rate-limit anti-spam. Argon2 cost ~150ms/verify × tối đa 50 candidate → response time ≤ ~7s nếu DB đầy token (production: token 30min TTL nên row count thấp).
+- **Bước tiếp theo (post-merge)**: FE form `/auth/forgot-password` + `/auth/reset-password` views (PR riêng FE only, sẽ tự pick).
+
+### PR #100 — `feat(web,api): admin self-demote/self-target prevention — FE guards + BE setRole/setBanned vitest` — **Pending merge** session 9f
+
+- **Branch**: `devin/1777483905-admin-self-demote-prevention`. **Base**: `main` @ `5a93d22` (rebased onto post-#99 main). FE `AdminView.vue` disable role select + grant + ban button cho self row, badge "Bạn", tooltip lock-out warning + helper module `apps/web/src/lib/adminGuards.ts` (+12 vitest pure) + BE vitest +2 (setRole/setBanned self-block lock-in). Web vitest 137→**149/149**. CI 5/5 ✅ (post-rebase). Risk thấp.
+
+### PR #99 — `feat(web): LeaderboardView tabs Power/Topup/Sect — consume PR #94 BE` — **Merged into main** @ `5a93d22` (29/4 ~17:35 UTC, CI 5/5 ✅)
+
+- **Branch**: `devin/1777483089-fe-leaderboard-tabs`. **Base**: `main` @ `4072a3d` (sau PR #98 docs audit refresh merged). **Status**: Merged. typecheck/lint/test/build all xanh local (web 133→137 vitest, +4 net = 6 new test cover tab switch + topup table + sect table BigInt format + lazy-fetch + aria-selected, replace 3 cũ với mock 3-fn).
 - **Mục tiêu** (Roadmap §20 session 9f task B): consume PR #94 BE leaderboard topup/sect endpoints. Trước PR #99: `LeaderboardView.vue` chỉ render top power; `GET /leaderboard/topup` + `GET /leaderboard/sect` chưa có FE consumer.
 - **Giải pháp** (FE-only):
   1. **API client `apps/web/src/api/leaderboard.ts`**: thêm `LeaderboardTopupRow` (rank, characterId, name, realmKey, realmStage, totalTienNgoc:number, sectKey) + `LeaderboardSectRow` (rank, sectId, sectKey, name, level, treasuryLinhThach:string BigInt, memberCount, leaderName) + `fetchLeaderboardTopup()` + `fetchLeaderboardSect()`.
@@ -1590,10 +1615,10 @@ Admin hiện tại có thể vào `/admin` → Users → tìm → **Set role = A
 
 **Top priority (session 9f sẽ tự làm theo thứ tự)**:
 
-A. ~~**Docs audit refresh**~~ — **Done by PR #98** (Merged into main @ `4072a3d`, 29/4 ~17:18 UTC, CI 4/4 ✅) — bump snapshot `3283e42 → ee933ad`, mark PR #94/#95/#96/#97 từ `Pending merge → Merged into main`, add immediate session 9f tasks A→D.
-B. **(IN PROGRESS) FE LeaderboardView tabs Power/Topup/Sect** — PR #99 `fe-leaderboard-tabs` consume BE PR #94 (`GET /leaderboard/topup` + `GET /leaderboard/sect`). 3 tab + lazy-fetch + i18n vi/en + 10 vitest. Code complete + typecheck/lint/build/test 137/137 xanh local. Risk thấp (FE-only, không touch schema/BE/economy).
-C. **Self-demote prevention (admin)** — rule 9 §19 ghi rõ "FE hiện không chặn self-demote". Thêm guard cả FE (`AdminView.users` set-role disable nếu `userId === currentAdminId` và targetRole !== 'ADMIN') + BE (`POST /admin/users/:id/role` 400 `CANT_DEMOTE_SELF` nếu `actorId === userId` và newRole !== 'ADMIN'). Risk thấp, security hardening.
-D. **`POST /api/_auth/forgot-password` + `reset-password`** + email scaffold qua Mailhog (closed beta nice-to-have): `PasswordResetToken` model + `/forgot-password` (silent ok always để chống user enumeration) + `/reset-password` (consume token, invalidate other tokens, bump passwordVersion). Risk thấp (chỉ thêm endpoint + token model + email mailhog).
+A. ~~**Docs audit refresh**~~ — **Done by PR #98** (Merged into main @ `4072a3d`, 29/4 ~17:18 UTC, CI 4/4 ✅).
+B. ~~**FE LeaderboardView tabs Power/Topup/Sect**~~ — **Done by PR #99** (Merged into main @ `5a93d22`, 29/4 ~17:35 UTC, CI 5/5 ✅) — consume BE PR #94, 3 tab + lazy-fetch + i18n vi/en + 10 vitest, web 133→137.
+C. **(IN PROGRESS — PR #100 pending merge, CI 5/5 ✅)** **Self-demote prevention (admin)** — FE guards ở `apps/web/src/views/AdminView.vue` + helper module `apps/web/src/lib/adminGuards.ts` (12 vitest pure) + BE vitest +2 (`setRole`/`setBanned` self-block lock-in). Web vitest 137→149.
+D. **(IN PROGRESS — PR #101 in-flight, local checks ✅)** **`POST /api/_auth/forgot-password` + `reset-password`** + `EmailService` scaffold qua Mailhog: `PasswordResetToken` model + migration + `forgotPassword` (silent ok always để chống user enumeration, rate-limit 3/IP/15min, devToken trả khi non-prod cho E2E) + `resetPassword` (one-shot consume token, revoke other reset tokens + bump passwordVersion + revoke refresh tokens) + 11 vitest BE. Branch `devin/1777484371-auth-forgot-reset-password`. FE form sẽ là PR riêng sau merge.
 
 ---
 

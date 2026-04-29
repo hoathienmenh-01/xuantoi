@@ -156,6 +156,118 @@ export class AuthService {
     return this.issueTokens(user, ctx);
   }
 
+  /**
+   * Forgot-password — silent: luôn trả `{ ok: true }` cho client (không leak
+   * email exists/not). Bên trong:
+   *  - rate-limit theo IP (3 req/15 phút) — vượt → throw RATE_LIMITED.
+   *  - nếu user tồn tại + chưa banned → tạo `PasswordResetToken` mới
+   *    (revoke các token cũ chưa consumed của user trước), gửi email reset.
+   *  - nếu user không tồn tại / banned → return silently, không gửi mail.
+   *
+   * Trả `{ devToken }` chỉ khi `NODE_ENV !== 'production'` để E2E/dev test
+   * không cần vào Mailhog UI; production luôn `null`.
+   */
+  async forgotPassword(
+    input: ForgotPasswordInput,
+    ctx: AuthCtx,
+  ): Promise<{ devToken: string | null }> {
+    const rl = await this.forgotPasswordLimiter.check(`ip:${ctx.ip}`);
+    if (!rl.allowed) throw new AuthError('RATE_LIMITED');
+
+    const user = await this.prisma.user.findUnique({ where: { email: input.email } });
+    if (!user || user.banned) return { devToken: null };
+
+    // Token plaintext: 32 byte URL-safe base64 (~43 ký tự).
+    const plaintext = randomBytes(32).toString('base64url');
+    const hashed = await argon2.hash(plaintext, ARGON2_OPTS);
+    const expiresAt = new Date(Date.now() + PASSWORD_RESET_TOKEN_TTL_MS);
+
+    await this.prisma.$transaction([
+      // Revoke các token reset cũ chưa consumed/expired của user (one-shot per request).
+      this.prisma.passwordResetToken.updateMany({
+        where: { userId: user.id, consumedAt: null, expiresAt: { gt: new Date() } },
+        data: { consumedAt: new Date() },
+      }),
+      this.prisma.passwordResetToken.create({
+        data: { userId: user.id, hashedToken: hashed, expiresAt },
+      }),
+    ]);
+
+    if (this.email) {
+      try {
+        await this.email.sendPasswordResetEmail({
+          to: user.email,
+          token: plaintext,
+          expiresAt,
+        });
+      } catch {
+        // Không throw để tránh leak email exists qua thời gian response.
+        // EmailService log error qua Logger nội bộ.
+      }
+    }
+
+    const isProd = (this.cfg.get<string>('NODE_ENV') ?? process.env.NODE_ENV) === 'production';
+    return { devToken: isProd ? null : plaintext };
+  }
+
+  /**
+   * Reset password bằng token đã gửi qua email.
+   * Quét tất cả token chưa consumed + chưa hết hạn của mọi user, dùng
+   * `argon2.verify` để tìm match (token plaintext không index được).
+   * Số lượng row scan trong production thấp (chỉ token < 30 phút chưa consumed).
+   *
+   * Side-effect (atomic):
+   *  - Mark token consumed (one-shot).
+   *  - Update user passwordHash + bump `passwordVersion` (invalidate access tokens cũ).
+   *  - Revoke tất cả refresh tokens active của user.
+   *  - Mark mọi reset token còn lại của user là consumed (revoke).
+   */
+  async resetPassword(input: ResetPasswordInput): Promise<void> {
+    const candidates = await this.prisma.passwordResetToken.findMany({
+      where: { consumedAt: null, expiresAt: { gt: new Date() } },
+      orderBy: { createdAt: 'desc' },
+      take: 50,
+    });
+
+    let matched: { id: string; userId: string } | null = null;
+    for (const row of candidates) {
+      try {
+        if (await argon2.verify(row.hashedToken, input.token)) {
+          matched = { id: row.id, userId: row.userId };
+          break;
+        }
+      } catch {
+        // hash corrupt — skip.
+      }
+    }
+    if (!matched) throw new AuthError('INVALID_RESET_TOKEN');
+
+    const user = await this.prisma.user.findUnique({ where: { id: matched.userId } });
+    if (!user || user.banned) throw new AuthError('INVALID_RESET_TOKEN');
+
+    const newHash = await argon2.hash(input.newPassword, ARGON2_OPTS);
+    const now = new Date();
+    await this.prisma.$transaction([
+      this.prisma.passwordResetToken.update({
+        where: { id: matched.id },
+        data: { consumedAt: now },
+      }),
+      // Revoke tất cả token reset khác của user (chống multi-window misuse).
+      this.prisma.passwordResetToken.updateMany({
+        where: { userId: matched.userId, consumedAt: null },
+        data: { consumedAt: now },
+      }),
+      this.prisma.user.update({
+        where: { id: matched.userId },
+        data: { passwordHash: newHash, passwordVersion: { increment: 1 } },
+      }),
+      this.prisma.refreshToken.updateMany({
+        where: { userId: matched.userId, revokedAt: null },
+        data: { revokedAt: now },
+      }),
+    ]);
+  }
+
   async changePassword(userId: string, input: ChangePasswordInput): Promise<void> {
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
     if (!user) throw new AuthError('OLD_PASSWORD_WRONG');

@@ -5,6 +5,9 @@ import type { Redis } from 'ioredis';
 import { AuthController } from './auth.controller';
 import {
   AuthService,
+  FORGOT_PASSWORD_RATE_LIMITER,
+  FORGOT_PASSWORD_RATE_LIMIT_MAX,
+  FORGOT_PASSWORD_RATE_LIMIT_WINDOW_MS,
   REGISTER_RATE_LIMITER,
   REGISTER_RATE_LIMIT_MAX,
   REGISTER_RATE_LIMIT_WINDOW_MS,
@@ -36,6 +39,25 @@ const registerLimiterProvider = {
   },
 };
 
+const forgotPasswordLimiterProvider = {
+  provide: FORGOT_PASSWORD_RATE_LIMITER,
+  inject: [{ token: REDIS_CONNECTION, optional: true }],
+  useFactory: (redis?: Redis): RateLimiter => {
+    if (redis) {
+      return new RedisSlidingWindowRateLimiter(
+        redis,
+        FORGOT_PASSWORD_RATE_LIMIT_WINDOW_MS,
+        FORGOT_PASSWORD_RATE_LIMIT_MAX,
+        'rl:forgot-password',
+      );
+    }
+    return new InMemorySlidingWindowRateLimiter(
+      FORGOT_PASSWORD_RATE_LIMIT_WINDOW_MS,
+      FORGOT_PASSWORD_RATE_LIMIT_MAX,
+    );
+  },
+};
+
 @Module({
   imports: [
     ConfigModule,
@@ -48,7 +70,7 @@ const registerLimiterProvider = {
     }),
   ],
   controllers: [AuthController],
-  providers: [PrismaService, registerLimiterProvider, AuthService],
+  providers: [PrismaService, registerLimiterProvider, forgotPasswordLimiterProvider, AuthService],
   exports: [AuthService],
 })
 export class AuthModule {}

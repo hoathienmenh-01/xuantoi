@@ -12,8 +12,10 @@ import {
 import type { Request, Response } from 'express';
 import {
   ChangePasswordInput,
+  ForgotPasswordInput,
   LoginInput,
   RegisterInput,
+  ResetPasswordInput,
 } from '@xuantoi/shared';
 import { AuthService, AuthError, type AuthErrorCode } from './auth.service';
 
@@ -28,6 +30,7 @@ function statusForCode(code: AuthErrorCode): HttpStatus {
   switch (code) {
     case 'EMAIL_TAKEN':
     case 'WEAK_PASSWORD':
+    case 'INVALID_RESET_TOKEN':
       return HttpStatus.BAD_REQUEST;
     case 'RATE_LIMITED':
       return HttpStatus.TOO_MANY_REQUESTS;
@@ -89,6 +92,49 @@ export class AuthController {
     } catch (e) {
       if (e instanceof AuthError) fail(e.code, statusForCode(e.code));
       fail('INVALID_CREDENTIALS', HttpStatus.UNAUTHORIZED);
+    }
+  }
+
+  /**
+   * Forgot-password — silent: dù email tồn tại hay không vẫn trả `{ ok: true }`
+   * (chống user enumeration). Trong dev (`NODE_ENV !== 'production'`) trả thêm
+   * `devToken` để E2E test không cần Mailhog UI.
+   */
+  @Post('forgot-password')
+  @HttpCode(200)
+  async forgotPassword(@Body() body: unknown, @Req() req: Request) {
+    const parsed = ForgotPasswordInput.safeParse(body);
+    if (!parsed.success) {
+      // Vẫn trả silent ok để không leak shape error cho user enumeration script.
+      return { ok: true, data: { ok: true } };
+    }
+    try {
+      const out = await this.auth.forgotPassword(parsed.data, { ip: clientIp(req) });
+      return { ok: true, data: { ok: true, devToken: out.devToken } };
+    } catch (e) {
+      if (e instanceof AuthError && e.code === 'RATE_LIMITED') {
+        fail('RATE_LIMITED', HttpStatus.TOO_MANY_REQUESTS);
+      }
+      // Fail-silent cho mọi lỗi khác (chống enumeration).
+      return { ok: true, data: { ok: true } };
+    }
+  }
+
+  /**
+   * Reset password bằng token (đã gửi qua email). Token one-shot,
+   * TTL 30 phút (xem `PASSWORD_RESET_TOKEN_TTL_MS`).
+   */
+  @Post('reset-password')
+  @HttpCode(200)
+  async resetPassword(@Body() body: unknown) {
+    const parsed = ResetPasswordInput.safeParse(body);
+    if (!parsed.success) fail('INVALID_RESET_TOKEN');
+    try {
+      await this.auth.resetPassword(parsed.data);
+      return { ok: true, data: { ok: true } };
+    } catch (e) {
+      if (e instanceof AuthError) fail(e.code, statusForCode(e.code));
+      throw e;
     }
   }
 
