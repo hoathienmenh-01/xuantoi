@@ -7,6 +7,7 @@ import { useAuthStore } from '@/stores/auth';
 import { useGameStore } from '@/stores/game';
 import { getPublicProfile, type PublicProfile } from '@/api/character';
 import AppShell from '@/components/shell/AppShell.vue';
+import SkeletonBlock from '@/components/ui/SkeletonBlock.vue';
 
 function realmText(key: string, stage: number): string {
   const r = realmByKey(key);
@@ -69,7 +70,19 @@ watch(
         <h1 class="text-2xl tracking-widest font-bold">{{ t('profile.title') }}</h1>
       </header>
 
-      <div v-if="loading" class="text-ink-300 text-sm">{{ t('common.loading') }}</div>
+      <div v-if="loading" class="space-y-3" data-testid="profile-skeleton">
+        <section class="bg-ink-700/30 border border-ink-300/20 rounded p-4 space-y-2">
+          <SkeletonBlock height="h-6" width="w-1/3" />
+          <SkeletonBlock height="h-4" width="w-1/2" />
+          <SkeletonBlock height="h-3" width="w-1/4" />
+        </section>
+        <section class="bg-ink-700/30 border border-ink-300/20 rounded p-4 space-y-3">
+          <SkeletonBlock height="h-5" width="w-1/4" />
+          <div class="grid grid-cols-2 gap-2">
+            <SkeletonBlock v-for="i in 8" :key="i" height="h-4" />
+          </div>
+        </section>
+      </div>
 
       <div
         v-else-if="notFound"
