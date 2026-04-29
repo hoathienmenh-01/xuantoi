@@ -89,18 +89,25 @@
 
 ---
 
-## Recent Changes (PR #33→#102 đã merged trên main qua stack PR #101 @ `6f3faf4`; PR #104 timing-fix in-flight session 9f)
+## Recent Changes (PR #33→#103 đã merged trên main; PR #104 docs/CHANGELOG in-flight session 9f)
 
-### PR #104 — `fix(api): forgotPassword timing side-channel — argon2.hash giả cho user-not-exist/banned (chống enum)` — **Pending merge** session 9f
+### PR #104 — `docs(changelog): bootstrap docs/CHANGELOG.md — gom highlight PR #33→#103 thành section session 9d/9e/9f + Unreleased` — **Pending merge** session 9f
 
-- **Branch**: `devin/1777487244-auth-forgot-timing-fix`. **Base**: `main` @ `6f3faf4` (post-PR #101 merge).
-- **Vấn đề báo bởi Devin Review** ([comment r3163261711](https://github.com/hoathienmenh-01/xuantoi/pull/101#discussion_r3163261711)): `forgotPassword` đường-có-user chạy `argon2.hash(secret, ARGON2_OPTS)` ~100ms+ trong khi đường-không-có-user return ngay sau 1 DB query (~vài ms) → attacker đo network latency có thể statistically phân biệt email tồn tại vs không, vô hiệu hóa thiết kế "silent ok" chống user enumeration.
-- **Fix**: Thêm `await argon2.hash('xt-forgot-password-dummy-padding', ARGON2_OPTS)` trong nhánh `!user || user.banned` để response time 2 path tương đương ~100ms.
-- **Test added** (+1 it `auth.service.test.ts` 15→16 it): `forgotPassword timing parity user-exists vs not-exists` đo `Date.now()` 2 path → ratio ≥ 0.5 (cùng order of magnitude). Có warm-up call để loại bỏ overhead init lần đầu.
-- **Files**: `apps/api/src/modules/auth/auth.service.ts` (+7 line dummy work), `apps/api/src/modules/auth/auth.service.test.ts` (+22 line, +1 it).
-- **Risk**: Cực thấp. Thêm CPU work cho path-không-có-user (~100ms argon2 hash) — acceptable vì rate-limited 3/IP/15min. Không thay đổi behavior public API (vẫn silent ok).
-- **Tests local**: typecheck ✅, lint ✅, build ✅. Vitest cần infra:up — CI sẽ run.
-- **AI_HANDOFF_REPORT.md updated**.
+- **Branch**: `devin/1777487587-docs-changelog-bootstrap`. **Base**: `main` @ `3c1aa39` (post-PR #103 timing-fix merge). **Status**: docs-only.
+- **Mục tiêu** (theo §15 docs gap "Thiếu — Hiện track qua PR description. Nên consolidate"): tạo file `docs/CHANGELOG.md` user/operator-facing dễ đọc thay vì đọc 70+ PR description. Format Keep-a-Changelog adapted closed-beta — section theo "session khoảng PR" (chưa release public), section nhỏ Added/Changed/Fixed/Security/Docs/Internal.
+- **Sections seeded**: Unreleased (rỗng), session 9f PR #98→#103 (forgot/reset full stack + 2 Devin Review fix + leaderboard tabs + admin self-protect + audit refresh + CHANGELOG bootstrap), session 9e PR #92→#97 (backup/restore + mobile responsive), session 9d PR #80→#91 (daily login + admin giftcode + activity log + proverbs + logout-all modal + giftcode dup fix), Earlier PR #33→#79 highlight.
+- **Hướng dẫn format** cho future PR: tự bổ sung 1 dòng vào section "Unreleased" mỗi khi merge.
+- **Files**: `docs/CHANGELOG.md` (mới, +124 line), `docs/AI_HANDOFF_REPORT.md` (mark §15 docs gap CHANGELOG → "Có (PR #104)").
+- **Risk**: Cực thấp. Doc-only, không touch code/schema/test. Có thể rollback bằng cách xoá file.
+
+### PR #103 — `fix(api): forgotPassword timing side-channel — argon2.hash giả cho user-not-exist/banned (Devin Review r3163261711)` — **Merged into main** @ `3c1aa39` (29/4 ~18:55 UTC, CI 5/5 ✅) session 9f
+
+- **Branch**: `devin/1777487244-auth-forgot-timing-fix`. **Base**: `main` @ `6f3faf4` (post-PR #101 stack merge). **Merge commit**: `3c1aa39`.
+- **Vấn đề**: `forgotPassword` thiết kế silent-ok nhưng path-có-user chạy argon2.hash (~100ms) còn path-không-user return ngay (~vài ms) → attacker đo network latency phân biệt email.
+- **Fix**: Thêm `argon2.hash('xt-forgot-password-dummy-padding', ARGON2_OPTS)` trong nhánh `!user || user.banned` để timing parity.
+- **Test added** (+1 it `auth.service.test.ts` 15→16 it): `forgotPassword: timing parity user-exists vs not-exists` (ratio ≥ 0.5).
+- **Files**: `apps/api/src/modules/auth/auth.service.ts` (+7 line), `apps/api/src/modules/auth/auth.service.test.ts` (+22 line).
+- **Risk**: Cực thấp. Không thay đổi public API behavior. Rate-limit 3/IP/15min đã chặn amplification.
 
 ### PR #102 — `feat(web): forgot/reset-password views + AuthView "Quên huyền pháp?" link + 12 vitest` — **Merged into PR #101 branch** @ `5ca225e` (29/4 ~18:10 UTC, CI 5/5 ✅) — sẽ vào main khi PR #101 merge
 
@@ -1466,7 +1473,7 @@ pnpm test                              # toàn bộ — gộp shared + api + web
 | `docs/SECURITY.md` | **Thiếu** | Cần: threat model, secret rotation, rate limit, audit. |
 | `docs/RUN_LOCAL.md` | Phần trong README | Nên tách riêng. |
 | `docs/TROUBLESHOOTING.md` | **Thiếu** | Cần: WS không connect, migration fail, Redis down, typecheck loop. |
-| `docs/CHANGELOG.md` | **Thiếu** | Hiện track qua PR description. Nên consolidate. |
+| `docs/CHANGELOG.md` | **Có** (PR #104) | Bootstrap session 9f — Keep-a-Changelog format adapted closed-beta, gom highlight PR #33→#103 thành section session 9d/9e/9f + Unreleased. Format guideline cho future PR. |
 | `docs/AI_HANDOFF_REPORT.md` | **Đang viết (file này)** | — |
 
 ---
@@ -1664,8 +1671,9 @@ Admin hiện tại có thể vào `/admin` → Users → tìm → **Set role = A
 A. ~~**Docs audit refresh**~~ — **Done by PR #98** (Merged into main @ `4072a3d`, 29/4 ~17:18 UTC, CI 4/4 ✅).
 B. ~~**FE LeaderboardView tabs Power/Topup/Sect**~~ — **Done by PR #99** (Merged into main @ `5a93d22`, 29/4 ~17:35 UTC, CI 5/5 ✅) — consume BE PR #94, 3 tab + lazy-fetch + i18n vi/en + 10 vitest, web 133→137.
 C. ~~**Self-demote prevention (admin)**~~ — **Done by PR #100** (Merged into main @ `47d34b5`, 29/4 ~17:45 UTC, CI 5/5 ✅) — FE guards `AdminView.vue` + helper `adminGuards.ts` (12 vitest pure) + BE vitest +2 lock-in. Web vitest 137→149.
-D. ~~**forgot/reset-password full stack**~~ — **Done by PR #101 + PR #102** (Merged into main @ `6f3faf4`, 29/4 ~18:35 UTC) — BE endpoints + EmailService Mailhog scaffold + FE views + AuthView "Quên huyền pháp?" link + 11 BE vitest + 12 FE vitest. Đã apply 2 Devin Review fix: token format `<id>.<secret>` (O(1) lookup) trong PR #101 trước khi merge, timing-parity argon2 dummy work là PR #104 follow-up.
-E. **(IN PROGRESS — PR #104 in-flight)** **forgotPassword timing side-channel mitigation** — Devin Review post-merge fix: thêm `argon2.hash` giả cho path không-có-user/banned để response time tương đương path-có-user, chống enum bằng đo network latency.
+D. ~~**forgot/reset-password full stack**~~ — **Done by PR #101 + PR #102** (Merged into main @ `6f3faf4`, 29/4 ~18:35 UTC) — BE endpoints + EmailService Mailhog scaffold + FE views + AuthView "Quên huyền pháp?" link + 11 BE vitest + 12 FE vitest. Đã apply Devin Review fix r3163113344 (token format `<id>.<secret>` O(1) lookup) trước merge.
+E. ~~**forgotPassword timing side-channel mitigation**~~ — **Done by PR #103** (Merged into main @ `3c1aa39`, 29/4 ~18:55 UTC, CI 5/5 ✅) — Devin Review post-merge fix r3163261711: thêm `argon2.hash` giả cho path không-có-user/banned để response time tương đương path-có-user. +1 vitest timing parity.
+F. **(IN PROGRESS — PR #104 in-flight)** **`docs/CHANGELOG.md` bootstrap** — Keep-a-Changelog format adapted closed-beta, gom highlight PR #33→#103 thành section session 9d/9e/9f + Unreleased + Earlier. Mark §15 docs gap CHANGELOG.md → "Có (PR #104)".
 
 ---
 
