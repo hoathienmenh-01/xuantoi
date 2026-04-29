@@ -91,11 +91,24 @@
 
 ---
 
-## Recent Changes (PR #33→#108 đã merged trên main; PR #109 smart admin economy alerts badge in-flight session 9g task E.a)
+## Recent Changes (PR #33→#109 đã merged trên main; PR #110 fix env SMTP_FROM in-flight session 9g task F1)
 
-### PR #109 — `feat(web): smart admin economy alerts badge + 60s polling — wire AdminView nav (session 9g task E.a)` — **In-flight (Pending merge)** session 9g task E.a
+### PR #110 — `fix(env): quote SMTP_FROM trong .env.example để bash source .env không fail (session 9g task F1)` — **In-flight (Pending merge)** session 9g task F1
 
-- **Branch**: `devin/1777491606-admin-economy-alerts-widget`. **Base**: `main` @ `0a6c664` (post PR #108 merge). **Status**: code complete + local typecheck/lint/web test 187/187/build all xanh.
+- **Branch**: `devin/1777492223-env-example-smtp-from-quote`. **Base**: `main` @ post-PR #109 (`58fa69d`). **Status**: docs/config-only.
+- **Mục tiêu**: smoke runtime 9g phát hiện F1 (Low): `apps/api/.env.example` line 31 `SMTP_FROM=Xuân Tôi <noreply@xuantoi.local>` chứa ký tự `<`/`>` + space không quote → admin/dev nào dùng `set -a && source .env && set +a` để load shell sẽ fail (`bash: <noreply@xuantoi.local>: No such file or directory`). Tuy NestJS dùng dotenv parse fine (không bị ảnh hưởng), `.env.example` là tài liệu tham khảo cho dev → quote lại để tương thích cả `bash source` lẫn dotenv.
+- **Changes**:
+  1. **`apps/api/.env.example`** line 31: `SMTP_FROM=Xuân Tôi <noreply@xuantoi.local>` → `SMTP_FROM="Xuân Tôi <noreply@xuantoi.local>"` + comment giải thích vì sao quote.
+- **Verify**: `cp .env.example /tmp/test.env && set -a && source /tmp/test.env && set +a && echo $SMTP_FROM` → trả `Xuân Tôi <noreply@xuantoi.local>` ✅. Dotenv (NestJS ConfigModule) cũng strip outer quotes nên `process.env.SMTP_FROM` không đổi.
+- **Tests added**: 0 (config file, không có code path mới).
+- **CI status (local)**: typecheck/lint không bị ảnh hưởng (file .env.example không qua lint pipeline).
+- **Risk**: cực thấp — config-only, không touch code/schema/test/migration.
+- **Rollback**: revert single PR.
+- **`AI_HANDOFF_REPORT.md updated`**: Recent Changes (this entry), PR #108 line 101 mark F1 Resolved.
+
+### PR #109 — `feat(web): smart admin economy alerts badge + 60s polling — wire AdminView nav (session 9g task E.a)` — **Merged into main** @ `58fa69d` (29/4 ~20:00 UTC, CI 5/5 ✅) session 9g task E.a
+
+- **Branch**: `devin/1777491606-admin-economy-alerts-widget`. **Base**: `main` @ `0a6c664` (post PR #108 merge).
 - **Mục tiêu**: BE `GET /admin/economy/alerts` đã tồn tại từ PR #54/#76 (báo cáo characters có currency âm, inventory qty < 1, topup PENDING quá staleHours). FE AdminView Stats tab đã render danh sách alerts khi user click vào tab Stats. Trước PR này, admin đang ở tab Users/Topups/Audit không biết hiện có alerts → phải nhớ click sang Stats → click "Refresh" định kỳ. PR này đóng gap UX: (1) red dot count badge trên nav button **Stats** khi `alertsCount > 0`, (2) auto-poll `/admin/economy/alerts` mỗi 60s (silent retry on error) để badge luôn fresh dù admin đang ở tab khác.
 - **Changes**:
   1. **`apps/web/src/lib/adminAlerts.ts`** (mới, 36 line): pure helper `countEconomyAlerts(alerts)` cộng `negativeCurrency.length + negativeInventory.length + stalePendingTopups.length` (defensive null/undefined → 0). Thêm `alertSeverity(count): 'none'|'low'|'medium'|'high'` với boundary 0 / 1..2 / 3..9 / >=10 (chuẩn bị cho color tier về sau, hiện chưa dùng).
@@ -104,17 +117,14 @@
   4. **`apps/web/src/i18n/en.json`** (+1 key): `admin.alerts.badgeTooltip = "{count} economy alerts need attention"`.
   5. **`apps/web/src/lib/__tests__/adminAlerts.test.ts`** (mới, 105 line, **+13 vitest**): cover 5 case `countEconomyAlerts` (null/undefined/empty/cộng đủ 3 nguồn/1 nguồn) + 8 case `alertSeverity` (0/âm defensive/1/2/3/9/10/9999 boundary).
 - **Tests added**: **+13 vitest** (web: 174 → **187**, file count 22 → **23**).
-- **CI status (local sau khi rebase main `0a6c664`)**: `pnpm typecheck` ✅ (3 project) · `pnpm lint` ✅ (max-warnings 0) · `pnpm --filter @xuantoi/web test` ✅ **187/187** · `pnpm build` ✅ (web precache 45 entries / 1310.70 KiB).
-- **Risk**: Thấp — (a) helper pure additive, không đổi API surface; (b) badge wiring pure additive; (c) polling 60s nhẹ (1 request mỗi phút); (d) parity test (PR #107) đã verify vi/en symmetric → tự động fail nếu thiếu key locale.
-- **Rollback**: revert single PR. Không touch BE/schema/migration.
-- **`AI_HANDOFF_REPORT.md updated`**: Recent Changes (this entry), §12 Tests (web 174 → 187, file count 22 → 23), §20 task E.a Done, §21 PR #109 entry.
+- **Risk**: Thấp — (a) helper pure additive; (b) badge wiring pure additive; (c) polling 60s nhẹ; (d) parity test (PR #107) auto-verify vi/en symmetric.
 
 ### PR #108 — `docs(handoff): session 9g task D — runtime smoke 9d→9g integration + report bump 82f2020` — **Merged into main** @ `0a6c664` (29/4 ~19:45 UTC, CI 5/5 ✅) session 9g task D
 
 - **Branch**: `devin/1777490963-runtime-smoke-9d-9g`. **Base**: `main` @ `82f2020` (post PR #107 merge). **Status**: docs-only.
 - **Mục tiêu**: chạy local `pnpm infra:up` + Postgres + Redis + Mailhog + MinIO + `prisma migrate deploy` + `prisma db seed` + `bootstrap` + `pnpm dev` (api + web), smoke 41 endpoint flow theo `docs/QA_CHECKLIST.md` để verify runtime của các PR session 9d→9g (#84..#107). Ghi kết quả + bug nhỏ phát hiện vào `docs/RUNTIME_SMOKE_9G.md` (mới); bump report header snapshot `7d1965e` → `82f2020`; close §20 task D session 9g.
 - **Coverage smoke** (29/4 19:25–19:30 UTC, api commit 82f2020): healthz · register · login · character/me · onboard · cultivate · daily-login claim (PR #80) · leaderboard power/topup/sect (PR #94/#99) · admin/users · admin/stats · admin/economy/alerts (PR #54/#76) · admin grant currency + ledger ADMIN_GRANT · admin mail send rewardItems + player mail/me + claim → inventory (PR #82/#88) · **admin inventory revoke happy path** (PR #66 BE + #106 FE wire) → ledger ADMIN_REVOKE entry visible in `/api/logs/me?type=item` ✅ · admin revoke insufficient qty → `INVALID_INPUT` ✅ · admin/audit `admin.inventory.revoke` ✅ · admin self-demote/self-ban → `CANNOT_TARGET_SELF` (PR #100) ✅ · forgot-password full flow (PR #101 + PR #103 timing-parity) — devToken issue → reset → reuse same token → `INVALID_RESET_TOKEN` (single-use) → login with new password ✅ · boss/current ACTIVE ✅ · web :5173 routes 200.
-- **Bugs phát hiện**: **0 Critical/High**. **F1 (Low)** `apps/api/.env.example` line 31 (`SMTP_FROM=Xuân Tôi <noreply@xuantoi.local>`) chứa ký tự `<`/`>` không quote → `bash source .env` fail. Đề xuất PR riêng nhỏ thêm dấu nháy kép. **F2 (info)** `OnboardInput.name` regex `[A-Za-zÀ-ỹ0-9._]+` không cho dấu cách Việt phổ biến — UI nên show hint rõ.
+- **Bugs phát hiện**: **0 Critical/High**. **F1 (Low) — Resolved by PR #110** `apps/api/.env.example` line 31 (`SMTP_FROM=Xuân Tôi <noreply@xuantoi.local>`) chứa ký tự `<`/`>` không quote → `bash source .env` fail. PR #110 quote lại + comment giải thích. **F2 (info)** `OnboardInput.name` regex `[A-Za-zÀ-ỹ0-9._]+` không cho dấu cách Việt phổ biến — UI nên show hint rõ.
 - **Files**:
   1. **`docs/RUNTIME_SMOKE_9G.md`** (mới, 13 section, full evidence từng endpoint với input/output mong đợi).
   2. **`docs/AI_HANDOFF_REPORT.md`**: bump snapshot `7d1965e` → `82f2020`; thêm PR #107 + PR #108 entry vào Recent Changes; close §20 task C/D + §21 PR plan.
