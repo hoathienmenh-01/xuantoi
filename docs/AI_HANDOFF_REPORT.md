@@ -85,11 +85,34 @@
 
 ---
 
-## Recent Changes (PR #33→#80 — tất cả đã merge `main`; PR G22 in-flight)
+## Recent Changes (PR #33→#81 — tất cả đã merge `main`; L5 mission claim vitest in-flight)
 
 Mỗi PR đều `Merged` vào `main`, branch base = `main`. Smoke local (typecheck/lint/test/build) đã chạy ở mỗi PR; smoke E2E 6/6 đã pass tại PR #44 (snapshot `4d8af10`); H6 Playwright golden path đã wire CI matrix qua PR #64.
 
-### PR G22 (session 9c) — `feat(web): admin giftcode panel — list/filter/create/revoke` — **Pending merge**
+### PR — `test(web): MissionView claim flow vitest — 9 test (L5)` — **Pending merge**
+
+- **Branch**: `devin/1777465473-l5-mission-claim-vitest`. **Base**: `main` @ `ec37f10` (sau khi PR #80/#81 merged). **Status**: code complete + local typecheck/lint/web test/shared test/build xanh; PR mở session 9c, CI sẽ chạy.
+- **Mục tiêu** (Smart testing/QA §5 + Recommended Roadmap L5 — render-level vitest cho mission claim flow): `MissionView.vue` (268 line) trước đây không có vitest riêng — coverage chỉ qua `lib/missionProgress.test.ts` (pure function `applyMissionProgressFrame`). FE `MissionView` có nhiều state-driven branches (claim button enable/disable, `claimed` badge, sort theo claimable/pending/done, tab filter DAILY/WEEKLY/ONCE, WS `mission:progress` live update) — gap test có thể regress khi refactor mission UI tương lai.
+- **Giải pháp**:
+  - **`apps/web/src/views/__tests__/MissionView.test.ts`** (new, ~310 line, 9 test): mount `MissionView` với mock `@/api/mission` (`listMissions`, `claimMission`), mock `@/ws/client.on` (capture `mission:progress` handler để chủ động trigger frame), mock stores (auth/game/toast) + vue-router. i18n VI thật-style.
+  - 9 test case:
+    1. `Nhận Thưởng enabled cho mission completable & chưa claim` — verify button không có `disabled` attr + badge "Sẵn sàng" hiện.
+    2. `Nhận Thưởng disabled khi mission chưa completable` — verify `disabled` attr + không có badge.
+    3. `Hiển thị badge "Đã nhận" và ẩn nút khi claimed=true` — claimed branch.
+    4. `Click Nhận Thưởng → gọi claimMission + toast success + cập nhật list` — full happy path.
+    5. `Claim lỗi ALREADY_CLAIMED → toast error i18n key tương ứng` — error branch (handleErr maps code → i18n).
+    6. `WS mission:progress frame → cập nhật currentAmount + completable enable nút` — covers `applyMissionProgressFrame` integration vào view: trước WS frame disabled → sau frame enabled, progress text "0 / 10" → "10 / 10".
+    7. `Sort: completable → chưa xong → đã claim trong cùng tab` — verify computed `filtered` order.
+    8. `Tab WEEKLY filter → ẩn DAILY mission` — verify period filter.
+    9. `Empty state khi tab không có mission nào` — verify i18n `mission.empty`.
+- **Files** (1 thay đổi): `apps/web/src/views/__tests__/MissionView.test.ts` (new).
+- **Risk**: Cực thấp — chỉ thêm test, không sửa code production. Không có migration / không đụng economy / không thay đổi BE/FE behavior.
+- **Rollback**: Revert single PR; chỉ xoá test file.
+- **Test added**: +9 vitest web (tổng web 94 → 103 pass).
+- **CI status (local)**: typecheck ✅ (3 project), lint ✅, web test ✅ (103/103), shared test ✅ (47/47), build ✅. CI GitHub sẽ chạy 5/5 check (build ×2, e2e-smoke ×2, Devin Review).
+- **`AI_HANDOFF_REPORT.md updated`**: Recent Changes (this entry), Tests section, Roadmap (gỡ L5 mission claim test khỏi gap list).
+
+### PR #81 — `feat(web): admin giftcode panel — list/filter/create/revoke` (G22) — **Merged into main** (CI 5/5 xanh)
 
 - **Branch**: `devin/1777458198-g22-admin-giftcode-fe`. **Base**: `main` @ `ec37f10`. **Status**: code complete + local typecheck/lint/web test/shared test/build xanh; PR mở session 9c, CI đang chạy.
 - **Mục tiêu** (Smart admin §3 + Recommended Roadmap G22): consumer FE cho admin giftcode endpoints đã có từ PR #74 — admin trước đây phải gọi API trực tiếp (curl/Postman) để tạo và list giftcode. Closed beta cần UI để vận hành team có thể tạo code khuyến mãi (welcome 100 LT, event reward, etc.) và thu hồi an toàn.
@@ -1118,7 +1141,8 @@ _(Không có lỗi làm app không chạy / mất tiền / auth hỏng tại com
 | ~~L2~~ | ~~Market fee 5% hard-code.~~ | **Resolved by PR #69** (Merged into main) — `MARKET_FEE_PCT` env var, validate bounds [0, 0.5], default 0.05. File: `apps/api/src/modules/market/market.service.ts`. |
 | L3 | Proverbs loading screen chỉ 30+ câu — lặp nhanh. | **Open** — mở rộng corpus. |
 | ~~L4~~ | ~~Không có tên item localized.~~ | **Resolved** by **PR #57** — `apps/web/src/lib/itemName.ts` helper + 11 vitest test, dedupe across `MissionView`/`MailView`/`GiftCodeView`/`ShopView`. |
-| L5 | Một số view chưa skeleton loader. | **Partial** — `LeaderboardView` + `ProfileView` (PR #67 merged), `MissionView` + `AdminView` (PR #68 merged). Còn lại `MarketView` (PR #77 Pending merge). Sau khi #77 merge → Resolved. |
+| ~~L5~~ | ~~Một số view chưa skeleton loader.~~ | **Resolved** — `LeaderboardView` + `ProfileView` (PR #67 merged), `MissionView` + `AdminView` (PR #68 merged), `MarketView` (PR #77 merged). Skeleton coverage đầy đủ trên tất cả view chính. |
+| L5b | `MissionView.vue` (268 line) chưa có vitest riêng — coverage chỉ qua `lib/missionProgress.test.ts`. | **Pending merge** — PR L5-mission-claim-vitest (session 9c) thêm `apps/web/src/views/__tests__/MissionView.test.ts` với 9 test bao claim button enable/disable, claimed badge, click claim happy path, error handler, WS `mission:progress` apply, sort, tab filter, empty state. |
 | L6 | Settings dùng `window.confirm()` cho logout-all. | **Open** — nhẹ nhàng, post-beta thay bằng modal đẹp. |
 | ~~L7~~ | ~~`ADMIN_REVOKE` reason đã định nghĩa trong `ItemLedger` nhưng chưa có endpoint admin thực thi.~~ | **Resolved by PR #66** (Merged into main) — `POST /admin/inventory/revoke` endpoint, ledger reason `ADMIN_REVOKE`, audit log. File: `apps/api/src/modules/admin/admin.service.ts`. +9 test. |
 
