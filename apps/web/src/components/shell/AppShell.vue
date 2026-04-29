@@ -135,10 +135,16 @@ async function logout(): Promise<void> {
       >
         <RouterLink
           to="/home"
-          class="px-3 py-2 rounded hover:bg-ink-700/60"
+          class="px-3 py-2 rounded hover:bg-ink-700/60 relative"
           active-class="bg-ink-700/60 text-ink-50"
         >
           道 {{ t('shell.nav.home') }}
+          <span
+            v-if="badges.breakthroughReady"
+            class="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-violet-400 ring-2 ring-ink-700"
+            :title="t('shell.badge.breakthroughReady')"
+            data-testid="shell-nav-home-breakthrough-badge"
+          />
         </RouterLink>
         <RouterLink
           to="/dungeon"
