@@ -260,6 +260,23 @@ export class AdminController {
     return { ok: true, data: r };
   }
 
+  /**
+   * Smart economy safety endpoint: chạy ledger audit on-demand từ AdminView.
+   *
+   * Quét toàn bộ `CurrencyLedger` + `ItemLedger` so sánh với
+   * `Character.linhThach/tienNgoc` + `InventoryItem.qty` per (char, item) —
+   * phát hiện double-spend, double-grant, hoặc bug ledger không sync.
+   *
+   * Read-only, không gây side-effect. MOD đọc được (cùng tier với `economy/alerts`).
+   * Có thể hơi nặng trên DB lớn (groupBy 4 query); closed-beta vài trăm character OK,
+   * production sau này nên rate-limit hoặc cache.
+   */
+  @Get('economy/audit-ledger')
+  async economyAuditLedger() {
+    const r = await this.admin.runLedgerAudit();
+    return { ok: true, data: r };
+  }
+
   @Get('giftcodes')
   async giftList(
     @Query('limit') limit: string | undefined,

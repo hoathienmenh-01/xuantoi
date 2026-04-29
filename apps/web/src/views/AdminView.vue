@@ -9,6 +9,7 @@ import { isSelfTarget, canChangeRole, canTargetUser } from '@/lib/adminGuards';
 import { countEconomyAlerts } from '@/lib/adminAlerts';
 import {
   adminApproveTopup,
+  adminAuditLedger,
   adminBanUser,
   adminCreateGiftcode,
   adminEconomyAlerts,
@@ -27,6 +28,7 @@ import {
   type AdminAuditRow,
   type AdminEconomyAlerts,
   type AdminGiftCodeRow,
+  type AdminLedgerAudit,
   type AdminStats,
   type AdminUserRow,
   type GiftCodeStatus,
@@ -56,6 +58,17 @@ const alerts = ref<AdminEconomyAlerts | null>(null);
 const alertsCount = computed(() => countEconomyAlerts(alerts.value));
 
 let alertsPollTimer: ReturnType<typeof setInterval> | null = null;
+
+// Smart economy safety: ledger audit on-demand
+const ledgerAudit = ref<AdminLedgerAudit | null>(null);
+const ledgerAuditRunning = ref(false);
+const ledgerAuditTotal = computed(() => {
+  if (!ledgerAudit.value) return 0;
+  return (
+    ledgerAudit.value.currencyDiscrepancies.length +
+    ledgerAudit.value.inventoryDiscrepancies.length
+  );
+});
 
 // Users tab
 const userQuery = ref('');
@@ -173,6 +186,22 @@ async function refreshAlertsOnly(): Promise<void> {
     alerts.value = await adminEconomyAlerts();
   } catch {
     // ignore — next 60s poll sẽ retry
+  }
+}
+
+/**
+ * Smart economy safety: chạy ledger audit on-demand. Kết quả hiển thị trong
+ * Stats tab. Endpoint có thể hai nặng (groupBy 4 query) → disable button khi
+ * đang chạy.
+ */
+async function runLedgerAudit(): Promise<void> {
+  ledgerAuditRunning.value = true;
+  try {
+    ledgerAudit.value = await adminAuditLedger();
+  } catch (e) {
+    handleErr(e);
+  } finally {
+    ledgerAuditRunning.value = false;
   }
 }
 
@@ -584,6 +613,60 @@ const isAdmin = () => game.character?.role === 'ADMIN';
                   <span class="text-amber-300 font-mono">{{ row.ageHours }}h</span>
                 </li>
               </ul>
+            </div>
+          </div>
+        </div>
+
+        <!-- LEDGER AUDIT (smart economy safety) -->
+        <div class="bg-ink-700/30 border border-violet-500/30 rounded p-3">
+          <div class="flex items-center justify-between gap-2">
+            <div>
+              <h3 class="text-sm text-violet-200 font-semibold">{{ t('admin.ledgerAudit.title') }}</h3>
+              <p class="text-xs text-ink-300 mt-1">{{ t('admin.ledgerAudit.subtitle') }}</p>
+            </div>
+            <MButton :disabled="ledgerAuditRunning" @click="runLedgerAudit()">
+              {{ ledgerAuditRunning ? t('admin.ledgerAudit.running') : t('admin.ledgerAudit.run') }}
+            </MButton>
+          </div>
+
+          <div v-if="ledgerAudit" class="mt-3 text-xs space-y-2">
+            <div class="text-ink-300">
+              {{ t('admin.ledgerAudit.scanned', { chars: ledgerAudit.charactersScanned, pairs: ledgerAudit.itemKeysScanned }) }}
+            </div>
+            <div
+              v-if="ledgerAuditTotal === 0"
+              data-testid="admin-ledger-audit-clean"
+              class="text-emerald-300"
+            >
+              {{ t('admin.ledgerAudit.clean') }}
+            </div>
+            <div v-else class="space-y-2">
+              <div
+                data-testid="admin-ledger-audit-fail"
+                class="text-rose-300 font-semibold"
+              >
+                {{ t('admin.ledgerAudit.fail', { count: ledgerAuditTotal }) }}
+              </div>
+
+              <div v-if="ledgerAudit.currencyDiscrepancies.length > 0">
+                <h4 class="text-rose-300 uppercase tracking-wide">{{ t('admin.ledgerAudit.currencyHeading') }} ({{ ledgerAudit.currencyDiscrepancies.length }})</h4>
+                <ul class="space-y-0.5 mt-1">
+                  <li v-for="d in ledgerAudit.currencyDiscrepancies" :key="`${d.characterId}:${d.field}`" class="flex justify-between gap-2">
+                    <span class="truncate font-mono">char={{ d.characterId.slice(0, 8) }} · {{ d.field }}</span>
+                    <span class="text-rose-300 font-mono">ledger={{ d.ledgerSum }} · char={{ d.characterValue }} · diff={{ d.diff }}</span>
+                  </li>
+                </ul>
+              </div>
+
+              <div v-if="ledgerAudit.inventoryDiscrepancies.length > 0">
+                <h4 class="text-rose-300 uppercase tracking-wide">{{ t('admin.ledgerAudit.inventoryHeading') }} ({{ ledgerAudit.inventoryDiscrepancies.length }})</h4>
+                <ul class="space-y-0.5 mt-1">
+                  <li v-for="d in ledgerAudit.inventoryDiscrepancies" :key="`${d.characterId}:${d.itemKey}`" class="flex justify-between gap-2">
+                    <span class="truncate font-mono">char={{ d.characterId.slice(0, 8) }} · {{ d.itemKey }}</span>
+                    <span class="text-rose-300 font-mono">ledger={{ d.ledgerSum }} · inv={{ d.inventorySum }} · diff={{ d.diff }}</span>
+                  </li>
+                </ul>
+              </div>
             </div>
           </div>
         </div>
