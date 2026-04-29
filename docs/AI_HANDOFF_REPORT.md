@@ -89,7 +89,24 @@
 
 ---
 
-## Recent Changes (PR #33→#99 đã merged trên main; PR #100 + PR #101 in-flight session 9f)
+## Recent Changes (PR #33→#100 đã merged trên main; PR #101 + PR #102 in-flight session 9f)
+
+### PR #102 — `feat(web): forgot/reset-password views + AuthView "Quên huyền pháp?" link + 12 vitest` — **Pending merge** session 9f (stacked on PR #101)
+
+- **Branch**: `devin/1777485608-fe-forgot-reset-views-stacked` (stacked trên PR #101 vì cần shared types `ForgotPasswordInput` + `ResetPasswordInput`). **Status**: code complete + typecheck/lint/test/build all xanh local (web 137→**149 vitest**, +12 mới).
+- **Mục tiêu** (Roadmap §20 session 9f task D follow-up): consume PR #101 BE bằng FE form views — đóng nốt luồng forgot/reset cho closed beta.
+- **Changes**:
+  1. **`apps/web/src/views/ForgotPasswordView.vue`** (mới, +119 line): form email → call `forgotPassword()`, hiển thị "đã gửi" silent ok cho mọi email (chống enum), show `devToken` panel + shortcut "→ Đặt lại huyền pháp" khi non-prod (`NODE_ENV !== 'production'`).
+  2. **`apps/web/src/views/ResetPasswordView.vue`** (mới, +130 line): auto-fill token từ `?token=...` query (≥16 char), fallback paste tay nếu thiếu; password + confirm với mismatch indicator real-time, disable submit nếu mismatch; `resetPassword()` → toast success + `router.push('/auth')`.
+  3. **`apps/web/src/router/index.ts`**: thêm 2 route public `/auth/forgot-password` + `/auth/reset-password`.
+  4. **`apps/web/src/api/auth.ts`**: thêm `forgotPassword(input)` (return `{ok, devToken}`) + `resetPassword(input)`.
+  5. **`apps/web/src/views/AuthView.vue`**: tab login thêm `<router-link to="/auth/forgot-password">` thay cho text note (vẫn giữ note dạng paragraph riêng).
+  6. **i18n** `vi.json` + `en.json`: thêm `auth.forgot.{title,subtitle,email,submit,back,sent,devTokenNote}` + `auth.reset.{title,subtitle,token,tokenFromUrl,newPassword,confirm,submit,success,mismatch,missingToken}` + `auth.errors.INVALID_RESET_TOKEN`.
+  7. **Vitest** `apps/web/src/views/__tests__/{ForgotPasswordView,ResetPasswordView}.test.ts` (+12 it): forgot mock API + sent state + devToken UI + RATE_LIMITED toast + back link + email empty no-call; reset auto-fill from URL + paste fallback + short-token ignore + submit ok + mismatch error + INVALID_RESET_TOKEN toast + missing token guard.
+- **Files**: `apps/web/src/views/ForgotPasswordView.vue` (mới, +119), `apps/web/src/views/ResetPasswordView.vue` (mới, +130), `apps/web/src/router/index.ts` (+12), `apps/web/src/api/auth.ts` (+25), `apps/web/src/views/AuthView.vue` (+8/-3), `apps/web/src/i18n/{vi,en}.json` (+30 mỗi file), `apps/web/src/views/__tests__/{ForgotPasswordView,ResetPasswordView}.test.ts` (mới, +280).
+- **Tests local**: typecheck ✅, lint ✅, web vitest **149/149**, web build ✅ (45 precache entries).
+- **Risk**: Thấp. FE-only, không touch schema/BE/economy. Public route không yêu cầu auth (đúng thiết kế). Mismatch confirm + minlength 8 client-side check phụ trên BE Password zod. `devToken` panel chỉ hiện khi BE trả non-null (BE chỉ trả non-null khi `NODE_ENV !== 'production'`).
+- **Bước tiếp theo**: smoke runtime với `pnpm infra:up` + Mailhog UI (`http://localhost:8025`) sau khi PR #101 + #102 merge.
 
 ### PR #101 — `feat(api): forgot/reset-password endpoints + EmailService scaffold (Mailhog)` — **Pending merge** session 9f
 
@@ -112,7 +129,7 @@
 - **Risk**: Thấp/Vừa. Migration thêm 1 table mới (không touch table cũ). Không thay đổi schema User. Endpoint mới mở public không yêu cầu auth (đúng thiết kế forgot-password). Rate-limit anti-spam. Argon2 cost ~150ms/verify × tối đa 50 candidate → response time ≤ ~7s nếu DB đầy token (production: token 30min TTL nên row count thấp).
 - **Bước tiếp theo (post-merge)**: FE form `/auth/forgot-password` + `/auth/reset-password` views (PR riêng FE only, sẽ tự pick).
 
-### PR #100 — `feat(web,api): admin self-demote/self-target prevention — FE guards + BE setRole/setBanned vitest` — **Pending merge** session 9f
+### PR #100 — `feat(web,api): admin self-demote/self-target prevention — FE guards + BE setRole/setBanned vitest` — **Merged into main** @ `47d34b5` (29/4 ~17:45 UTC, CI 5/5 ✅) session 9f
 
 - **Branch**: `devin/1777483905-admin-self-demote-prevention`. **Base**: `main` @ `5a93d22` (rebased onto post-#99 main). FE `AdminView.vue` disable role select + grant + ban button cho self row, badge "Bạn", tooltip lock-out warning + helper module `apps/web/src/lib/adminGuards.ts` (+12 vitest pure) + BE vitest +2 (setRole/setBanned self-block lock-in). Web vitest 137→**149/149**. CI 5/5 ✅ (post-rebase). Risk thấp.
 
@@ -1617,8 +1634,8 @@ Admin hiện tại có thể vào `/admin` → Users → tìm → **Set role = A
 
 A. ~~**Docs audit refresh**~~ — **Done by PR #98** (Merged into main @ `4072a3d`, 29/4 ~17:18 UTC, CI 4/4 ✅).
 B. ~~**FE LeaderboardView tabs Power/Topup/Sect**~~ — **Done by PR #99** (Merged into main @ `5a93d22`, 29/4 ~17:35 UTC, CI 5/5 ✅) — consume BE PR #94, 3 tab + lazy-fetch + i18n vi/en + 10 vitest, web 133→137.
-C. **(IN PROGRESS — PR #100 pending merge, CI 5/5 ✅)** **Self-demote prevention (admin)** — FE guards ở `apps/web/src/views/AdminView.vue` + helper module `apps/web/src/lib/adminGuards.ts` (12 vitest pure) + BE vitest +2 (`setRole`/`setBanned` self-block lock-in). Web vitest 137→149.
-D. **(IN PROGRESS — PR #101 in-flight, local checks ✅)** **`POST /api/_auth/forgot-password` + `reset-password`** + `EmailService` scaffold qua Mailhog: `PasswordResetToken` model + migration + `forgotPassword` (silent ok always để chống user enumeration, rate-limit 3/IP/15min, devToken trả khi non-prod cho E2E) + `resetPassword` (one-shot consume token, revoke other reset tokens + bump passwordVersion + revoke refresh tokens) + 11 vitest BE. Branch `devin/1777484371-auth-forgot-reset-password`. FE form sẽ là PR riêng sau merge.
+C. ~~**Self-demote prevention (admin)**~~ — **Done by PR #100** (Merged into main @ `47d34b5`, 29/4 ~17:45 UTC, CI 5/5 ✅) — FE guards `AdminView.vue` + helper `adminGuards.ts` (12 vitest pure) + BE vitest +2 lock-in. Web vitest 137→149.
+D. **(IN PROGRESS — BE = PR #101 in-flight + FE = PR #102 stacked on #101, local checks ✅)** **forgot/reset-password full stack**: PR #101 BE (`POST /api/_auth/forgot-password` + `reset-password` + `PasswordResetToken` model + `EmailService` mailhog scaffold + 11 vitest BE) + PR #102 FE (`/auth/forgot-password` + `/auth/reset-password` views + AuthView "Quên huyền pháp?" link + 12 vitest, web 137→149).
 
 ---
 
