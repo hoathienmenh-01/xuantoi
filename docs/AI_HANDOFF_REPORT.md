@@ -85,7 +85,28 @@
 
 Mỗi PR đều `Merged` vào `main`, branch base = `main`. Smoke local (typecheck/lint/test/build) đã chạy ở mỗi PR; smoke E2E 6/6 đã pass tại PR #44 (snapshot `4d8af10`).
 
-### PR #74 — `feat(api): admin giftcode list filter q + status (G20)` — **Pending merge**
+### PR #76 — `feat(api): smart economy safety — `pnpm audit:ledger` script + 8 vitest test` (G21) — **Pending merge**
+
+- **Branch**: `devin/1777453677-g21-audit-ledger-script`. **Base**: `main` @ `c314a0b`. **Status**: **Pending merge**.
+- **Mục tiêu** (Smart economy safety §4 from prompt user — "Kiểm tra ledger consistency / Script audit ledger"): Phát hiện sớm dupe/cheat/bug khi `Character.linhThach` hoặc `InventoryItem.qty` không khớp với ledger (`CurrencyLedger.delta` / `ItemLedger.qtyDelta`). Read-only — an toàn chạy production để monitor định kỳ.
+- **Giải pháp**:
+  - **`apps/api/scripts/audit-ledger.ts`** (170 line): export `auditLedger(prisma)` returning `{charactersScanned, itemKeysScanned, currencyDiscrepancies, inventoryDiscrepancies}`. Sử dụng Prisma `groupBy` (chứ không loop từng character) để O(1) DB query thay vì O(N).
+    - Currency check: `groupBy(['characterId','currency'])._sum.delta` → so với `Character.{linhThach,tienNgoc}`.
+    - Inventory check: `groupBy(['characterId','itemKey'])._sum.qtyDelta` (ItemLedger) vs `groupBy(['characterId','itemKey'])._sum.qty` (InventoryItem). Inventory aggregate gộp cả item equipped + bag stacks.
+    - CLI mode: log discrepancy chi tiết, exit 1 nếu có, exit 0 nếu sạch. Script idempotent, không mutate DB.
+  - **`apps/api/scripts/audit-ledger.test.ts`** (8 test, real Postgres): no-character clean, currency match clean, linhThach over-recorded, tienNgoc under-recorded, inventory match clean, dupe detection (inventory > ledger), consume mismatch (inventory > 0 nhưng ledger sum 0), aggregate equipped + bag stacks.
+  - **`apps/api/package.json`**: thêm `"audit:ledger": "ts-node scripts/audit-ledger.ts"`.
+- **Files**:
+  - `apps/api/scripts/audit-ledger.ts` (new, 170 line)
+  - `apps/api/scripts/audit-ledger.test.ts` (new, 165 line, 8 test)
+  - `apps/api/package.json` (+1 / -0)
+  - `docs/AI_HANDOFF_REPORT.md` updated
+- **Tests**: +8 vitest API. Total local: **301/301** API (was 293, +8 audit-ledger).
+- **Local verified**: `pnpm typecheck` ✅ · `pnpm lint` ✅ · `pnpm --filter @xuantoi/api test` ✅ 301/301 · `pnpm build` ✅
+- **Risk**: low. Read-only script. Không đụng schema/migration/runtime code. Có thể chạy production để monitor mà không lo data loss.
+- **Rollback**: `git revert`. Không mất dữ liệu.
+
+### PR #72 — `feat(admin): filter audit log by action prefix + actor email (G18)` — **Pending merge**
 
 - **Branch**: `devin/1777451169-g20-topup-csv-export` *(branch tên cũ — task pivot từ topup CSV sang giftcode filter)*. **Base**: `main` @ `e102c6b`. **Status**: **Pending merge**.
 - **Mục tiêu** (Smart admin §3 — "Bộ lọc tìm giftcode"): `GET /admin/giftcodes` chỉ accept `limit`. Closed beta tạo nhiều mã promo → admin cần lọc theo prefix code và status (active / revoked / expired / exhausted) để truy soát mã hỏng / hết hạn.
