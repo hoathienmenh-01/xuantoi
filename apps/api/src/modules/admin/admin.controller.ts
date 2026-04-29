@@ -382,7 +382,8 @@ export class AdminController {
           : e.code === 'ALREADY_REDEEMED' ||
               e.code === 'CODE_EXPIRED' ||
               e.code === 'CODE_REVOKED' ||
-              e.code === 'CODE_EXHAUSTED'
+              e.code === 'CODE_EXHAUSTED' ||
+              e.code === 'CODE_EXISTS'
             ? HttpStatus.CONFLICT
             : HttpStatus.BAD_REQUEST;
       fail(e.code, status);

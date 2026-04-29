@@ -89,6 +89,27 @@
 
 Mỗi PR đều `Merged` vào `main`, branch base = `main`. Smoke local (typecheck/lint/test/build) đã chạy ở mỗi PR; smoke E2E 6/6 đã pass tại PR #44 (snapshot `4d8af10`); H6 Playwright golden path đã wire CI matrix qua PR #64.
 
+### PR — `feat(api,web): giftcode duplicate code → CODE_EXISTS error (G23)` — **Pending merge**
+
+- **Branch**: `devin/1777467022-g23-giftcode-duplicate-error`. **Base**: `main` @ `45e42dc` (sau khi PR #82 L5 merged). **Status**: code complete + local typecheck/lint/test/build xanh; PR mở session 9c, CI sẽ chạy.
+- **Mục tiêu** (Smart UX polish §6 — UX nit phát hiện trong G22 testing): Khi admin tạo giftcode trùng code, BE trả về `INVALID_INPUT` chung — FE hiện toast generic `Tham số không hợp lệ (vượt giới hạn / âm quá mức)` rất khó hiểu. Cần phân loại lỗi để toast rõ ràng hơn.
+- **Giải pháp**:
+  - **`apps/api/src/modules/giftcode/giftcode.service.ts`**: thêm `'CODE_EXISTS'` vào union `GiftCodeErrorCode`. Tại check duplicate (line 148): thay `throw new GiftCodeError('INVALID_INPUT')` → `throw new GiftCodeError('CODE_EXISTS')`. Các check khác (regex format, reward bounds, items > 10, qty bounds, maxRedeems <= 0) vẫn dùng `INVALID_INPUT`.
+  - **`apps/api/src/modules/admin/admin.controller.ts`**: thêm `e.code === 'CODE_EXISTS'` vào nhóm trả `HttpStatus.CONFLICT` (cùng nhóm `ALREADY_REDEEMED`/`CODE_EXPIRED`/`CODE_REVOKED`/`CODE_EXHAUSTED`).
+  - **`apps/web/src/i18n/{vi,en}.json`** (admin.errors): thêm 6 key mới (`CODE_EXISTS`, `CODE_NOT_FOUND`, `CODE_EXPIRED`, `CODE_REVOKED`, `CODE_EXHAUSTED`, `ALREADY_REDEEMED`) với message rõ ràng. FE `AdminView.handleErr` đã có pattern `t('admin.errors.${code}', '__missing__')` — không cần code change FE.
+- **Test thay đổi**: `apps/api/src/modules/giftcode/giftcode.service.test.ts` test "từ chối code trùng" trước expect `INVALID_INPUT`, giờ expect `CODE_EXISTS` (case-insensitive normalize giữ nguyên).
+- **Files** (5 thay đổi):
+  - `apps/api/src/modules/giftcode/giftcode.service.ts` (+1 enum / -1 +1 throw)
+  - `apps/api/src/modules/admin/admin.controller.ts` (+1 line trong handleErr)
+  - `apps/api/src/modules/giftcode/giftcode.service.test.ts` (test rename + assertion)
+  - `apps/web/src/i18n/vi.json` (+6 key)
+  - `apps/web/src/i18n/en.json` (+6 key)
+- **Risk**: Thấp — error code rename, không thay đổi behavior chính (vẫn từ chối tạo, không tạo row trùng). Status code đổi từ 400 → 409 cho duplicate (semantic đúng hơn). Các caller khác không dependent vào status code cụ thể (FE check `code` field trong error envelope).
+- **Rollback**: revert single PR.
+- **Test added/modified**: 1 test rename + assert đổi `INVALID_INPUT` → `CODE_EXISTS`. Tổng api 349 → 349 (cùng số test, đổi assertion).
+- **CI status (local)**: typecheck ✅, lint ✅, web test ✅ (103/103), api test ✅ (349/349), shared test ✅ (47/47), build ✅.
+- **`AI_HANDOFF_REPORT.md updated`**: Recent Changes (this entry).
+
 ### PR — `test(web): MissionView claim flow vitest — 9 test (L5)` — **Pending merge**
 
 - **Branch**: `devin/1777465473-l5-mission-claim-vitest`. **Base**: `main` @ `ec37f10` (sau khi PR #80/#81 merged). **Status**: code complete + local typecheck/lint/web test/shared test/build xanh; PR mở session 9c, CI sẽ chạy.

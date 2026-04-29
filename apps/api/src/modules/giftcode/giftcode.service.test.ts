@@ -41,12 +41,12 @@ describe('GiftCodeService.create', () => {
     expect(c.redeemCount).toBe(0);
   });
 
-  it('từ chối code trùng', async () => {
+  it('từ chối code trùng → CODE_EXISTS (case-insensitive)', async () => {
     await gift.create({ code: 'SALE', rewardLinhThach: 100n });
     await expect(
       gift.create({ code: 'sale', rewardLinhThach: 100n }),
     ).rejects.toSatisfy(
-      (e) => e instanceof GiftCodeError && e.code === 'INVALID_INPUT',
+      (e) => e instanceof GiftCodeError && e.code === 'CODE_EXISTS',
     );
   });
 
