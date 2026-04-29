@@ -89,31 +89,42 @@
 
 ---
 
-## Recent Changes (PR #33→#86 — tất cả đã merge `main`; G23 PR #84 + L3 PR #87 + M6 PR #88 + docs API.md refresh in-flight session 9d)
+## Recent Changes (PR #33→#89 — tất cả đã merge `main`; L3 PR #87 + M6 PR #88 in-flight session 9d)
 
-### PR — `docs(api): refresh API.md — sync 19 endpoint mới + global prefix /api note + WS mission:progress + auth route /_auth/* fix` — **Pending merge**
+### PR #87 — `feat(shared): proverbs corpus expand 7 → 64 + corpus invariants test (L3)` — **Pending merge** (CI 5/5 ✅)
 
-- **Branch**: `devin/1777470949-docs-api-refresh`. **Base**: `main` @ `011e930` (sau PR #86 audit refresh merged). **Status**: docs-only PR session 9d.
-- **Mục tiêu** (Smart docs/handoff §7 — `docs/API.md` lệch thực tế): API.md cũ liệt kê endpoint từ session 6 (157 line, ~30 endpoint) + có lỗi sai (auth route ghi `/auth/...` nhưng code thực `@Controller('_auth')` → 404 nếu dev mới làm theo doc). Sau cascade PR #36/#54/#59/#60/#62/#63/#66/#71/#80/#81/#83/#84/#85/#88 đã thêm/sửa nhiều endpoint mới chưa được ghi.
-- **Phát hiện gap khi audit (đối chiếu `apps/api/src/modules/*/[*.controller.ts]`)**:
-  - **Path sai**: `/auth/register` etc. — code thực là `/_auth/register` (controller `@Controller('_auth')`).
-  - **Missing endpoint**: `/character/profile/:id` (PR #62), `/daily-login/me` + `/daily-login/claim` (PR #80, M9), `/leaderboard/power` (PR #59), `/shop/npc` + `/shop/buy`, `/me/next-actions` (smart UX), `/mail/unread-count` (PR #71, M7), `/admin/users/:id/inventory/revoke` (PR #66), `/admin/stats`, `/admin/economy/alerts` (PR #54), `/boss/admin/spawn` (PR #36), `/_auth/logout-all` (PR #83/#85, L6), `/topup/packages`, `/logs/me` (PR #88, M6).
-  - **Missing param**: `/admin/giftcodes` filter `q + status` (PR #81 G22), `/admin/topups` filter `q + from + to` (date+email), `/admin/audit` filter `action + q`, `/admin/users` filter `role + banned`.
-  - **Missing error code**: `CODE_EXISTS` (PR #84 G23), `ALREADY_ONBOARDED`, `NOT_AT_PEAK`, `INVALID_CURSOR` (PR #88).
-  - **Missing WS event**: `mission:progress` (PR #63).
-  - **Missing context**: global prefix `/api/`, intentional logout-vs-logout-all trade-off, env var `MISSION_RESET_TZ` / `MARKET_FEE_PCT` / `ADMIN_BOOTSTRAP_*`.
-- **Files** (1 thay đổi): `docs/API.md` rewrite từ 157 → ~190 line. Cấu trúc mới:
-  - Note about `/api/` global prefix.
-  - Tách section riêng: Auth, Character, Combat, Inventory, Market, Sect & Chat, Boss, **Daily Login**, **Leaderboard**, **Shop**, Mission, Mail, Giftcode, Topup & Admin, **Next Action**, **Logs (M6)**, WebSocket, Error codes, Environment.
-  - Mỗi endpoint ghi PR số + bối cảnh (rate-limit, audit reason, ledger reason).
-  - Error codes group theo domain + ghi rõ HTTP status nơi cần.
-- **Risk**: Cực thấp — docs only, không touch code/test/migration. Reference cho dev/AI mới.
+- **Branch**: `devin/1777469379-l3-proverbs-expand`. **Base**: `main` @ `05b05c0` (sau khi PR #84 G23 merged). **Status**: code complete + CI 5/5 ✅; merged main vào branch để giải quyết conflict report.
+- **Mục tiêu** (Smart UX polish §6 + Recommended Roadmap L3 — proverbs loading screen ít lặp): `packages/shared/src/proverbs.ts` chỉ có **7 câu** (thiếu so với mức thoải mái cho loading splash) → người chơi mở `AuthView` thấy lặp lại nhanh, mất cảm giác cổ phong. Header report cũ ghi nhầm "30+ câu" — thực tế chỉ 7. Closed beta cần corpus rộng để loading screen đa dạng.
+- **Giải pháp** (1 file source + 1 file test):
+  - **`packages/shared/src/proverbs.ts`**: mở rộng `PROVERBS` từ 7 → 64 câu Hán-Việt cổ phong, chia 4 chủ đề rõ rệt (16 câu mỗi chủ đề):
+    1. **Tu tâm — định ý — vô niệm** (16 câu): "Tâm tịnh như nước, đạo tự nhiên thành.", "Một niệm khởi, vạn pháp sinh.", "Phiền não tức bồ đề.", "Vạn duyên buông xuống, một niệm bất sinh.", v.v.
+    2. **Hành đạo — tu luyện — đột phá** (16 câu): "Vô vi nhi vô bất vi.", "Đạo khả đạo, phi thường đạo.", "Trúc cơ vạn nhật, đắc đạo nhất triêu.", "Tu đạo như nghịch thuỷ hành châu, bất tiến tắc thoái.", v.v.
+    3. **Bản tính tự nhiên — vô thường — nhân quả** (16 câu): "Hoa rơi tự có ý, nước chảy tự vô tình.", "Thiên đạo vô thân, thường dữ thiện nhân.", "Đại trí nhược ngu, đại xảo nhược chuyết.", "Trồng dưa được dưa, trồng đậu được đậu.", v.v.
+    4. **Khí phách quân tử — chí khí — bằng hữu** (16 câu): "Thiên hành kiện, quân tử dĩ tự cường bất tức.", "Tu thân, tề gia, trị quốc, bình thiên hạ.", "Phú quý bất năng dâm, bần tiện bất năng di, uy vũ bất năng khuất.", "Quân tử chi giao đạm như thuỷ.", "Núi cao còn có núi cao hơn.", v.v.
+    - JSDoc comment bổ sung tiêu chí thêm câu mới (cổ phong, không tôn giáo cụ thể, không trích nguyên kinh có bản quyền, ngắn ≤80 ký tự).
+  - **`packages/shared/src/proverbs.test.ts`**: thêm `describe('PROVERBS corpus')` với 4 invariant test (≥50 câu, no-empty/trim, no-duplicate, consistent punctuation `.` hoặc `!`); thêm 4 test cho `randomProverb` boundary (rng=0 trả câu đầu, rng=0.999 trả câu cuối, rng=0.5 trả câu giữa, per-index coverage loop). Tổng test shared 47 → 55 (+8 vitest).
+- **Tiêu chí chọn câu**:
+  - Phong cách Hán-Việt cổ phong, hợp game tu tiên MUD.
+  - Không gây hiểu nhầm tôn giáo cụ thể (Phật/Đạo/Nho hoà trộn theo style xianxia chung).
+  - Không trích nguyên văn kinh điển có bản quyền (paraphrase/cô đọng).
+  - Câu ngắn (`<= 80 ký tự` khi có thể) để vừa loading splash trên mobile.
+- **Files** (2 thay đổi):
+  - `packages/shared/src/proverbs.ts` (modified, 17 line → 91 line)
+  - `packages/shared/src/proverbs.test.ts` (modified, 20 line → 66 line)
+- **Risk**: Cực thấp — chỉ data + test thêm, không thay đổi API/signature `randomProverb()`. `AuthView.vue` consumer không cần code change. Không có migration / không đụng economy / không thay đổi BE.
 - **Rollback**: revert single PR.
-- **Test added**: 0 (docs only).
-- **CI status (local)**: typecheck ✅, lint ✅, build ✅. Test 369/123/47 không thay đổi.
-- **Runtime smoke**: N/A (docs).
-- **`AI_HANDOFF_REPORT.md updated`**: this Recent Changes entry.
-- **Bước tiếp theo**: FE tab "Hoạt động" wire `GET /logs/me` (sau khi PR #88 merge).
+- **Test added**: +8 vitest shared. Tổng shared 47 → 55.
+- **CI status**: 5/5 ✅ (build×2 + e2e-smoke×2 + Devin Review).
+- **`AI_HANDOFF_REPORT.md updated`**: Recent Changes (this entry), Known Issues §16 L3 → Resolved, Roadmap §20 strike L3.
+
+### PR #89 — `docs(api): refresh API.md — sync endpoints + global prefix /api note + WS mission:progress + auth route /_auth/* fix` — **Merged into main** @ `537a4d6` (29/4 ~13:35 UTC, CI 5/5 ✅)
+
+- **Branch**: `devin/1777470949-docs-api-refresh` (merged). **Base**: `main` @ `011e930`. **Merge commit**: `537a4d6`.
+- **Mục tiêu**: Sync `docs/API.md` với code thực sau cascade PR #36/#54/#59/#60/#62/#63/#66/#71/#80/#81/#83/#84/#85/#88 + fix auth route sai (`/auth/*` → đúng `/_auth/*`).
+- **Files**: `docs/API.md` (157 → ~190 line) + Recent Changes entry mô tả gap.
+- **Test added**: 0 (docs only). Test counts không thay đổi (api 369 / web 123 / shared 47/55).
+- **CI**: 5/5 ✅.
+- **Risk**: Cực thấp.
 
 ### PR #85 — `test(web): SettingsView logout-all confirm modal integration — 7 test (L6b)` — **Merged into main** @ `bbb6718` (29/4 ~13:02 UTC, CI 5/5 xanh)
 
@@ -1213,7 +1224,7 @@ _(Không có lỗi làm app không chạy / mất tiền / auth hỏng tại com
 |---|---|---|
 | L1 | Hard-code VN/EN còn lẻ tẻ. | **Resolved (PR F)** — audit cuối: 554/554 key và vi.json/en.json sync, 400 used key all resolve. Fix 12 key admin vẫn English (`roleLabel`, `tab.audit`, `users.col.role`, `users.banned`, `roleChangeConfirm`, `roleChangedToast`, `topups.col.user/status/note`, `audit.col.actor/action/meta`). Các "identical en≡vi" còn lại (locale names, EXP, HP/MP, WS, OK, Boss, A Linh, currency names) là đúng ý đồ — universal/native term. |
 | ~~L2~~ | ~~Market fee 5% hard-code.~~ | **Resolved by PR #69** (Merged into main) — `MARKET_FEE_PCT` env var, validate bounds [0, 0.5], default 0.05. File: `apps/api/src/modules/market/market.service.ts`. |
-| L3 | Proverbs loading screen chỉ 30+ câu — lặp nhanh. | **Open** — mở rộng corpus. |
+| ~~L3~~ | ~~Proverbs loading screen chỉ 7 câu — lặp nhanh.~~ | **Resolved by PR L3** (session 9d) — `packages/shared/src/proverbs.ts` mở rộng từ 7 → 64 câu chia 4 chủ đề (tu tâm 16 + hành đạo 16 + bản tính tự nhiên 16 + khí phách quân tử 16). +8 vitest mới (`PROVERBS corpus`: ≥50 câu, no-empty/trim, no-dup, consistent punctuation; `randomProverb` boundary cases rng=0/0.999/0.5 + per-index coverage). Tổng shared 47 → 55. |
 | ~~L4~~ | ~~Không có tên item localized.~~ | **Resolved** by **PR #57** — `apps/web/src/lib/itemName.ts` helper + 11 vitest test, dedupe across `MissionView`/`MailView`/`GiftCodeView`/`ShopView`. |
 | ~~L5~~ | ~~Một số view chưa skeleton loader.~~ | **Resolved** — `LeaderboardView` + `ProfileView` (PR #67 merged), `MissionView` + `AdminView` (PR #68 merged), `MarketView` (PR #77 merged). Skeleton coverage đầy đủ trên tất cả view chính. |
 | ~~L5b~~ | ~~`MissionView.vue` (268 line) chưa có vitest riêng.~~ | **Resolved by PR #82** (Merged into main @ `45e42dc`) — `apps/web/src/views/__tests__/MissionView.test.ts` +9 vitest cover claim button enable/disable, claimed badge, click claim happy path, error handler, WS `mission:progress` apply, sort, tab filter, empty state. |
@@ -1369,7 +1380,7 @@ Admin hiện tại có thể vào `/admin` → Users → tìm → **Set role = A
 4. ~~**L6 — Logout-all confirm modal**~~ — **Done by PR #83** (component, Merged into main @ `78261eb`) + **PR #85** (integration vitest, Merged into main @ `bbb6718`).
 5. **G23 — Giftcode duplicate code → CODE_EXISTS error code** — **Pending merge** (PR #84, CI 4/4 ✅, conflict resolved by session 9d). Sau khi merge: gỡ khỏi Immediate.
 6. **Runtime smoke tích hợp sau toàn bộ PR #46→#85 merge cascade** — **Needs runtime smoke**. Checklist (15 phút, theo `docs/QA_CHECKLIST.md`): register/login (verify rate-limit 5/IP/15min), HomeView (next-action panel + onboarding checklist + DailyLoginCard claim flow), sidebar badges polling 60s, leaderboard render top 50 + tap-name → profile, admin economy alerts panel, mission claim + WS `mission:progress` real-time, mail unread badge hydrate trên login, NPC shop buy + ledger row, market post/cancel/buy với `MARKET_FEE_PCT` env, admin giftcode panel filter q/status + create + revoke (PR #81 + duplicate error rõ qua PR #84 sau khi merge), admin user filter role+banned, admin audit filter action+actor, admin topup filter date+email, admin inventory revoke + `ADMIN_REVOKE` ledger, `pnpm audit:ledger` script, MarketView skeleton, SettingsView logout-all confirm modal.
-7. **L3 — Proverbs corpus expansion** (loading screen): hiện 30+ câu lặp nhanh; thêm 50–100 câu Hán-Việt cổ phong vào `packages/shared/src/proverbs.ts`. Risk thấp, value vừa (UX polish).
+7. ~~**L3 — Proverbs corpus expansion**~~ — **Pending merge** (PR #87, CI 5/5 ✅) — `packages/shared/src/proverbs.ts` mở rộng từ 7 → 64 câu, +8 vitest invariants. Sau khi merge: gỡ khỏi Immediate.
 8. **M6 — `GET /logs/me` endpoint** (tự xem audit log của mình từ `AdminAuditLog` filter `actorUserId = me`): low priority, hữu ích cho UX trong-suốt + debug user-side. Cần thiết kế list endpoint + FE view (Profile tab "Hoạt động"?).
 9. **M10 — Shop daily limit** + per-item rate-limit (post-beta nice-to-have).
 10. **M7 — CSP production CDN review** (chỉ khi triển khai prod).
