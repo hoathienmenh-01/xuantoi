@@ -10,7 +10,9 @@
     "lint": "pnpm -r run lint",
     "test": "pnpm -r run test",
     "infra:up": "docker compose -f infra/docker-compose.dev.yml up -d",
-    "infra:down": "docker compose -f infra/docker-compose.dev.yml down"
+    "infra:down": "docker compose -f infra/docker-compose.dev.yml down",
+    "backup:db": "bash scripts/backup-db.sh",
+    "restore:db": "bash scripts/restore-db.sh"
   },
   "engines": {
     "node": ">=20",
