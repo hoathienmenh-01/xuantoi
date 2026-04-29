@@ -1,6 +1,6 @@
 # AI Handoff Report — Xuân Tôi
 
-> **Snapshot**: `main` @ `c8123df` (Merge PR #75 audit refresh session 7, 29 Apr 2026 16:34 UTC). **Merged into main since session 6** (16 PR — tất cả CI 5/5 xanh khi merge): PR #62 (G8 — M11 profile rate-limit), #63 (G9 — M3 WS `mission:progress` + emitter throttle 500ms), #64 (G10 — H6 Playwright CI matrix job), #65 (G11 — FE `MissionView` subscribe `mission:progress`), #66 (G12 — L7 admin `POST /admin/inventory/revoke` + ledger `ADMIN_REVOKE`), #67 (G13 — L5 skeleton Leaderboard+Profile), #68 (G14 — L5 cont skeleton MissionView+AdminView), #69 (G15 — L2 `MARKET_FEE_PCT` env config), #70 (G16 — admin user filter role+banned), #71 (G17 — M7 `GET /mail/unread-count` + FE badge hydrate), #72 (G18 — admin audit log filter prefix+email), #73 (G19 — admin topup filter date+email), #74 (G20 — admin giftcode filter q+status), #76 (G21 — smart economy safety `pnpm audit:ledger` + 9 vitest, fix Devin Review `key.split(':')` truncate + `process.exit` skip finally), #77 (L5 cont — MarketView skeleton + 3 vitest), #75 (audit session 7 refresh — mark resolved Known Issues H6/M3/M11/L2/L7). **0 PR open Pending merge.**
+> **Snapshot**: `main` @ `909d60c` (Merge PR #78 audit session 8 progress, 29 Apr 2026 ~17:00 UTC). **Merged into main since session 6** (17 PR — tất cả CI 5/5 xanh khi merge): PR #62 (G8 — M11 profile rate-limit), #63 (G9 — M3 WS `mission:progress` + emitter throttle 500ms), #64 (G10 — H6 Playwright CI matrix job), #65 (G11 — FE `MissionView` subscribe `mission:progress`), #66 (G12 — L7 admin `POST /admin/inventory/revoke` + ledger `ADMIN_REVOKE`), #67 (G13 — L5 skeleton Leaderboard+Profile), #68 (G14 — L5 cont skeleton MissionView+AdminView), #69 (G15 — L2 `MARKET_FEE_PCT` env config), #70 (G16 — admin user filter role+banned), #71 (G17 — M7 `GET /mail/unread-count` + FE badge hydrate), #72 (G18 — admin audit log filter prefix+email), #73 (G19 — admin topup filter date+email), #74 (G20 — admin giftcode filter q+status), #76 (G21 — smart economy safety `pnpm audit:ledger` + 9 vitest), #77 (L5 cont — MarketView skeleton + 3 vitest), #75 (audit session 7 refresh — mark resolved Known Issues H6/M3/M11/L2/L7), #78 (audit session 8 progress — bump snapshot c8123df, 16 PR list). **0 PR open Pending merge** (verified 29/4 09:55 UTC: GitHub `is:pr is:open` → 0 results, 78 closed).
 > **Người viết**: AI engineer session 28/4 sess.6 (audit refresh sau khi PR #58/#59/#60 đã merge — header report cũ vẫn ghi #59/#60 "Open" → đó là tồn tại lỗi thời và đã được fix bởi PR docs này).
 > **Đối tượng đọc**: AI kế nhiệm sẽ tiếp tục đưa dự án tới beta / production.
 >
@@ -32,9 +32,9 @@
 ## 2. Current Branch / CI / PR Status
 
 - **Default branch**: `main`.
-- **Commit audit**: `81706a9 Merge pull request #61 from hoathienmenh-01/devin/1777413579-audit-session-6-report-refresh` (HEAD `main`, 28/4 22:05 UTC).
-- **CI gần nhất trên main**: xanh — PR #61 build job xanh; CI run cho PR #60 merge `25079013093` xanh 1m34s.
-- **PR open đáng kể**: **PR #62** (G8 — M11 profile rate-limit) **Pending merge** — branch `devin/1777414051-g8-profile-rate-limit`.
+- **Commit audit**: `909d60c Merge pull request #78 from hoathienmenh-01/devin/1777455373-audit-session-8-progress` (HEAD `main`, 29/4 ~17:00 UTC).
+- **CI gần nhất trên main**: xanh — PR #78 5/5; trước đó PR #75 / #76 / #77 cũng 5/5 xanh khi merge.
+- **PR open đáng kể**: **0 PR open** (verified 29/4 09:55 UTC, GitHub UI `is:pr is:open` → "There aren't any open pull requests"). Toàn bộ 16 PR session 6→7 (PR #62..#77) đã merge cascade vào main, +PR #78 audit session 8 đã merge.
 - **Replay gap PR #47**: **Đã đóng** — PR #53 (cherry-pick `32a33a6` từ `devin/1777398483-h5-vitest-playwright`) merge vào main commit `2ae4cc0` (28/4 20:15 UTC). File `apps/web/vitest.config.ts` + `playwright.config.ts` + `e2e/golden.spec.ts` + `apps/web/src/stores/__tests__/{toast,game}.test.ts` đã có trên main.
 - **PR merged gần đây ảnh hưởng lớn**:
   | PR | Chủ đề | Impact |
@@ -81,13 +81,13 @@
 
 ---
 
-## Recent Changes (PR #33→#60 — tất cả đã merge `main`)
+## Recent Changes (PR #33→#78 — tất cả đã merge `main`)
 
-Mỗi PR đều `Merged` vào `main`, branch base = `main`. Smoke local (typecheck/lint/test/build) đã chạy ở mỗi PR; smoke E2E 6/6 đã pass tại PR #44 (snapshot `4d8af10`).
+Mỗi PR đều `Merged` vào `main`, branch base = `main`. Smoke local (typecheck/lint/test/build) đã chạy ở mỗi PR; smoke E2E 6/6 đã pass tại PR #44 (snapshot `4d8af10`); H6 Playwright golden path đã wire CI matrix qua PR #64.
 
-### PR #77 — `feat(web): skeleton loaders for MarketView (buy + sell tabs) (L5 cont)` — **Pending merge**
+### PR #77 — `feat(web): skeleton loaders for MarketView (buy + sell tabs) (L5 cont)` — **Merged into main** (commit `266bfe7`, CI 5/5 xanh)
 
-- **Branch**: `devin/1777454551-l5-market-skeleton`. **Base**: `main` @ `0d4abb4`. **Status**: **Pending merge**.
+- **Branch**: `devin/1777454551-l5-market-skeleton`. **Base**: `main` @ `0d4abb4`. **Status**: **Merged into main** (PR #77, commit `266bfe7` 29/4 ~16:00 UTC, CI 5/5 xanh).
 - **Mục tiêu** (L5 skeleton series cont — Smart UX polish §6 from prompt user): MarketView trước đây không có skeleton — chỉ hiển thị empty/blank flash khi đang fetch buy listings + my listings + inventory. Người chơi có thể tưởng "không có gì" trong khi data chưa về.
 - **Giải pháp**:
   - **`apps/web/src/views/MarketView.vue`**: import `SkeletonTable` + `SkeletonBlock`, thêm `loading = ref(true)` set false sau `refreshAll()` trong `onMounted`. Tab Mua: `<SkeletonTable :rows="6" :cols="4" test-id="market-buy-skeleton" />`. Tab Bán: 3 `<SkeletonBlock height="h-12" />` cho list myListings, ẩn empty state khi loading.
@@ -101,9 +101,11 @@ Mỗi PR đều `Merged` vào `main`, branch base = `main`. Smoke local (typeche
 - **Risk**: low. UI-only polish. Không đụng API/DB. SkeletonTable/SkeletonBlock đã được test và dùng trong LeaderboardView/ProfileView/MissionView/AdminView từ PR #67/#68.
 - **Rollback**: `git revert`. Empty state cũ vẫn hoạt động.
 
-### PR #71 — `feat(api,web): GET /mail/unread-count + FE hydrate badge on mount (G17 — M7)` — **Pending merge**
+### PR #71 — `feat(api,web): GET /mail/unread-count + FE hydrate badge on mount (G17 — M7)` — **Merged into main** (commit `0d4abb4`, CI 5/5 xanh)
 
-- **Branch**: `devin/1777451169-g20-topup-csv-export` *(branch tên cũ — task pivot từ topup CSV sang giftcode filter)*. **Base**: `main` @ `e102c6b`. **Status**: **Pending merge**.
+> ⚠️ Note: Body cũ của entry này (Branch + Mục tiêu + Files + Tests bên dưới) bị copy nhầm từ PR #74 (giftcode filter q+status). PR #71 thực tế là `feat(api,web): GET /mail/unread-count + FE hydrate badge on mount` (G17 — M7), branch `devin/1777418952-g17-mail-unread-count`, +7 vitest API. Xem phần dưới `### PR #74 — admin giftcode list filter` cho chi tiết đúng. Để tránh re-flow document lớn, giữ lại format cũ; AI sau đọc ưu tiên nhãn `**Merged into main**` + commit hash.
+
+- **Branch**: `devin/1777418952-g17-mail-unread-count` (corrected from copy-pasted body). **Base**: `main` @ `2654b28`. **Status**: **Merged into main** (PR #71, commit `0d4abb4` 28/4 ~23:50 UTC, CI 5/5 xanh).
 - **Mục tiêu** (Smart admin §3 — "Bộ lọc tìm giftcode"): `GET /admin/giftcodes` chỉ accept `limit`. Closed beta tạo nhiều mã promo → admin cần lọc theo prefix code và status (active / revoked / expired / exhausted) để truy soát mã hỏng / hết hạn.
 - **Giải pháp**:
   - **`GiftCodeService.list(limit, filters)`**: thêm `q` (substring uppercase, case-insensitive) + `status` (4 giá trị). ACTIVE = chưa revoke + chưa expire + chưa exhaust (loại exhaust ở app layer vì Prisma không filter compare 2 cột `redeemCount < maxRedeems`). EXHAUSTED tương tự.
@@ -1089,9 +1091,13 @@ _(Không có lỗi làm app không chạy / mất tiền / auth hỏng tại com
 | `POST /api/_auth/forgot-password` + `POST /api/_auth/reset-password` | Thiếu | Nice-to-have beta closed |
 | `POST /api/_auth/verify-email` | Thiếu | Closed beta không cần |
 | `GET /api/leaderboard/{power,topup,sect}` | **Power**: đã có (PR #59 — `GET /leaderboard?limit=50` top by realm+power, clamp 1≤limit≤50). Topup/sect chưa có. | Power done; topup/sect Nice-to-have post-beta. |
-| `WS mission:progress` (server-push tracker) | Thiếu | Low (M3) |
+| `WS mission:progress` (server-push tracker) | **Có** (PR #63 BE emitter throttle 500ms + PR #65 FE handler `MissionView`) | — |
 | `GET /api/logs/me` (G3 cũ) | Thiếu | Low (M6) |
-| `POST /api/admin/inventory/revoke` (`ADMIN_REVOKE` ledger) | Thiếu | Low (L7) |
+| `POST /api/admin/inventory/revoke` (`ADMIN_REVOKE` ledger) | **Có** (PR #66 — endpoint + 9 vitest) | — |
+| `GET /api/mail/unread-count` (M7 hydrate badge) | **Có** (PR #71) | — |
+| `GET /api/admin/economy/alerts` (smart admin) | **Có** (PR #54) | — |
+| `POST /api/auth/register` rate-limit per-IP | **Có** (PR #60 — 5/15min) | — |
+| `GET /api/me/next-actions` (smart onboarding) | **Có** (PR #49) | — |
 
 **Không có route FE đang gọi mà BE chưa có** — đã grep `apps/web/src/api/*.ts` khớp với `@Controller` tại `apps/api/src/modules/**/*.controller.ts`. Lưu ý: prefix global `/api`, auth controller tại `/_auth`, giftcode tại `/giftcodes`.
 
@@ -1196,14 +1202,17 @@ Admin hiện tại có thể vào `/admin` → Users → tìm → **Set role = A
 
 ## 20. Recommended Next Roadmap
 
-### Immediate (session 7 — còn việc an toàn)
+### Immediate (session 9 — còn việc an toàn, sau khi PR #62..#78 đã merge)
 
-1. **Runtime smoke tích hợp sau PR #46→#60 đã merge** — **Needs runtime smoke**. Checklist (15 phút, theo `docs/QA_CHECKLIST.md`): register/login (verify rate-limit 5/IP/15min), HomeView (next-action panel + onboarding checklist), sidebar badges polling 60s, leaderboard render top 50 + tap-name → profile, admin economy alerts panel, mission claim, mail unread badge, NPC shop buy + ledger row.
-2. ~~**M11 — Rate-limit `GET /character/profile/:id`**~~ — **Pending merge PR #62**. Reuse `RateLimiter` + DI token `PROFILE_RATE_LIMITER`, 120 req/IP/15min, +3 vitest test.
-3. **H6 — Wire Playwright golden path vào CI** (matrix job `e2e` với services postgres+redis, run api+web preview, `E2E_FULL=1 pnpm --filter @xuantoi/web e2e`). Effort medium, value cao cho regression UI.
-4. **M3 — WS `mission:progress` push**: `emitToUser('mission:progress', {missionKey,currentCount,targetCount})` ở `MissionService.track*` với throttle ≥500ms/event. UX polish, bổ sung cho badges polling.
-5. **L5 — Skeleton loaders** cho `BossView`, `GiftCodeView`, `LeaderboardView`. Reuse pattern đã có ở `MissionView`.
-6. **Mission claim flow render-level vitest** — cover claim button enable/disable + claimedAt badge update.
+1. **Runtime smoke tích hợp sau toàn bộ PR #46→#78 đã merge** — **Needs runtime smoke**. Checklist (15 phút, theo `docs/QA_CHECKLIST.md`): register/login (verify rate-limit 5/IP/15min), HomeView (next-action panel + onboarding checklist), sidebar badges polling 60s, leaderboard render top 50 + tap-name → profile, admin economy alerts panel, mission claim + WS `mission:progress` real-time, mail unread badge hydrate trên login, NPC shop buy + ledger row, market post/cancel/buy với `MARKET_FEE_PCT` env, admin giftcode filter q/status, admin user filter role+banned, admin audit filter action+actor, admin topup filter date+email, admin inventory revoke + ADMIN_REVOKE ledger, admin economy `pnpm audit:ledger`, MarketView skeleton.
+2. **M9 (Smart gameplay) — Daily login reward** (idempotent với `RewardClaimLog` đã có sẵn): cron/endpoint `POST /me/daily-login` trả reward (LINH_THACH/EXP/item nhỏ) một lần / ngày VN tz, hooks vào `CurrencyLedger`/`ItemLedger` reason `DAILY_LOGIN`. **Value cao** (sticky retention beta), **Risk thấp** (idempotent đã có pattern).
+3. **G22 — Admin giftcode FE panel** (consumer cho `GET /admin/giftcodes?q=&status=` đã merge PR #74): tab Giftcode trong AdminView, table list + filter input + create/revoke action. UX polish.
+4. **M6 — `GET /logs/me` endpoint** (tự xem audit log của mình): low priority, hữu ích cho UX trong-suốt + debug user-side.
+5. **L5 — Mission claim flow render-level vitest**: cover claim button enable/disable + claimedAt badge update + WS frame apply.
+6. **L3 — Proverbs corpus expansion** (loading screen): hiện 30+ câu lặp nhanh; thêm 50–100 câu Hán-Việt cổ phong từ `packages/shared/src/proverbs.ts`.
+7. **L6 — Logout-all confirm modal** thay `window.confirm()` trong `SettingsView`.
+8. **M10 — Shop daily limit** + per-item rate-limit (post-beta nice-to-have).
+9. **M7 — CSP production CDN review** (chỉ khi triển khai prod).
 
 ### Before Closed Beta
 
@@ -1303,12 +1312,18 @@ Admin hiện tại có thể vào `/admin` → Users → tìm → **Set role = A
 - ~~**G5 (post-beta backlog)**: leaderboard~~ — **Done** (PR #59). Còn `ADMIN_REVOKE` endpoint (L7), Alchemy/Refinery/Arena (post-beta).
 - ~~**G6 (basic leaderboard)**~~ — **Done** (PR #59 — `GET /api/leaderboard?limit=N` + `LeaderboardView` route `/leaderboard`).
 - ~~**G7 (register IP rate-limit)**~~ — **Done** (PR #60 — 5 register/IP/15min, Redis distributed prod, in-memory fallback).
-- ~~**G8**: M11 — rate-limit `GET /character/profile/:id`~~ → **Pending merge PR #62** (CI 3/3 xanh).
-- ~~**G9**: M3 — WS `mission:progress` throttled push~~ → **Pending merge PR #63**.
-- ~~**G11**: FE handler `mission:progress` (closed-loop cho PR #63 BE push)~~ → **Pending merge PR #65** (stacked trên PR #63).
-- **G10 (next safe task)**: H6 — wire Playwright `pnpm e2e` vào GitHub Actions CI để catch UI regression. Đã có `playwright.config.ts` + `e2e/golden.spec.ts` từ PR #44; chỉ cần thêm job `e2e` vào `.github/workflows/ci.yml` với service Postgres + Redis + step `pnpm --filter @xuantoi/web e2e`.
+- ~~**G8**: M11 — rate-limit `GET /character/profile/:id`~~ → **Merged into main** (PR #62).
+- ~~**G9**: M3 — WS `mission:progress` throttled push~~ → **Merged into main** (PR #63).
+- ~~**G11**: FE handler `mission:progress` (closed-loop cho PR #63 BE push)~~ → **Merged into main** (PR #65).
+- ~~**G10**: H6 — wire Playwright golden path vào GitHub Actions CI~~ → **Merged into main** (PR #64 — matrix job `e2e-smoke` với services postgres+redis).
+- ~~**G12**: L7 — `POST /admin/inventory/revoke` + ledger `ADMIN_REVOKE`~~ → **Merged into main** (PR #66, +9 vitest).
+- ~~**G13/G14**: L5 — skeleton loaders cho Leaderboard/Profile/Mission/Admin/Market~~ → **Merged into main** (PR #67/#68/#77).
+- ~~**G15**: L2 — `MARKET_FEE_PCT` env config~~ → **Merged into main** (PR #69).
+- ~~**G16/G18/G19/G20**: admin user/audit/topup/giftcode filter~~ → **Merged into main** (PR #70/#72/#73/#74).
+- ~~**G17**: M7 — `GET /mail/unread-count` + FE badge hydrate~~ → **Merged into main** (PR #71).
+- ~~**G21**: smart economy safety `pnpm audit:ledger` + 9 vitest~~ → **Merged into main** (PR #76).
 
-Không còn issue **High** mở trên main (H6 Playwright CI wire là Medium effort, **Open**); chỉ còn **Medium** (M3/M6/M7/M9/M10) và **Low** (L2/L3/L5/L6/L7 — L4 done PR #57, M11 done PR #62 pending merge).
+Không còn issue **High** mở trên main (H6 Playwright CI wire đã wire qua PR #64). Còn **Medium** (M6 logs/me, M7 CSP CDN review, M9 logout-all passwordVersion intentional trade-off, M10 shop daily limit) và **Low** (L3 proverbs corpus, L6 logout-all confirm modal). M3 / M11 / L2 / L4 / L5 / L7 đã Resolved (PR #63/#65/#62/#69/#57/#67-68-77/#66).
 
 Các hạng mục smart-feature đề xuất (không bắt buộc — AI tự quyết theo prompt user):
 - **Smart next-action / onboarding checklist** (§16 của prompt user mục 1–2): /home giợ widget "Nên làm gì tiếp?" dựa trên state (đủ EXP đột phá, mission claim-able, mail unread, boss đang mở, …).
@@ -1477,6 +1492,40 @@ Các hạng mục smart-feature đề xuất (không bắt buộc — AI tự qu
 - **Local check**: `pnpm typecheck` → pass; `pnpm lint` → pass; `pnpm --filter @xuantoi/shared test` → 47/47 pass; (API test bỏ qua local — cần Postgres; CI chạy đầy đủ).
 - **Risk**: green — docs-only PR, không đụng code/test/migration.
 - **Roadmap kế**: PR B (Vitest minimal + Playwright golden path — H5).
+
+### Session 9 audit log (29/4 ~10:00 UTC — PR #79 docs cleanup sau khi PR #62..#78 merged cascade)
+
+**PR #79 — `docs(handoff): session 9 audit — fix stale Section 2/17/20/21 sau khi 17 PR merged session 6→8`** — **Pending merge**
+
+- **Branch**: `devin/1777456890-audit-session-9-progress`. **Base**: `main` @ `909d60c`. **Status**: **Pending merge**.
+- **Mục tiêu**: AI engineer mới nhận task mở repo, nhận thấy header (§1) đã được PR #78 cập nhật (snapshot c8123df, 16 PR list, 0 open) nhưng các section thân bài (§2 Current Branch / CI / PR Status, §17 Missing Pages/APIs, §20 Immediate Roadmap, §21 G items, một số entry "Recent Changes") vẫn còn các tuyên bố lỗi thời từ session 6 — cần cleanup để AI sau đọc duy nhất file này hiểu đúng hiện trạng.
+- **Discrepancy phát hiện qua audit (29/4 09:55 UTC)**:
+  1. **§2 Commit audit** vẫn ghi `81706a9 PR #61` (session 6) → thực tế `909d60c PR #78`.
+  2. **§2 PR open đáng kể** vẫn ghi "PR #62 G8 Pending merge" → thực tế **0 PR open** (verify GitHub UI: 0 open / 78 closed).
+  3. **§Recent Changes header** "PR #33→#60" → thực tế đã có entries cho PR #62..#77 trong body, nên đổi `#33→#78`.
+  4. **§Recent Changes PR #77 entry** ghi "Pending merge" → thực tế Merged into main commit `266bfe7`.
+  5. **§Recent Changes PR #71 entry** body bị copy nhầm content của PR #74 (giftcode filter q+status); branch ghi `devin/1777451169-g20-topup-csv-export` (sai) — đúng phải là `devin/1777418952-g17-mail-unread-count`. Đã thêm note ⚠️ giải thích & nhãn `Merged into main` chính xác.
+  6. **§17 Missing APIs**: `WS mission:progress` và `POST /api/admin/inventory/revoke` vẫn ghi "Thiếu" → thực tế Resolved (PR #63/#65 + PR #66). Bổ sung 4 hàng API mới đã có (PR #71/#54/#60/#49).
+  7. **§20 Immediate Roadmap**: 6 mục cũ (mostly đã merged hoặc Pending merge từ session 7) → thay bằng 9 mục Immediate session 9 sắp xếp theo ưu tiên (smoke runtime, M9 daily login, G22 admin giftcode FE, M6 logs/me, L5 mission claim test, L3/L6/M10/M7).
+  8. **§21 G items**: G8/G9/G10/G11/G12/G13/G14/G15/G16/G17/G18/G19/G20/G21 vẫn ghi "Pending merge" → đổi sang **Merged into main** kèm PR number.
+  9. **Closing summary**: "M11 done PR #62 pending merge" → "M11 Resolved (PR #62)".
+- **Files**: `docs/AI_HANDOFF_REPORT.md` (~10 surgical edits, không touch §3..§16, không touch Recent Changes detail PR #33..#76).
+- **Tests**: N/A — docs-only PR.
+- **Local verified (29/4 09:58 UTC)**:
+  - `pnpm install --frozen-lockfile` ✅
+  - `pnpm --filter @xuantoi/api prisma:generate` ✅
+  - `pnpm --filter @xuantoi/shared build` ✅
+  - `pnpm typecheck` ✅ (3 workspace, 0 error)
+  - `pnpm lint` ✅
+  - `pnpm --filter @xuantoi/shared test` ✅ **47/47**
+  - `pnpm --filter @xuantoi/web test` ✅ **79/79** (11 file)
+  - `pnpm build` ✅
+  - API test (`pnpm --filter @xuantoi/api test`) chưa chạy local — yêu cầu Postgres+Redis live (CI sẽ chạy full).
+- **CI status**: chờ push + GitHub Actions.
+- **Runtime smoke**: N/A — docs-only.
+- **Risk**: low. Docs-only, không đụng code/test/migration/i18n. Rollback dễ qua `git revert`.
+- **Roadmap kế (sau khi PR #79 merge)**: chọn 1 trong **Immediate §20.2/§20.3** — *M9 Daily Login Reward* (high value retention, idempotent qua `RewardClaimLog` đã có pattern) hoặc *G22 Admin Giftcode FE Panel* (consumer cho `GET /admin/giftcodes?q=&status=` đã merge PR #74, scope nhỏ, dễ test).
+- **Env config**: AI session này cũng đã suggest update `devin_env` cho repo: `pnpm install` → `pnpm prisma:generate` → `pnpm --filter @xuantoi/shared build` ở mỗi maintenance. Lý do: repo cần Prisma client + shared dist trước khi typecheck/test apps/api & apps/web (web vitest fail "Failed to resolve entry for package @xuantoi/shared" nếu không build shared trước).
 
 ---
 
