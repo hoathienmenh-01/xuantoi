@@ -89,9 +89,30 @@
 
 ---
 
-## Recent Changes (PR #33→#89 — tất cả đã merge `main`; L3 PR #87 + M6 PR #88 in-flight session 9d)
+## Recent Changes (PR #33→#89 + PR #87 + PR #88 merged; docs sync PR #90 in-flight session 9d)
 
-### PR #88 — `feat(api): GET /logs/me — self audit log (CurrencyLedger + ItemLedger keyset paginated) (M6)` — **Pending merge** (CI 5/5 ✅)
+### PR #90 — `docs(qa,admin): refresh QA_CHECKLIST.md + ADMIN_GUIDE.md + fix /api/_auth/* path bugs` — **Pending merge** (CI 5/5 ✅ on initial commit; extending scope with admin guide + path fix)
+
+- **Branch**: `devin/1777472509-docs-qa-checklist-refresh`. **Base**: `main` @ `89e3fb6` (sau PR #87 L3 merged). **Status**: docs-only PR session 9d, sau khi PR #89 + #87 + #88 merged.
+- **Mục tiêu** (Smart docs/handoff §7 — đồng bộ docs sau cascade PR #59/#63/#66/#67/#71/#80/#81/#83/#84/#88; fix path bugs `/api/auth/*` → `/api/_auth/*`):
+  - **`docs/QA_CHECKLIST.md`**: thiếu §4b Daily Login (PR #80), §7b Leaderboard (PR #59), §13 Audit log self-view (PR #88 M6), WS `mission:progress` (PR #63), confirm modal logout-all (PR #83), filter Admin filter (PR #67/#81), Boss spawn (PR #36), inventory revoke (PR #66), economy alerts (PR #54), `CODE_EXISTS` (PR #84). §10 ghi "5 tab" nhưng thực tế 7 tab. Path `/_health/...` sai → đúng `/api/healthz|readyz|version`.
+  - **`docs/ADMIN_GUIDE.md`**: §3 thiếu filter q/status/role/banned/from/to/action; §2 MOD ghi "treat gần như ADMIN, kế hoạch tách sau" nhưng PR #48 đã tách (`@RequireAdmin()` decorator); §6 thiếu `CODE_EXISTS` toast; §8 boss spawn ghi "backlog PR" nhưng đã merge; §9 ghi "chưa có UI search action" nhưng đã có; thiếu cross-ref `GET /logs/me`.
+  - **`docs/TROUBLESHOOTING.md` §12**: `curl -X POST /api/auth/logout` sai path → `/api/_auth/logout`.
+  - **`docs/AI_HANDOFF_REPORT.md` §17 BE-vs-FE table**: `POST /api/auth/register` sai path → `/api/_auth/register`.
+- **Files** (4 thay đổi):
+  - `docs/QA_CHECKLIST.md` (+30/-4 line) — §4 WS bullet, §4b mới Daily Login, §7b mới Leaderboard, §10 4→9 bullet với filter, §12 confirm modal explicit, §13 mới Audit log self-view, post-smoke `/api/healthz` path fix.
+  - `docs/ADMIN_GUIDE.md` (+9/-7 line) — §1 PR #48 note, §2 MOD role, §3 7 tab có filter chi tiết, §6 CODE_EXISTS note, §8 boss spawn endpoint, §9 audit filter + logs/me cross-ref.
+  - `docs/TROUBLESHOOTING.md` (1 char fix) — `/api/auth/logout` → `/api/_auth/logout`.
+  - `docs/AI_HANDOFF_REPORT.md` (1 char fix line 1296 + this Recent Changes entry).
+- **Risk**: Cực thấp — docs only, không touch code/test/migration. Admin/QA/operator/dev có doc đúng để vận hành + smoke.
+- **Rollback**: revert single PR.
+- **Test added**: 0 (docs only).
+- **CI status**: build×2 ✅, e2e-smoke×2 ✅, Devin Review ✅ trên commit đầu (5/5). Re-check sau khi push commit mở rộng scope.
+- **Runtime smoke**: N/A (docs).
+- **`AI_HANDOFF_REPORT.md updated`**: this Recent Changes entry + path fix line 1296.
+- **Bước tiếp theo**: FE tab "Hoạt động" wire `GET /logs/me` (sau khi PR #88 merge) hoặc audit RUN_LOCAL.md / DEPLOY.md / SECURITY.md / BETA_CHECKLIST.md / SEEDING.md / BALANCE.md.
+
+### PR #88 — `feat(api): GET /logs/me — self audit log (CurrencyLedger + ItemLedger keyset paginated) (M6)` — **Merged into main** (29/4 session 9d, CI 5/5 ✅)
 
 - **Branch**: `devin/1777469824-m6-logs-me`. **Base**: `main` @ `011e930` (sau PR #86 audit refresh merged). **Status**: code complete + local typecheck/lint/api test 369/369/build xanh; PR mở session 9d.
 - **Mục tiêu** (Recommended Roadmap §20 M6 + Smart admin/economy §3,4 — minh bạch ledger cho người chơi): tới giờ CurrencyLedger + ItemLedger là audit-trail nội bộ (admin only — `apps/api/src/modules/admin/admin.controller.ts` + `pnpm audit:ledger` script). Người chơi không có cách tự xem mình đã nhận/mất tiền/item ở đâu → khi có thắc mắc support "Sao tôi mất 500 LT?" admin phải tra DB tay. Endpoint `/logs/me` mở read-only self-view audit chronological cho user.
@@ -1328,7 +1349,7 @@ _(Không có lỗi làm app không chạy / mất tiền / auth hỏng tại com
 | `POST /api/admin/inventory/revoke` (`ADMIN_REVOKE` ledger) | **Có** (PR #66 — endpoint + 9 vitest) | — |
 | `GET /api/mail/unread-count` (M7 hydrate badge) | **Có** (PR #71) | — |
 | `GET /api/admin/economy/alerts` (smart admin) | **Có** (PR #54) | — |
-| `POST /api/auth/register` rate-limit per-IP | **Có** (PR #60 — 5/15min) | — |
+| `POST /api/_auth/register` rate-limit per-IP | **Có** (PR #60 — 5/15min) | — |
 | `GET /api/me/next-actions` (smart onboarding) | **Có** (PR #49) | — |
 
 **Không có route FE đang gọi mà BE chưa có** — đã grep `apps/web/src/api/*.ts` khớp với `@Controller` tại `apps/api/src/modules/**/*.controller.ts`. Lưu ý: prefix global `/api`, auth controller tại `/_auth`, giftcode tại `/giftcodes`.

@@ -168,7 +168,7 @@ INITIAL_ADMIN_EMAIL=admin@xt.local INITIAL_ADMIN_PASSWORD='strong-pass-12345' \
 
 ```bash
 # Logout + login lại (cookie sẽ lấy role mới):
-curl -i -X POST http://localhost:3000/api/auth/logout
+curl -i -X POST http://localhost:3000/api/_auth/logout
 # Rồi login lại qua UI.
 ```
 
