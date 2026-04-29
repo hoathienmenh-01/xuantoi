@@ -128,9 +128,15 @@ async function refreshTopups(): Promise<void> {
   loading.value = true;
   try {
     const filters: { from?: string; to?: string; email?: string } = {};
-    if (topupFromDate.value) filters.from = new Date(topupFromDate.value).toISOString();
+    // Cả `from` và `to` đều dùng local timezone (consistent). `new Date("YYYY-MM-DD")`
+    // mặc định parse UTC midnight → admin múi giờ +7 chọn from=10/4 sẽ bỏ sót đơn
+    // tạo trong khoảng 0h–7h local 10/4. Fix: setHours theo local cho cả 2 đầu.
+    if (topupFromDate.value) {
+      const d = new Date(topupFromDate.value);
+      d.setHours(0, 0, 0, 0);
+      filters.from = d.toISOString();
+    }
     if (topupToDate.value) {
-      // End-of-day: 23:59:59 local → ISO
       const d = new Date(topupToDate.value);
       d.setHours(23, 59, 59, 999);
       filters.to = d.toISOString();
