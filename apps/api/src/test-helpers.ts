@@ -5,6 +5,7 @@ import { CharacterService } from './modules/character/character.service';
 import { CurrencyService } from './modules/character/currency.service';
 import { InventoryService } from './modules/inventory/inventory.service';
 import { MissionService } from './modules/mission/mission.service';
+import { MissionWsEmitter } from './modules/mission/mission-ws.emitter';
 
 /**
  * Helpers cho integration test — tạo fixture user/character nhanh, không
@@ -113,12 +114,15 @@ export async function wipeAll(prisma: PrismaService): Promise<void> {
  * Dựng `MissionService` tối thiểu cho integration test (bypass DI container).
  * Dùng lại các service khác (thường test chỉ cần prisma).
  */
-export function makeMissionService(prisma: PrismaService): MissionService {
+export function makeMissionService(
+  prisma: PrismaService,
+  emitter: MissionWsEmitter | null = null,
+): MissionService {
   const realtime = new RealtimeService();
   const chars = new CharacterService(prisma, realtime);
   const currency = new CurrencyService(prisma);
   const inventory = new InventoryService(prisma, realtime, chars);
-  return new MissionService(prisma, currency, inventory);
+  return new MissionService(prisma, currency, inventory, emitter);
 }
 
 export const TEST_DATABASE_URL =

@@ -1,15 +1,19 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable, Optional } from '@nestjs/common';
 import { CurrencyKind, MissionPeriod, Prisma } from '@prisma/client';
 import {
   MISSIONS,
   type MissionDef,
   type MissionGoalKind,
+  type MissionProgressChange,
   type MissionReward,
   missionByKey,
 } from '@xuantoi/shared';
 import { PrismaService } from '../../common/prisma.service';
 import { CurrencyService } from '../character/currency.service';
 import { InventoryService } from '../inventory/inventory.service';
+import { MissionWsEmitter } from './mission-ws.emitter';
+
+export const MISSION_WS_EMITTER = 'MISSION_WS_EMITTER';
 
 export class MissionError extends Error {
   constructor(
@@ -132,6 +136,9 @@ export class MissionService {
     private readonly prisma: PrismaService,
     private readonly currency: CurrencyService,
     private readonly inventory: InventoryService,
+    @Optional()
+    @Inject(MISSION_WS_EMITTER)
+    private readonly wsEmitter: MissionWsEmitter | null = null,
   ) {}
 
   async listForUser(userId: string): Promise<MissionProgressView[]> {
@@ -215,12 +222,13 @@ export class MissionService {
         claimed: false,
       },
     });
+    const changes: MissionProgressChange[] = [];
     for (const row of rows) {
       if (row.currentAmount >= row.goalAmount) continue;
       const newAmount = Math.min(row.goalAmount, row.currentAmount + amount);
       if (newAmount === row.currentAmount) continue;
       // Atomic guard: chỉ update nếu vẫn còn claimed=false và currentAmount chưa đổi.
-      await this.prisma.missionProgress.updateMany({
+      const upd = await this.prisma.missionProgress.updateMany({
         where: {
           id: row.id,
           claimed: false,
@@ -228,6 +236,28 @@ export class MissionService {
         },
         data: { currentAmount: newAmount },
       });
+      if (upd.count === 1) {
+        changes.push({
+          missionKey: row.missionKey,
+          period: row.period,
+          currentAmount: newAmount,
+          goalAmount: row.goalAmount,
+          completable: newAmount >= row.goalAmount,
+        });
+      }
+    }
+    if (changes.length > 0 && this.wsEmitter) {
+      // Resolve userId từ characterId; KHÔNG fail track nếu character lạ (race).
+      const ch = await this.prisma.character.findUnique({
+        where: { id: characterId },
+        select: { userId: true },
+      });
+      if (ch?.userId) {
+        this.wsEmitter.pushProgress(ch.userId, {
+          characterId,
+          changes,
+        });
+      }
     }
   }
 

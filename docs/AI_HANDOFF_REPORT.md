@@ -1,6 +1,6 @@
 # AI Handoff Report — Xuân Tôi
 
-> **Snapshot**: `main` @ `81706a9` (Merge PR #61 audit session 6, 28 Apr 2026 22:05 UTC). PR #52..#61 đã merge `main`. **11 PR Pending merge**: #62..#71 + **#72 (G18 — admin audit log filter by action prefix + actor email)**.
+> **Snapshot**: `main` @ `81706a9` (Merge PR #61 audit session 6, 28 Apr 2026 22:05 UTC). PR #52..#61 đã merge `main`. **4 PR Pending merge**: #62 (G8 — M11 profile rate-limit, CI ✅ 3/3), #63 (G9 — M3 WS mission:progress, CI ✅ 3/3), #64 (G10 — H6 wire Playwright smoke vào CI, CI ✅ 5/5), **#65 (G11 — FE handler `mission:progress` stacked trên PR #63)**.
 > **Người viết**: AI engineer session 28/4 sess.6 (audit refresh sau khi PR #58/#59/#60 đã merge — header report cũ vẫn ghi #59/#60 "Open" → đó là tồn tại lỗi thời và đã được fix bởi PR docs này).
 > **Đối tượng đọc**: AI kế nhiệm sẽ tiếp tục đưa dự án tới beta / production.
 >
@@ -10,7 +10,7 @@
 >
 > **Trạng thái (28/4 session 6)**: PR #33..#60 đã merge `main`. PR #59 thêm leaderboard (BE + FE + 7 test). PR #60 thêm rate-limit `POST /auth/register` per-IP (+2 test) — security hardening. Vitest scaffold (PR B / replay PR #47) đã trên main; web test set hiện 64 test (toast 9 + game 8 + auth 7 + badges 9 + NextActionPanel 6 + OnboardingChecklist 8 + itemName 11 + LeaderboardView 6).
 >
-> Roadmap kế tiếp (xem §20/§21): ~~M11 rate-limit profile~~ → PR #62 Pending merge; ~~M3 WS `mission:progress`~~ → PR #63 + #65 Pending merge; ~~H6 Playwright CI~~ → PR #64 Pending merge; ~~L7 `POST /admin/inventory/revoke`~~ → PR #66 Pending merge; ~~L5 skeleton loaders (Leaderboard/Profile)~~ → **PR #67 Pending merge** (này) — còn lại: L5 cho MissionView/MarketView/AdminView, L2 market fee 5% → config, M6/M7/M9/M10, smart features tiếp từ prompt user.
+> Roadmap kế tiếp (xem §20/§21): ~~M11 rate-limit `GET /character/profile/:id`~~ → **Pending merge PR #62**; ~~M3 WS `mission:progress` push~~ → **Pending merge PR #63** — còn lại: H6 wire Playwright vào CI, L5 skeleton loaders, L7 `POST /admin/inventory/revoke`, L2 market fee 5% → config, M6/M7/M9/M10, smart features tiếp từ prompt user.
 >
 > **Note replay-gap PR #47** đã closed bởi PR #53 (cherry-pick `32a33a6` vào main) — không còn drift giữa GitHub PR status và `main`.
 >
@@ -1035,9 +1035,8 @@ _(Không có lỗi làm app không chạy / mất tiền / auth hỏng tại com
 | M8 | Admin guard kiểm `role === 'ADMIN' \|\| 'MOD'` — MOD có quyền broad gần ADMIN (grant currency, approve topup, broadcast mail, spawn boss). | **Resolved** by PR E — thêm `@RequireAdmin()` decorator + reflector trong `AdminGuard`; ADMIN-only cho grant / role-set / approve-topup / reject-topup / giftcode-create / giftcode-revoke / mail-send / mail-broadcast / boss-admin-spawn. MOD vẫn được: GET (read) + ban (đã có hierarchy MOD↦PLAYER ở service). 8 unit test thuê reflector cho guard. |
 | M9 | Settings logout-all không bump `passwordVersion` → access token cũ (15m) vẫn valid ở thiết bị khác. | **Open** (intentional trade-off, document trong `SECURITY.md`) — nếu cần force ngay, bump `passwordVersion` hoặc implement revocation list. |
 | M10 | Shop không có rate-limit + stock infinite + không daily limit. | **Open** — closed beta acceptable; sau beta thêm `dailyLimit`. |
-| ~~M11~~ | ~~Profile endpoint không có rate-limit.~~ | **Resolved by PR #62** (Pending merge) — reuse `RateLimiter`, 120 req/IP/15min, +3 test. |
-| ~~M3~~ | ~~Mission progress không push WS → FE polling.~~ | **Resolved by PR #63** (Pending merge) — `MissionWsEmitter` 500ms throttle per-user, +7 test. |
-| ~~H6~~ | ~~Playwright spec tồn tại nhưng chưa chạy trong CI.~~ | **Resolved by PR #64** (Pending merge) — thêm job `e2e-smoke` vào `.github/workflows/ci.yml` (vite preview + Playwright chromium + cache browser); golden full path vẫn skip cho đến khi thêm orchestration api+web+pg+redis. |
+| ~~M11~~ | ~~`GET /character/profile/:id` không có rate-limit riêng.~~ | **Resolved by PR #62** (Pending merge) — reuse `RateLimiter` interface, DI token `PROFILE_RATE_LIMITER`, key `rl:profile:ip:${ip}`, **120 req/IP/15min**. Files: `apps/api/src/modules/character/{character.controller.ts, character.module.ts, character.controller.test.ts}`. +3 test. |
+| ~~M3~~ | ~~Mission progress không push WS → FE phải polling/refetch.~~ | **Resolved by PR #63** (Pending merge) — `MissionWsEmitter` 500ms throttle per-user; emit `'mission:progress'` với payload `{characterId, changes: MissionProgressChange[]}` sau khi `MissionService.track()` thành công. Files: `packages/shared/src/ws-events.ts`, `apps/api/src/modules/mission/{mission-ws.emitter.ts (new), mission.service.ts, mission.module.ts}`. +7 test (6 emitter unit + 1 integration). |
 
 ### Low
 
@@ -1295,11 +1294,10 @@ Admin hiện tại có thể vào `/admin` → Users → tìm → **Set role = A
 - ~~**G5 (post-beta backlog)**: leaderboard~~ — **Done** (PR #59). Còn `ADMIN_REVOKE` endpoint (L7), Alchemy/Refinery/Arena (post-beta).
 - ~~**G6 (basic leaderboard)**~~ — **Done** (PR #59 — `GET /api/leaderboard?limit=N` + `LeaderboardView` route `/leaderboard`).
 - ~~**G7 (register IP rate-limit)**~~ — **Done** (PR #60 — 5 register/IP/15min, Redis distributed prod, in-memory fallback).
-- ~~**G8**: M11 — rate-limit profile~~ → **Pending merge PR #62** (CI 3/3 xanh).
-- ~~**G9**: M3 — WS mission:progress throttled push~~ → **Pending merge PR #63** (CI 3/3 xanh).
-- ~~**G10**: H6 — wire Playwright smoke vào GitHub Actions CI~~ → **Pending merge PR #64**.
-- **G11 (next safe task)**: FE handler cho event `mission:progress` — wire `socket.on('mission:progress', ...)` vào `apps/web/src/stores/realtime.ts` hoặc mới `apps/web/src/stores/mission.ts` để update progress bar real-time. Risk: low. +1-2 test web (vitest).
-- **G12 (next safe task)**: L5 — skeleton loaders cho `MissionView`, `LeaderboardView`, `ProfileView`, `MarketView`, `BossView`. Component nhỏ reusable. +N test web.
+- ~~**G8**: M11 — rate-limit `GET /character/profile/:id`~~ → **Pending merge PR #62** (CI 3/3 xanh).
+- ~~**G9**: M3 — WS `mission:progress` throttled push~~ → **Pending merge PR #63**.
+- ~~**G11**: FE handler `mission:progress` (closed-loop cho PR #63 BE push)~~ → **Pending merge PR #65** (stacked trên PR #63).
+- **G10 (next safe task)**: H6 — wire Playwright `pnpm e2e` vào GitHub Actions CI để catch UI regression. Đã có `playwright.config.ts` + `e2e/golden.spec.ts` từ PR #44; chỉ cần thêm job `e2e` vào `.github/workflows/ci.yml` với service Postgres + Redis + step `pnpm --filter @xuantoi/web e2e`.
 
 Không còn issue **High** mở trên main (H6 Playwright CI wire là Medium effort, **Open**); chỉ còn **Medium** (M3/M6/M7/M9/M10) và **Low** (L2/L3/L5/L6/L7 — L4 done PR #57, M11 done PR #62 pending merge).
 
@@ -1315,31 +1313,33 @@ Các hạng mục smart-feature đề xuất (không bắt buộc — AI tự qu
 
 ---
 
-### Session 6 audit log (28/4 22:35 UTC — PR #64 G10 H6 Playwright CI smoke)
+### Session 6 audit log (28/4 22:45 UTC — PR #65 G11 FE mission:progress handler)
 
-**PR #64 — G10: wire Playwright smoke vào GitHub Actions CI (H6 resolved)**
+**PR #65 — G11: FE handler event `mission:progress` (stacked trên PR #63)**
 
-- **Branch**: `devin/1777415420-g10-playwright-ci`. **Base**: `main` @ `81706a9`. **Status**: **Pending merge** (CI chưa mở).
-- **Mục tiêu**: H6 — spec Playwright `apps/web/e2e/golden.spec.ts` (một smoke + một golden) đã tồn tại từ PR #44, nhưng chưa có job CI chạy. Sau PR này: mỗi push/PR đều chạy smoke `auth page renders register/login tabs` → bắt regression CSP/bundling/route/store-init.
+- **Branch**: `devin/1777416234-g11-fe-mission-handler`. **Base**: `devin/1777414636-g9-ws-mission-progress` (PR #63 branch). **Status**: **Pending merge**. Merge PR #63 trước, sau đó rebase PR #65 xuống `main` và merge.
+- **Mục tiêu**: Hoàn tất closed-loop của PR #63 ở phía FE — khi BE push frame `mission:progress` (sau `MissionService.track()`), FE nhận được event và merge delta vào `missions` ref của `MissionView.vue` → progress bar nhảy real-time không cần refetch.
 - **Giải pháp**:
-  - `apps/web/playwright.config.ts`: thêm `webServer.command = 'pnpm vite preview --port 4173 --strictPort'` và `webServer.url = 'http://localhost:4173'`. Đổi baseURL mặc định từ 5173 → 4173 (preview port). User local muốn dùng `pnpm dev`: set `PLAYWRIGHT_BASE_URL=http://localhost:5173 PLAYWRIGHT_SKIP_WEBSERVER=1`.
-  - `.github/workflows/ci.yml`: thêm job `e2e-smoke` (15-min timeout) parallel với job `build`. Steps: checkout → pnpm setup → install → build shared+web → cache `~/.cache/ms-playwright` (key based on `package.json`+`pnpm-lock.yaml` hash) → install chromium → chạy `playwright test --project=chromium` → upload artifacts on failure.
-  - Golden full path (`E2E_FULL=1`) vẫn skip default — cần api+web+pg+redis khởi động đồng thời, là PR riêng.
+  - `apps/web/src/ws/client.ts`: thêm `'mission:progress'` vào mảng `events` để socket.io-client lắng nghe + dispatch tới handlers.
+  - **NEW** `apps/web/src/lib/missionProgress.ts` (38 line): fn `applyMissionProgressFrame(current, frame)` — immutable update. Invariants: không lùi `currentAmount` (server monotonic), không đổi `claimed`, không tạo mission mới, completable bị gộp `!m.claimed` để tránh bug UI.
+  - `apps/web/src/views/MissionView.vue`: `onMounted` subscribe `wsOn('mission:progress', ...)`; `onUnmounted` unsubscribe. `missions.value = applyMissionProgressFrame(missions.value, frame.payload)`.
 - **Files**:
-  - `apps/web/playwright.config.ts` (rewrite, +20 / -1)
-  - `.github/workflows/ci.yml` (+55 / -0)
-- **Tests**: smoke pass local 1/2 (1 skipped — `E2E_FULL` chưa set, expected). Tổng test workspace vẫn 370 vitest (smoke Playwright không đếm).
-- **Local verified**: `pnpm --filter @xuantoi/web build` ✅ · `playwright install chromium --with-deps` ✅ · `playwright test --project=chromium` ✅ 1 passed + 1 skipped trong 3.8s.
+  - `apps/web/src/ws/client.ts` (+1 / -0)
+  - `apps/web/src/lib/missionProgress.ts` (new, 38 line)
+  - `apps/web/src/lib/__tests__/missionProgress.test.ts` (new, 126 line, 6 test)
+  - `apps/web/src/views/MissionView.vue` (+22 / -0: import + subscribe/unsubscribe)
+- **Tests**: web local pass **70/70** (was 64, +6 missionProgress).
+  - 6 unit test: apply `currentAmount`+`completable` delta cho key match; completable đẩy mission sẵn sàng claim; stale frame (currentAmount nhỏ hơn local) không lùi; `claimed=true` block completable reset; empty changes → no-op return same ref; unknown mission key → skip, không tạo mới.
+- **Local verified**: `pnpm typecheck` ✅ · `pnpm lint` ✅ · `pnpm --filter @xuantoi/web build` ✅ · `pnpm --filter @xuantoi/web test` ✅ 70/70.
 - **CI**: chờ push branch.
 - **Risk**: low.
-  - Browser cache key gắn với `package.json`+`pnpm-lock.yaml` — khi bản Playwright đổi lạ tải (~120MB ~30s).
-  - Webserver auto-start qua `vite preview` — strictPort 4173 → fail sớm nếu trung.
-  - Không ảnh hưởng test set hiện có.
-  - User local quen `pnpm --filter @xuantoi/web e2e` với dev server: cần cheatsheet trong docs/RUN_LOCAL.md (TODO follow-up).
-- **Backward compat**: spec nội dung không đổi. Default baseURL changed 5173→4173 — user local có thể cần set env nếu đang dùng dev mode.
-- **Runtime smoke**: Đã chạy local thành công. CI sẽ chạy thử lần đầu khi push.
-- **Rollback**: revert. CI quay về chỉ build/typecheck/lint/test (không có e2e smoke).
-- **Bước tiếp**: G11 — FE handler `mission:progress` (PR nhỏ, polish UX cho M3).
+  - Chỉ subscribe trong `MissionView`, lúc unmount hủy subscription — không leak.
+  - `applyMissionProgressFrame` immutable, return cùng ref khi no-op — tránh trigger reactivity thừa.
+  - Không đổi API/DB/schema.
+- **Backward compat**: Nếu BE chưa push frame (vd PR #63 chưa merge), FE không nhận gì → graceful (polling cũ vẫn hoạt động).
+- **Runtime smoke**: Needs runtime smoke với BE + FE chạy đồng thời sau khi PR #63 + PR #65 cùng merge — verify DevTools → WS thấy frame, progress bar UI nhảy khi tu luyện.
+- **Rollback**: revert PR #65. FE mất realtime update; tính đúng đắn mission list không đổi.
+- **Bước tiếp**: G12 — L5 skeleton loaders / L7 admin revoke / L2 market fee config.
 
 ---
 
@@ -1347,25 +1347,36 @@ Các hạng mục smart-feature đề xuất (không bắt buộc — AI tự qu
 
 **PR #63 — G9: WS `mission:progress` throttled push (M3 resolved)**
 
-- **Branch**: `devin/1777414636-g9-ws-mission-progress`. **Base**: `main` @ `81706a9`. **Status**: **Pending merge** (CI ✅ 3/3 xanh — build + Devin Review).
-- **Mục tiêu**: M3 — sau khi `MissionService.track(...)` increment progress, push một frame `mission:progress` qua WebSocket cho user owner.
-- **Files chi tiết**: `packages/shared/src/ws-events.ts` (+30/-0); `apps/api/src/modules/mission/mission-ws.emitter.ts` (new 47 line); `mission.service.ts` (+45/-10); `mission.module.ts` (rewrite +20); `test-helpers.ts` (+5/-3); `mission-ws.emitter.test.ts` (new 96 line, 6 test); `mission.service.test.ts` (+58/-1, 1 integration test). +7 test tổng.
-- **Tests local**: API 266/266; throttle verified.
-- **Risk**: low; `wsEmitter @Optional()` default null backward-compat full.
-- **Bước tiếp**: G10 đã mở PR #64.
-
----
-
-### Session 6 audit log (28/4 22:05 UTC — PR #62 G8 M11 profile rate-limit)
-
-**PR #62 — G8: rate-limit `GET /character/profile/:id` per-IP (M11 resolved)**
-
-- **Branch**: `devin/1777414051-g8-profile-rate-limit`. **Base**: `main` @ `81706a9`. **Status**: **Pending merge** (CI ✅ 3/3 xanh — build + Devin Review).
-- **Mục tiêu**: M11 — anti-scrape cho profile endpoint công khai (sau cookie auth).
-- **Files**: `character.controller.ts` (+30/-2); `character.module.ts` (+30/-8); `character.controller.test.ts` (new 105 line, 3 test).
-- **Tests local**: API 262/262; behavior 429 + per-IP isolation verified.
-- **Risk**: low; pattern y hệt PR #60.
-- **Bước tiếp**: G9 đã mở PR #63.
+- **Branch**: `devin/1777414636-g9-ws-mission-progress`. **Base**: `main` @ `81706a9` (sau PR #61). **Status**: **Pending merge** (CI chưa mở, chờ push).
+- **Mục tiêu**: M3 — sau khi `MissionService.track(...)` increment progress, push một frame `mission:progress` qua WebSocket cho user owner để FE cập nhật UI immediate, không cần polling/refetch. Throttle 500ms/user để tránh spam khi nhiều event dồn dập (vd cultivation tick + boss attack hit + chat msg cùng giay).
+- **Giải pháp**:
+  - `packages/shared/src/ws-events.ts`: thêm type `'mission:progress'` vào union `WsEventType` + interface `MissionProgressFramePayload` + `MissionProgressChange` + const `MISSION_PROGRESS_PUSH_THROTTLE_MS = 500`.
+  - **NEW** `apps/api/src/modules/mission/mission-ws.emitter.ts`: class `MissionWsEmitter` injectable. `pushProgress(userId, payload)` — throttle 500ms per-user; trong cửa sổ → drop (return false), ngoài → emit `realtime.emitToUser(userId, 'mission:progress', payload)` (return true). `now()` hàm inject để test deterministic không cần fake-timers.
+  - `mission.service.ts`: thêm DI token `MISSION_WS_EMITTER`, constructor 4th param `@Optional() @Inject(MISSION_WS_EMITTER) wsEmitter` (nếu null → silent skip). `track()` collect tất cả row được update thành công (CAS guard upd.count === 1) thành `MissionProgressChange[]`, sau đó query `character.userId` để emit. Không fail track nếu character thiếu (race-safe).
+  - `mission.module.ts`: import `RealtimeModule`, register `missionWsEmitterProvider` factory inject `RealtimeService`.
+  - `test-helpers.ts:makeMissionService`: thêm optional 2nd param `emitter` → backward-compat full (default `null`).
+- **Files**:
+  - `packages/shared/src/ws-events.ts` (+30 / -0)
+  - `apps/api/src/modules/mission/mission-ws.emitter.ts` (new, 47 line)
+  - `apps/api/src/modules/mission/mission.service.ts` (+45 / -10)
+  - `apps/api/src/modules/mission/mission.module.ts` (rewrite, +20 -0)
+  - `apps/api/src/test-helpers.ts` (+5 / -3)
+  - `apps/api/src/modules/mission/mission-ws.emitter.test.ts` (new, 96 line, 6 test)
+  - `apps/api/src/modules/mission/mission.service.test.ts` (+58 / -1, 1 integration test mới)
+- **Tests**: API local pass **266/266** (mới: 259 → 266, +7). Shared 47/47 · Web 64/64 · Build xanh.
+  - 6 emitter unit test: emit immediately, drop in window, emit after window, per-user isolation, empty changes drop, reset() works.
+  - 1 integration test: `track('CULTIVATE_SECONDS', 300)` gọi `emitToUser('userId', 'mission:progress', { changes: [daily, weekly] })` 1 lần; track thứ 2 trong 100ms drop; track thứ 3 sau 600ms emit lại với snapshot mới.
+- **CI**: chờ push branch.
+- **Risk**: low.
+  - Throttle drop in window → FE có thể bỏ lỡ update ít ôi nhưng không critical (FE mở trang `MissionView` vẫn refetch full list). Fallback an toàn.
+  - `wsEmitter` `@Optional()` với default null → tất cả tính đúng đắn của `track()` vẫn nguyên (nếu thiếu emitter, chỉ mất feature WS push).
+  - Không đổi schema, không migration.
+- **Backward compat**: `MissionService` constructor 4th param `@Optional()`, mọi callsite cũ (3-param) vẫn hợp lệ. `makeMissionService` 2nd param default `null`, mọi test cũ vẫn pass.
+- **i18n**: KHÔNG cần thêm key. Frame chỉ cần FE consume để update store.
+- **FE follow-up (NOT in this PR)**: thêm handler trong `apps/web/src/stores/realtime.ts` (hoặc tương đương) cho event `mission:progress` → update `mission` store snapshot. Hiện tại FE polling/refetch khi vào `MissionView` → chưa có frame này là graceful.
+- **Runtime smoke**: Needs runtime smoke (verify FE nhận đúng frame qua DevTools → Network → WS sau khi tu luyện / đánh boss / chat). Backend xanh ở mức unit-test (7 test mới); hành vi `RealtimeService.emitToUser` + `emit` đã cover ở chat/boss/mail từ trước.
+- **Rollback**: revert. `track()` quay về behavior cũ (chỉ update DB, không emit WS).
+- **Bước tiếp**: G10 — H6 wire Playwright vào GitHub Actions CI.
 
 ---
 

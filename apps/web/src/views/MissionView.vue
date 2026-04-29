@@ -14,6 +14,9 @@ import {
 import AppShell from '@/components/shell/AppShell.vue';
 import MButton from '@/components/ui/MButton.vue';
 import { formatItemRewardList } from '@/lib/itemName';
+import { applyMissionProgressFrame } from '@/lib/missionProgress';
+import { on as wsOn } from '@/ws/client';
+import type { MissionProgressFramePayload, WsFrame } from '@xuantoi/shared';
 
 const auth = useAuthStore();
 const game = useGameStore();
@@ -27,6 +30,7 @@ const loading = ref(false);
 const claiming = ref<string | null>(null);
 const now = ref(Date.now());
 let tickHandle: number | null = null;
+let unsubMissionProgress: (() => void) | null = null;
 
 onMounted(async () => {
   await auth.hydrate();
@@ -40,6 +44,15 @@ onMounted(async () => {
   tickHandle = window.setInterval(() => {
     now.value = Date.now();
   }, 1000);
+  // Realtime push từ server (PR #63 BE) — apply delta vào missions array
+  // tránh phải refetch full list mỗi khi player tu luyện / đánh boss / chat.
+  unsubMissionProgress = wsOn<MissionProgressFramePayload>(
+    'mission:progress',
+    (frame: WsFrame<MissionProgressFramePayload>) => {
+      if (!frame.payload) return;
+      missions.value = applyMissionProgressFrame(missions.value, frame.payload);
+    },
+  );
 });
 
 onUnmounted(() => {
@@ -47,6 +60,8 @@ onUnmounted(() => {
     window.clearInterval(tickHandle);
     tickHandle = null;
   }
+  unsubMissionProgress?.();
+  unsubMissionProgress = null;
 });
 
 async function refresh(): Promise<void> {
