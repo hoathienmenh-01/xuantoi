@@ -2,6 +2,8 @@ import type {
   LoginInput,
   RegisterInput,
   ChangePasswordInput,
+  ForgotPasswordInput,
+  ResetPasswordInput,
   PublicUser,
 } from '@xuantoi/shared';
 import { apiClient } from './client';
@@ -36,6 +38,30 @@ export async function changePassword(input: ChangePasswordInput): Promise<void> 
     input,
   );
   if (!data.ok) throw data.error ?? new Error('Đổi mật khẩu thất bại');
+}
+
+/**
+ * Forgot-password: BE luôn trả `{ ok: true }` dù email tồn tại hay không
+ * (chống user enumeration). Trong dev (`NODE_ENV !== 'production'`) BE trả
+ * thêm `devToken` để E2E test có thể auto-fill — production sẽ là `null`.
+ */
+export async function forgotPassword(
+  input: ForgotPasswordInput,
+): Promise<{ ok: boolean; devToken: string | null }> {
+  const { data } = await apiClient.post<AuthEnvelope<{ ok: boolean; devToken?: string | null }>>(
+    '/_auth/forgot-password',
+    input,
+  );
+  if (!data.ok) throw data.error ?? new Error('Gửi yêu cầu thất bại');
+  return { ok: !!data.data?.ok, devToken: data.data?.devToken ?? null };
+}
+
+export async function resetPassword(input: ResetPasswordInput): Promise<void> {
+  const { data } = await apiClient.post<AuthEnvelope<{ ok: true }>>(
+    '/_auth/reset-password',
+    input,
+  );
+  if (!data.ok) throw data.error ?? new Error('Đặt lại mật khẩu thất bại');
 }
 
 export async function logout(): Promise<void> {
