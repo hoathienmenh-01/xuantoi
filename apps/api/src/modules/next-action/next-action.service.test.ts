@@ -2,6 +2,11 @@ import { beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { PrismaService } from '../../common/prisma.service';
 import { NextActionService } from './next-action.service';
 import { TEST_DATABASE_URL, makeUserChar, wipeAll } from '../../test-helpers';
+import {
+  getLocalDateString,
+  DAILY_LOGIN_LINH_THACH,
+} from '../daily-login/daily-login.service';
+import { getMissionResetTz } from '../mission/mission.service';
 
 let prisma: PrismaService;
 let svc: NextActionService;
@@ -16,6 +21,25 @@ beforeEach(async () => {
   await wipeAll(prisma);
 });
 
+/**
+ * Seed today's daily login claim cho character để DAILY_LOGIN_AVAILABLE
+ * không xuất hiện trong các test không liên quan.
+ */
+async function seedDailyClaimToday(
+  characterId: string,
+  streak = 1,
+): Promise<void> {
+  const today = getLocalDateString(new Date(), getMissionResetTz());
+  await prisma.dailyLoginClaim.create({
+    data: {
+      characterId,
+      claimDateLocal: today,
+      linhThachDelta: DAILY_LOGIN_LINH_THACH,
+      streakAtClaim: streak,
+    },
+  });
+}
+
 describe('NextActionService.forUser', () => {
   it('NO_CHARACTER khi user chưa onboard', async () => {
     const user = await prisma.user.create({
@@ -29,6 +53,7 @@ describe('NextActionService.forUser', () => {
 
   it('CULTIVATE_IDLE fallback khi character idle + không có gì khác', async () => {
     const fx = await makeUserChar(prisma, { cultivating: false });
+    await seedDailyClaimToday(fx.characterId);
     const actions = await svc.forUser(fx.userId);
     expect(actions).toHaveLength(1);
     expect(actions[0].key).toBe('CULTIVATE_IDLE');
@@ -37,8 +62,27 @@ describe('NextActionService.forUser', () => {
 
   it('không gợi ý CULTIVATE_IDLE khi đang cultivating', async () => {
     const fx = await makeUserChar(prisma, { cultivating: true });
+    await seedDailyClaimToday(fx.characterId);
     const actions = await svc.forUser(fx.userId);
     expect(actions).toHaveLength(0);
+  });
+
+  it('DAILY_LOGIN_AVAILABLE khi chưa claim hôm nay', async () => {
+    const fx = await makeUserChar(prisma, { cultivating: true });
+    const actions = await svc.forUser(fx.userId);
+    expect(actions).toContainEqual({
+      key: 'DAILY_LOGIN_AVAILABLE',
+      priority: 2,
+      params: {},
+      route: '/',
+    });
+  });
+
+  it('không gợi ý DAILY_LOGIN_AVAILABLE khi đã claim hôm nay', async () => {
+    const fx = await makeUserChar(prisma, { cultivating: true });
+    await seedDailyClaimToday(fx.characterId);
+    const actions = await svc.forUser(fx.userId);
+    expect(actions.find((a) => a.key === 'DAILY_LOGIN_AVAILABLE')).toBeUndefined();
   });
 
   it('MISSION_CLAIMABLE khi có mission đã đạt goal nhưng chưa claim', async () => {
