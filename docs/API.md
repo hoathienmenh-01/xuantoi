@@ -1,131 +1,177 @@
 # Xuân Tôi — API Inventory
 
-Tóm tắt mọi endpoint REST + WebSocket event đang có ở `@xuantoi/api`. Mọi response bọc trong `{ ok: boolean, data?: T, error?: { code, message } }` trừ endpoint health/version.
+Tóm tắt mọi endpoint REST + WebSocket event đang có ở `@xuantoi/api`. Mọi response REST bọc trong `{ ok: boolean, data?: T, error?: { code, message } }` trừ `/healthz` / `/readyz` / `/version`.
+
+**Global prefix**: tất cả route REST đều có prefix `/api/` (set trong `apps/api/src/main.ts` qua `app.setGlobalPrefix('api')`). Các path bên dưới ghi tương đối — ví dụ `/character/me` thực tế là `/api/character/me`.
 
 ## Auth cookie
 
 - `xt_access` (JWT, 15 phút, httpOnly, SameSite=Lax)
 - `xt_refresh` (JWT, 30 ngày, httpOnly, SameSite=Lax)
 
-Đổi mật khẩu / logout → `passwordVersion`++ → access token cũ bị reject ở guard.
+Đổi mật khẩu / logout-all → `passwordVersion`++ → access token cũ bị reject ở guard. Logout đơn lẻ chỉ revoke refresh row hiện tại + clear cookie (không bump `passwordVersion` — intentional trade-off, xem `docs/SECURITY.md`).
 
 ## Health & Metadata
 
 | Method | Path       | Auth | Mô tả |
 |--------|------------|------|-------|
-| GET    | `/healthz` | —    | Liveness. 200 luôn nếu process chạy; trả `uptimeMs` + `ts`. |
+| GET    | `/healthz` | —    | Liveness. 200 luôn nếu process chạy; trả `{ ok, uptimeMs, ts }`. |
 | GET    | `/readyz`  | —    | Readiness. Check DB + Redis. 200 ok, 503 khi fail. |
 | GET    | `/version` | —    | `{ name, version, commit, node, ts }`. |
 
-## Auth — `AuthController`
+## Auth — `AuthController` (prefix `_auth`)
 
 | Method | Path                      | Auth | Mô tả |
 |--------|---------------------------|------|-------|
-| POST   | `/auth/register`          | —    | Body `{ email, password }`. 201 set cookie. |
-| POST   | `/auth/login`             | —    | Rate limit 5 fail / 15p / IP+email qua `LoginAttempt`. |
-| POST   | `/auth/logout`            | Yes  | Revoke refresh row hiện tại + clear cookie. |
-| POST   | `/auth/refresh`           | Yes (xt_refresh) | Rotation + reuse-detection. Sai → revoke cả chain. |
-| GET    | `/auth/session`           | Yes  | Trả user + role. |
-| POST   | `/auth/change-password`   | Yes  | `passwordVersion`++ → kill mọi phiên. |
+| POST   | `/_auth/register`         | —    | Body `{ email, password }`. 201 set cookie. **Rate limit per-IP 5 / 15min** (PR #60). |
+| POST   | `/_auth/login`            | —    | Rate limit 5 fail / 15p / IP+email qua `LoginAttempt`. |
+| POST   | `/_auth/logout`           | Yes  | Revoke refresh row hiện tại + clear cookie. |
+| POST   | `/_auth/logout-all`       | Yes  | Revoke toàn bộ refresh token của user (mọi thiết bị). FE confirm modal trước (PR #83/#85). |
+| POST   | `/_auth/refresh`          | Yes (xt_refresh) | Rotation + reuse-detection. Sai → revoke cả chain. |
+| GET    | `/_auth/session`          | Yes  | Trả `{ user: PublicUser }`. |
+| POST   | `/_auth/change-password`  | Yes  | `{ oldPassword, newPassword }`. `passwordVersion`++ → kill mọi phiên. |
 
 ## Character — `CharacterController`
 
-| Method | Path                    | Auth | Mô tả |
-|--------|-------------------------|------|-------|
-| GET    | `/character/me`         | Yes  | Nhân vật của user hoặc `null`. |
-| GET    | `/character/state`      | Yes  | Giống `me` + 404 NO_CHARACTER nếu chưa có. |
-| POST   | `/character/onboard`    | Yes  | Body `{ name, sectKey }`. |
-| POST   | `/character/cultivate`  | Yes  | Body `{ cultivating: boolean }`. Bật/tắt Nhập Định (tick qua cron BullMQ). |
-| POST   | `/character/breakthrough` | Yes | Đột phá cảnh giới khi đủ EXP. |
-
-## Cultivation — `CultivationController` (qua `CharacterController` + cron)
+| Method | Path                     | Auth | Mô tả |
+|--------|--------------------------|------|-------|
+| GET    | `/character/me`          | Yes  | Nhân vật của user hoặc `null`. |
+| GET    | `/character/profile/:id` | Yes  | Public profile. **Rate limit per-IP 120 / 15min** (PR #62 — anti-scrape). 404 NOT_FOUND nếu không tồn tại. |
+| GET    | `/character/state`       | Yes  | Giống `me` + 404 NO_CHARACTER nếu chưa onboard. |
+| POST   | `/character/onboard`     | Yes  | Body `{ name, sectKey: 'thanh_van' \| 'huyen_thuy' \| 'tu_la' }`. |
+| POST   | `/character/cultivate`   | Yes  | Body `{ cultivating: boolean }`. Bật/tắt Nhập Định (tick qua cron BullMQ). |
+| POST   | `/character/breakthrough` | Yes | Đột phá cảnh giới khi đủ EXP + đỉnh stage. |
 
 Tick EXP thực hiện bởi BullMQ processor `cultivation.processor.ts`. WS event `cultivate:tick` emit per-user khi tick xong.
 
 ## Combat PvE — `CombatController`
 
-| Method | Path                  | Auth | Mô tả |
-|--------|-----------------------|------|-------|
-| POST   | `/combat/engage`      | Yes  | `{ dungeonKey }`. Tạo encounter. |
-| POST   | `/combat/turn`        | Yes  | Tấn công 1 lượt; kết thúc → loot + linhThach via ledger. |
-| GET    | `/combat/current`     | Yes  | Encounter đang chạy (nếu có). |
+| Method | Path              | Auth | Mô tả |
+|--------|-------------------|------|-------|
+| POST   | `/combat/engage`  | Yes  | `{ dungeonKey }`. Tạo encounter ACTIVE. |
+| POST   | `/combat/turn`    | Yes  | Tấn công 1 lượt; kết thúc → loot + linhThach via ledger. |
+| GET    | `/combat/current` | Yes  | Encounter đang chạy (nếu có). |
 
 ## Inventory — `InventoryController`
 
-| Method | Path                     | Auth | Mô tả |
-|--------|--------------------------|------|-------|
-| GET    | `/inventory/me`          | Yes  | List item + equipped slot. |
-| POST   | `/inventory/equip`       | Yes  | `{ itemId, slot }`. |
-| POST   | `/inventory/unequip`     | Yes  | `{ slot }`. |
-| POST   | `/inventory/use-pill`    | Yes  | Tiêu đan. |
+| Method | Path                  | Auth | Mô tả |
+|--------|-----------------------|------|-------|
+| GET    | `/inventory/me`       | Yes  | List item + equipped slot. |
+| POST   | `/inventory/equip`    | Yes  | `{ itemId, slot }`. |
+| POST   | `/inventory/unequip`  | Yes  | `{ slot }`. |
+| POST   | `/inventory/use-pill` | Yes  | Tiêu đan. Ghi `ItemLedger` qtyDelta âm. |
 
 ## Market — `MarketController`
 
-| Method | Path                      | Auth | Mô tả |
-|--------|---------------------------|------|-------|
-| GET    | `/market/listings`        | Yes  | Browse listings. |
-| POST   | `/market/listings`        | Yes  | Đăng bán. |
-| POST   | `/market/listings/:id/buy` | Yes | Mua — bilateral lock via ledger. |
-| POST   | `/market/listings/:id/cancel` | Yes | Huỷ (chỉ chủ listing). |
+| Method | Path                          | Auth | Mô tả |
+|--------|-------------------------------|------|-------|
+| GET    | `/market/listings`            | Yes  | Browse listings. |
+| POST   | `/market/listings`            | Yes  | Đăng bán. |
+| POST   | `/market/listings/:id/buy`    | Yes  | Mua — bilateral lock via ledger. Phí `MARKET_FEE_PCT` (env). |
+| POST   | `/market/listings/:id/cancel` | Yes  | Huỷ (chỉ chủ listing). |
 
 ## Sect & Chat — `SectController`, `ChatController`
 
-| Method | Path                      | Auth | Mô tả |
-|--------|---------------------------|------|-------|
-| POST   | `/sect/create`            | Yes  | Tạo tông môn. |
-| POST   | `/sect/join`              | Yes  | Gia nhập. |
-| POST   | `/sect/leave`             | Yes  | Rời. |
-| POST   | `/sect/contribute`        | Yes  | Đóng linh thạch → treasury + cống hiến. |
-| GET    | `/chat/world?limit=N`     | Yes  | Lịch sử world chat. |
-| POST   | `/chat/send`              | Yes  | Gửi. Rate limit 8 msg / 30s / player (Redis). |
+| Method | Path                  | Auth | Mô tả |
+|--------|-----------------------|------|-------|
+| POST   | `/sect/create`        | Yes  | Tạo tông môn. |
+| POST   | `/sect/join`          | Yes  | Gia nhập. |
+| POST   | `/sect/leave`         | Yes  | Rời. |
+| POST   | `/sect/contribute`    | Yes  | Đóng linh thạch → treasury + cống hiến. |
+| GET    | `/chat/world?limit=N` | Yes  | Lịch sử world chat. |
+| POST   | `/chat/send`          | Yes  | Gửi. Rate limit 8 msg / 30s / player (Redis). |
 
 ## Boss — `BossController`
 
-| Method | Path                | Auth | Mô tả |
-|--------|---------------------|------|-------|
-| GET    | `/boss/current`     | Yes  | Boss đang active + top 10 damage. |
-| POST   | `/boss/:id/attack`  | Yes  | Đánh boss; khi HP ≤ 0 → distribute reward theo rank. |
+| Method | Path                | Auth  | Mô tả |
+|--------|---------------------|-------|-------|
+| GET    | `/boss/current`     | Yes   | Boss đang active + top 10 damage. |
+| POST   | `/boss/:id/attack`  | Yes   | Đánh boss; khi HP ≤ 0 → distribute reward theo rank (top 1 = 50%). |
+| POST   | `/boss/admin/spawn` | ADMIN | Spawn boss thủ công. Audit `BOSS_SPAWN`. |
+
+## Daily Login — `DailyLoginController` (PR #80, M9)
+
+| Method | Path                 | Auth | Mô tả |
+|--------|----------------------|------|-------|
+| GET    | `/daily-login/me`    | Yes  | `{ todayDateLocal, canClaimToday, currentStreak, nextRewardLinhThach }`. Tính theo `MISSION_RESET_TZ` (default `Asia/Ho_Chi_Minh`). |
+| POST   | `/daily-login/claim` | Yes  | Idempotent: lần đầu trong ngày → +100 LT + ghi `CurrencyLedger reason=DAILY_LOGIN`; gọi lần 2 → `{ claimed: false }`. |
+
+## Leaderboard — `LeaderboardController` (PR #59)
+
+| Method | Path                  | Auth | Mô tả |
+|--------|-----------------------|------|-------|
+| GET    | `/leaderboard/power?limit=50` | Yes | Top theo `(realm, power)` desc, clamp `1 ≤ limit ≤ 50`. Trả `{ entries: [{ rank, characterId, name, sectKey, realmKey, realmStage, power }] }`. |
+
+## Shop — `ShopController`
+
+| Method | Path        | Auth | Mô tả |
+|--------|-------------|------|-------|
+| GET    | `/shop/npc` | Yes  | Catalog NPC items (đan, trang bị beginner). |
+| POST   | `/shop/buy` | Yes  | `{ itemKey, qty }` → trừ tiền + grant item + ghi `ItemLedger reason=SHOP_BUY`. |
+
+## Mission — `MissionController`
+
+| Method | Path                  | Auth | Mô tả |
+|--------|-----------------------|------|-------|
+| GET    | `/missions/me`        | Yes  | Progress daily/weekly/once của player + `serverDateLocal`. Reset theo `MISSION_RESET_TZ`. |
+| POST   | `/missions/:id/claim` | Yes  | Nhận thưởng khi `progress >= target`. Idempotent qua `claimedAt`. |
+
+WS push: `mission:progress` (PR #63) emit sau `MissionService.track()` qua `MissionWsEmitter` throttle 500ms/user.
+
+## Mail — `MailController`
+
+| Method | Path                | Auth  | Mô tả |
+|--------|---------------------|-------|-------|
+| GET    | `/mail/me`          | Yes   | Inbox (≤100 mail desc). |
+| GET    | `/mail/unread-count`| Yes   | `{ count }`. Hydrate badge sau login (PR #71, M7). |
+| POST   | `/mail/:id/read`    | Yes   | Đánh dấu đã đọc. |
+| POST   | `/mail/:id/claim`   | Yes   | Nhận thưởng; CAS chống double-claim. |
+
+## Giftcode — `GiftcodeController` + `AdminController`
+
+| Method | Path                              | Auth  | Mô tả |
+|--------|-----------------------------------|-------|-------|
+| POST   | `/giftcodes/redeem`               | Yes   | `{ code }` → trao reward, 1 user / 1 code. |
+| GET    | `/admin/giftcodes?q=&status=&limit=` | ADMIN | List codes + filter (PR #81 G22). Status: `ACTIVE` / `REVOKED` / `EXPIRED` / `EXHAUSTED`. |
+| POST   | `/admin/giftcodes`                | ADMIN | Tạo code. Trùng `code` → 409 `CODE_EXISTS` (PR #84 G23). |
+| POST   | `/admin/giftcodes/:code/revoke`   | ADMIN | Vô hiệu hoá. |
 
 ## Topup & Admin — `TopupController`, `AdminController`
 
-| Method | Path                               | Auth  | Mô tả |
-|--------|------------------------------------|-------|-------|
-| POST   | `/topup`                           | Yes   | Tạo đơn `{ tienNgocAmount, proofMessage }`. |
-| GET    | `/topup/mine`                      | Yes   | Lịch sử đơn của user. |
-| GET    | `/admin/users?q=&page=`            | ADMIN | List user. |
-| POST   | `/admin/users/:id/ban`             | ADMIN | `{ banned }`. |
-| POST   | `/admin/users/:id/role`            | ADMIN | `{ role }`. |
-| POST   | `/admin/users/:id/grant`           | ADMIN | `{ linhThach, tienNgoc, reason }` — qua CurrencyService. |
-| GET    | `/admin/topups?page=&status=`      | ADMIN | List đơn topup. |
-| POST   | `/admin/topups/:id/approve`        | ADMIN | `{ note }` → credit tienNgoc + ledger. |
-| POST   | `/admin/topups/:id/reject`         | ADMIN | `{ note }`. |
-| GET    | `/admin/audit?page=`               | ADMIN | Audit log. |
+| Method | Path                                  | Auth  | Mô tả |
+|--------|---------------------------------------|-------|-------|
+| GET    | `/topup/packages`                     | —     | Catalog gói topup. |
+| GET    | `/topup/me`                           | Yes   | Lịch sử đơn của user. |
+| POST   | `/topup/create`                       | Yes   | `{ packageId, proofMessage }`. |
+| GET    | `/admin/users?q=&role=&banned=&page=` | ADMIN | List user + filter (PR earlier — role/banned). |
+| POST   | `/admin/users/:id/ban`                | ADMIN | `{ banned }`. |
+| POST   | `/admin/users/:id/role`               | ADMIN | `{ role }` — ADMIN-only (M8). |
+| POST   | `/admin/users/:id/grant`              | ADMIN | `{ linhThach, tienNgoc, reason }` — qua `CurrencyService` + ghi ledger `ADMIN_GRANT`. |
+| POST   | `/admin/users/:id/inventory/revoke`   | ADMIN | `{ itemKey, qty, reason }` (PR #66) — trừ qty + ghi `ItemLedger reason=ADMIN_REVOKE`. |
+| GET    | `/admin/topups?status=&q=&from=&to=&page=` | ADMIN | List đơn topup + filter date/email. |
+| POST   | `/admin/topups/:id/approve`           | ADMIN | `{ note }` → credit tienNgoc + ledger. |
+| POST   | `/admin/topups/:id/reject`            | ADMIN | `{ note }`. |
+| GET    | `/admin/audit?action=&q=&page=`       | ADMIN | Audit log + filter action/actor email. |
+| GET    | `/admin/stats`                        | ADMIN | Dashboard counters (users/topups pending/economy). |
+| GET    | `/admin/economy/alerts`               | ADMIN | Smart alerts: currency âm, item qty âm, ledger discrepancy (PR #54). |
+| POST   | `/admin/mail/send`                    | ADMIN | Gửi cho 1 character. |
+| POST   | `/admin/mail/broadcast`               | ADMIN | Gửi toàn server. |
 
-## Giftcode (PR E)
+## Next Action — `NextActionController` (smart UX)
 
-| Method | Path                                   | Auth  | Mô tả |
-|--------|----------------------------------------|-------|-------|
-| POST   | `/giftcodes/redeem`                    | Yes   | `{ code }` → trao reward, 1 user / 1 code. |
-| GET    | `/admin/giftcodes?limit=`              | ADMIN | List codes + stats. |
-| POST   | `/admin/giftcodes`                     | ADMIN | Tạo code. |
-| POST   | `/admin/giftcodes/:code/revoke`        | ADMIN | Vô hiệu hoá. |
+| Method | Path                | Auth | Mô tả |
+|--------|---------------------|------|-------|
+| GET    | `/me/next-actions`  | Yes  | Trả list "Nên làm gì tiếp?" — sắp đột phá / mission claim / mail unread / giftcode khả dụng / boss đang mở / daily login. |
 
-## Mission (PR B)
+## Logs — `LogsController` (PR #88, M6)
 
-| Method | Path                          | Auth | Mô tả |
-|--------|-------------------------------|------|-------|
-| GET    | `/missions/me`                | Yes  | Progress daily/weekly/once của player. |
-| POST   | `/missions/:id/claim`         | Yes  | Nhận thưởng khi target đã đạt. |
+| Method | Path                                     | Auth | Mô tả |
+|--------|------------------------------------------|------|-------|
+| GET    | `/logs/me?type=currency\|item&limit=&cursor=` | Yes | Self audit log của user — query `CurrencyLedger` hoặc `ItemLedger` của character mình. Keyset pagination `(createdAt DESC, id DESC)`. `limit ∈ [1, 50]`, default 20. Cursor opaque base64url `{createdAt.toISOString()}|{id}`. Response `{ entries: LogEntry[], nextCursor }`. Errors: `NO_CHARACTER` (404), `INVALID_CURSOR` (400). BigInt `delta` serialize as string. |
 
-## Mail (PR D)
-
-| Method | Path                    | Auth  | Mô tả |
-|--------|-------------------------|-------|-------|
-| GET    | `/mail/me`              | Yes   | Inbox (≤100 mail desc). |
-| POST   | `/mail/:id/read`        | Yes   | Đánh dấu đã đọc. |
-| POST   | `/mail/:id/claim`       | Yes   | Nhận thưởng; CAS chống double-claim. |
-| POST   | `/admin/mail/send`      | ADMIN | Gửi cho 1 character. |
-| POST   | `/admin/mail/broadcast` | ADMIN | Gửi toàn server. |
+`LogEntry` shape:
+- `LogEntryCurrency`: `{ kind: 'CURRENCY', id, createdAt, reason, refType, refId, actorUserId, currency: 'LINH_THACH'|'TIEN_NGOC', delta: string }`
+- `LogEntryItem`: `{ kind: 'ITEM', id, createdAt, reason, refType, refId, actorUserId, itemKey, qtyDelta: number }`
 
 ## WebSocket — `/ws` (RealtimeGateway)
 
@@ -137,21 +183,28 @@ Auth từ cookie `xt_access` (ưu tiên) hoặc `handshake.auth.token`.
 | `chat:msg`           | server → room  | `{ id, characterName, channel, body, createdAt }`. |
 | `boss:update`        | server → all   | HP + top damager sau attack. |
 | `market:listing:new` | server → all   | Listing mới. |
+| `mission:progress`   | server → user  | `{ characterId, changes: MissionProgressChange[] }` (PR #63 — throttle 500ms). |
 | `mail:new`           | server → user  | (kế hoạch) Khi admin gửi mail mới. |
 
 ## Error codes (chuẩn hoá)
 
-- Auth: `UNAUTHENTICATED`, `INVALID_CREDENTIALS`, `RATE_LIMITED`, `PASSWORD_CHANGED`, `REUSED_REFRESH_TOKEN`, `BANNED`.
-- Character: `NO_CHARACTER`, `NAME_TAKEN`, `NOT_ENOUGH_EXP`, `NOT_IN_CULTIVATION`.
-- Combat: `IN_COMBAT`, `NO_ENCOUNTER`, `ENCOUNTER_NOT_ACTIVE`.
-- Market: `ITEM_NOT_FOUND`, `NOT_OWNER`, `NOT_ENOUGH_FUNDS`, `LISTING_SOLD`.
-- Sect: `ALREADY_IN_SECT`, `NOT_IN_SECT`, `NOT_ENOUGH_FUNDS`.
-- Boss: `NO_ACTIVE_BOSS`, `BOSS_DEAD`, `COOLDOWN`.
-- Topup/Admin: `TOO_MANY_PENDING`, `ALREADY_PROCESSED`, `FORBIDDEN`, `NOT_FOUND`.
-- Giftcode: `CODE_NOT_FOUND`, `CODE_EXPIRED`, `CODE_REVOKED`, `CODE_EXHAUSTED`, `ALREADY_REDEEMED`, `NO_CHARACTER`, `INVALID_INPUT`.
-- Mail: `MAIL_NOT_FOUND`, `MAIL_EXPIRED`, `MAIL_ALREADY_CLAIMED`, `MAIL_NO_REWARD`, `NO_CHARACTER`.
-- Mission: `MISSION_NOT_FOUND`, `MISSION_ALREADY_CLAIMED`, `MISSION_NOT_READY`.
+- **Auth**: `UNAUTHENTICATED`, `INVALID_CREDENTIALS`, `RATE_LIMITED`, `PASSWORD_CHANGED`, `REUSED_REFRESH_TOKEN`, `BANNED`, `INVALID_INPUT`.
+- **Character**: `NO_CHARACTER`, `NAME_TAKEN`, `ALREADY_ONBOARDED`, `NOT_ENOUGH_EXP`, `NOT_AT_PEAK`, `NOT_IN_CULTIVATION`, `NOT_FOUND`.
+- **Combat**: `IN_COMBAT`, `NO_ENCOUNTER`, `ENCOUNTER_NOT_ACTIVE`.
+- **Market**: `ITEM_NOT_FOUND`, `NOT_OWNER`, `NOT_ENOUGH_FUNDS`, `LISTING_SOLD`.
+- **Sect**: `ALREADY_IN_SECT`, `NOT_IN_SECT`, `NOT_ENOUGH_FUNDS`.
+- **Boss**: `NO_ACTIVE_BOSS`, `BOSS_DEAD`, `COOLDOWN`.
+- **Topup/Admin**: `TOO_MANY_PENDING`, `ALREADY_PROCESSED`, `FORBIDDEN`, `NOT_FOUND`.
+- **Giftcode**: `CODE_NOT_FOUND`, `CODE_EXPIRED`, `CODE_REVOKED`, `CODE_EXHAUSTED`, `ALREADY_REDEEMED`, `CODE_EXISTS` (admin create — PR #84), `NO_CHARACTER`, `INVALID_INPUT`.
+- **Mail**: `MAIL_NOT_FOUND`, `MAIL_EXPIRED`, `MAIL_ALREADY_CLAIMED`, `MAIL_NO_REWARD`, `NO_CHARACTER`.
+- **Mission**: `MISSION_NOT_FOUND`, `MISSION_ALREADY_CLAIMED`, `MISSION_NOT_READY`.
+- **Daily login**: `NO_CHARACTER`.
+- **Shop**: `ITEM_NOT_FOUND`, `NOT_ENOUGH_FUNDS`, `INVALID_INPUT`.
+- **Logs (M6)**: `NO_CHARACTER`, `INVALID_CURSOR`, `INVALID_INPUT`.
 
 ## Environment
 
-Xem `.env.example`. Production khởi chạy sẽ assert `JWT_ACCESS_SECRET` / `JWT_REFRESH_SECRET` ≥ 32 ký tự; nếu thiếu sẽ refuse start.
+Xem `.env.example`. Production khởi chạy sẽ assert `JWT_ACCESS_SECRET` / `JWT_REFRESH_SECRET` ≥ 32 ký tự; nếu thiếu sẽ refuse start. Các biến quan trọng:
+- `MISSION_RESET_TZ` — timezone reset mission/daily login (default `Asia/Ho_Chi_Minh`).
+- `MARKET_FEE_PCT` — phí thị trường (number 0..100).
+- `ADMIN_BOOTSTRAP_*` — script `pnpm bootstrap:admin` để tạo admin đầu tiên.
