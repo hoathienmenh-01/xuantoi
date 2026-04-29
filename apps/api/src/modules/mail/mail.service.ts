@@ -108,6 +108,29 @@ export class MailService {
     return rows.map((r) => toView(r, now));
   }
 
+  /**
+   * Đếm số mail chưa đọc + chưa hết hạn của user. Cheap query (count(*)) dùng
+   * cho mail badge — KHÔNG cần fetch full inbox. Trả 0 nếu user chưa có
+   * character (silent — không throw, để FE hiển thị badge=0 thay vì lỗi).
+   *
+   * Index: `Mail(@@index recipientId, readAt)` cover cả filter readAt=null.
+   */
+  async unreadCount(userId: string): Promise<number> {
+    const char = await this.prisma.character.findUnique({
+      where: { userId },
+      select: { id: true },
+    });
+    if (!char) return 0;
+    const now = new Date();
+    return this.prisma.mail.count({
+      where: {
+        recipientId: char.id,
+        readAt: null,
+        OR: [{ expiresAt: null }, { expiresAt: { gt: now } }],
+      },
+    });
+  }
+
   async markRead(userId: string, mailId: string): Promise<MailView> {
     const char = await this.requireCharacter(userId);
     const mail = await this.prisma.mail.findFirst({

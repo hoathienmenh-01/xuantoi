@@ -16,6 +16,7 @@ const router = useRouter();
 
 onMounted(() => {
   badges.start();
+  void game.hydrateUnreadMail();
 });
 
 onUnmounted(() => {

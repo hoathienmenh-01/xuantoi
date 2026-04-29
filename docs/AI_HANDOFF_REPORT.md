@@ -1,6 +1,6 @@
 # AI Handoff Report — Xuân Tôi
 
-> **Snapshot**: `main` @ `81706a9` (Merge PR #61 audit session 6, 28 Apr 2026 22:05 UTC). PR #52..#61 đã merge `main`. **9 PR Pending merge**: #62 (G8), #63 (G9), #64 (G10), #65 (G11 stacked #63), #66 (G12), #67 (G13), #68 (G14 stacked #67), #69 (G15 — L2 market fee config), **#70 (G16 — admin user list filter by role/banned)**.
+> **Snapshot**: `main` @ `81706a9` (Merge PR #61 audit session 6, 28 Apr 2026 22:05 UTC). PR #52..#61 đã merge `main`. **10 PR Pending merge**: #62..#70 + **#71 (G17 — M7 mail unread badge BE: `GET /mail/unread-count` + FE hydrate)**.
 > **Người viết**: AI engineer session 28/4 sess.6 (audit refresh sau khi PR #58/#59/#60 đã merge — header report cũ vẫn ghi #59/#60 "Open" → đó là tồn tại lỗi thời và đã được fix bởi PR docs này).
 > **Đối tượng đọc**: AI kế nhiệm sẽ tiếp tục đưa dự án tới beta / production.
 >
@@ -85,30 +85,30 @@
 
 Mỗi PR đều `Merged` vào `main`, branch base = `main`. Smoke local (typecheck/lint/test/build) đã chạy ở mỗi PR; smoke E2E 6/6 đã pass tại PR #44 (snapshot `4d8af10`).
 
-### PR #70 — `feat(admin): filter user list by role / banned (G16 — admin productivity)` — **Pending merge**
+### PR #71 — `feat(api,web): GET /mail/unread-count + FE hydrate badge on mount (G17 — M7)` — **Pending merge**
 
-- **Branch**: `devin/1777418369-g16-admin-user-filter`. **Base**: `main` @ `81706a9`. **Status**: **Pending merge**.
-- **Mục tiêu** (Smart admin §3 from prompt user — "Bộ lọc tìm user"): Trước đây admin user list chỉ hỗ trợ free-text search `q` (email/character name). Khi closed beta có thể có 100s user, admin cần filter theo role (PLAYER/MOD/ADMIN) và trạng thái (active/banned) để xử lý nhanh.
+- **Branch**: `devin/1777418952-g17-mail-unread-count`. **Base**: `main` @ `81706a9`. **Status**: **Pending merge**.
+- **Mục tiêu** (M7 — Smart UX §6 "Mail unread badge"): Trước đây `apps/web/src/stores/game.ts:25` `unreadMail` là delta-only counter (+1 khi WS `mail:new`, =0 khi `clearMailBadge`). **Bug**: lúc user login lại / refresh page, badge luôn = 0 dù inbox còn mail chưa đọc — sai số rõ rệt.
 - **Giải pháp**:
-  - **BE `AdminService.listUsers(q, page, filters)`**: thêm tham số `filters: { role?: Role; banned?: boolean }`. Build `Prisma.UserWhereInput.AND` từ điều kiện q + role + banned. Backward-compat: filters default `{}` nên existing call (`stats.test.ts` etc.) không cần đổi.
-  - **BE `AdminController.users`**: thêm 2 query params `role` (whitelist `PLAYER`/`MOD`/`ADMIN`, sai → bỏ qua) và `banned` (`true`/`false` → boolean, khác → bỏ qua). Validate inline để tránh inject role không hợp lệ.
-  - **FE `apps/web/src/api/admin.ts`**: extend `adminListUsers(q, page, filters)` để pass params.
-  - **FE `AdminView.vue`**: thêm 2 `<select>` cạnh ô search — role filter + banned filter. `@change` reset page=0 + refresh. data-testid để E2E test.
-  - **i18n**: thêm key `admin.users.filter.{allRoles, allStatus, active, banned}` (vi + en).
+  - **BE `MailService.unreadCount(userId)`**: cheap `prisma.mail.count` filter `recipientId + readAt=null + (expiresAt=null OR expiresAt > now)`. Sử dụng index `Mail.@@index(recipientId, readAt)` cover sẵn. Trả 0 nếu user chưa có character (silent — không throw).
+  - **BE endpoint** `GET /mail/unread-count` (`apps/api/src/modules/mail/mail.controller.ts`): trả `{ count: number }`. Yêu cầu cookie auth.
+  - **FE `apps/web/src/api/mail.ts`**: thêm `fetchMailUnreadCount()`.
+  - **FE `apps/web/src/stores/game.ts`**: hàm `hydrateUnreadMail()` (silent error). Vẫn giữ delta WS (`mail:new` += 1).
+  - **FE `apps/web/src/components/shell/AppShell.vue`**: `onMounted` gọi `game.hydrateUnreadMail()` ngay sau `badges.start()` → mỗi lần shell mount (login fresh / refresh page) badge có số đúng.
 - **Files**:
-  - `apps/api/src/modules/admin/admin.service.ts` (+12 / -7)
-  - `apps/api/src/modules/admin/admin.controller.ts` (+11 / -2)
-  - `apps/api/src/modules/admin/admin-list-users-filter.test.ts` (new, 113 line, **8 test**)
-  - `apps/web/src/api/admin.ts` (+10 / -2)
-  - `apps/web/src/views/AdminView.vue` (+30 / -2)
-  - `apps/web/src/i18n/vi.json` (+6) / `en.json` (+6)
-- **Tests**: 8 test mới — không filter, role=PLAYER/MOD/ADMIN, banned=true/false, combine q+role, combine role+banned (AND logic). Tổng API test: **267/267** (was 259, +8).
-- **Local verified**: `pnpm typecheck` ✅ · `pnpm lint` ✅ · `pnpm test` ✅ all (47 + 267 + 64 = **378 pass**) · `pnpm build` ✅.
-- **Risk**: low. Backward-compat: API caller cũ không pass filter vẫn hoạt động identical. Validation whitelist chống SQL injection / Prisma enum mismatch.
-- **Backward compat**: Existing `adminListUsers(q, page)` calls không đổi — filter là optional param.
-- **Runtime smoke**: Needs runtime smoke — `/admin` tab Users → chọn "PLAYER" + "Bị khoá" → list chỉ PLAYER bị ban; reset selectors về "Tất cả..." → full list.
-- **Rollback**: revert; FE filter chỉ là UI, không persist data.
-- **Bước tiếp**: G17 — M6 mission analytics aggregate API, M7 mail unread badge BE check, hoặc thêm filter cho topup list (status đã có, thêm range date?).
+  - `apps/api/src/modules/mail/mail.service.ts` (+22)
+  - `apps/api/src/modules/mail/mail.controller.ts` (+10)
+  - `apps/api/src/modules/mail/mail-unread-count.test.ts` (new, 110 line, **7 test**)
+  - `apps/web/src/api/mail.ts` (+6)
+  - `apps/web/src/stores/game.ts` (+13 / -1)
+  - `apps/web/src/components/shell/AppShell.vue` (+1)
+- **Tests**: 7 test mới — inbox rỗng, không có character (silent), readAt filter, expired filter, expiresAt=null vẫn đếm, expiresAt > now vẫn đếm, user khác không lẫn. Tổng API test: **266/266** local (was 259, +7).
+- **Local verified**: `pnpm typecheck` ✅ · `pnpm lint` ✅ · `pnpm test` ✅ · `pnpm build` ✅.
+- **Risk**: low. Endpoint mới, không đổi cấu trúc existing. WS delta vẫn hoạt động. FE hydrate là silent error → không phá flow nếu API tạm chết.
+- **Backward compat**: `MailService.inbox` không đổi, `unreadMail` ref vẫn làm việc với WS event như cũ.
+- **Runtime smoke**: Needs runtime smoke — gửi mail cho user, login → badge `≥ 1` ngay (không cần mở inbox). Đọc 1 mail → WS `clearMailBadge` reset; refresh page → badge re-hydrate đúng số còn lại chưa đọc.
+- **Rollback**: revert; FE chỉ silent — không phá UI.
+- **Bước tiếp**: G18 — M6 mission analytics aggregate API hoặc smart admin filter cho topup/audit log.
 
 ---
 
