@@ -89,7 +89,41 @@
 
 ---
 
-## Recent Changes (PR #33→#91 đã merged trên main; chuỗi session 9d cán đích 29/4 ~14:55 UTC)
+## Recent Changes (PR #33→#93 đã merged trên main; PR #92 BETA_CHECKLIST refresh in-flight session 9e)
+
+### PR #92 — `docs(beta): refresh BETA_CHECKLIST.md — sync 14+ feature đã merge sau PR #59→#91` — **Pending merge** (CI 5/5 ✅ on initial commit; merged latest main `d37b6d4` để resolve conflict với cascade #91+#93)
+
+- **Branch**: `devin/1777474187-docs-beta-checklist-refresh`. **Base**: `main` @ `d37b6d4` (sau PR #91 + #93 merged). **Status**: docs-only PR mở từ session 9d, conflict với cascade #91/#93 → session 9e merge main giữ session 9e snapshot + add PR #92 entry mới này.
+- **Mục tiêu** (Smart docs/handoff §7 — `docs/BETA_CHECKLIST.md` lệch nghiêm trọng): file đánh dấu nhiều mục là "🔲 Chưa làm" nhưng thực tế đã merge từ session 5-9. Test count "94 test" (api 77 + shared 17) lệch hẳn so với thực tế **557 test** (api 369 + web 133 + shared 55) — sai lệch 6×. PM/PO đọc sẽ tưởng beta chưa sẵn sàng và yêu cầu duplicate work.
+- **Phát hiện gap** (8 nhóm):
+  - **Smart beta gameplay**: thiếu list Daily Login (PR #80), Leaderboard (PR #59), Public Profile, NextActionPanel, A Linh, /activity tab (PR #91), `pnpm audit:ledger` script. Đã marker "MissionProgress chưa làm" nhưng thực tế đã merge.
+  - **Mail system + GiftCode + LogsModule** ghi pending — thực tế đã có `MailView.vue`/`GiftCodeView.vue`/`/api/logs/me` (PR #88) live + admin UI filter (PR #81/#84).
+  - **LoginAttempt prune cron + RefreshToken cleanup**: ghi pending, thực tế `apps/api/src/modules/ops/ops.processor.ts` đã có repeatable BullMQ `prune`.
+  - **Redis rate limit chat**: ghi pending, thực tế `chatRateLimiterProvider` ở `apps/api/src/modules/chat/chat.module.ts` đã có.
+  - **Health check `/health`,`/ready`**: ghi pending, thực tế `apps/api/src/modules/health/health.controller.ts` đã có 3 endpoint `/healthz`/`/readyz`/`/version`.
+  - **Test count**: 94 → **557** (auto-snapshot 29/4) + new PR #85 SettingsView logout-all 7 test, PR #80 Daily Login idempotent, PR #88 logs cursor + isolation 20 test.
+  - **PR #83 L6 confirm modal + cross-tab 401 redirect**: chưa có entry.
+  - **Admin tab**: ghi "5 tab" nhưng đã 7 tab; thiếu filter cho từng tab + role split MOD/ADMIN (PR #48).
+  - **Loading splash proverbs**: thiếu PR #87 expand 7 → 64.
+  - **Recent docs PR**: thiếu reference PR #89 (API.md), PR #90 (QA + Admin guide), PR #93 (audit session 9e refresh).
+- **Thay đổi** (1 file):
+  - `docs/BETA_CHECKLIST.md` (~120 line → ~155 line): chuyển 14 mục từ "🔲 Chưa làm" sang "✅ Đã hoàn thành"; bổ sung 12 mục thực tế đã làm chưa được liệt kê; cập nhật test count; add 7 row "smart beta gameplay" mới (Daily Login, Leaderboard, Public profile, NextActionPanel, A Linh, /activity, audit:ledger script); thêm 2 row hardening (chat rate limit, health endpoint); thêm "Recommended trước beta open" + "Đã đủ điều kiện cho closed beta" cut-line analysis.
+- **Risk**: Cực thấp — docs only, không touch code/test/migration. Beta cut-line decision lúc này chính xác phản ánh code thực.
+- **Rollback**: revert single PR.
+- **Test added**: 0 (docs only).
+- **CI status (local sau merge main)**: typecheck ✅ lint ✅ web test 133/133 ✅ shared test 55/55 ✅ build ✅ — không touch code nên baseline giữ nguyên từ session 9e.
+- **Runtime smoke**: N/A (docs).
+- **`AI_HANDOFF_REPORT.md updated`**: this Recent Changes entry.
+- **Bước tiếp theo**: Audit RUN_LOCAL.md / DEPLOY.md / SECURITY.md / SEEDING.md / BALANCE.md cho staleness; hoặc execute QA_CHECKLIST runtime smoke trên local (15 phút); hoặc bắt đầu task top-priority tiếp theo theo §20 (leaderboard topup/sect, forgot-password, backup script, mobile responsive).
+
+### PR #93 — `docs(handoff): session 9e audit refresh — bump snapshot 3283e42 + sync M6/G23 Merged status` — **Merged into main** @ `d37b6d4` (29/4 ~15:35 UTC, CI 4/4 ✅)
+
+- **Branch**: `devin/1777476427-audit-session-9e-refresh`. **Base**: `main` @ `3283e42`. **Status**: Merged into main; CI 4/4 ✅ (build ×2 + e2e-smoke ×2). Docs-only.
+- **Mục tiêu**: Sau khi audit session 9d (PR #86) merged, chuỗi follow-up #84/#87/#88/#89/#90/#91 đã merge cascade vào main 29/4 ~14:55 UTC nhưng report cũ vẫn ghi snapshot `bbb6718` + một số entry "Pending merge" cho M6/G23 → audit này đồng bộ trạng thái: header snapshot bbb6718 → 3283e42; §2 commit + CI gần nhất + 0 PR open; PR #91 entry status Pending merge → Merged @ 3283e42; PR #84 entry status Pending merge → Merged @ 05b05c0; §16 M6 row Resolved by PR #88 + PR #91; §17 logs/me Resolved; §20 Roadmap mark M6 BE+FE Done + add 4 NEW top-priority tasks (leaderboard topup/sect, forgot-password, backup/restore script, mobile responsive verify); §12 Tests refresh shared 47→55, web 64→133, api ~370→~369, add Logs (M6) row 20 test.
+- **Files**: 1 file (`docs/AI_HANDOFF_REPORT.md` +38/-32 line).
+- **Risk**: green — docs-only, no code/schema change.
+- **Rollback**: revert single PR.
+- **`AI_HANDOFF_REPORT.md updated`**: bản thân PR này là refresh report.
 
 ### PR #91 — `feat(web): /activity tab — M6 self audit log consumer (GET /logs/me)` — **Merged into main** @ `3283e42` (29/4 ~14:55 UTC, CI 5/5 ✅)
 
