@@ -89,9 +89,53 @@
 
 ---
 
-## Recent Changes (PR #33→#89 + PR #87 + PR #88 merged; docs sync PR #90 in-flight session 9d)
+## Recent Changes (PR #33→#90 merged + PR #91 in-flight; BETA_CHECKLIST refresh PR #92 in-flight session 9d)
 
-### PR #90 — `docs(qa,admin): refresh QA_CHECKLIST.md + ADMIN_GUIDE.md + fix /api/_auth/* path bugs` — **Pending merge** (CI 5/5 ✅ on initial commit; extending scope with admin guide + path fix)
+### PR #92 — `docs(beta): refresh BETA_CHECKLIST.md — sync với 50+ feature đã merge sau PR #59/#63/#66/#80/#81/#83/#84/#88/#91` — **Pending merge**
+
+- **Branch**: `devin/1777474187-docs-beta-checklist-refresh`. **Base**: `main` @ `c6da89a` (sau PR #88 + #90 merged). **Status**: docs-only PR session 9d.
+- **Mục tiêu** (Smart docs/handoff §7 — `docs/BETA_CHECKLIST.md` lệch nghiêm trọng): file đánh dấu nhiều mục là "🔲 Chưa làm" nhưng thực tế đã merge từ session 5-9. Test count "94 test" (api 77 + shared 17) lệch hẳn so với thực tế **557 test** (api 369 + web 133 + shared 55) — sai lệch 6×. PM/PO đọc sẽ tưởng beta chưa sẵn sàng và yêu cầu duplicate work.
+- **Phát hiện gap** (8 nhóm):
+  - **Smart beta gameplay**: thiếu list Daily Login (PR #80), Leaderboard (PR #59), Public Profile, NextActionPanel, A Linh, /activity tab (PR #91), `pnpm audit:ledger` script. Đã marker "MissionProgress chưa làm" nhưng thực tế đã merge.
+  - **Mail system + GiftCode + LogsModule** ghi pending — thực tế đã có `MailView.vue`/`GiftCodeView.vue`/`/api/logs/me` (PR #88) live + admin UI filter (PR #81/#84).
+  - **LoginAttempt prune cron + RefreshToken cleanup**: ghi pending, thực tế `apps/api/src/modules/ops/ops.processor.ts` đã có repeatable BullMQ `prune`.
+  - **Redis rate limit chat**: ghi pending, thực tế `chatRateLimiterProvider` ở `apps/api/src/modules/chat/chat.module.ts` đã có.
+  - **Health check `/health`,`/ready`**: ghi pending, thực tế `apps/api/src/modules/health/health.controller.ts` đã có 3 endpoint `/healthz`/`/readyz`/`/version`.
+  - **Test count**: 94 → **557** (auto-snapshot 29/4) + new PR #85 SettingsView logout-all 7 test, PR #80 Daily Login idempotent, PR #88 logs cursor + isolation 20 test.
+  - **PR #83 L6 confirm modal + cross-tab 401 redirect**: chưa có entry.
+  - **Admin tab**: ghi "5 tab" nhưng đã 7 tab; thiếu filter cho từng tab + role split MOD/ADMIN (PR #48).
+  - **Loading splash proverbs**: thiếu PR #87 expand 7 → 64.
+  - **Recent docs PR**: thiếu reference PR #89 (API.md), PR #90 (QA + Admin guide).
+- **Thay đổi** (1 file):
+  - `docs/BETA_CHECKLIST.md` (~120 line → ~155 line): chuyển 14 mục từ "🔲 Chưa làm" sang "✅ Đã hoàn thành"; bổ sung 12 mục thực tế đã làm chưa được liệt kê; cập nhật test count; add 7 row "smart beta gameplay" mới (Daily Login, Leaderboard, Public profile, NextActionPanel, A Linh, /activity, audit:ledger script); thêm 2 row hardening (chat rate limit, health endpoint); thêm "Recommended trước beta open" + "Đã đủ điều kiện cho closed beta" cut-line analysis.
+- **Risk**: Cực thấp — docs only, không touch code/test/migration. Beta cut-line decision lúc này chính xác phản ánh code thực.
+- **Rollback**: revert single PR.
+- **Test added**: 0 (docs only).
+- **CI status (local)**: lint OK (markdown), no code change.
+- **Runtime smoke**: N/A (docs).
+- **`AI_HANDOFF_REPORT.md updated`**: this Recent Changes entry.
+- **Bước tiếp theo**: Audit RUN_LOCAL.md / DEPLOY.md / SECURITY.md / SEEDING.md / BALANCE.md cho staleness; hoặc execute QA_CHECKLIST runtime smoke trên local (15 phút).
+
+### PR #91 — `feat(web): /activity tab — M6 self audit log consumer (GET /logs/me)` — **Pending merge** (CI 5/5 ✅)
+
+- **Branch**: `devin/1777473333-fe-logs-tab`. **Base**: `main` @ `c6da89a` (sau PR #88 + #90 merged). **Status**: code complete + local typecheck/lint/test 369/133/55 + build xanh; CI 5/5 ✅.
+- **Mục tiêu** (Recommended Roadmap §20 — FE consumer cho M6 sau khi PR #88 merged): BE `GET /logs/me` đã live nhưng FE chưa có view nào tiêu thụ → endpoint chưa hữu dụng cho người chơi. Thêm tab "Hoạt Động" trong sidebar để player tự xem ledger thu/chi linh thạch + tiên ngọc + xuất nhập linh bảo (replace flow "support tra DB tay").
+- **Files** (5 new + 3 modified):
+  - `apps/web/src/api/logs.ts` (new, ~70 line) — `fetchLogsMe({ type, limit, cursor })` envelope unwrap.
+  - `apps/web/src/views/ActivityView.vue` (new, ~225 line) — tab toggle, keyset "load more" (không infinite scroll), signed delta dương `+N` xanh / âm `-N` đỏ, reason qua i18n fallback raw, item name từ `itemByKey()`.
+  - `apps/web/src/views/__tests__/ActivityView.test.ts` (new, 10 vitest).
+  - `apps/web/src/router/index.ts` (+5) — route `/activity`.
+  - `apps/web/src/components/shell/AppShell.vue` (+7) — sidebar link `帳 Hoạt Động`.
+  - `apps/web/src/i18n/{vi,en}.json` (+50/file) — `activity.*` block: tabs/loading/loadMore/empty/errors (UNAUTHENTICATED/NO_CHARACTER/INVALID_CURSOR/UNKNOWN)/currencyLabel/reasons (24 ledger reason code).
+- **Risk**: Thấp — FE only, không thay schema/migration/BE. Read-only consumer của endpoint stable đã có 20 vitest cover. Reason mapping fallback raw → BE thêm reason code mới không crash.
+- **Rollback**: revert single PR.
+- **Test added**: +10 web vitest. Tổng web: 123 → **133**.
+- **CI status (local)**: typecheck ✅ lint ✅ test 369/133/55 ✅ build ✅. **CI GitHub: 5/5 ✅**.
+- **Runtime smoke**: Pending — sẽ smoke khi merge: open `/activity`, verify currency/item tab render, switch tab, load more, check delta sign + reason translation, empty state.
+- **`AI_HANDOFF_REPORT.md updated`**: entry trên branch PR #91.
+- **Bước tiếp theo**: Audit BETA_CHECKLIST.md (PR #92 này) hoặc audit RUN_LOCAL/DEPLOY/SECURITY.
+
+### PR #90 — `docs(qa,admin): refresh QA_CHECKLIST.md + ADMIN_GUIDE.md + fix /api/_auth/* path bugs` — **Merged into main** (CI 5/5 ✅, session 9d)
 
 - **Branch**: `devin/1777472509-docs-qa-checklist-refresh`. **Base**: `main` @ `89e3fb6` (sau PR #87 L3 merged). **Status**: docs-only PR session 9d, sau khi PR #89 + #87 + #88 merged.
 - **Mục tiêu** (Smart docs/handoff §7 — đồng bộ docs sau cascade PR #59/#63/#66/#67/#71/#80/#81/#83/#84/#88; fix path bugs `/api/auth/*` → `/api/_auth/*`):
