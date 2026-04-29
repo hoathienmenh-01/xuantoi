@@ -1,6 +1,8 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../common/prisma.service';
 import { expCostForStage } from '@xuantoi/shared';
+import { getMissionResetTz } from '../mission/mission.service';
+import { getLocalDateString } from '../daily-login/daily-login.service';
 
 /**
  * Smart next-action — gợi ý "Nên làm gì tiếp?" dựa trên trạng thái nhân vật.
@@ -18,6 +20,7 @@ export type NextActionKey =
   | 'NO_CHARACTER'
   | 'BREAKTHROUGH_READY'
   | 'MISSION_CLAIMABLE'
+  | 'DAILY_LOGIN_AVAILABLE'
   | 'MAIL_UNCLAIMED'
   | 'MAIL_UNREAD'
   | 'BOSS_ACTIVE'
@@ -61,12 +64,16 @@ export class NextActionService {
     const now = new Date();
     const characterId = character.id;
 
+    const tz = getMissionResetTz();
+    const todayDateLocal = getLocalDateString(now, tz);
+
     const [
       missionRows,
       mailUnclaimed,
       mailUnread,
       activeBoss,
       pendingTopup,
+      dailyLoginToday,
     ] = await Promise.all([
       // Prisma không so sánh 2 cột trong `where`; mỗi character có ≤ ~10 row,
       // fetch all rồi filter trong code rẻ hơn raw SQL.
@@ -117,6 +124,12 @@ export class NextActionService {
         select: { transferCode: true },
         orderBy: { createdAt: 'desc' },
       }),
+      this.prisma.dailyLoginClaim.findUnique({
+        where: {
+          characterId_claimDateLocal: { characterId, claimDateLocal: todayDateLocal },
+        },
+        select: { id: true },
+      }),
     ]);
 
     const actions: NextAction[] = [];
@@ -141,6 +154,15 @@ export class NextActionService {
         priority: 1,
         params: { count: missionClaimable },
         route: '/missions',
+      });
+    }
+
+    if (!dailyLoginToday) {
+      actions.push({
+        key: 'DAILY_LOGIN_AVAILABLE',
+        priority: 2,
+        params: {},
+        route: '/',
       });
     }
 

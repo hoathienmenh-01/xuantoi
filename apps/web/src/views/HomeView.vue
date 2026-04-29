@@ -11,6 +11,7 @@ import AppShell from '@/components/shell/AppShell.vue';
 import MButton from '@/components/ui/MButton.vue';
 import NextActionPanel from '@/components/NextActionPanel.vue';
 import OnboardingChecklist from '@/components/OnboardingChecklist.vue';
+import DailyLoginCard from '@/components/DailyLoginCard.vue';
 
 const auth = useAuthStore();
 const router = useRouter();
@@ -87,6 +88,7 @@ async function onBreakthrough(): Promise<void> {
 <template>
   <AppShell>
     <OnboardingChecklist v-if="game.character" class="mb-4" />
+    <DailyLoginCard v-if="game.character" class="mb-4" />
     <NextActionPanel v-if="game.character" class="mb-6" />
     <div v-if="game.character" class="grid gap-6 lg:grid-cols-[2fr_1fr]">
       <section class="rounded border border-ink-300/40 bg-ink-700/30 p-5">
