@@ -156,6 +156,22 @@ describe('audit-ledger script', () => {
     });
   });
 
+  it('preserves itemKey containing colon character in discrepancy report', async () => {
+    const { characterId } = await makeUserChar(prisma);
+    const colonItemKey = 'pet:fox:rare';
+    await prisma.inventoryItem.create({
+      data: { characterId, itemKey: colonItemKey, qty: 5 },
+    });
+    await prisma.itemLedger.create({
+      data: { characterId, itemKey: colonItemKey, qtyDelta: 2, reason: 'TEST' },
+    });
+
+    const r = await auditLedger(prisma);
+    expect(r.inventoryDiscrepancies).toHaveLength(1);
+    expect(r.inventoryDiscrepancies[0].itemKey).toBe(colonItemKey);
+    expect(r.inventoryDiscrepancies[0].characterId).toBe(characterId);
+  });
+
   it('aggregates multiple InventoryItem rows per (char, itemKey) including equipped slot', async () => {
     const { characterId } = await makeUserChar(prisma);
     // Pretend player has 2 stacks of same itemKey: 1 equipped + 1 in bag.

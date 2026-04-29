@@ -109,7 +109,9 @@ export async function auditLedger(prisma: PrismaClient): Promise<AuditResult> {
     const ledgerSum = ledgerSumLookup.get(key) ?? 0;
     const inventorySum = inventorySumLookup.get(key) ?? 0;
     if (ledgerSum !== inventorySum) {
-      const [characterId, itemKey] = key.split(':');
+      const sepIdx = key.indexOf(':');
+      const characterId = key.slice(0, sepIdx);
+      const itemKey = key.slice(sepIdx + 1);
       inventoryDiscrepancies.push({
         characterId,
         itemKey,
