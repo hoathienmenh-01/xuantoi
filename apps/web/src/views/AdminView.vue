@@ -8,19 +8,25 @@ import { useToastStore } from '@/stores/toast';
 import {
   adminApproveTopup,
   adminBanUser,
+  adminCreateGiftcode,
   adminEconomyAlerts,
   adminGrant,
   adminListAudit,
+  adminListGiftcodes,
   adminListTopups,
   adminListUsers,
   adminRejectTopup,
+  adminRevokeGiftcode,
   adminSetRole,
   adminSpawnBoss,
   adminStats,
+  giftCodeStatusOf,
   type AdminAuditRow,
   type AdminEconomyAlerts,
+  type AdminGiftCodeRow,
   type AdminStats,
   type AdminUserRow,
+  type GiftCodeStatus,
   type Role,
 } from '@/api/admin';
 import { getCurrentBoss, type BossView } from '@/api/boss';
@@ -34,7 +40,7 @@ const toast = useToastStore();
 const router = useRouter();
 const { t } = useI18n();
 
-type Tab = 'stats' | 'users' | 'topups' | 'audit' | 'boss';
+type Tab = 'stats' | 'users' | 'topups' | 'audit' | 'giftcodes' | 'boss';
 const tab = ref<Tab>('stats');
 const stats = ref<AdminStats | null>(null);
 const alerts = ref<AdminEconomyAlerts | null>(null);
@@ -68,6 +74,19 @@ const auditEmailFilter = ref('');
 const audits = ref<AdminAuditRow[]>([]);
 const auditTotal = ref(0);
 
+// Giftcodes tab
+const giftQuery = ref('');
+const giftStatusFilter = ref<'' | GiftCodeStatus>('');
+const giftcodes = ref<AdminGiftCodeRow[]>([]);
+const giftCreateOpen = ref(false);
+const giftCreateCode = ref('');
+const giftCreateLinhThach = ref('0');
+const giftCreateTienNgoc = ref(0);
+const giftCreateExp = ref('0');
+const giftCreateMaxRedeems = ref<number | ''>('');
+const giftCreateExpiresDays = ref<number | ''>('');
+const giftCreating = ref(false);
+
 // Boss tab
 const bossKey = ref('');
 const bossLevel = ref<number>(1);
@@ -100,6 +119,7 @@ watch(tab, async (curTab) => {
   else if (curTab === 'boss') await refreshCurrentBoss();
   else if (curTab === 'topups') await refreshTopups();
   else if (curTab === 'audit') await refreshAudit();
+  else if (curTab === 'giftcodes') await refreshGiftcodes();
 });
 
 async function refreshStats(): Promise<void> {
@@ -241,6 +261,70 @@ async function rejectTopup(o: TopupOrderView): Promise<void> {
   }
 }
 
+async function refreshGiftcodes(): Promise<void> {
+  loading.value = true;
+  try {
+    const filters: { q?: string; status?: GiftCodeStatus | '' } = {};
+    if (giftQuery.value) filters.q = giftQuery.value.trim();
+    if (giftStatusFilter.value) filters.status = giftStatusFilter.value;
+    giftcodes.value = await adminListGiftcodes(filters);
+  } catch (e) {
+    handleErr(e);
+  } finally {
+    loading.value = false;
+  }
+}
+
+function openGiftCreate(): void {
+  giftCreateOpen.value = true;
+  giftCreateCode.value = '';
+  giftCreateLinhThach.value = '0';
+  giftCreateTienNgoc.value = 0;
+  giftCreateExp.value = '0';
+  giftCreateMaxRedeems.value = '';
+  giftCreateExpiresDays.value = '';
+}
+
+async function submitGiftCreate(): Promise<void> {
+  if (giftCreating.value) return;
+  giftCreating.value = true;
+  try {
+    const input: Parameters<typeof adminCreateGiftcode>[0] = {
+      code: giftCreateCode.value.trim(),
+      rewardLinhThach: giftCreateLinhThach.value || '0',
+      rewardTienNgoc: giftCreateTienNgoc.value || 0,
+      rewardExp: giftCreateExp.value || '0',
+    };
+    if (typeof giftCreateMaxRedeems.value === 'number' && giftCreateMaxRedeems.value > 0) {
+      input.maxRedeems = giftCreateMaxRedeems.value;
+    }
+    if (typeof giftCreateExpiresDays.value === 'number' && giftCreateExpiresDays.value > 0) {
+      const d = new Date();
+      d.setDate(d.getDate() + giftCreateExpiresDays.value);
+      input.expiresAt = d.toISOString();
+    }
+    await adminCreateGiftcode(input);
+    toast.push({ type: 'success', text: t('admin.giftcodes.createdToast') });
+    giftCreateOpen.value = false;
+    await refreshGiftcodes();
+  } catch (e) {
+    handleErr(e);
+  } finally {
+    giftCreating.value = false;
+  }
+}
+
+async function revokeGiftcode(row: AdminGiftCodeRow): Promise<void> {
+  if (!confirm(t('admin.giftcodes.revokeConfirm', { code: row.code }))) return;
+  try {
+    await adminRevokeGiftcode(row.code);
+    toast.push({ type: 'success', text: t('admin.giftcodes.revokedToast') });
+    await refreshGiftcodes();
+  } catch (e) {
+    handleErr(e);
+  }
+}
+
 async function refreshCurrentBoss(): Promise<void> {
   try {
     currentBoss.value = await getCurrentBoss();
@@ -292,7 +376,7 @@ const isAdmin = () => game.character?.role === 'ADMIN';
 
       <nav class="flex gap-1 border-b border-ink-300/30 text-sm">
         <button
-          v-for="tk in (['stats','users','topups','audit','boss'] as const)"
+          v-for="tk in (['stats','users','topups','audit','giftcodes','boss'] as const)"
           :key="tk"
           class="px-3 py-2"
           :class="tab === tk ? 'border-b-2 border-amber-300 text-ink-50' : 'text-ink-300'"
@@ -669,6 +753,186 @@ const isAdmin = () => game.character?.role === 'ADMIN';
             <button @click="auditPage++; refreshAudit()">{{ t('common.pageNext') }}</button>
           </div>
         </div>
+      </section>
+
+      <!-- GIFTCODES TAB -->
+      <section v-else-if="tab === 'giftcodes'" class="space-y-3" data-testid="admin-giftcodes-section">
+        <div class="flex gap-2 items-center text-sm flex-wrap">
+          <input
+            v-model="giftQuery"
+            data-testid="admin-giftcode-q"
+            :placeholder="t('admin.giftcodes.filter.qPlaceholder')"
+            class="px-2 py-1 bg-ink-700/40 border border-ink-300/30 rounded"
+            @keydown.enter="refreshGiftcodes()"
+          />
+          <select
+            v-model="giftStatusFilter"
+            data-testid="admin-giftcode-status"
+            class="px-2 py-1 bg-ink-700/40 border border-ink-300/30 rounded"
+            @change="refreshGiftcodes()"
+          >
+            <option value="">{{ t('common.all') }}</option>
+            <option value="ACTIVE">{{ t('admin.giftcodes.status.ACTIVE') }}</option>
+            <option value="REVOKED">{{ t('admin.giftcodes.status.REVOKED') }}</option>
+            <option value="EXPIRED">{{ t('admin.giftcodes.status.EXPIRED') }}</option>
+            <option value="EXHAUSTED">{{ t('admin.giftcodes.status.EXHAUSTED') }}</option>
+          </select>
+          <MButton data-testid="admin-giftcode-search" @click="refreshGiftcodes()">{{ t('common.search') }}</MButton>
+          <MButton
+            v-if="isAdmin()"
+            data-testid="admin-giftcode-open-create"
+            @click="openGiftCreate()"
+          >
+            {{ t('admin.giftcodes.createBtn') }}
+          </MButton>
+        </div>
+
+        <!-- Create form (admin only) -->
+        <div
+          v-if="giftCreateOpen"
+          data-testid="admin-giftcode-create-form"
+          class="bg-ink-700/30 border border-amber-300/30 rounded p-3 space-y-2 text-sm"
+        >
+          <h3 class="text-amber-200">{{ t('admin.giftcodes.createTitle') }}</h3>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
+            <label class="block">
+              <span class="text-ink-300 text-xs">{{ t('admin.giftcodes.create.code') }}</span>
+              <input
+                v-model="giftCreateCode"
+                data-testid="admin-giftcode-code"
+                class="w-full px-2 py-1 bg-ink-700/40 border border-ink-300/30 rounded mt-1 font-mono"
+                placeholder="WELCOME100"
+                maxlength="32"
+              />
+            </label>
+            <label class="block">
+              <span class="text-ink-300 text-xs">{{ t('admin.giftcodes.create.linhThach') }}</span>
+              <input
+                v-model="giftCreateLinhThach"
+                data-testid="admin-giftcode-linh"
+                class="w-full px-2 py-1 bg-ink-700/40 border border-ink-300/30 rounded mt-1"
+                inputmode="numeric"
+              />
+            </label>
+            <label class="block">
+              <span class="text-ink-300 text-xs">{{ t('admin.giftcodes.create.tienNgoc') }}</span>
+              <input
+                v-model.number="giftCreateTienNgoc"
+                data-testid="admin-giftcode-ngoc"
+                type="number"
+                min="0"
+                class="w-full px-2 py-1 bg-ink-700/40 border border-ink-300/30 rounded mt-1"
+              />
+            </label>
+            <label class="block">
+              <span class="text-ink-300 text-xs">{{ t('admin.giftcodes.create.exp') }}</span>
+              <input
+                v-model="giftCreateExp"
+                data-testid="admin-giftcode-exp"
+                class="w-full px-2 py-1 bg-ink-700/40 border border-ink-300/30 rounded mt-1"
+                inputmode="numeric"
+              />
+            </label>
+            <label class="block">
+              <span class="text-ink-300 text-xs">{{ t('admin.giftcodes.create.maxRedeems') }}</span>
+              <input
+                v-model.number="giftCreateMaxRedeems"
+                data-testid="admin-giftcode-maxredeems"
+                type="number"
+                min="1"
+                class="w-full px-2 py-1 bg-ink-700/40 border border-ink-300/30 rounded mt-1"
+                :placeholder="t('admin.giftcodes.create.maxRedeemsPlaceholder')"
+              />
+            </label>
+            <label class="block">
+              <span class="text-ink-300 text-xs">{{ t('admin.giftcodes.create.expiresDays') }}</span>
+              <input
+                v-model.number="giftCreateExpiresDays"
+                data-testid="admin-giftcode-expdays"
+                type="number"
+                min="1"
+                class="w-full px-2 py-1 bg-ink-700/40 border border-ink-300/30 rounded mt-1"
+                :placeholder="t('admin.giftcodes.create.expiresDaysPlaceholder')"
+              />
+            </label>
+          </div>
+          <div class="flex gap-2 justify-end">
+            <button class="text-xs text-ink-300 underline" @click="giftCreateOpen = false">
+              {{ t('common.cancel') }}
+            </button>
+            <MButton
+              data-testid="admin-giftcode-submit-create"
+              :disabled="giftCreating || !giftCreateCode.trim()"
+              @click="submitGiftCreate()"
+            >
+              {{ giftCreating ? t('admin.giftcodes.creating') : t('admin.giftcodes.submitCreate') }}
+            </MButton>
+          </div>
+        </div>
+
+        <table class="w-full text-sm" data-testid="admin-giftcode-table">
+          <thead class="text-ink-300 text-xs">
+            <tr class="text-left">
+              <th class="py-1">{{ t('admin.giftcodes.col.code') }}</th>
+              <th>{{ t('admin.giftcodes.col.rewards') }}</th>
+              <th>{{ t('admin.giftcodes.col.redeemed') }}</th>
+              <th>{{ t('admin.giftcodes.col.expiresAt') }}</th>
+              <th>{{ t('admin.giftcodes.col.status') }}</th>
+              <th>{{ t('admin.giftcodes.col.createdAt') }}</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-if="giftcodes.length === 0">
+              <td colspan="7" class="py-4 text-center text-ink-300 text-xs" data-testid="admin-giftcode-empty">
+                {{ t('admin.giftcodes.empty') }}
+              </td>
+            </tr>
+            <tr
+              v-for="g in giftcodes"
+              :key="g.id"
+              class="border-t border-ink-300/20"
+              :data-testid="`admin-giftcode-row-${g.code}`"
+            >
+              <td class="py-1 font-mono text-amber-200">{{ g.code }}</td>
+              <td class="text-xs">
+                <span v-if="g.rewardLinhThach !== '0'">LT {{ g.rewardLinhThach }}</span>
+                <span v-if="g.rewardTienNgoc > 0" class="ml-2">TN {{ g.rewardTienNgoc }}</span>
+                <span v-if="g.rewardExp !== '0'" class="ml-2">EXP {{ g.rewardExp }}</span>
+                <span v-if="g.rewardItems.length > 0" class="ml-2 text-ink-300">
+                  +{{ g.rewardItems.length }} {{ t('admin.giftcodes.itemsLabel') }}
+                </span>
+              </td>
+              <td>{{ g.redeemCount }}<span v-if="g.maxRedeems !== null">/{{ g.maxRedeems }}</span></td>
+              <td class="text-ink-300 text-xs">
+                {{ g.expiresAt ? new Date(g.expiresAt).toLocaleString('vi-VN') : '—' }}
+              </td>
+              <td>
+                <span
+                  class="text-xs px-2 py-0.5 rounded"
+                  :class="{
+                    'bg-emerald-700/30 text-emerald-200': giftCodeStatusOf(g) === 'ACTIVE',
+                    'bg-red-700/30 text-red-200': giftCodeStatusOf(g) === 'REVOKED',
+                    'bg-ink-700/30 text-ink-300': giftCodeStatusOf(g) === 'EXPIRED' || giftCodeStatusOf(g) === 'EXHAUSTED',
+                  }"
+                >
+                  {{ t(`admin.giftcodes.status.${giftCodeStatusOf(g)}`) }}
+                </span>
+              </td>
+              <td class="text-ink-300 text-xs">{{ new Date(g.createdAt).toLocaleString('vi-VN') }}</td>
+              <td>
+                <button
+                  v-if="isAdmin() && giftCodeStatusOf(g) === 'ACTIVE'"
+                  :data-testid="`admin-giftcode-revoke-${g.code}`"
+                  class="text-xs text-red-200 underline"
+                  @click="revokeGiftcode(g)"
+                >
+                  {{ t('admin.giftcodes.revokeBtn') }}
+                </button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
       </section>
 
       <!-- BOSS TAB -->

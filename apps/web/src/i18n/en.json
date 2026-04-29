@@ -699,6 +699,7 @@
       "users": "Users",
       "topups": "Top-ups",
       "audit": "Audit",
+      "giftcodes": "Giftcodes",
       "boss": "Boss"
     },
     "stats": {
@@ -800,6 +801,45 @@
         "actionPlaceholder": "Filter by action (e.g. user., topup.)",
         "emailPlaceholder": "Filter by actor email"
       }
+    },
+    "giftcodes": {
+      "filter": {
+        "qPlaceholder": "Search by code…"
+      },
+      "status": {
+        "ACTIVE": "Active",
+        "REVOKED": "Revoked",
+        "EXPIRED": "Expired",
+        "EXHAUSTED": "Exhausted"
+      },
+      "col": {
+        "code": "Code",
+        "rewards": "Rewards",
+        "redeemed": "Redeemed",
+        "expiresAt": "Expires",
+        "status": "Status",
+        "createdAt": "Created"
+      },
+      "empty": "No giftcodes yet.",
+      "createBtn": "+ New Giftcode",
+      "createTitle": "Create new giftcode",
+      "create": {
+        "code": "Code (4–32 chars, A-Z 0-9 _ -)",
+        "linhThach": "Linh Thach",
+        "tienNgoc": "Tien Ngoc",
+        "exp": "EXP",
+        "maxRedeems": "Max redeems",
+        "maxRedeemsPlaceholder": "Empty = unlimited",
+        "expiresDays": "Expires in (days)",
+        "expiresDaysPlaceholder": "Empty = never"
+      },
+      "submitCreate": "Create",
+      "creating": "Creating…",
+      "createdToast": "Giftcode created.",
+      "revokeBtn": "Revoke",
+      "revokeConfirm": "Revoke {code}? Players can no longer redeem this code.",
+      "revokedToast": "Giftcode revoked.",
+      "itemsLabel": "items"
     },
     "boss": {
       "title": "Spawn World Boss",

@@ -699,6 +699,7 @@
       "users": "Người dùng",
       "topups": "Đơn nạp",
       "audit": "Nhật ký",
+      "giftcodes": "Giftcode",
       "boss": "Boss"
     },
     "stats": {
@@ -800,6 +801,45 @@
         "actionPlaceholder": "Lọc theo hành động (vd: user., topup.)",
         "emailPlaceholder": "Lọc theo email người thực hiện"
       }
+    },
+    "giftcodes": {
+      "filter": {
+        "qPlaceholder": "Tìm theo mã giftcode…"
+      },
+      "status": {
+        "ACTIVE": "Hoạt động",
+        "REVOKED": "Đã thu hồi",
+        "EXPIRED": "Hết hạn",
+        "EXHAUSTED": "Hết lượt"
+      },
+      "col": {
+        "code": "Mã",
+        "rewards": "Phần thưởng",
+        "redeemed": "Đã nhận",
+        "expiresAt": "Hết hạn",
+        "status": "Trạng thái",
+        "createdAt": "Tạo lúc"
+      },
+      "empty": "Chưa có giftcode nào.",
+      "createBtn": "+ Tạo Giftcode",
+      "createTitle": "Tạo Giftcode mới",
+      "create": {
+        "code": "Mã (4–32 ký tự, A-Z 0-9 _ -)",
+        "linhThach": "Linh Thạch",
+        "tienNgoc": "Tiên Ngọc",
+        "exp": "EXP",
+        "maxRedeems": "Số lượt tối đa",
+        "maxRedeemsPlaceholder": "Bỏ trống = không giới hạn",
+        "expiresDays": "Hết hạn sau (ngày)",
+        "expiresDaysPlaceholder": "Bỏ trống = không hết hạn"
+      },
+      "submitCreate": "Tạo",
+      "creating": "Đang tạo…",
+      "createdToast": "Đã tạo giftcode.",
+      "revokeBtn": "Thu hồi",
+      "revokeConfirm": "Thu hồi mã {code}? Người chơi sẽ không thể nhập mã này nữa.",
+      "revokedToast": "Đã thu hồi giftcode.",
+      "itemsLabel": "vật phẩm"
     },
     "boss": {
       "title": "Triệu hồi Boss thế giới",

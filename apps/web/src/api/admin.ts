@@ -221,3 +221,78 @@ export async function adminSpawnBoss(
   );
   return unwrap(data);
 }
+
+export type GiftCodeStatus = 'ACTIVE' | 'REVOKED' | 'EXPIRED' | 'EXHAUSTED';
+
+export interface AdminGiftCodeRewardItem {
+  itemKey: string;
+  qty: number;
+}
+
+export interface AdminGiftCodeRow {
+  id: string;
+  code: string;
+  rewardLinhThach: string;
+  rewardTienNgoc: number;
+  rewardExp: string;
+  rewardItems: AdminGiftCodeRewardItem[];
+  maxRedeems: number | null;
+  redeemCount: number;
+  expiresAt: string | null;
+  revokedAt: string | null;
+  createdAt: string;
+}
+
+export interface AdminGiftCreateInput {
+  code: string;
+  rewardLinhThach?: string;
+  rewardTienNgoc?: number;
+  rewardExp?: string;
+  rewardItems?: AdminGiftCodeRewardItem[];
+  maxRedeems?: number;
+  expiresAt?: string;
+}
+
+export async function adminListGiftcodes(
+  filters: { q?: string; status?: GiftCodeStatus | '' } = {},
+  limit = 100,
+): Promise<AdminGiftCodeRow[]> {
+  const params: Record<string, string | number> = { limit };
+  if (filters.q) params.q = filters.q;
+  if (filters.status) params.status = filters.status;
+  const { data } = await apiClient.get<Envelope<{ codes: AdminGiftCodeRow[] }>>(
+    '/admin/giftcodes',
+    { params },
+  );
+  return unwrap(data).codes;
+}
+
+export async function adminCreateGiftcode(
+  input: AdminGiftCreateInput,
+): Promise<AdminGiftCodeRow> {
+  const { data } = await apiClient.post<Envelope<{ code: AdminGiftCodeRow }>>(
+    '/admin/giftcodes',
+    input,
+  );
+  return unwrap(data).code;
+}
+
+export async function adminRevokeGiftcode(code: string): Promise<AdminGiftCodeRow> {
+  const { data } = await apiClient.post<Envelope<{ code: AdminGiftCodeRow }>>(
+    `/admin/giftcodes/${encodeURIComponent(code)}/revoke`,
+    {},
+  );
+  return unwrap(data).code;
+}
+
+/**
+ * Compute display status từ row fields. Mirror BE logic — `revokedAt` thắng,
+ * sau đó `expiresAt < now` → EXPIRED, sau đó `redeemCount >= maxRedeems` → EXHAUSTED,
+ * còn lại ACTIVE.
+ */
+export function giftCodeStatusOf(row: AdminGiftCodeRow, now = new Date()): GiftCodeStatus {
+  if (row.revokedAt) return 'REVOKED';
+  if (row.expiresAt && new Date(row.expiresAt).getTime() < now.getTime()) return 'EXPIRED';
+  if (row.maxRedeems !== null && row.redeemCount >= row.maxRedeems) return 'EXHAUSTED';
+  return 'ACTIVE';
+}
