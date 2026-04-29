@@ -113,4 +113,33 @@ describe('GiftCodeService.list filter', () => {
     const rows = await gift.list(100, { q: 'zzz_no_match' });
     expect(rows.length).toBe(0);
   });
+
+  it('status=EXHAUSTED không bị cắt mất rows khi có nhiều mã có maxRedeems chưa cạn (regression Devin Review #74)', async () => {
+    // Tạo 5 mã có maxRedeems chưa cạn (không phải EXHAUSTED)
+    for (let i = 0; i < 5; i++) {
+      await gift.create({ code: `BUFFER_${i}`, rewardLinhThach: 10n, maxRedeems: 100 });
+    }
+    // Tạo 1 mã EXHAUSTED đứng SAU (createdAt mới hơn → top of desc list).
+    const ex = await gift.create({
+      code: 'BURNED_ONE',
+      rewardLinhThach: 10n,
+      maxRedeems: 1,
+    });
+    await prisma.giftCode.update({
+      where: { id: ex.id },
+      data: { redeemCount: 1 },
+    });
+    // limit=2: nếu DB take giới hạn 2, sẽ chỉ fetch 2 rows mới nhất (BURNED_ONE + 1 BUFFER_)
+    // → app-filter còn 1 (BURNED_ONE). Pass.
+    // Test với limit=1 + setup nhiều BUFFER mới hơn để chắc fix mới (FETCH_BUFFER=500) work.
+    // Tạo thêm 3 BUFFER với createdAt mới hơn EXHAUSTED:
+    for (let i = 5; i < 8; i++) {
+      await gift.create({ code: `LATER_${i}`, rewardLinhThach: 10n, maxRedeems: 100 });
+    }
+    // Giờ có 5+1+3 = 9 rows có maxRedeems != null. EXHAUSTED ở giữa.
+    // Nếu code cũ dùng take=limit=2, fetch 2 mới nhất (LATER_7 + LATER_6) → app-filter 0.
+    // Code mới fetch 500 → tìm thấy BURNED_ONE.
+    const rows = await gift.list(2, { status: 'EXHAUSTED' });
+    expect(rows.map((r) => r.code)).toEqual(['BURNED_ONE']);
+  });
 });
