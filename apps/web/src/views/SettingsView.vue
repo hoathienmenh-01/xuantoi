@@ -9,6 +9,7 @@ import { changePassword, logoutAll } from '@/api/auth';
 import { setLocale, type LocaleKey } from '@/i18n';
 import AppShell from '@/components/shell/AppShell.vue';
 import MButton from '@/components/ui/MButton.vue';
+import ConfirmModal from '@/components/ui/ConfirmModal.vue';
 
 const auth = useAuthStore();
 const game = useGameStore();
@@ -21,6 +22,7 @@ const newPassword = ref('');
 const confirmPassword = ref('');
 const submittingPwd = ref(false);
 const submittingLogoutAll = ref(false);
+const logoutAllConfirmOpen = ref(false);
 
 const passwordMismatch = computed(
   () => newPassword.value.length > 0 && newPassword.value !== confirmPassword.value,
@@ -78,9 +80,18 @@ async function submitChangePassword(): Promise<void> {
   }
 }
 
+function openLogoutAllConfirm(): void {
+  if (submittingLogoutAll.value) return;
+  logoutAllConfirmOpen.value = true;
+}
+
+function cancelLogoutAllConfirm(): void {
+  if (submittingLogoutAll.value) return;
+  logoutAllConfirmOpen.value = false;
+}
+
 async function submitLogoutAll(): Promise<void> {
   if (submittingLogoutAll.value) return;
-  if (!window.confirm(t('settings.logoutAll.confirm'))) return;
   submittingLogoutAll.value = true;
   try {
     const r = await logoutAll();
@@ -88,6 +99,7 @@ async function submitLogoutAll(): Promise<void> {
       type: 'success',
       text: t('settings.logoutAll.success', { revoked: r.revoked }),
     });
+    logoutAllConfirmOpen.value = false;
     auth.user = null;
     router.replace('/auth');
   } catch (e) {
@@ -195,11 +207,24 @@ function changeLocale(value: string): void {
         <button
           :disabled="submittingLogoutAll"
           class="px-5 py-2 rounded border border-red-400/40 bg-red-700/30 text-red-100 hover:bg-red-700/50 disabled:opacity-50 disabled:cursor-not-allowed transition"
-          @click="submitLogoutAll()"
+          data-testid="settings-logout-all-btn"
+          @click="openLogoutAllConfirm()"
         >
           {{ t('settings.logoutAll.submit') }}
         </button>
       </section>
     </div>
+
+    <ConfirmModal
+      :open="logoutAllConfirmOpen"
+      :title="t('settings.logoutAll.title')"
+      :message="t('settings.logoutAll.confirm')"
+      :confirm-text="t('settings.logoutAll.submit')"
+      :loading="submittingLogoutAll"
+      danger
+      test-id="logout-all-confirm-modal"
+      @confirm="submitLogoutAll()"
+      @cancel="cancelLogoutAllConfirm()"
+    />
   </AppShell>
 </template>

@@ -85,11 +85,29 @@
 
 ---
 
-## Recent Changes (PR #33→#81 — tất cả đã merge `main`; L5 mission claim vitest in-flight)
+## Recent Changes (PR #33→#82 — tất cả đã merge `main`; L6 logout-all confirm modal in-flight)
 
 Mỗi PR đều `Merged` vào `main`, branch base = `main`. Smoke local (typecheck/lint/test/build) đã chạy ở mỗi PR; smoke E2E 6/6 đã pass tại PR #44 (snapshot `4d8af10`); H6 Playwright golden path đã wire CI matrix qua PR #64.
 
-### PR — `test(web): MissionView claim flow vitest — 9 test (L5)` — **Pending merge**
+### PR — `feat(web): logout-all confirm modal — replace window.confirm() (L6)` — **Pending merge**
+
+- **Branch**: `devin/1777466552-l6-logout-all-confirm-modal`. **Base**: `main` @ `45e42dc` (sau khi PR #82 L5 merged). **Status**: code complete + local typecheck/lint/test (web 116/116, api 349/349, shared 47/47)/build xanh; PR mở session 9c, CI sẽ chạy.
+- **Mục tiêu** (Smart UX polish §6 + Recommended Roadmap L6 — replace `window.confirm()` cho logout-all): SettingsView trước đây dùng native `window.confirm()` để confirm logout-all-devices — UX kém (browser-styled, không tích hợp i18n đầy đủ với title, không support keyboard escape gracefully, không thể disable trong loading). Closed beta cần modal đẹp tích hợp design system.
+- **Giải pháp**:
+  - **`apps/web/src/components/ui/ConfirmModal.vue`** (new, ~115 line): reusable confirm modal component với props `open / title / message / confirmText / cancelText / danger / loading / testId`. Emits `confirm` + `cancel`. Features: Teleport to body, backdrop click-self → cancel, Escape key → cancel (cả hai bị block khi `loading=true`), `danger=true` style đỏ cho phá huỷ flow, fallback i18n `common.confirm` / `common.cancel`. Slot mặc định để mở rộng khi cần custom body.
+  - **`apps/web/src/views/SettingsView.vue`** (modified): remove `window.confirm(t('settings.logoutAll.confirm'))` ở `submitLogoutAll`; thay bằng `<ConfirmModal>` ở cuối `<template>` với `danger` + `loading=submittingLogoutAll`. Thêm state `logoutAllConfirmOpen` + helpers `openLogoutAllConfirm` / `cancelLogoutAllConfirm`. Logout button gắn `data-testid="settings-logout-all-btn"`.
+- **i18n**: tận dụng key có sẵn (`common.confirm` / `common.cancel` / `common.loading` đã có). Không thêm key mới.
+- **Files** (3 thay đổi):
+  - `apps/web/src/components/ui/ConfirmModal.vue` (new)
+  - `apps/web/src/views/SettingsView.vue` (modified)
+  - `apps/web/src/components/__tests__/ConfirmModal.test.ts` (new, 13 vitest)
+- **Risk**: Thấp — pure FE work, không có migration / không đụng economy / không thay đổi BE / không thay đổi API contract. Logout-all flow giữ nguyên semantics: button click → confirm modal → user confirm → call `POST /auth/logout-all` → toast + router replace `/auth`. Modal cancel/escape/backdrop → đóng modal không gọi API.
+- **Rollback**: Revert single PR; không cần migration rollback.
+- **Test added**: +13 vitest web cho `ConfirmModal` (open/close, render title+message, default i18n label, custom label override, click confirm/cancel emit, loading disable + text "Đang xử lý…", Escape emit cancel, Escape khi loading bị block, backdrop click-self emit cancel, danger=true class red vs danger=false class amber, custom testId prefix, cleanup keydown listener khi unmount). Tổng web 103 → 116.
+- **CI status (local)**: typecheck ✅ (3 project), lint ✅, web test ✅ (116/116), api test ✅ (349/349 sau khi `pnpm infra:up` + `prisma migrate deploy`), shared test ✅ (47/47), build ✅. CI GitHub sẽ chạy 5/5 check.
+- **`AI_HANDOFF_REPORT.md updated`**: Recent Changes (this entry), Known Issues §17 L6 → Pending merge.
+
+### PR #82 — `test(web): MissionView claim flow vitest — 9 test (L5)` — **Merged into main** @ `45e42dc` (29/4 ~12:30 UTC, CI 5/5 xanh)
 
 - **Branch**: `devin/1777465473-l5-mission-claim-vitest`. **Base**: `main` @ `ec37f10` (sau khi PR #80/#81 merged). **Status**: code complete + local typecheck/lint/web test/shared test/build xanh; PR mở session 9c, CI sẽ chạy.
 - **Mục tiêu** (Smart testing/QA §5 + Recommended Roadmap L5 — render-level vitest cho mission claim flow): `MissionView.vue` (268 line) trước đây không có vitest riêng — coverage chỉ qua `lib/missionProgress.test.ts` (pure function `applyMissionProgressFrame`). FE `MissionView` có nhiều state-driven branches (claim button enable/disable, `claimed` badge, sort theo claimable/pending/done, tab filter DAILY/WEEKLY/ONCE, WS `mission:progress` live update) — gap test có thể regress khi refactor mission UI tương lai.
@@ -1142,8 +1160,8 @@ _(Không có lỗi làm app không chạy / mất tiền / auth hỏng tại com
 | L3 | Proverbs loading screen chỉ 30+ câu — lặp nhanh. | **Open** — mở rộng corpus. |
 | ~~L4~~ | ~~Không có tên item localized.~~ | **Resolved** by **PR #57** — `apps/web/src/lib/itemName.ts` helper + 11 vitest test, dedupe across `MissionView`/`MailView`/`GiftCodeView`/`ShopView`. |
 | ~~L5~~ | ~~Một số view chưa skeleton loader.~~ | **Resolved** — `LeaderboardView` + `ProfileView` (PR #67 merged), `MissionView` + `AdminView` (PR #68 merged), `MarketView` (PR #77 merged). Skeleton coverage đầy đủ trên tất cả view chính. |
-| L5b | `MissionView.vue` (268 line) chưa có vitest riêng — coverage chỉ qua `lib/missionProgress.test.ts`. | **Pending merge** — PR L5-mission-claim-vitest (session 9c) thêm `apps/web/src/views/__tests__/MissionView.test.ts` với 9 test bao claim button enable/disable, claimed badge, click claim happy path, error handler, WS `mission:progress` apply, sort, tab filter, empty state. |
-| L6 | Settings dùng `window.confirm()` cho logout-all. | **Open** — nhẹ nhàng, post-beta thay bằng modal đẹp. |
+| ~~L5b~~ | ~~`MissionView.vue` (268 line) chưa có vitest riêng.~~ | **Resolved by PR #82** (Merged into main @ `45e42dc`) — `apps/web/src/views/__tests__/MissionView.test.ts` +9 vitest cover claim button enable/disable, claimed badge, click claim happy path, error handler, WS `mission:progress` apply, sort, tab filter, empty state. |
+| L6 | Settings dùng `window.confirm()` cho logout-all. | **Pending merge** — PR L6-logout-all-confirm-modal (session 9c) tạo `apps/web/src/components/ui/ConfirmModal.vue` reusable + thay `window.confirm()` trong `SettingsView.submitLogoutAll`. +13 vitest. |
 | ~~L7~~ | ~~`ADMIN_REVOKE` reason đã định nghĩa trong `ItemLedger` nhưng chưa có endpoint admin thực thi.~~ | **Resolved by PR #66** (Merged into main) — `POST /admin/inventory/revoke` endpoint, ledger reason `ADMIN_REVOKE`, audit log. File: `apps/api/src/modules/admin/admin.service.ts`. +9 test. |
 
 ---
