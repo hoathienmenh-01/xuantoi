@@ -2,14 +2,17 @@ import { Inject, Injectable, Optional } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import * as argon2 from 'argon2';
-import { randomUUID } from 'node:crypto';
+import { randomBytes, randomUUID } from 'node:crypto';
 import type {
   ChangePasswordInput,
+  ForgotPasswordInput,
   LoginInput,
   PublicUser,
   RegisterInput,
+  ResetPasswordInput,
 } from '@xuantoi/shared';
 import { PrismaService } from '../../common/prisma.service';
+import { EmailService } from '../email/email.service';
 import {
   InMemorySlidingWindowRateLimiter,
   type RateLimiter,
@@ -23,7 +26,8 @@ export type AuthErrorCode =
   | 'RATE_LIMITED'
   | 'UNAUTHENTICATED'
   | 'SESSION_EXPIRED'
-  | 'ACCOUNT_BANNED';
+  | 'ACCOUNT_BANNED'
+  | 'INVALID_RESET_TOKEN';
 
 export class AuthError extends Error {
   constructor(public code: AuthErrorCode) {
@@ -65,6 +69,14 @@ export const REGISTER_RATE_LIMIT_WINDOW_MS = 15 * 60 * 1000;
 export const REGISTER_RATE_LIMIT_MAX = 5;
 export const REGISTER_RATE_LIMITER = 'AUTH_REGISTER_RATE_LIMITER';
 
+/** Forgot-password rate limit: tối đa 3 request/IP/15 phút (anti-spam mailflood). */
+export const FORGOT_PASSWORD_RATE_LIMIT_WINDOW_MS = 15 * 60 * 1000;
+export const FORGOT_PASSWORD_RATE_LIMIT_MAX = 3;
+export const FORGOT_PASSWORD_RATE_LIMITER = 'AUTH_FORGOT_PASSWORD_RATE_LIMITER';
+
+/** TTL token reset password (đặt lại mật khẩu) — mặc định 30 phút. */
+export const PASSWORD_RESET_TOKEN_TTL_MS = 30 * 60 * 1000;
+
 const ACCESS_TTL_SEC_DEFAULT = 15 * 60;
 const REFRESH_TTL_SEC_DEFAULT = 30 * 24 * 60 * 60;
 
@@ -78,18 +90,27 @@ const INSECURE_DEFAULTS = new Set([
 @Injectable()
 export class AuthService {
   private readonly registerLimiter: RateLimiter;
+  private readonly forgotPasswordLimiter: RateLimiter;
 
   constructor(
     private readonly prisma: PrismaService,
     private readonly jwt: JwtService,
     private readonly cfg: ConfigService,
     @Optional() @Inject(REGISTER_RATE_LIMITER) registerLimiter?: RateLimiter,
+    @Optional() @Inject(FORGOT_PASSWORD_RATE_LIMITER) forgotPasswordLimiter?: RateLimiter,
+    @Optional() private readonly email?: EmailService,
   ) {
     this.registerLimiter =
       registerLimiter ??
       new InMemorySlidingWindowRateLimiter(
         REGISTER_RATE_LIMIT_WINDOW_MS,
         REGISTER_RATE_LIMIT_MAX,
+      );
+    this.forgotPasswordLimiter =
+      forgotPasswordLimiter ??
+      new InMemorySlidingWindowRateLimiter(
+        FORGOT_PASSWORD_RATE_LIMIT_WINDOW_MS,
+        FORGOT_PASSWORD_RATE_LIMIT_MAX,
       );
   }
 
