@@ -1,18 +1,18 @@
 # AI Handoff Report — Xuân Tôi
 
-> **Snapshot**: `main` @ `bbb6718` (Merge PR #85 L6b SettingsView logout-all confirm modal vitest, 29 Apr 2026 ~13:02 UTC). **Merged into main since session 6** (24 PR — tất cả CI xanh khi merge): PR #62..#80 (đã liệt kê chi tiết các session trước), #81 (G22 admin giftcode FE panel — list/filter/create/revoke + 11 vitest), #82 (L5 — MissionView claim flow vitest 9 test), #83 (L6 — logout-all ConfirmModal replace `window.confirm()` + 13 vitest ConfirmModal), #85 (L6b — SettingsView logout-all confirm modal integration vitest 7 test, ConfirmModal lint default-prop fix tại `ca85265`).
-> **Người viết**: AI engineer session 9d (audit refresh 29/4 ~13:10 UTC sau khi PR #81/#82/#83/#85 đã merge cascade vào main — header cũ snapshot `ec37f10` không còn đúng, L6 vẫn ghi "Pending merge" nhưng PR #83 đã merged, L6b vẫn ghi "Pending merge" nhưng PR #85 đã merged → audit này bump snapshot + đồng bộ trạng thái).
+> **Snapshot**: `main` @ `3283e42` (Merge PR #91 `feat(web): /activity tab — M6 self audit log consumer (GET /logs/me)`, 29 Apr 2026 ~14:55 UTC). **Merged into main since session 6** (30 PR — tất cả CI xanh khi merge): PR #62..#80 (đã liệt kê chi tiết các session trước), #81 (G22 admin giftcode FE panel — list/filter/create/revoke + 11 vitest), #82 (L5 — MissionView claim flow vitest 9 test), #83 (L6 — logout-all ConfirmModal replace `window.confirm()` + 13 vitest ConfirmModal), #85 (L6b — SettingsView logout-all confirm modal integration vitest 7 test, ConfirmModal lint default-prop fix tại `ca85265`), **#84** (G23 giftcode duplicate `CODE_EXISTS` error — Merged @ `05b05c0`), **#86** (docs handoff session 9d audit refresh — Merged @ `011e930`), **#87** (L3 proverbs corpus expand 7 → 64 + 8 vitest invariants — Merged @ `89e3fb6`), **#88** (M6 BE `GET /logs/me` self audit log + 20 vitest API — Merged @ `c6da89a`), **#89** (docs API.md refresh — Merged @ `537a4d6`), **#90** (docs QA_CHECKLIST + ADMIN_GUIDE refresh + `/api/_auth/*` path fix — Merged @ `1cbf349`), **#91** (FE M6 `/activity` tab consumer + 10 vitest — Merged @ `3283e42`).
+> **Người viết**: AI engineer session 9e (audit refresh 29/4 ~15:25 UTC sau khi PR #84/#86/#87/#88/#89/#90/#91 đã merge cascade vào main sau audit session 9d — header cũ snapshot `bbb6718` không còn đúng, M6 BE+FE vẫn ghi "Pending merge" nhưng PR #88+#91 đã merged, G23 vẫn ghi "Pending merge" nhưng PR #84 đã merged → audit này bump snapshot + đồng bộ trạng thái).
 > **Đối tượng đọc**: AI kế nhiệm sẽ tiếp tục đưa dự án tới beta / production.
 >
 > Báo cáo trung thực. Mọi tuyên bố "đã xong" đều có PR + file + test chứng minh. Khi chưa verify runtime, ghi rõ **"Needs runtime smoke"**.
 >
-> **Baseline session 9d (đã verify local 29/4 13:18 UTC trên main @ `bbb6718`)**: `pnpm typecheck` ✅ (3 project, sau khi `prisma generate` + `shared build`) · `pnpm lint` ✅ (max-warnings 0) · `pnpm --filter @xuantoi/shared test` ✅ **47/47** · `pnpm --filter @xuantoi/web test` ✅ **123/123** (16 file: ConfirmModal 13 + SettingsView 7 + MissionView 9 + LeaderboardView 6 + MarketView 3 + Skeleton 5 + NextActionPanel 6 + OnboardingChecklist 8 + DailyLoginCard 4 + AdminGiftcodeApi 11 + itemName 11 + game 8 + toast 9 + auth 7 + badges 9 + …). API test: chưa run trong session 9d (cần `pnpm infra:up` + `prisma migrate deploy`); CI matrix `e2e-smoke` job vẫn xanh trên các PR gần nhất (#84 4/4 ✅) và đã chạy api test set ~349/349 trong PR #84 local CI session 9c. · `pnpm build` ✅ (shared tsup + api nest + web vite+pwa).
+> **Baseline session 9e (đã verify local 29/4 ~15:25 UTC trên main @ `3283e42`)**: `pnpm typecheck` ✅ (3 project, sau khi `prisma generate` + `shared build`) · `pnpm lint` ✅ (max-warnings 0) · `pnpm --filter @xuantoi/shared test` ✅ **55/55** (catalog 17 + proverbs 11 + realms 27) · `pnpm --filter @xuantoi/web test` ✅ **133/133** (17 file: ActivityView 10 + ConfirmModal 13 + SettingsView 7 + MissionView 9 + LeaderboardView 6 + MarketView 3 + Skeleton 5 + NextActionPanel 6 + OnboardingChecklist 8 + DailyLoginCard 4 + AdminGiftcodeApi 11 + missionProgress 7 + itemName 11 + game 8 + toast 9 + auth 7 + badges 9). API test: chưa run trong session 9e (cần `pnpm infra:up` + `prisma migrate deploy`); CI matrix `e2e-smoke` job vẫn xanh trên các PR gần nhất (#91 5/5 ✅) và đã chạy api test set ~369/369 trong PR #88 local CI session 9d (sau khi M6 module +20 test vào). · `pnpm build` ✅ (shared tsup + api nest + web vite+pwa).
 >
-> **Trạng thái (29/4 session 9d, ~13:10 UTC)**: PR #33..#85 đã merge `main`. Toàn bộ Critical/High/Medium đã Resolved trừ M6 (`/logs/me` low priority), M7 (CSP CDN — chỉ verify khi prod deploy), M9 (logout-all `passwordVersion` — intentional trade-off, document trong `docs/SECURITY.md`), M10 (shop daily limit — post-beta nice-to-have). Low: L3 (proverbs corpus expand) còn Open. PR #84 G23 (giftcode duplicate `CODE_EXISTS` error) hiện **Pending merge** — CI 4/4 ✅, mergeable, đã giải quyết conflict `docs/AI_HANDOFF_REPORT.md` bằng merge commit `8eff2ca` session 9d.
+> **Trạng thái (29/4 session 9e, ~15:25 UTC)**: PR #33..#91 đã merge `main`. Toàn bộ Critical/High/Medium đã Resolved trừ M7 (CSP CDN — chỉ verify khi prod deploy), M9 (logout-all `passwordVersion` — intentional trade-off, document trong `docs/SECURITY.md`), M10 (shop daily limit — post-beta nice-to-have). Low: tất cả Resolved (L1..L7). **Không còn PR open trên GitHub** — toàn bộ chuỗi #84/#86/#87/#88/#89/#90/#91 session 9d đã merged hết vào main. Roadmap session 9e: chuyển sang runtime smoke + new closed-beta polish (xem §20).
 >
-> **Session 9c done (29/4 ~10:30 → 13:00 UTC)**: PR #81 (G22 admin giftcode FE panel) **Merged into main** @ `c4f3468` — Admin giftcode panel với list/filter q+status/create/revoke, +11 vitest. PR #82 (L5 MissionView claim vitest) **Merged into main** @ `45e42dc` — +9 vitest cover claim button enable/disable, claimed badge, click claim happy path, error handler, WS `mission:progress` apply, sort, tab filter, empty state. PR #83 (L6 logout-all ConfirmModal) **Merged into main** @ `78261eb` (sau lint fix `ca85265`) — `apps/web/src/components/ui/ConfirmModal.vue` reusable + thay `window.confirm()` trong `SettingsView.submitLogoutAll`, +13 vitest ConfirmModal. PR #85 (L6b SettingsView logout-all integration vitest) **Merged into main** @ `bbb6718` — +7 vitest mount full SettingsView verify modal wired đúng (open trên click, confirm gọi `logoutAll`, navigate `/auth`, error map qua i18n, Escape đóng modal).
+> **Session 9d done (29/4 ~13:00 → 14:55 UTC)**: PR #84 (G23 giftcode duplicate `CODE_EXISTS` error) **Merged into main** @ `05b05c0` — `apps/api/src/modules/giftcode/giftcode.service.ts` + admin controller throw `CODE_EXISTS` khi tạo trùng code, FE map qua i18n. PR #86 (docs handoff session 9d audit refresh) **Merged into main** @ `011e930` — bump snapshot `05b05c0` + L6/L6b/G23 Resolved. PR #87 (L3 proverbs corpus expand 7 → 64 + invariants test) **Merged into main** @ `89e3fb6` — `packages/shared/src/proverbs.ts` 64 câu chia 4 chủ đề + 8 vitest. PR #88 (M6 BE `GET /logs/me`) **Merged into main** @ `c6da89a` — `apps/api/src/modules/logs/{logs.service,logs.controller,logs.module}.ts` + 20 vitest API integration (cursor encode/decode 6 + listForUser currency 11 + listForUser item 3). PR #89 (docs API.md refresh) **Merged into main** @ `537a4d6` — sync endpoints + global prefix `/api` note + WS `mission:progress` + auth route `/_auth/*` fix. PR #90 (docs QA_CHECKLIST + ADMIN_GUIDE refresh) **Merged into main** @ `1cbf349` — add Daily Login (M9), Leaderboard, audit log self-view (M6), WS mission progress, logout-all confirm modal, fix `/api/healthz` path. PR #91 (FE M6 `/activity` tab consumer) **Merged into main** @ `3283e42` — `apps/web/src/views/ActivityView.vue` + `apps/web/src/api/logs.ts` + sidebar link + i18n vi/en + 10 vitest cover skeleton/empty/delta sign/tab switch/load more/error map.
 >
-> **Session 9d in-flight (29/4 ~13:10 UTC)**: PR #84 G23 (giftcode duplicate code → `CODE_EXISTS` error code) — code complete, conflict đã resolved, CI 4/4 ✅, **Pending merge** by repo owner (Devin không tự merge vào main được). PR docs này (`audit-session-9d-refresh`) đồng bộ snapshot `bbb6718` + chuyển trạng thái L6/L6b từ Pending merge → Merged into main + chuẩn bị Roadmap mới.
+> **Session 9e in-flight (29/4 ~15:25 UTC)**: PR docs này (`audit-session-9e-refresh`) đồng bộ snapshot `3283e42` + chuyển trạng thái M6 BE/FE từ Pending merge → Merged into main + G23 từ Pending merge → Merged into main + chuẩn bị Roadmap mới (runtime smoke + new closed-beta polish ưu tiên cao nhất sau khi report sync xong).
 >
 > **Note replay-gap PR #47** đã closed bởi PR #53 (cherry-pick `32a33a6` vào main) — không còn drift giữa GitHub PR status và `main`.
 >
@@ -34,9 +34,9 @@
 ## 2. Current Branch / CI / PR Status
 
 - **Default branch**: `main`.
-- **Commit audit**: `bbb6718 Merge pull request #85 from hoathienmenh-01/devin/1777467454-l6b-settings-logout-vitest` (HEAD `main`, 29/4 ~13:02 UTC).
-- **CI gần nhất trên main**: xanh — PR #85 5/5; trước đó PR #80/#81/#82/#83 cũng 5/5 xanh khi merge.
-- **PR open đáng kể**: **1 PR open** — PR #84 G23 (giftcode duplicate code → `CODE_EXISTS` error) — CI 4/4 ✅, mergeable, conflict resolved by session 9d merge commit `8eff2ca`. **Pending merge** by repo owner.
+- **Commit audit**: `3283e42 Merge pull request #91 from hoathienmenh-01/devin/1777473333-fe-logs-tab` (HEAD `main`, 29/4 ~14:55 UTC).
+- **CI gần nhất trên main**: xanh — PR #91 5/5; trước đó PR #84/#86/#87/#88/#89/#90 cũng 4..5/5 xanh khi merge (cascade session 9d).
+- **PR open đáng kể**: **0 PR open** — toàn bộ chuỗi session 9d (#84, #86→#91) đã merged hết vào main tính đến 29/4 ~14:55 UTC. PR docs `audit-session-9e-refresh` này là PR open duy nhất sẽ mở trong session 9e.
 - **Replay gap PR #47**: **Đã đóng** — PR #53 (cherry-pick `32a33a6` từ `devin/1777398483-h5-vitest-playwright`) merge vào main commit `2ae4cc0` (28/4 20:15 UTC). File `apps/web/vitest.config.ts` + `playwright.config.ts` + `e2e/golden.spec.ts` + `apps/web/src/stores/__tests__/{toast,game}.test.ts` đã có trên main.
 - **PR merged gần đây ảnh hưởng lớn**:
   | PR | Chủ đề | Impact |
@@ -89,11 +89,11 @@
 
 ---
 
-## Recent Changes (PR #33→#90 merged + PR #91 in-flight; BETA_CHECKLIST refresh PR #92 in-flight session 9d)
+## Recent Changes (PR #33→#93 đã merged trên main; PR #92 BETA_CHECKLIST refresh in-flight session 9e)
 
-### PR #92 — `docs(beta): refresh BETA_CHECKLIST.md — sync với 50+ feature đã merge sau PR #59/#63/#66/#80/#81/#83/#84/#88/#91` — **Pending merge**
+### PR #92 — `docs(beta): refresh BETA_CHECKLIST.md — sync 14+ feature đã merge sau PR #59→#91` — **Pending merge** (CI 5/5 ✅ on initial commit; merged latest main `d37b6d4` để resolve conflict với cascade #91+#93)
 
-- **Branch**: `devin/1777474187-docs-beta-checklist-refresh`. **Base**: `main` @ `c6da89a` (sau PR #88 + #90 merged). **Status**: docs-only PR session 9d.
+- **Branch**: `devin/1777474187-docs-beta-checklist-refresh`. **Base**: `main` @ `d37b6d4` (sau PR #91 + #93 merged). **Status**: docs-only PR mở từ session 9d, conflict với cascade #91/#93 → session 9e merge main giữ session 9e snapshot + add PR #92 entry mới này.
 - **Mục tiêu** (Smart docs/handoff §7 — `docs/BETA_CHECKLIST.md` lệch nghiêm trọng): file đánh dấu nhiều mục là "🔲 Chưa làm" nhưng thực tế đã merge từ session 5-9. Test count "94 test" (api 77 + shared 17) lệch hẳn so với thực tế **557 test** (api 369 + web 133 + shared 55) — sai lệch 6×. PM/PO đọc sẽ tưởng beta chưa sẵn sàng và yêu cầu duplicate work.
 - **Phát hiện gap** (8 nhóm):
   - **Smart beta gameplay**: thiếu list Daily Login (PR #80), Leaderboard (PR #59), Public Profile, NextActionPanel, A Linh, /activity tab (PR #91), `pnpm audit:ledger` script. Đã marker "MissionProgress chưa làm" nhưng thực tế đã merge.
@@ -105,35 +105,57 @@
   - **PR #83 L6 confirm modal + cross-tab 401 redirect**: chưa có entry.
   - **Admin tab**: ghi "5 tab" nhưng đã 7 tab; thiếu filter cho từng tab + role split MOD/ADMIN (PR #48).
   - **Loading splash proverbs**: thiếu PR #87 expand 7 → 64.
-  - **Recent docs PR**: thiếu reference PR #89 (API.md), PR #90 (QA + Admin guide).
+  - **Recent docs PR**: thiếu reference PR #89 (API.md), PR #90 (QA + Admin guide), PR #93 (audit session 9e refresh).
 - **Thay đổi** (1 file):
   - `docs/BETA_CHECKLIST.md` (~120 line → ~155 line): chuyển 14 mục từ "🔲 Chưa làm" sang "✅ Đã hoàn thành"; bổ sung 12 mục thực tế đã làm chưa được liệt kê; cập nhật test count; add 7 row "smart beta gameplay" mới (Daily Login, Leaderboard, Public profile, NextActionPanel, A Linh, /activity, audit:ledger script); thêm 2 row hardening (chat rate limit, health endpoint); thêm "Recommended trước beta open" + "Đã đủ điều kiện cho closed beta" cut-line analysis.
 - **Risk**: Cực thấp — docs only, không touch code/test/migration. Beta cut-line decision lúc này chính xác phản ánh code thực.
 - **Rollback**: revert single PR.
 - **Test added**: 0 (docs only).
-- **CI status (local)**: lint OK (markdown), no code change.
+- **CI status (local sau merge main)**: typecheck ✅ lint ✅ web test 133/133 ✅ shared test 55/55 ✅ build ✅ — không touch code nên baseline giữ nguyên từ session 9e.
 - **Runtime smoke**: N/A (docs).
 - **`AI_HANDOFF_REPORT.md updated`**: this Recent Changes entry.
-- **Bước tiếp theo**: Audit RUN_LOCAL.md / DEPLOY.md / SECURITY.md / SEEDING.md / BALANCE.md cho staleness; hoặc execute QA_CHECKLIST runtime smoke trên local (15 phút).
+- **Bước tiếp theo**: Audit RUN_LOCAL.md / DEPLOY.md / SECURITY.md / SEEDING.md / BALANCE.md cho staleness; hoặc execute QA_CHECKLIST runtime smoke trên local (15 phút); hoặc bắt đầu task top-priority tiếp theo theo §20 (leaderboard topup/sect, forgot-password, backup script, mobile responsive).
 
-### PR #91 — `feat(web): /activity tab — M6 self audit log consumer (GET /logs/me)` — **Pending merge** (CI 5/5 ✅)
+### PR #93 — `docs(handoff): session 9e audit refresh — bump snapshot 3283e42 + sync M6/G23 Merged status` — **Merged into main** @ `d37b6d4` (29/4 ~15:35 UTC, CI 4/4 ✅)
 
-- **Branch**: `devin/1777473333-fe-logs-tab`. **Base**: `main` @ `c6da89a` (sau PR #88 + #90 merged). **Status**: code complete + local typecheck/lint/test 369/133/55 + build xanh; CI 5/5 ✅.
-- **Mục tiêu** (Recommended Roadmap §20 — FE consumer cho M6 sau khi PR #88 merged): BE `GET /logs/me` đã live nhưng FE chưa có view nào tiêu thụ → endpoint chưa hữu dụng cho người chơi. Thêm tab "Hoạt Động" trong sidebar để player tự xem ledger thu/chi linh thạch + tiên ngọc + xuất nhập linh bảo (replace flow "support tra DB tay").
-- **Files** (5 new + 3 modified):
-  - `apps/web/src/api/logs.ts` (new, ~70 line) — `fetchLogsMe({ type, limit, cursor })` envelope unwrap.
-  - `apps/web/src/views/ActivityView.vue` (new, ~225 line) — tab toggle, keyset "load more" (không infinite scroll), signed delta dương `+N` xanh / âm `-N` đỏ, reason qua i18n fallback raw, item name từ `itemByKey()`.
-  - `apps/web/src/views/__tests__/ActivityView.test.ts` (new, 10 vitest).
-  - `apps/web/src/router/index.ts` (+5) — route `/activity`.
-  - `apps/web/src/components/shell/AppShell.vue` (+7) — sidebar link `帳 Hoạt Động`.
-  - `apps/web/src/i18n/{vi,en}.json` (+50/file) — `activity.*` block: tabs/loading/loadMore/empty/errors (UNAUTHENTICATED/NO_CHARACTER/INVALID_CURSOR/UNKNOWN)/currencyLabel/reasons (24 ledger reason code).
-- **Risk**: Thấp — FE only, không thay schema/migration/BE. Read-only consumer của endpoint stable đã có 20 vitest cover. Reason mapping fallback raw → BE thêm reason code mới không crash.
+- **Branch**: `devin/1777476427-audit-session-9e-refresh`. **Base**: `main` @ `3283e42`. **Status**: Merged into main; CI 4/4 ✅ (build ×2 + e2e-smoke ×2). Docs-only.
+- **Mục tiêu**: Sau khi audit session 9d (PR #86) merged, chuỗi follow-up #84/#87/#88/#89/#90/#91 đã merge cascade vào main 29/4 ~14:55 UTC nhưng report cũ vẫn ghi snapshot `bbb6718` + một số entry "Pending merge" cho M6/G23 → audit này đồng bộ trạng thái: header snapshot bbb6718 → 3283e42; §2 commit + CI gần nhất + 0 PR open; PR #91 entry status Pending merge → Merged @ 3283e42; PR #84 entry status Pending merge → Merged @ 05b05c0; §16 M6 row Resolved by PR #88 + PR #91; §17 logs/me Resolved; §20 Roadmap mark M6 BE+FE Done + add 4 NEW top-priority tasks (leaderboard topup/sect, forgot-password, backup/restore script, mobile responsive verify); §12 Tests refresh shared 47→55, web 64→133, api ~370→~369, add Logs (M6) row 20 test.
+- **Files**: 1 file (`docs/AI_HANDOFF_REPORT.md` +38/-32 line).
+- **Risk**: green — docs-only, no code/schema change.
 - **Rollback**: revert single PR.
-- **Test added**: +10 web vitest. Tổng web: 123 → **133**.
-- **CI status (local)**: typecheck ✅ lint ✅ test 369/133/55 ✅ build ✅. **CI GitHub: 5/5 ✅**.
-- **Runtime smoke**: Pending — sẽ smoke khi merge: open `/activity`, verify currency/item tab render, switch tab, load more, check delta sign + reason translation, empty state.
-- **`AI_HANDOFF_REPORT.md updated`**: entry trên branch PR #91.
-- **Bước tiếp theo**: Audit BETA_CHECKLIST.md (PR #92 này) hoặc audit RUN_LOCAL/DEPLOY/SECURITY.
+- **`AI_HANDOFF_REPORT.md updated`**: bản thân PR này là refresh report.
+
+### PR #91 — `feat(web): /activity tab — M6 self audit log consumer (GET /logs/me)` — **Merged into main** @ `3283e42` (29/4 ~14:55 UTC, CI 5/5 ✅)
+
+- **Branch**: `devin/1777473333-fe-logs-tab`. **Base**: `main` @ `c6da89a` (sau PR #88 + #90 merged). **Status**: Merged into main. typecheck/lint/test 369/133/55 + build xanh local; CI 5/5 xanh PR #91; runtime smoke pending (chuỗi M6 BE+FE cần verify với `pnpm dev` + `infra:up` real DB).
+- **Mục tiêu** (Recommended Roadmap §20 — FE consumer cho M6 sau khi PR #88 merged): BE `GET /logs/me` đã live nhưng FE chưa có view nào tiêu thụ → endpoint chưa hữu dụng cho người chơi. Thêm tab "Hoạt Động" trong sidebar để player tự xem ledger thu/chi linh thạch + tiên ngọc + xuất nhập linh bảo (replace flow "support tra DB tay").
+- **Giải pháp** (FE only, không touch BE/schema):
+  - **`apps/web/src/api/logs.ts`** (new, ~70 line): `fetchLogsMe({ type, limit, cursor })` wrap `GET /logs/me`. Type `LogEntry = LogEntryCurrency | LogEntryItem` mirror BE `apps/api/src/modules/logs/logs.service.ts`. Envelope unwrap throw `Error & {code}` (cùng pattern `leaderboard.ts`).
+  - **`apps/web/src/views/ActivityView.vue`** (new, ~225 line): tab toggle `currency|item` (default currency), keyset pagination "Xem thêm" button (không infinite scroll để tránh phụ thuộc IntersectionObserver), signed delta display (dương `+N` xanh, âm `-N` đỏ, 0 xám), reason map qua i18n `activity.reasons.${REASON}` fallback raw key, item name lookup qua `itemByKey()` từ `@xuantoi/shared`, currency label `LINH_THACH/TIEN_NGOC` qua i18n, error code map qua `activity.errors.${code}` fallback `UNKNOWN`. Skeleton 6 dòng khi loading lần đầu. Empty state khi `entries.length === 0`. Auth guard `router.replace('/auth')` nếu chưa login.
+  - **`apps/web/src/router/index.ts`**: thêm route `/activity` lazy-loaded.
+  - **`apps/web/src/components/shell/AppShell.vue`**: thêm sidebar link `帳 Hoạt Động` giữa `Nạp Tiên Ngọc` và `Tâm Pháp`.
+  - **i18n**: thêm `activity.*` block (vi + en) — tabs, loading, loadMore, empty, errors UNAUTHENTICATED/NO_CHARACTER/INVALID_CURSOR/UNKNOWN, currencyLabel LINH_THACH/TIEN_NGOC, reasons cho 24 ledger reason code (CULTIVATE_TICK, BREAKTHROUGH_*, MISSION_REWARD, DAILY_LOGIN, MAIL_CLAIM, GIFTCODE_REDEEM, TOPUP_APPROVED, ADMIN_GRANT/REVOKE, MARKET_LIST/CANCEL/BUY/SELL/FEE, SHOP_BUY/SELL, SECT_DONATE, INVENTORY_EQUIP/UNEQUIP/USE, BOSS_REWARD, DUNGEON_DROP, ACHIEVEMENT). Reason không có key → fallback raw string (tương lai BE thêm reason mới không crash UI).
+  - **`apps/web/src/views/__tests__/ActivityView.test.ts`** (new, ~285 line, 10 vitest): (1) skeleton khi đang fetch, (2) empty state, (3) currency delta dương `+N` xanh, (4) currency delta âm `-N` đỏ, (5) switch tab item gọi `type=item` reset entries, (6) item qtyDelta âm với item name từ catalog, (7) load more với cursor append, (8) error map qua i18n, (9) error code lạ → fallback UNKNOWN, (10) reason không có key → fallback raw không crash.
+- **API contract consumed**:
+  ```
+  GET /logs/me?type=currency|item&limit=20&cursor=<opaque>
+  → { ok: true, data: { entries: LogEntry[], nextCursor: string | null } }
+  ```
+- **Files** (5 file new + 3 file modified):
+  - `apps/web/src/api/logs.ts` (new, 70 line)
+  - `apps/web/src/views/ActivityView.vue` (new, 225 line)
+  - `apps/web/src/views/__tests__/ActivityView.test.ts` (new, 285 line, 10 vitest)
+  - `apps/web/src/router/index.ts` (+5 line, route)
+  - `apps/web/src/components/shell/AppShell.vue` (+7 line, sidebar link)
+  - `apps/web/src/i18n/vi.json` (+50 line, `activity.*` block)
+  - `apps/web/src/i18n/en.json` (+50 line, `activity.*` block)
+- **Risk**: Thấp — FE only, không thay schema/migration/BE. Read-only consumer của endpoint stable đã có 20 vitest cover (PR #88). Reason mapping fallback raw → BE thêm reason code mới không crash. Item catalog lookup fallback raw key.
+- **Rollback**: revert single PR. Không có data migration. Sidebar link biến mất, route 404 → người chơi quay lại flow cũ (không có hoạt động).
+- **Test added**: +10 web vitest. Tổng web: 123 → 133.
+- **CI status (local)**: typecheck ✅ lint ✅ test 369 (api) / 133 (web) / 55 (shared) ✅ build ✅. CI GitHub: chờ.
+- **Runtime smoke**: Pending — sẽ smoke khi merge: open `/activity`, verify currency tab render, switch tab item, load more, check delta sign + reason translation, test empty state cho character chưa có ledger entry.
+- **`AI_HANDOFF_REPORT.md updated`**: this Recent Changes entry.
+- **Bước tiếp theo**: Audit other docs (RUN_LOCAL.md / DEPLOY.md / SECURITY.md / BETA_CHECKLIST.md / SEEDING.md / BALANCE.md) hoặc execute QA_CHECKLIST.md runtime smoke (15 phút).
 
 ### PR #90 — `docs(qa,admin): refresh QA_CHECKLIST.md + ADMIN_GUIDE.md + fix /api/_auth/* path bugs` — **Merged into main** (CI 5/5 ✅, session 9d)
 
@@ -267,9 +289,9 @@
 - **CI status (local)**: typecheck ✅, lint ✅, web test ✅ (123/123), build ✅.
 - **`AI_HANDOFF_REPORT.md updated`**: Recent Changes (this entry).
 
-### PR #84 — `feat(api,web): giftcode duplicate code → CODE_EXISTS error (G23)` — **Pending merge** (CI 4/4 ✅, mergeable, conflict resolved session 9d)
+### PR #84 — `feat(api,web): giftcode duplicate code → CODE_EXISTS error (G23)` — **Merged into main** @ `05b05c0` (29/4 ~13:25 UTC, CI 4/4 ✅)
 
-- **Branch**: `devin/1777467022-g23-giftcode-duplicate-error`. **Base**: `main` @ `bbb6718`. **Status**: code complete + local typecheck/lint/test/build xanh; CI GitHub 4/4 ✅ (build ×2, e2e-smoke ×2) sau merge commit `8eff2ca` (session 9d resolve `docs/AI_HANDOFF_REPORT.md` conflict với origin/main — drop duplicate G23 entry).
+- **Branch**: `devin/1777467022-g23-giftcode-duplicate-error`. **Base**: `main` @ `bbb6718`. **Status**: Merged into main; CI GitHub 4/4 ✅ (build ×2, e2e-smoke ×2) sau merge commit `8eff2ca` (session 9d resolve `docs/AI_HANDOFF_REPORT.md` conflict với origin/main — drop duplicate G23 entry).
 - **Mục tiêu** (Smart UX polish §6 — UX nit phát hiện trong G22 testing PR #81): Khi admin tạo giftcode trùng code, BE trả về `INVALID_INPUT` chung — FE hiện toast generic `Tham số không hợp lệ` rất khó hiểu.
 - **Giải pháp** (5 file, ~40 line +/-):
   - `apps/api/src/modules/giftcode/giftcode.service.ts`: thêm `'CODE_EXISTS'` vào `GiftCodeErrorCode` union; `create()` line 148 throw `CODE_EXISTS` thay `INVALID_INPUT` khi duplicate.
@@ -1232,18 +1254,19 @@ apps/api/src/modules/character/currency.service.ts:88   data: { tienNgoc: { incr
 | Ops | **7 test** (`ops.processor.test.ts`) | — | — |
 | Realtime | 10 test (`realtime.gateway.test.ts`) | Ban user during connection | Medium |
 | Rate limiter | 8 test (`rate-limiter.test.ts`) | — | — |
-| Shared (realms/catalog/proverbs) | **47 test** (3 file) | — | — |
-| **Web Vitest** | **64 test** (8 file) — toast 9, game 8, auth 7, badges 9, NextActionPanel 6, OnboardingChecklist 8, itemName 11, LeaderboardView 6 | Render-level cho `MissionView` claim flow + `AppShell` nav badge interaction. | Medium |
-| **E2E Playwright** | **Scaffold** (PR #53) — `apps/web/e2e/golden.spec.ts` gate `E2E_FULL=1`, chưa wire CI. | Wire CI matrix job (Postgres+Redis+api+web). | Medium |
-| **Economy integration** | Rải rác trong từng service + `item-ledger.test.ts` consistency check | Cross-module: market post → buy, ngân sách sect | Medium |
+| Shared (realms/catalog/proverbs) | **55 test** (3 file) — catalog 17 + proverbs 11 (PR #87 +8 invariants) + realms 27 | — | — |
+| **Web Vitest** | **133 test** (17 file) — ActivityView 10 (PR #91) + ConfirmModal 13 + SettingsView 7 + MissionView 9 + LeaderboardView 6 + MarketView 3 + Skeleton 5 + NextActionPanel 6 + OnboardingChecklist 8 + DailyLoginCard 4 + AdminGiftcodeApi 11 + missionProgress 7 + itemName 11 + game 8 + toast 9 + auth 7 + badges 9 | Render-level cho `AppShell` nav badge interaction; runtime smoke for full claim/buy flow. | Low |
+| **E2E Playwright** | **Wired** (PR #64) — `apps/web/e2e/golden.spec.ts` matrix job `e2e-smoke` với Postgres+Redis services, build api+web, run `E2E_SMOKE=1 pnpm --filter @xuantoi/web e2e:smoke`. | Full happy-path expand (M6 `/activity` browse, daily login claim, mission claim, market post/buy). | Low |
+| **Economy integration** | Rải rác trong từng service + `item-ledger.test.ts` consistency check + `pnpm audit:ledger` script | Cross-module: market post → buy, ngân sách sect | Low |
+| **Logs (G3 cũ/M6)** | **20 test** (`logs.service.test.ts`) (PR #88) — cursor encode/decode 6 + listForUser currency 11 + listForUser item 3 | — | — |
 
-**Tổng (`vitest run` thực tế, sau PR #60)**: **259 test API + 47 test shared + 64 test web = 370 test pass**. CI xanh (run `25079013093` 1m34s). Real Postgres + real Redis service trên CI; local dùng `infra/docker-compose.dev.yml` (`docker compose up -d pg redis`).
+**Tổng (`vitest run` thực tế, sau PR #91)**: **~369 test API + 55 test shared + 133 test web = ~557 test pass**. CI xanh (PR #91 5/5 ✅). Real Postgres + real Redis service trên CI; local dùng `infra/docker-compose.dev.yml` (`docker compose up -d pg redis`).
 
 **Chạy**:
 ```bash
-pnpm --filter @xuantoi/api test        # 259 test (26 file, includes bootstrap + leaderboard + economy-alerts + next-action)
-pnpm --filter @xuantoi/shared test     # 47 test (3 file)
-pnpm --filter @xuantoi/web test        # 64 test (8 file, vitest 2.1.9 happy-dom)
+pnpm --filter @xuantoi/api test        # ~369 test (api modules + bootstrap + leaderboard + economy-alerts + next-action + logs M6)
+pnpm --filter @xuantoi/shared test     # 55 test (3 file: catalog 17 + proverbs 11 + realms 27)
+pnpm --filter @xuantoi/web test        # 133 test (17 file, vitest 2.1.9 happy-dom)
 pnpm test                              # toàn bộ — gộp shared + api + web
 ```
 
@@ -1338,7 +1361,7 @@ _(Không có lỗi làm app không chạy / mất tiền / auth hỏng tại com
 | ~~M3~~ | ~~Chưa có WS `mission:progress` push.~~ | **Resolved by PR #63 + #65** (Merged into main) — BE `MissionWsEmitter` 500ms throttle per-user, emit `'mission:progress'` payload `{characterId, changes: MissionProgressChange[]}` sau `MissionService.track()`. FE `MissionView` subscribe và apply delta in-place. Files: `apps/api/src/modules/mission/mission-ws.emitter.ts`, `apps/web/src/views/MissionView.vue`. |
 | ~~M4~~ | ~~`ItemLedger` audit table chưa có.~~ | **Resolved** by **PR #40** (model + migration `20260428102849_itemledger` + hook 6 grant flows + market post/cancel/buy + 7 test trong `item-ledger.test.ts`). |
 | ~~M5~~ | ~~`CurrencyLedger.actorUserId` chưa index.~~ | **Resolved** by **PR #43** — thêm `@@index([actorUserId, createdAt])` cho cả `CurrencyLedger` và `ItemLedger`. Migration `20260428112804_actor_user_id_index` (ADD INDEX only). |
-| ~~M6~~ | ~~LogsModule (G3 cũ) chưa build — không có `/logs/me` endpoint.~~ | **Resolved by PR M6** (Pending merge session 9d) — `apps/api/src/modules/logs/` module mới với `GET /logs/me?type=currency\|item&limit=20&cursor=<opaque>`, keyset pagination `(createdAt DESC, id DESC)`, BigInt serialize as string, character-isolation guard. +20 vitest API integration. **Bước tiếp**: FE tab "Hoạt động" wire (next PR sau merge). |
+| ~~M6~~ | ~~LogsModule (G3 cũ) chưa build — không có `/logs/me` endpoint.~~ | **Resolved by PR #88** (Merged into main @ `c6da89a`, 29/4 ~14:10 UTC) — `apps/api/src/modules/logs/{logs.service,logs.controller,logs.module}.ts` với `GET /logs/me?type=currency\|item&limit=20&cursor=<opaque>`, keyset pagination `(createdAt DESC, id DESC)`, BigInt serialize as string, character-isolation guard. +20 vitest API integration (cursor encode/decode 6 + listForUser currency 11 + listForUser item 3). **FE consumer Resolved by PR #91** (Merged into main @ `3283e42`, 29/4 ~14:55 UTC) — `apps/web/src/views/ActivityView.vue` + `apps/web/src/api/logs.ts` + sidebar link `帳 Hoạt Động` + i18n vi/en (24 ledger reason + 4 error code) + 10 vitest cover skeleton/empty/delta sign/tab switch/load more/error map. **Status**: Done / Needs runtime smoke (chuỗi M6 BE+FE cần verify với `pnpm dev` + `infra:up` + register/login → `/activity` tab → tab switch + load more). |
 | M7 | CSP production-ready nhưng chưa test deploy với CDN/asset domain khác. | **Open** — khi deploy: review `script-src`, `connect-src`. |
 | M8 | Admin guard kiểm `role === 'ADMIN' \|\| 'MOD'` — MOD có quyền broad gần ADMIN (grant currency, approve topup, broadcast mail, spawn boss). | **Resolved** by PR E — thêm `@RequireAdmin()` decorator + reflector trong `AdminGuard`; ADMIN-only cho grant / role-set / approve-topup / reject-topup / giftcode-create / giftcode-revoke / mail-send / mail-broadcast / boss-admin-spawn. MOD vẫn được: GET (read) + ban (đã có hierarchy MOD↦PLAYER ở service). 8 unit test thuê reflector cho guard. |
 | M9 | Settings logout-all không bump `passwordVersion` → access token cũ (15m) vẫn valid ở thiết bị khác. | **Open** (intentional trade-off, document trong `SECURITY.md`) — nếu cần force ngay, bump `passwordVersion` hoặc implement revocation list. |
@@ -1389,7 +1412,7 @@ _(Không có lỗi làm app không chạy / mất tiền / auth hỏng tại com
 | `POST /api/_auth/verify-email` | Thiếu | Closed beta không cần |
 | `GET /api/leaderboard/{power,topup,sect}` | **Power**: đã có (PR #59 — `GET /leaderboard?limit=50` top by realm+power, clamp 1≤limit≤50). Topup/sect chưa có. | Power done; topup/sect Nice-to-have post-beta. |
 | `WS mission:progress` (server-push tracker) | **Có** (PR #63 BE emitter throttle 500ms + PR #65 FE handler `MissionView`) | — |
-| ~~`GET /api/logs/me` (G3 cũ)~~ | ~~Thiếu~~ | **Resolved by PR M6** (Pending merge session 9d) — `apps/api/src/modules/logs/` module + 20 vitest. |
+| ~~`GET /api/logs/me` (G3 cũ)~~ | ~~Thiếu~~ | **Resolved by PR #88** (Merged into main @ `c6da89a`) — `apps/api/src/modules/logs/` module + 20 vitest. **FE `/activity` tab consumer**: Resolved by PR #91 (Merged into main @ `3283e42`) — `apps/web/src/views/ActivityView.vue` + 10 vitest. |
 | `POST /api/admin/inventory/revoke` (`ADMIN_REVOKE` ledger) | **Có** (PR #66 — endpoint + 9 vitest) | — |
 | `GET /api/mail/unread-count` (M7 hydrate badge) | **Có** (PR #71) | — |
 | `GET /api/admin/economy/alerts` (smart admin) | **Có** (PR #54) | — |
@@ -1499,20 +1522,25 @@ Admin hiện tại có thể vào `/admin` → Users → tìm → **Set role = A
 
 ## 20. Recommended Next Roadmap
 
-### Immediate (session 9d — sau khi PR #81/#82/#83/#85 đã merge cascade vào main + PR #84 G23 Pending merge by repo owner)
+### Immediate (session 9e — sau khi toàn bộ chuỗi #84/#86/#87/#88/#89/#90/#91 đã merge cascade vào main 29/4 ~14:55 UTC)
 
 1. ~~**M9 — Daily login reward**~~ — **Done by PR #80** (Merged into main @ `ec37f10`, 29/4 ~10:25 UTC). Status: **Done / Needs runtime smoke** (chưa test live UI: login → Home → DailyLoginCard click claim → toast → +100 LT + streak badge).
 2. ~~**G22 — Admin giftcode FE panel**~~ — **Done by PR #81** (Merged into main @ `c4f3468`, 29/4 ~10:31 UTC). Status: **Done / Needs runtime smoke**.
 3. ~~**L5 — MissionView claim flow vitest**~~ — **Done by PR #82** (Merged into main @ `45e42dc`, 29/4 ~12:30 UTC). +9 vitest.
 4. ~~**L6 — Logout-all confirm modal**~~ — **Done by PR #83** (component, Merged into main @ `78261eb`) + **PR #85** (integration vitest, Merged into main @ `bbb6718`).
 5. ~~**G23 — Giftcode duplicate code → CODE_EXISTS error code**~~ — **Done by PR #84** (Merged into main @ `05b05c0`, 29/4 ~13:25 UTC).
-6. ~~**L3 — Proverbs corpus expansion**~~ — **Done by PR #87** (Merged into main, 29/4 session 9d, CI 5/5 ✅) — expand 7 → 64 câu chia 4 chủ đề + 8 vitest invariants.
-7. ~~**M6 — `GET /logs/me` endpoint**~~ — **Done by PR #88** (Pending merge session 9d, CI 5/5 ✅) — module BE + 20 vitest. Bước tiếp: FE tab "Hoạt động" (next PR sau merge).
-8. **Runtime smoke tích hợp sau toàn bộ PR #46→#89 merge cascade** — **Needs runtime smoke**. Checklist (15 phút, theo `docs/QA_CHECKLIST.md`): register/login (verify rate-limit 5/IP/15min), HomeView (next-action panel + onboarding checklist + DailyLoginCard claim flow), sidebar badges polling 60s, leaderboard render top 50 + tap-name → profile, admin economy alerts panel, mission claim + WS `mission:progress` real-time, mail unread badge hydrate trên login, NPC shop buy + ledger row, market post/cancel/buy với `MARKET_FEE_PCT` env, admin giftcode panel filter q/status + create + revoke (PR #81 + duplicate error rõ PR #84), admin user filter role+banned, admin audit filter action+actor, admin topup filter date+email, admin inventory revoke + `ADMIN_REVOKE` ledger, `pnpm audit:ledger` script, MarketView skeleton, SettingsView logout-all confirm modal, AuthView proverbs corpus đa dạng (PR #87).
-9. **FE — Profile/Settings tab "Hoạt động"** wire `GET /logs/me` (consumer cho M6): infinite scroll dùng `nextCursor`, format `reason` qua i18n `logs.reason.${reason}`, format `delta` theo currency/itemKey. Risk thấp, value vừa (UX trong-suốt).
-10. **M10 — Shop daily limit** + per-item rate-limit (post-beta nice-to-have).
-11. **M7 — CSP production CDN review** (chỉ khi triển khai prod).
-12. **M9 (auth) — Settings logout-all `passwordVersion` bump** (intentional trade-off post-beta — document trong `docs/SECURITY.md` hiện đã có).
+6. ~~**L3 — Proverbs corpus expansion**~~ — **Done by PR #87** (Merged into main @ `89e3fb6`, 29/4 session 9d, CI 5/5 ✅) — expand 7 → 64 câu chia 4 chủ đề + 8 vitest invariants.
+7. ~~**M6 — `GET /logs/me` endpoint (BE)**~~ — **Done by PR #88** (Merged into main @ `c6da89a`, 29/4 ~14:10 UTC, CI 5/5 ✅) — module BE + 20 vitest API.
+8. ~~**M6 — FE `/activity` tab consumer**~~ — **Done by PR #91** (Merged into main @ `3283e42`, 29/4 ~14:55 UTC, CI 5/5 ✅) — `apps/web/src/views/ActivityView.vue` + sidebar link + 10 vitest.
+9. ~~**Docs refresh API.md / QA_CHECKLIST.md / ADMIN_GUIDE.md / TROUBLESHOOTING.md**~~ — **Done by PR #89** (API.md `537a4d6`) + **PR #90** (QA_CHECKLIST.md + ADMIN_GUIDE.md + TROUBLESHOOTING.md `1cbf349`).
+10. **(NEW) Runtime smoke tích hợp toàn bộ PR #46→#91 merge cascade** — **Needs runtime smoke**. Checklist (15 phút, theo `docs/QA_CHECKLIST.md`): register/login (verify rate-limit 5/IP/15min), HomeView (next-action panel + onboarding checklist + DailyLoginCard claim flow), sidebar badges polling 60s, leaderboard render top 50 + tap-name → profile, admin economy alerts panel, mission claim + WS `mission:progress` real-time, mail unread badge hydrate trên login, NPC shop buy + ledger row, market post/cancel/buy với `MARKET_FEE_PCT` env, admin giftcode panel filter q/status + create + revoke (PR #81 + duplicate error rõ PR #84 `CODE_EXISTS`), admin user filter role+banned, admin audit filter action+actor, admin topup filter date+email, admin inventory revoke + `ADMIN_REVOKE` ledger, `pnpm audit:ledger` script, MarketView skeleton, SettingsView logout-all confirm modal, AuthView proverbs corpus đa dạng (PR #87), **`/activity` tab — currency tab + item tab + load more cursor + delta sign coloring + reason i18n + NO_CHARACTER guard** (PR #91 M6 FE consumer).
+11. **(NEW Top Priority) `GET /api/leaderboard/topup` + `/sect`** (closed beta nice-to-have): cùng pattern PR #59 (`GET /leaderboard?limit=50`); topup-spent ranking khuyến khích người chơi đua top, sect ranking thúc đẩy sect competition. Risk thấp (read-only aggregate). Value vừa.
+12. **(NEW Top Priority) `POST /api/_auth/forgot-password` + `reset-password` + email scaffold qua Mailhog** (closed beta nice-to-have): self-service reset password thay vì admin DB flow. Risk thấp (chỉ thêm endpoint + token model). Value cao cho beta UX.
+13. **(NEW Top Priority) Backup/restore script Postgres** + `docs/BACKUP_RESTORE.md` cho production readiness §8 (closed beta safety): `pnpm backup:db` + `pnpm restore:db`. Risk thấp.
+14. **(NEW Top Priority) Mobile responsive verify pass trên iPhone SE viewport (375×667)** + UX polish layout: AppShell sidebar collapse, AdminView table horizontal scroll, MissionView card stack, MarketView 2-col → 1-col, ActivityView entry layout. Risk thấp (CSS-only).
+15. **M10 — Shop daily limit** + per-item rate-limit (post-beta nice-to-have).
+16. **M7 — CSP production CDN review** (chỉ khi triển khai prod).
+17. **M9 (auth) — Settings logout-all `passwordVersion` bump** (intentional trade-off post-beta — document trong `docs/SECURITY.md` hiện đã có).
 
 ### Before Closed Beta
 

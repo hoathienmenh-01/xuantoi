@@ -218,6 +218,7 @@
       "leaderboard": "Phong Thần Bảng",
       "topup": "Nạp Tiên Ngọc",
       "settings": "Tâm Pháp",
+      "activity": "Hoạt Động",
       "admin": "Quản Trị"
     },
     "badge": {
@@ -254,6 +255,55 @@
     "spirit": "Linh",
     "speed": "Tốc",
     "luck": "May"
+  },
+  "activity": {
+    "title": "Sổ Hoạt Động",
+    "subtitle": "Lịch sử thu chi linh thạch / tiên ngọc và xuất nhập linh bảo của đạo hữu.",
+    "tabs": {
+      "currency": "Linh Thạch / Tiên Ngọc",
+      "item": "Linh Bảo"
+    },
+    "loading": "Đang tra cứu…",
+    "loadMore": "Xem thêm",
+    "loadingMore": "Đang tải thêm…",
+    "empty": "Chưa có giao dịch nào trong sổ.",
+    "noCharacter": "Bạn chưa nhập đạo — quay lại trang khởi tạo nhân vật để mở sổ.",
+    "errors": {
+      "UNAUTHENTICATED": "Phiên hết hạn — đăng nhập lại để xem.",
+      "NO_CHARACTER": "Bạn chưa có nhân vật — không có sổ hoạt động.",
+      "INVALID_CURSOR": "Trang dữ liệu lỗi — tải lại trang.",
+      "UNKNOWN": "Không truy vấn được sổ. Vui lòng thử lại."
+    },
+    "currencyLabel": {
+      "LINH_THACH": "Linh Thạch",
+      "TIEN_NGOC": "Tiên Ngọc"
+    },
+    "reasons": {
+      "CULTIVATE_TICK": "Nhập định",
+      "BREAKTHROUGH_COST": "Đột phá — chi phí",
+      "BREAKTHROUGH_REWARD": "Đột phá — phần thưởng",
+      "MISSION_REWARD": "Nhận thưởng nhiệm vụ",
+      "DAILY_LOGIN": "Điểm danh hàng ngày",
+      "MAIL_CLAIM": "Nhận quà thư sứ",
+      "GIFTCODE_REDEEM": "Đổi lễ mã",
+      "TOPUP_APPROVED": "Nạp tiên ngọc đã duyệt",
+      "ADMIN_GRANT": "Admin tặng",
+      "ADMIN_REVOKE": "Admin thu hồi",
+      "MARKET_LIST": "Đăng phường thị",
+      "MARKET_CANCEL": "Huỷ đăng phường thị",
+      "MARKET_BUY": "Mua phường thị",
+      "MARKET_SELL": "Bán phường thị",
+      "MARKET_FEE": "Phí phường thị",
+      "SHOP_BUY": "Mua NPC",
+      "SHOP_SELL": "Bán NPC",
+      "SECT_DONATE": "Cống hiến tông môn",
+      "INVENTORY_EQUIP": "Trang bị",
+      "INVENTORY_UNEQUIP": "Tháo trang bị",
+      "INVENTORY_USE": "Dùng vật phẩm",
+      "BOSS_REWARD": "Thưởng boss",
+      "DUNGEON_DROP": "Loot phụ bản",
+      "ACHIEVEMENT": "Thành tựu"
+    }
   },
   "settings": {
     "title": "Tâm Pháp Đường",

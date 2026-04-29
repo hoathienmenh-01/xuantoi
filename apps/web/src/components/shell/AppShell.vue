@@ -203,6 +203,13 @@ async function logout(): Promise<void> {
           />
         </RouterLink>
         <RouterLink
+          to="/activity"
+          class="px-3 py-2 rounded hover:bg-ink-700/60"
+          active-class="bg-ink-700/60 text-ink-50"
+        >
+          帳 {{ t('shell.nav.activity') }}
+        </RouterLink>
+        <RouterLink
           to="/settings"
           class="px-3 py-2 rounded hover:bg-ink-700/60"
           active-class="bg-ink-700/60 text-ink-50"
