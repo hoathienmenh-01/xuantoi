@@ -79,8 +79,16 @@ if ! gunzip -t "$BACKUP_FILE" 2>/dev/null; then
   exit 7
 fi
 
+# Terminate active sessions trước khi DROP — Postgres từ chối DROP DATABASE nếu
+# còn connection (Prisma client / pgAdmin / API server). Câu lệnh này idempotent
+# và an toàn (`pid <> pg_backend_pid()` skip session psql đang chạy).
+TERMINATE_SQL="SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = '$DB_NAME' AND pid <> pg_backend_pid();"
+
 if [[ "$USE_DOCKER" == "1" ]]; then
   # Drop + recreate db inside docker.
+  echo "[restore-db] Terminating active sessions on $DB_NAME via docker exec..."
+  docker exec -e PGPASSWORD=mtt xuantoi-pg \
+    psql -U mtt -d postgres -c "$TERMINATE_SQL" >/dev/null
   echo "[restore-db] Dropping & recreating $DB_NAME via docker exec..."
   docker exec -e PGPASSWORD=mtt xuantoi-pg \
     psql -U mtt -d postgres -c "DROP DATABASE IF EXISTS \"$DB_NAME\";"
@@ -92,6 +100,8 @@ if [[ "$USE_DOCKER" == "1" ]]; then
 else
   # Build maintenance URL trỏ vào DB `postgres` để DROP/CREATE.
   ADMIN_URL="${DATABASE_URL%/$DB_NAME*}/postgres"
+  echo "[restore-db] Terminating active sessions on $DB_NAME via host psql..."
+  psql "$ADMIN_URL" -c "$TERMINATE_SQL" >/dev/null
   echo "[restore-db] Dropping & recreating $DB_NAME via host psql..."
   psql "$ADMIN_URL" -c "DROP DATABASE IF EXISTS \"$DB_NAME\";"
   psql "$ADMIN_URL" -c "CREATE DATABASE \"$DB_NAME\";"

@@ -89,11 +89,21 @@
 
 ---
 
-## Recent Changes (PR #33→#94 đã merged trên main; PR #95 in-flight session 9e)
+## Recent Changes (PR #33→#95 đã merged trên main; PR #96 backup/restore reliability fixes in-flight session 9e)
 
-### PR #95 — `feat(ops): backup/restore Postgres script + docs/BACKUP_RESTORE.md` — **Pending merge** session 9e
+### PR #96 — `fix(scripts): backup/restore reliability — SIGPIPE-safe verify + pg_terminate_backend trước DROP` — **Pending merge** session 9e
 
-- **Branch**: `devin/1777478618-backup-restore-script`. **Base**: `main` @ `fed47a6` (sau PR #94 merged). **Status**: code complete + scripts smoke pass live + CI GitHub 5/5 ✅. Devin Review credential leak fix applied (mask password trong stdout/log).
+- **Branch**: `devin/1777480220-backup-restore-reliability-fixes`. **Base**: `main` (sau PR #95 merged). **Status**: code complete + scripts smoke pass live (verify dump 1.67MB decompressed + restore với active connection blocking).
+- **Mục tiêu**: 2 bug functional Devin Review tìm được sau khi PR #95 merged:
+  1. **🔴 SIGPIPE bug** trong `scripts/backup-db.sh` — pipeline `gunzip -c | head -5 | grep` dưới `set -euo pipefail` exit 141 cho database > 64KB decompressed (head đóng stdin → SIGPIPE → gunzip exit 141 → pipefail propagate). Mọi production DB sẽ trigger false-fail. Fix: capture HEADER vào variable trước khi grep, `|| true` để tránh pipefail.
+  2. **🟡 DROP DATABASE blocked bởi active connections** trong `scripts/restore-db.sh` — Postgres từ chối DROP nếu Prisma client / pgAdmin / API server còn connect. Fix: `pg_terminate_backend(pid) WHERE datname = '$DB_NAME' AND pid <> pg_backend_pid()` trước cả 2 path docker + host.
+- **Files**: `scripts/backup-db.sh` (+5 line, replace 1 line) + `scripts/restore-db.sh` (+10 line).
+- **Smoke pass**: backup 1.67MB decompressed dump (5000 row × 128-byte md5) → verify success (no SIGPIPE). Restore với simulated `pg_sleep(120)` active session → terminated thành công → DROP + CREATE + restore success → 21 table restored.
+- **Risk**: Thấp — script ops only, không touch code/schema/test pipeline.
+
+### PR #95 — `feat(ops): backup/restore Postgres script + docs/BACKUP_RESTORE.md` — **Merged into main** session 9e (CI 5/5 ✅; security fix Devin Review)
+
+- **Branch**: `devin/1777478618-backup-restore-script`. **Base**: `main` @ `fed47a6` (sau PR #94 merged). **Status**: Merged. Devin Review credential leak fix applied (mask password trong stdout/log).
 - **Mục tiêu** (Roadmap §20 #13): production readiness §8 — closed beta cần backup/restore tự động, chưa có. Disaster recovery để ngăn mất player data sau migration sai / container crash / admin xoá nhầm.
 - **Giải pháp**: `scripts/backup-db.sh` (~95 line bash, executable) — `pg_dump --format=plain | gzip -9` ghi `<BACKUP_DIR>/<YYYYMMDD-HHMMSS>-<dbname>.sql.gz`, auto-detect host pg_dump vs `docker exec xuantoi-pg`. `scripts/restore-db.sh` (~100 line bash, executable) — argument file.sql.gz, prompt `Type 'yes'` confirm (skip với `ASSUME_YES=1`), DROP + CREATE + restore. `pnpm backup:db` + `pnpm restore:db` npm scripts root level. `docs/BACKUP_RESTORE.md` (~210 line) — TL;DR + workflow + cron daily mẫu + disaster recovery checklist + hạn chế hiện tại.
 - **Security**: DATABASE_URL credentials masked qua `sed` regex (`://user:***@`) khi echo. FATAL messages cũng dùng SAFE_URL — không leak password vào log/cron file khi `ASSUME_YES=1` redirect stdout.
