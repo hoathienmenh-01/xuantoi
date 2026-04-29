@@ -1,6 +1,6 @@
 # AI Handoff Report — Xuân Tôi
 
-> **Snapshot**: `main` @ `81706a9` (Merge PR #61 audit session 6, 28 Apr 2026 22:05 UTC). PR #52..#61 đã merge `main`. **4 PR Pending merge**: #62 (G8 — M11 profile rate-limit, CI ✅ 3/3), #63 (G9 — M3 WS mission:progress, CI ✅ 3/3), #64 (G10 — H6 wire Playwright smoke vào CI, CI ✅ 5/5), **#65 (G11 — FE handler `mission:progress` stacked trên PR #63)**.
+> **Snapshot**: `main` @ `81706a9` (Merge PR #61 audit session 6, 28 Apr 2026 22:05 UTC). PR #52..#61 đã merge `main`. **8 PR Pending merge**: #62 (G8 M11 profile rate-limit), #63 (G9 M3 WS mission:progress), #64 (G10 H6 Playwright CI), #65 (G11 stacked #63), #66 (G12 L7 admin revoke inventory), #67 (G13 L5 skeleton Leaderboard+Profile), #68 (G14 stacked #67), **#69 (G15 — L2 market fee config env `MARKET_FEE_PCT`)**.
 > **Người viết**: AI engineer session 28/4 sess.6 (audit refresh sau khi PR #58/#59/#60 đã merge — header report cũ vẫn ghi #59/#60 "Open" → đó là tồn tại lỗi thời và đã được fix bởi PR docs này).
 > **Đối tượng đọc**: AI kế nhiệm sẽ tiếp tục đưa dự án tới beta / production.
 >
@@ -85,30 +85,26 @@
 
 Mỗi PR đều `Merged` vào `main`, branch base = `main`. Smoke local (typecheck/lint/test/build) đã chạy ở mỗi PR; smoke E2E 6/6 đã pass tại PR #44 (snapshot `4d8af10`).
 
-### PR #72 — `feat(admin): filter audit log by action prefix + actor email (G18)` — **Pending merge**
+### PR #69 — `feat(api): MARKET_FEE_PCT từ env, validate bounds [0, 0.5] (L2)` — **Pending merge**
 
-- **Branch**: `devin/1777419470-g18-admin-audit-filter`. **Base**: `main` @ `81706a9`. **Status**: **Pending merge**.
-- **Mục tiêu** (Smart admin §3 from prompt user — "Bộ lọc audit log"): Trước đây admin audit tab chỉ pagination — không filter. Khi closed beta có nhiều audit entry (ban/grant/revoke/topup/etc.), admin cần filter nhanh theo loại action và người thực hiện.
+- **Branch**: `devin/1777417906-g15-market-fee-config`. **Base**: `main` @ `81706a9`. **Status**: **Pending merge**.
+- **Mục tiêu** (L2 — config flexibility for closed beta): Trước đây `MARKET_FEE_PCT = 0.05` hard-code trong `apps/api/src/modules/market/market.service.ts:29`. Closed beta cần khả năng tắt phí (`=0`) hoặc tinh chỉnh nhanh không cần redeploy code.
 - **Giải pháp**:
-  - **BE `AdminService.listAudit(page, filters)`**: thêm 2 filter — `actionPrefix` (prisma `startsWith` — search "user.", "topup.", "inventory.revoke" …) + `actorEmail` (resolve email→userId→`actorUserId IN [...]`). Trick: nếu email không match user nào, dùng sentinel `'__none__'` để force 0 row (tránh `where IN []` warning).
-  - **BE `AdminController.audit`**: 2 query params `action` (max 64 char) + `email` (max 120 char). Validate length tránh DoS qua param dài.
-  - **FE `apps/web/src/api/admin.ts`**: `adminListAudit(page, filters?)`.
-  - **FE `AdminView.vue`** audit tab: 2 input filter + nút search. data-testid để E2E.
-  - **i18n**: `admin.audit.filter.{actionPlaceholder, emailPlaceholder}` (vi + en).
+  - Tách `DEFAULT_MARKET_FEE_PCT = 0.05`, `MIN_MARKET_FEE_PCT = 0`, `MAX_MARKET_FEE_PCT = 0.5` (trần 50% bảo vệ ops gõ nhầm `5` thay `0.05`).
+  - Hàm `resolveMarketFeePct(envValue)`: silent fallback DEFAULT khi env không hợp lệ (undefined/empty/NaN/out-of-range) + `console.warn`. KHÔNG throw → app vẫn boot.
+  - `MARKET_FEE_PCT = resolveMarketFeePct(process.env.MARKET_FEE_PCT)` ở module load — giữ contract export hiện tại (controller + test cũ vẫn dùng).
+  - `apps/api/.env.example`: thêm dòng `MARKET_FEE_PCT=0.05` + comment giải thích.
 - **Files**:
-  - `apps/api/src/modules/admin/admin.service.ts` (+22 / -3)
-  - `apps/api/src/modules/admin/admin.controller.ts` (+10 / -2)
-  - `apps/api/src/modules/admin/admin-list-audit-filter.test.ts` (new, 105 line, **7 test**)
-  - `apps/web/src/api/admin.ts` (+10 / -2)
-  - `apps/web/src/views/AdminView.vue` (+22 / -1)
-  - `apps/web/src/i18n/{vi,en}.json` (+5 each)
-- **Tests**: 7 test mới — không filter, actionPrefix prefix-match, actionPrefix exact, không match → 0, actorEmail substring case-insensitive, actorEmail không match → 0, combine actionPrefix + actorEmail. Tổng API test: **266/266** local (was 259, +7).
+  - `apps/api/src/modules/market/market.service.ts` (+30 / -1)
+  - `apps/api/src/modules/market/market-fee-config.test.ts` (new, 60 line, **7 test**)
+  - `apps/api/.env.example` (+4)
+- **Tests**: 7 test mới — undefined/empty fallback, valid range [0, 0.5], non-numeric warn, âm warn, > 0.5 warn (chống gõ nhầm `5`), MAX boundary (0.5) hợp lệ, NaN literal fallback. Tổng API test: **266/266** local (was 259 trên main, +7).
 - **Local verified**: `pnpm typecheck` ✅ · `pnpm lint` ✅ · `pnpm test` ✅ · `pnpm build` ✅.
-- **Risk**: low. Backward-compat: caller cũ không pass filter vẫn hoạt động identical (param default `{}`).
-- **Backward compat**: existing `adminListAudit(page)` calls đều OK.
-- **Runtime smoke**: Needs runtime smoke — `/admin` tab Audit → nhập "user." → list chỉ entry user.*; xoá filter → full list; nhập email admin → list chỉ admin's actions.
-- **Rollback**: revert; FE filter chỉ là UI state.
-- **Bước tiếp**: G19 — M6 mission analytics aggregate, daily login reward (mới model RewardClaimLog), hoặc topup list filter date range.
+- **Risk**: low. Default value giữ 0.05 → behavior identical khi không set env. Existing market.service.test.ts vẫn pass.
+- **Backward compat**: Existing test/controller import `MARKET_FEE_PCT` không đổi.
+- **Runtime smoke**: Needs runtime smoke — set `MARKET_FEE_PCT=0` trong staging, mua listing → seller nhận 100% total; set `MARKET_FEE_PCT=0.1` → seller nhận 90%.
+- **Rollback**: revert; hoặc xóa env → fallback 0.05.
+- **Bước tiếp**: G16 — M6 mission analytics aggregate API, M7 mail unread badge BE, hoặc Smart admin filter.
 
 ---
 

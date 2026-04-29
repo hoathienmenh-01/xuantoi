@@ -26,7 +26,36 @@ class MarketError extends Error {
   }
 }
 
-export const MARKET_FEE_PCT = 0.05; // 5% phí thiên đạo
+export const DEFAULT_MARKET_FEE_PCT = 0.05; // 5% phí thiên đạo (mặc định)
+export const MIN_MARKET_FEE_PCT = 0;
+export const MAX_MARKET_FEE_PCT = 0.5; // 50% trần — bảo vệ khỏi gõ nhầm 5 thay vì 0.05
+
+/**
+ * Đọc `MARKET_FEE_PCT` từ env. Hợp lệ: số trong khoảng [0, 0.5].
+ * Không hợp lệ → silent fallback `DEFAULT_MARKET_FEE_PCT` + console.warn.
+ *
+ * Cố ý KHÔNG `throw` để app vẫn boot khi ops đặt sai env (config-only,
+ * không phải security). Test verify silent fallback behavior.
+ */
+export function resolveMarketFeePct(envValue: string | undefined): number {
+  if (envValue === undefined || envValue.trim() === '') return DEFAULT_MARKET_FEE_PCT;
+  const n = Number(envValue);
+  if (!Number.isFinite(n)) {
+    console.warn(
+      `[market] MARKET_FEE_PCT="${envValue}" không phải số hợp lệ — fallback ${DEFAULT_MARKET_FEE_PCT}`,
+    );
+    return DEFAULT_MARKET_FEE_PCT;
+  }
+  if (n < MIN_MARKET_FEE_PCT || n > MAX_MARKET_FEE_PCT) {
+    console.warn(
+      `[market] MARKET_FEE_PCT=${n} ngoài khoảng [${MIN_MARKET_FEE_PCT}, ${MAX_MARKET_FEE_PCT}] — fallback ${DEFAULT_MARKET_FEE_PCT}`,
+    );
+    return DEFAULT_MARKET_FEE_PCT;
+  }
+  return n;
+}
+
+export const MARKET_FEE_PCT = resolveMarketFeePct(process.env.MARKET_FEE_PCT);
 
 export interface ListingView {
   id: string;
