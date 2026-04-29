@@ -18,6 +18,7 @@ import {
   adminListUsers,
   adminRejectTopup,
   adminRevokeGiftcode,
+  adminRevokeInventory,
   adminSetRole,
   adminSpawnBoss,
   adminStats,
@@ -57,6 +58,11 @@ const grantOpen = ref<string | null>(null);
 const grantLinhThach = ref('0');
 const grantTienNgoc = ref(0);
 const grantReason = ref('');
+
+const revokeOpen = ref<string | null>(null);
+const revokeItemKey = ref('');
+const revokeQty = ref(1);
+const revokeReason = ref('');
 
 // Topups tab
 const topupStatus = ref<'PENDING' | 'APPROVED' | 'REJECTED' | ''>('PENDING');
@@ -267,6 +273,38 @@ async function submitGrant(): Promise<void> {
     await adminGrant(grantOpen.value, grantLinhThach.value, grantTienNgoc.value, grantReason.value);
     toast.push({ type: 'success', text: t('admin.users.grantedToast') });
     grantOpen.value = null;
+    await refreshUsers();
+  } catch (e) {
+    handleErr(e);
+  }
+}
+
+function openRevoke(u: AdminUserRow): void {
+  if (isSelfTarget(auth.user?.id, u.id)) {
+    toast.push({ type: 'error', text: t('errors.CANNOT_TARGET_SELF') });
+    return;
+  }
+  revokeOpen.value = u.id;
+  revokeItemKey.value = '';
+  revokeQty.value = 1;
+  revokeReason.value = '';
+}
+
+async function submitRevoke(): Promise<void> {
+  if (!revokeOpen.value) return;
+  const itemKey = revokeItemKey.value.trim();
+  if (!itemKey) {
+    toast.push({ type: 'error', text: t('admin.users.revokeMissingItemKey') });
+    return;
+  }
+  if (!Number.isInteger(revokeQty.value) || revokeQty.value < 1 || revokeQty.value > 999) {
+    toast.push({ type: 'error', text: t('admin.users.revokeInvalidQty') });
+    return;
+  }
+  try {
+    await adminRevokeInventory(revokeOpen.value, itemKey, revokeQty.value, revokeReason.value);
+    toast.push({ type: 'success', text: t('admin.users.revokedToast') });
+    revokeOpen.value = null;
     await refreshUsers();
   } catch (e) {
     handleErr(e);
@@ -620,6 +658,16 @@ const isAdmin = () => game.character?.role === 'ADMIN';
                   >
                     {{ u.banned ? t('admin.users.unlock') : t('admin.users.lock') }}
                   </button>
+                  <button
+                    v-if="isAdmin()"
+                    class="text-xs text-orange-200 underline disabled:cursor-not-allowed disabled:opacity-60 disabled:no-underline"
+                    :disabled="isSelfRow(u)"
+                    :title="isSelfRow(u) ? t('admin.users.selfDemoteBlocked') : t('admin.users.revokeTitle')"
+                    :data-testid="`admin-users-revoke-btn-${u.id}`"
+                    @click="openRevoke(u)"
+                  >
+                    {{ t('admin.users.revokeBtn') }}
+                  </button>
                 </td>
               </tr>
             </tbody>
@@ -668,6 +716,52 @@ const isAdmin = () => game.character?.role === 'ADMIN';
             <div class="flex justify-end gap-2">
               <button class="text-xs text-ink-300" @click="grantOpen = null">{{ t('common.cancel') }}</button>
               <MButton @click="submitGrant">{{ t('common.confirm') }}</MButton>
+            </div>
+          </div>
+        </div>
+
+        <!-- Revoke inventory modal (admin-only, consume PR #66 BE) -->
+        <div
+          v-if="revokeOpen"
+          class="fixed inset-0 bg-black/60 flex items-center justify-center z-50"
+          data-testid="admin-users-revoke-modal"
+          @click.self="revokeOpen = null"
+        >
+          <div class="bg-ink-700 border border-ink-300/40 rounded p-4 w-full max-w-md space-y-3">
+            <h3 class="text-lg">{{ t('admin.users.revokeTitle') }}</h3>
+            <p class="text-xs text-ink-300">{{ t('admin.users.revokeHint') }}</p>
+            <label class="block text-xs">
+              {{ t('admin.users.revokeItemKey') }}
+              <input
+                v-model="revokeItemKey"
+                data-testid="admin-users-revoke-itemkey"
+                class="w-full px-2 py-1 bg-ink-900/40 border border-ink-300/30 rounded mt-1 font-mono"
+                placeholder="VD: BINH_KHI_BAC"
+              />
+            </label>
+            <label class="block text-xs">
+              {{ t('admin.users.revokeQty') }}
+              <input
+                v-model.number="revokeQty"
+                data-testid="admin-users-revoke-qty"
+                type="number"
+                min="1"
+                max="999"
+                class="w-full px-2 py-1 bg-ink-900/40 border border-ink-300/30 rounded mt-1"
+              />
+            </label>
+            <label class="block text-xs">
+              {{ t('admin.users.revokeReason') }}
+              <input
+                v-model="revokeReason"
+                data-testid="admin-users-revoke-reason"
+                class="w-full px-2 py-1 bg-ink-900/40 border border-ink-300/30 rounded mt-1"
+                :placeholder="t('admin.users.revokeReasonPlaceholder')"
+              />
+            </label>
+            <div class="flex justify-end gap-2">
+              <button class="text-xs text-ink-300" @click="revokeOpen = null">{{ t('common.cancel') }}</button>
+              <MButton data-testid="admin-users-revoke-submit" @click="submitRevoke">{{ t('common.confirm') }}</MButton>
             </div>
           </div>
         </div>

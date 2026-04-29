@@ -93,6 +93,27 @@ export async function adminGrant(
   unwrap(data);
 }
 
+/**
+ * Admin thu hồi item khỏi túi người chơi. Ghi `ItemLedger` reason `ADMIN_REVOKE`
+ * + audit log `admin.inventory.revoke`. ADMIN-only (BE `@RequireAdmin()`).
+ *
+ * BE: `POST /admin/users/:id/inventory/revoke` body `{ itemKey, qty, reason }`.
+ * Schema: `qty` integer 1..999, `reason` ≤200 ký tự, `itemKey` 1..80.
+ * Lỗi BE map: `ITEM_NOT_FOUND` / `INSUFFICIENT_QTY` → `INVALID_INPUT`.
+ */
+export async function adminRevokeInventory(
+  id: string,
+  itemKey: string,
+  qty: number,
+  reason: string,
+): Promise<void> {
+  const { data } = await apiClient.post<Envelope<{ ok: true }>>(
+    `/admin/users/${encodeURIComponent(id)}/inventory/revoke`,
+    { itemKey, qty, reason },
+  );
+  unwrap(data);
+}
+
 export async function adminListTopups(
   status: 'PENDING' | 'APPROVED' | 'REJECTED' | '',
   page: number,
