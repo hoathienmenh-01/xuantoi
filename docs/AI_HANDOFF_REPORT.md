@@ -89,9 +89,9 @@
 
 ---
 
-## Recent Changes (PR #33→#86 — tất cả đã merge `main`; L3 PR #87 + M6 in-flight session 9d)
+## Recent Changes (PR #33→#89 — tất cả đã merge `main`; L3 PR #87 + M6 PR #88 in-flight session 9d)
 
-### PR — `feat(api): GET /logs/me — self audit log (CurrencyLedger + ItemLedger keyset paginated) (M6)` — **Pending merge**
+### PR #88 — `feat(api): GET /logs/me — self audit log (CurrencyLedger + ItemLedger keyset paginated) (M6)` — **Pending merge** (CI 5/5 ✅)
 
 - **Branch**: `devin/1777469824-m6-logs-me`. **Base**: `main` @ `011e930` (sau PR #86 audit refresh merged). **Status**: code complete + local typecheck/lint/api test 369/369/build xanh; PR mở session 9d.
 - **Mục tiêu** (Recommended Roadmap §20 M6 + Smart admin/economy §3,4 — minh bạch ledger cho người chơi): tới giờ CurrencyLedger + ItemLedger là audit-trail nội bộ (admin only — `apps/api/src/modules/admin/admin.controller.ts` + `pnpm audit:ledger` script). Người chơi không có cách tự xem mình đã nhận/mất tiền/item ở đâu → khi có thắc mắc support "Sao tôi mất 500 LT?" admin phải tra DB tay. Endpoint `/logs/me` mở read-only self-view audit chronological cho user.
@@ -132,6 +132,15 @@
 - **Runtime smoke**: **Needs runtime smoke** — chưa hit endpoint thật qua HTTP với cookie auth thật. Sẽ smoke khi FE tab "Hoạt động" wire (next PR).
 - **`AI_HANDOFF_REPORT.md updated`**: Recent Changes (this entry), §20 Roadmap M6 → Resolved/Done.
 - **Bước tiếp theo**: FE tab "Hoạt động" trong ProfileView/SettingsView — list logs với infinite scroll dùng `nextCursor`, format reason qua i18n `logs.reason.${reason}`, format delta theo currency/item.
+
+### PR #89 — `docs(api): refresh API.md — sync endpoints + global prefix /api note + WS mission:progress + auth route /_auth/* fix` — **Merged into main** @ `537a4d6` (29/4 ~13:35 UTC, CI 5/5 ✅)
+
+- **Branch**: `devin/1777470949-docs-api-refresh` (merged). **Base**: `main` @ `011e930`. **Merge commit**: `537a4d6`.
+- **Mục tiêu**: Sync `docs/API.md` với code thực sau cascade PR #36/#54/#59/#60/#62/#63/#66/#71/#80/#81/#83/#84/#85/#88 + fix auth route sai (`/auth/*` → đúng `/_auth/*`).
+- **Files**: `docs/API.md` (157 → ~190 line) + Recent Changes entry mô tả gap.
+- **Test added**: 0 (docs only). Test counts không thay đổi (api 369 / web 123 / shared 47/55).
+- **CI**: 5/5 ✅.
+- **Risk**: Cực thấp.
 
 ### PR #86 — `docs(handoff): session 9d audit refresh — bump snapshot 05b05c0 + L6/L6b/G23 Resolved` — **Merged into main** @ `011e930` (29/4, CI 4/4 xanh)
 
