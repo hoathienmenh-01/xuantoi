@@ -379,4 +379,40 @@ describe('AuthService', () => {
       auth.resetPassword({ token: fp.devToken!, newPassword: 'NewPass1234' }),
     ).rejects.toMatchObject({ code: 'INVALID_RESET_TOKEN' });
   });
+
+  it('resetPassword: token format `id.secret` → lookup O(1) by id (Devin Review fix — không còn quét scan limit 50)', async () => {
+    const r = await auth.register({ email: 'rp6@xt.local', password: PASSWORD }, ctx);
+    const fp = await auth.forgotPassword({ email: 'rp6@xt.local' }, ctx);
+    expect(fp.devToken).toMatch(/^[^.]+\..+$/);
+    const [tokenId, secret] = fp.devToken!.split('.');
+    const row = await prisma.passwordResetToken.findUniqueOrThrow({ where: { id: tokenId } });
+    expect(row.userId).toBe(r.user.id);
+    // Secret không bao giờ được lưu plaintext trong DB.
+    expect(row.hashedToken).not.toContain(secret);
+    expect(row.hashedToken.startsWith('$argon2')).toBe(true);
+  });
+
+  it('resetPassword: token id đúng + secret sai → INVALID_RESET_TOKEN (không leak token row tồn tại)', async () => {
+    await auth.register({ email: 'rp7@xt.local', password: PASSWORD }, ctx);
+    const fp = await auth.forgotPassword({ email: 'rp7@xt.local' }, ctx);
+    const [tokenId] = fp.devToken!.split('.');
+    await expect(
+      auth.resetPassword({ token: `${tokenId}.wrong-secret-xxxxx`, newPassword: 'NewPass1234' }),
+    ).rejects.toMatchObject({ code: 'INVALID_RESET_TOKEN' });
+  });
+
+  it('resetPassword: token id không tồn tại → INVALID_RESET_TOKEN (chống enum)', async () => {
+    await expect(
+      auth.resetPassword({
+        token: 'nonexistent-id-xxxxx.some-secret-xxxxx',
+        newPassword: 'NewPass1234',
+      }),
+    ).rejects.toMatchObject({ code: 'INVALID_RESET_TOKEN' });
+  });
+
+  it('resetPassword: token thiếu dấu chấm → INVALID_RESET_TOKEN (format guard)', async () => {
+    await expect(
+      auth.resetPassword({ token: 'no-dot-here-xxxxxxxxx', newPassword: 'NewPass1234' }),
+    ).rejects.toMatchObject({ code: 'INVALID_RESET_TOKEN' });
+  });
 });

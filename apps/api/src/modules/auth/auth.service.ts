@@ -177,10 +177,14 @@ export class AuthService {
     const user = await this.prisma.user.findUnique({ where: { email: input.email } });
     if (!user || user.banned) return { devToken: null };
 
-    // Token plaintext: 32 byte URL-safe base64 (~43 ký tự).
-    const plaintext = randomBytes(32).toString('base64url');
-    const hashed = await argon2.hash(plaintext, ARGON2_OPTS);
+    // Token format: `<tokenId>.<secret>` — `tokenId` là `id` DB row (non-secret,
+    // chỉ để lookup O(1)); `secret` là 32-byte URL-safe base64 (~43 ký tự).
+    // DB lưu argon2 hash của `secret` (không lưu `tokenId`).
+    const tokenId = randomUUID();
+    const secret = randomBytes(32).toString('base64url');
+    const hashed = await argon2.hash(secret, ARGON2_OPTS);
     const expiresAt = new Date(Date.now() + PASSWORD_RESET_TOKEN_TTL_MS);
+    const plaintext = `${tokenId}.${secret}`;
 
     await this.prisma.$transaction([
       // Revoke các token reset cũ chưa consumed/expired của user (one-shot per request).
@@ -189,7 +193,7 @@ export class AuthService {
         data: { consumedAt: new Date() },
       }),
       this.prisma.passwordResetToken.create({
-        data: { userId: user.id, hashedToken: hashed, expiresAt },
+        data: { id: tokenId, userId: user.id, hashedToken: hashed, expiresAt },
       }),
     ]);
 
@@ -212,9 +216,10 @@ export class AuthService {
 
   /**
    * Reset password bằng token đã gửi qua email.
-   * Quét tất cả token chưa consumed + chưa hết hạn của mọi user, dùng
-   * `argon2.verify` để tìm match (token plaintext không index được).
-   * Số lượng row scan trong production thấp (chỉ token < 30 phút chưa consumed).
+   * Token format `<tokenId>.<secret>`: split → lookup row by `tokenId` (O(1)
+   * indexed PK), rồi `argon2.verify` chỉ row đó. Không còn quét toàn bộ
+   * token active (PR #101 review fix — chống DOS bằng cách flood 51+ token
+   * khác user → đẩy token nạn nhân khỏi top-50 scan window).
    *
    * Side-effect (atomic):
    *  - Mark token consumed (one-shot).
@@ -223,25 +228,29 @@ export class AuthService {
    *  - Mark mọi reset token còn lại của user là consumed (revoke).
    */
   async resetPassword(input: ResetPasswordInput): Promise<void> {
-    const candidates = await this.prisma.passwordResetToken.findMany({
-      where: { consumedAt: null, expiresAt: { gt: new Date() } },
-      orderBy: { createdAt: 'desc' },
-      take: 50,
-    });
-
-    let matched: { id: string; userId: string } | null = null;
-    for (const row of candidates) {
-      try {
-        if (await argon2.verify(row.hashedToken, input.token)) {
-          matched = { id: row.id, userId: row.userId };
-          break;
-        }
-      } catch {
-        // hash corrupt — skip.
-      }
+    const dotIdx = input.token.indexOf('.');
+    if (dotIdx <= 0 || dotIdx === input.token.length - 1) {
+      throw new AuthError('INVALID_RESET_TOKEN');
     }
-    if (!matched) throw new AuthError('INVALID_RESET_TOKEN');
+    const tokenId = input.token.slice(0, dotIdx);
+    const secret = input.token.slice(dotIdx + 1);
 
+    const row = await this.prisma.passwordResetToken.findUnique({
+      where: { id: tokenId },
+    });
+    if (!row || row.consumedAt !== null || row.expiresAt <= new Date()) {
+      throw new AuthError('INVALID_RESET_TOKEN');
+    }
+
+    let ok = false;
+    try {
+      ok = await argon2.verify(row.hashedToken, secret);
+    } catch {
+      ok = false;
+    }
+    if (!ok) throw new AuthError('INVALID_RESET_TOKEN');
+
+    const matched = { id: row.id, userId: row.userId };
     const user = await this.prisma.user.findUnique({ where: { id: matched.userId } });
     if (!user || user.banned) throw new AuthError('INVALID_RESET_TOKEN');
 

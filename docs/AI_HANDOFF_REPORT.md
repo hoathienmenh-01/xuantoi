@@ -108,6 +108,24 @@
 - **Risk**: Thấp. FE-only, không touch schema/BE/economy. Public route không yêu cầu auth (đúng thiết kế). Mismatch confirm + minlength 8 client-side check phụ trên BE Password zod. `devToken` panel chỉ hiện khi BE trả non-null (BE chỉ trả non-null khi `NODE_ENV !== 'production'`).
 - **Bước tiếp theo**: smoke runtime với `pnpm infra:up` + Mailhog UI (`http://localhost:8025`) sau khi PR #101 + #102 merge.
 
+### PR #101 review fix (Devin Review BUG_pr-review-job-...) — **Token format `<id>.<secret>` thay scan limit 50** (29/4 ~18:30 UTC)
+
+- **Vấn đề báo bởi Devin Review** ([comment #r3163113344](https://github.com/hoathienmenh-01/xuantoi/pull/101#discussion_r3163113344)): `resetPassword` cũ scan tất cả token active với `take: 50` rồi loop `argon2.verify` từng row → nếu attacker từ ~17 IP (mỗi IP rate-limit 3/15min) tạo 51+ token cho 51+ email → token nạn nhân bị đẩy khỏi top-50 scan window → silently rejected as `INVALID_RESET_TOKEN`. Đây vừa là correctness bug (valid token → wrong error) vừa là DOS vector.
+- **Fix**: Token format mới `<tokenId>.<secret>` (Devin Review đề xuất):
+  - `tokenId` = UUID (`randomUUID()`, non-secret, dùng để index DB row).
+  - `secret` = 32-byte URL-safe base64 (như cũ, plaintext không lưu DB).
+  - Plaintext gửi qua email = `${tokenId}.${secret}`.
+  - DB lưu `id = tokenId` + `hashedToken = argon2.hash(secret)`.
+- **`resetPassword` rewrite**: split token theo dot → `findUnique({ where: { id: tokenId } })` (O(1) PK lookup) → `argon2.verify(row.hashedToken, secret)` chỉ 1 lần. Bỏ hoàn toàn loop + `take: 50`. Không còn DOS vector từ token flooding.
+- **Test added** (+4 it `auth.service.test.ts` 11→15 it):
+  - `token format id.secret → lookup O(1)` (verify format + hash không chứa secret plaintext).
+  - `token id đúng + secret sai → INVALID_RESET_TOKEN`.
+  - `token id không tồn tại → INVALID_RESET_TOKEN` (chống enum).
+  - `token thiếu dot → INVALID_RESET_TOKEN` (format guard).
+- **Files**: `apps/api/src/modules/auth/auth.service.ts` (forgotPassword + resetPassword), `apps/api/src/modules/auth/auth.service.test.ts` (+4 it).
+- **Compat**: Token chỉ tồn tại 30 phút TTL → user pending sẽ phải refresh `forgot-password` để có token format mới (acceptable migration trade-off).
+- **Risk**: Thấp. Hash cũ trong DB vẫn argon2 nhưng giờ verify với `secret` thay vì full plaintext → token đã phát trước fix sẽ không reset được (force user re-request, max 30 phút delay). Schema không đổi.
+
 ### PR #101 — `feat(api): forgot/reset-password endpoints + EmailService scaffold (Mailhog)` — **Pending merge** session 9f
 
 - **Branch**: `devin/1777484371-auth-forgot-reset-password`. **Base**: `main` @ `5a93d22` (sau PR #99 merged). **Status**: code complete + typecheck/lint/build all xanh local; 11 vitest mới (api auth.service.test.ts) chưa run live cần `pnpm infra:up` + `prisma migrate deploy` — CI sẽ chạy đủ.
