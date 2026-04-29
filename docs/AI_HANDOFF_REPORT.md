@@ -1,6 +1,6 @@
 # AI Handoff Report — Xuân Tôi
 
-> **Snapshot**: `main` @ `993a95f` (Merge PR #60, 28 Apr 2026 21:37 UTC). PR #52..#60 đều đã merge `main`. **Không còn PR nào open** tại thời điểm audit session 6.
+> **Snapshot**: `main` @ `81706a9` (Merge PR #61 audit session 6 docs, 28 Apr 2026 22:05 UTC). PR #52..#61 đều đã merge `main`. **PR #62 (G8 — M11 profile rate-limit) Pending merge** — branch `devin/1777414051-g8-profile-rate-limit`.
 > **Người viết**: AI engineer session 28/4 sess.6 (audit refresh sau khi PR #58/#59/#60 đã merge — header report cũ vẫn ghi #59/#60 "Open" → đó là tồn tại lỗi thời và đã được fix bởi PR docs này).
 > **Đối tượng đọc**: AI kế nhiệm sẽ tiếp tục đưa dự án tới beta / production.
 >
@@ -10,7 +10,7 @@
 >
 > **Trạng thái (28/4 session 6)**: PR #33..#60 đã merge `main`. PR #59 thêm leaderboard (BE + FE + 7 test). PR #60 thêm rate-limit `POST /auth/register` per-IP (+2 test) — security hardening. Vitest scaffold (PR B / replay PR #47) đã trên main; web test set hiện 64 test (toast 9 + game 8 + auth 7 + badges 9 + NextActionPanel 6 + OnboardingChecklist 8 + itemName 11 + LeaderboardView 6).
 >
-> Roadmap kế tiếp (xem §20/§21): M11 rate-limit `GET /character/profile/:id` (analog PR #60), M3 WS `mission:progress` push, L5 skeleton loaders, L7 `POST /admin/inventory/revoke`, L2 market fee 5% → config, hoặc smart features tiếp từ prompt user.
+> Roadmap kế tiếp (xem §20/§21): ~~M11 rate-limit `GET /character/profile/:id`~~ → **Pending merge PR #62** — còn lại: M3 WS `mission:progress` push, H6 wire Playwright vào CI, L5 skeleton loaders, L7 `POST /admin/inventory/revoke`, L2 market fee 5% → config, hoặc smart features tiếp từ prompt user.
 >
 > **Note replay-gap PR #47** đã closed bởi PR #53 (cherry-pick `32a33a6` vào main) — không còn drift giữa GitHub PR status và `main`.
 >
@@ -25,16 +25,16 @@
 - **Gameplay loop**: đăng ký → chọn tông môn → **Nhập Định (cultivation)** passive tick EXP → **Luyện Khí Đường (combat PvE)** + dungeon → loot → **Phường Thị (market P2P)** → **Tông Môn (sect)** cống hiến + chat → **World Boss** → **Nạp Tiên Ngọc (topup)** → admin cấp → tiến cảnh giới 28 stage.
 - **Stack**: monorepo pnpm. `apps/api` (NestJS 10 + Prisma 5 + Postgres 16 + Redis 7 + BullMQ + Socket.io). `apps/web` (Vue 3 + Vite + Pinia + Tailwind + vue-i18n + PWA). `packages/shared` (Zod + realms/items/missions catalog).
 - **Mục tiêu hiện tại**: **closed beta readiness**. Hầu hết feature Phase 0-8 + Mission + Mail + GiftCode đã merge. Còn lại polish + observability + content scale.
-- **Trạng thái**: repo build xanh, CI xanh trên PR #40 → #60. Sau khi PR #33→#60 merge (28/4 21:37 UTC): **259 test API + 47 test shared + 64 test web (vitest) = 370 test pass** — verified local 28/4 21:55 UTC với real Postgres + Redis. Smoke E2E pass 6/6 đã chạy ở PR #44 (`ce6da28..4d8af10`); sau đó chưa smoke runtime tích hợp sau khi PR #46..#60 merge — **Needs runtime smoke** cho leaderboard FE + register rate-limit + sidebar badges + onboarding checklist + economy alerts + next-action panel.
+- **Trạng thái**: repo build xanh, CI xanh trên PR #40 → #61. Sau khi PR #33→#61 merge (28/4 22:05 UTC): **259 test API + 47 test shared + 64 test web (vitest) = 370 test pass** — verified local 28/4 21:55 UTC với real Postgres + Redis. PR #62 pending merge sẽ bổ sung +3 API test → **373 tổng**. Smoke E2E pass 6/6 đã chạy ở PR #44 (`ce6da28..4d8af10`); sau đó chưa smoke runtime tích hợp sau khi PR #46..#62 merge — **Needs runtime smoke** cho leaderboard FE + register rate-limit + profile rate-limit + sidebar badges + onboarding checklist + economy alerts + next-action panel.
 
 ---
 
 ## 2. Current Branch / CI / PR Status
 
 - **Default branch**: `main`.
-- **Commit audit**: `993a95f Merge pull request #60 from hoathienmenh-01/devin/1777411089-g7-health-readiness` (HEAD `main`, 28/4 21:37 UTC).
-- **CI gần nhất trên main**: xanh — run `25079013093` (1m34s, conclusion `success`). Các run gần nhất `2507864368[9]` (PR #59 merge) và `25078368194` (PR #58 merge) đều xanh.
-- **PR open đáng kể**: **không có** PR nào mở tại thời điểm audit session 6 (verified qua `gh pr list --state open`).
+- **Commit audit**: `81706a9 Merge pull request #61 from hoathienmenh-01/devin/1777413579-audit-session-6-report-refresh` (HEAD `main`, 28/4 22:05 UTC).
+- **CI gần nhất trên main**: xanh — PR #61 build job xanh; CI run cho PR #60 merge `25079013093` xanh 1m34s.
+- **PR open đáng kể**: **PR #62** (G8 — M11 profile rate-limit) **Pending merge** — branch `devin/1777414051-g8-profile-rate-limit`.
 - **Replay gap PR #47**: **Đã đóng** — PR #53 (cherry-pick `32a33a6` từ `devin/1777398483-h5-vitest-playwright`) merge vào main commit `2ae4cc0` (28/4 20:15 UTC). File `apps/web/vitest.config.ts` + `playwright.config.ts` + `e2e/golden.spec.ts` + `apps/web/src/stores/__tests__/{toast,game}.test.ts` đã có trên main.
 - **PR merged gần đây ảnh hưởng lớn**:
   | PR | Chủ đề | Impact |
@@ -75,6 +75,7 @@
   | #58 | feat(web): smart onboarding checklist (HomeView panel, derived from character state) | +8 test — merge `067a6c4` |
   | #59 | feat(api,web): basic leaderboard (top 50 by realm + power) + clamp limit fix | `GET /api/leaderboard/...` + `LeaderboardView` + 7 test BE + 6 test FE — merge `26f91bf` |
   | #60 | feat(api): rate-limit `POST /auth/register` per-IP (anti-bot, security hardening G7) | Reuse `RateLimiter` interface — 5 register/IP/15min, Redis distributed prod, in-memory fallback — +2 test — merge `993a95f` |
+  | #61 | docs(handoff): audit session 6 — bump snapshot to `993a95f` + fix stale 'Open' status PR #58/#59/#60 + thêm Completed Features rows + bump test count 269 → 370 | docs only — merge `81706a9` |
 
 - Các branch `devin/*` feature đã merge vẫn còn tồn tại ở origin — có thể xoá sau khi smoke test, không cần gấp. **Lưu ý**: branch `devin/1777398022-audit-pr-45-blueprint-docs` vẫn chứa commit `4ed913a` (Merge PR #47) chưa vào main — nguồn để cherry-pick/replay.
 
@@ -367,7 +368,7 @@ Mỗi PR đều `Merged` vào `main`, branch base = `main`. Smoke local (typeche
 
 ---
 
-## Completed Features (snapshot `main @ 993a95f` — 28/4 21:37 UTC)
+## Completed Features (snapshot `main @ 81706a9` — 28/4 22:05 UTC)
 
 | Feature | Backend | Frontend | Test | Status |
 |---|---|---|---|---|
@@ -1007,7 +1008,7 @@ _(Không có lỗi làm app không chạy / mất tiền / auth hỏng tại com
 | M8 | Admin guard kiểm `role === 'ADMIN' \|\| 'MOD'` — MOD có quyền broad gần ADMIN (grant currency, approve topup, broadcast mail, spawn boss). | **Resolved** by PR E — thêm `@RequireAdmin()` decorator + reflector trong `AdminGuard`; ADMIN-only cho grant / role-set / approve-topup / reject-topup / giftcode-create / giftcode-revoke / mail-send / mail-broadcast / boss-admin-spawn. MOD vẫn được: GET (read) + ban (đã có hierarchy MOD↦PLAYER ở service). 8 unit test thuê reflector cho guard. |
 | M9 | Settings logout-all không bump `passwordVersion` → access token cũ (15m) vẫn valid ở thiết bị khác. | **Open** (intentional trade-off, document trong `SECURITY.md`) — nếu cần force ngay, bump `passwordVersion` hoặc implement revocation list. |
 | M10 | Shop không có rate-limit + stock infinite + không daily limit. | **Open** — closed beta acceptable; sau beta thêm `dailyLimit`. |
-| M11 | `GET /character/profile/:id` không có rate-limit riêng → enumerate cuid khó nhưng không bị chặn. | **Open** — low (cuid khó brute). Đề xuất fix: reuse `RateLimiter` interface như PR #60 — limiter token `PROFILE_RATE_LIMITER`, key `profile:${ip}` hoặc `profile:${userId}`, giới hạn ~120 req/IP/15min (đủ cho các flow leaderboard click + chat tap-name). |
+| ~~M11~~ | ~~`GET /character/profile/:id` không có rate-limit riêng.~~ | **Resolved by PR #62** — reuse `RateLimiter` interface, DI token `PROFILE_RATE_LIMITER`, key `rl:profile:ip:${ip}`, **120 req/IP/15min**. Production dùng `RedisSlidingWindowRateLimiter`, test/no-redis fallback `InMemorySlidingWindowRateLimiter`. Thêm 3 vitest test (over-limit + per-IP isolation + constants). Files: `apps/api/src/modules/character/{character.controller.ts,character.module.ts,character.controller.test.ts}`. **Pending merge** — chi tiết xem `Recent Changes` PR #62. |
 
 ### Low
 
@@ -1161,7 +1162,7 @@ Admin hiện tại có thể vào `/admin` → Users → tìm → **Set role = A
 ### Immediate (session 7 — còn việc an toàn)
 
 1. **Runtime smoke tích hợp sau PR #46→#60 đã merge** — **Needs runtime smoke**. Checklist (15 phút, theo `docs/QA_CHECKLIST.md`): register/login (verify rate-limit 5/IP/15min), HomeView (next-action panel + onboarding checklist), sidebar badges polling 60s, leaderboard render top 50 + tap-name → profile, admin economy alerts panel, mission claim, mail unread badge, NPC shop buy + ledger row.
-2. **M11 — Rate-limit `GET /character/profile/:id`** (analog PR #60). Reuse `RateLimiter` interface, limiter token `PROFILE_RATE_LIMITER`, ~120 req/IP/15min. Risk low, +2 test.
+2. ~~**M11 — Rate-limit `GET /character/profile/:id`**~~ — **Pending merge PR #62**. Reuse `RateLimiter` + DI token `PROFILE_RATE_LIMITER`, 120 req/IP/15min, +3 vitest test.
 3. **H6 — Wire Playwright golden path vào CI** (matrix job `e2e` với services postgres+redis, run api+web preview, `E2E_FULL=1 pnpm --filter @xuantoi/web e2e`). Effort medium, value cao cho regression UI.
 4. **M3 — WS `mission:progress` push**: `emitToUser('mission:progress', {missionKey,currentCount,targetCount})` ở `MissionService.track*` với throttle ≥500ms/event. UX polish, bổ sung cho badges polling.
 5. **L5 — Skeleton loaders** cho `BossView`, `GiftCodeView`, `LeaderboardView`. Reuse pattern đã có ở `MissionView`.
@@ -1265,9 +1266,10 @@ Admin hiện tại có thể vào `/admin` → Users → tìm → **Set role = A
 - ~~**G5 (post-beta backlog)**: leaderboard~~ — **Done** (PR #59). Còn `ADMIN_REVOKE` endpoint (L7), Alchemy/Refinery/Arena (post-beta).
 - ~~**G6 (basic leaderboard)**~~ — **Done** (PR #59 — `GET /api/leaderboard?limit=N` + `LeaderboardView` route `/leaderboard`).
 - ~~**G7 (register IP rate-limit)**~~ — **Done** (PR #60 — 5 register/IP/15min, Redis distributed prod, in-memory fallback).
-- **G8 (next safe task)**: M11 — rate-limit `GET /character/profile/:id` analog PR #60. Reuse `RateLimiter` interface + new DI token `PROFILE_RATE_LIMITER` (key prefix `rl:profile`, 120 req/IP/15min). +2 test (over-limit + per-IP isolation).
+- ~~**G8 (next safe task)**: M11 — rate-limit `GET /character/profile/:id`~~ — **Pending merge PR #62**. Reuse `RateLimiter` interface + new DI token `PROFILE_RATE_LIMITER` (key prefix `rl:profile`, 120 req/IP/15min). +3 vitest test (over-limit + per-IP isolation + constants).
+- **G9 (next safe task)**: M3 — WS `mission:progress` push throttled (≥500ms/event) tại `MissionService.track*` với `RealtimeService.emitToUser`. ~3 vitest test (throttle, payload shape, không emit khi alreadyClaimed).
 
-Không còn issue **High** mở trên main (H6 Playwright CI wire là Medium effort, **Open**); chỉ còn **Medium** (M3/M6/M7/M9/M10/M11) và **Low** (L2/L3/L5/L6/L7 — L4 đã done PR #57).
+Không còn issue **High** mở trên main (H6 Playwright CI wire là Medium effort, **Open**); chỉ còn **Medium** (M3/M6/M7/M9/M10) và **Low** (L2/L3/L5/L6/L7 — L4 done PR #57, M11 done PR #62 pending merge).
 
 Các hạng mục smart-feature đề xuất (không bắt buộc — AI tự quyết theo prompt user):
 - **Smart next-action / onboarding checklist** (§16 của prompt user mục 1–2): /home giợ widget "Nên làm gì tiếp?" dựa trên state (đủ EXP đột phá, mission claim-able, mail unread, boss đang mở, …).
@@ -1278,6 +1280,32 @@ Các hạng mục smart-feature đề xuất (không bắt buộc — AI tự qu
 
 #### Post-beta backlog
 ~~Leaderboard~~ (Done PR #59) / Alchemy / Refinery / Arena / Pet / Companion / Event / Battle Pass / `forgot-password` / `mission:progress` WS / `ADMIN_REVOKE` endpoint.
+
+---
+
+### Session 6 audit log (28/4 22:05 UTC — PR #61 docs + PR #62 G8 M11 profile rate-limit)
+
+**PR #62 — G8: rate-limit `GET /character/profile/:id` per-IP (M11 resolved)**
+
+- **Branch**: `devin/1777414051-g8-profile-rate-limit`. **Base**: `main` @ `81706a9` (sau PR #61). **Status**: **Pending merge** (CI chưa mở, chờ push).
+- **Mục tiêu**: M11 — chock chot endpoint công khai duy nhất cho lấy thông tin player public profile. Trước khi fix, attacker login đã có access token có thể enumerate `cuid` với `O(n)` request để dò ra toàn bộ player + power/realm/sect. Cùng pattern PR #60 (register rate-limit).
+- **Giải pháp**:
+  - Thêm 3 const + 1 DI token vào `apps/api/src/modules/character/character.controller.ts`: `PROFILE_RATE_LIMIT_WINDOW_MS = 15*60*1000`, `PROFILE_RATE_LIMIT_MAX = 120`, `PROFILE_RATE_LIMITER = 'CHARACTER_PROFILE_RATE_LIMITER'`.
+  - `CharacterController` constructor inject `@Optional() @Inject(PROFILE_RATE_LIMITER) profileLimiter?: RateLimiter` (4th arg) + fallback `InMemorySlidingWindowRateLimiter` (cho test không pass DI).
+  - `profile()` method: sau `requireUserId()` (lớp 1 cookie auth), check `limiter.check(\`ip:${req.ip}\`)` → `RATE_LIMITED` HTTP 429 nếu vượt → không query DB.
+  - `apps/api/src/modules/character/character.module.ts`: factory provider tạo `RedisSlidingWindowRateLimiter` (prefix `rl:profile`) nếu có `REDIS_CONNECTION`, fallback in-memory.
+- **Files**:
+  - `apps/api/src/modules/character/character.controller.ts` (+30 / -2): thêm imports `Inject/Optional/RateLimiter/InMemory*`, 3 const + token export, constructor 4th param + private `profileLimiter`, `profile()` thêm 3 dong rate-limit check.
+  - `apps/api/src/modules/character/character.module.ts` (+30 / -8): refactor thêm `profileLimiterProvider` factory.
+  - `apps/api/src/modules/character/character.controller.test.ts` (new, 105 line): 3 vitest test — (1) trên `max+1` request cùng IP → `HttpException` 429 + body `{ok:false,error:{code:'RATE_LIMITED'}}` + không call DB; (2) IP khác không bị limit chéo (per-IP isolation); (3) constants = 120/15min. Mock `AuthService.userIdFromAccess` + `CharacterService.findPublicProfile`, không cần DB.
+- **Tests**: API local pass **262/262** (mới: 259 → 262, +3). Shared 47/47 · Web 64/64 · Build xanh.
+- **CI**: chờ push branch.
+- **Risk**: low. Per-IP only (không khóa session player). 120 req/15 phút đủ rộng cho các flow bình thường (leaderboard 50 tên + chat tap-name + boss damage list). Production multi-instance dùng Redis distributed key.
+- **Backward compat**: `CharacterController` constructor 3 param required cũ, limiter 4th `@Optional()` → test cũ (nếu có) không bị ảnh hưởng signature.
+- **i18n**: KHÔNG cần thêm key. FE đã có `auth.errors.RATE_LIMITED` + `chat.errors.RATE_LIMITED` + `topup.errors.RATE_LIMITED`. Profile page hiện tại (`apps/web/src/api/character.ts:getPublicProfile`) swallow error → hiển thị `notFound` khi rate-limited (nói cách khác: graceful degradation — người dùng bình thường không bao giờ hit limit). Follow-up nhỏ: cải tiến FE để hiện thị toast `RATE_LIMITED` riêng khi cần.
+- **Runtime smoke**: Needs runtime smoke (BE rate-limit verify bằng curl). Nhưng xanh ở mức unit-test (3 test); hành vi `RateLimiter` đã được cover trong `rate-limiter.test.ts` + `auth.service.test.ts` PR #60 từ trước → risk thực rất low.
+- **Rollback**: revert. Profile endpoint quay về behavior cũ (không rate-limit).
+- **Bước tiếp**: G9 — M3 WS `mission:progress` throttled push.
 
 ---
 

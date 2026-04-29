@@ -5,6 +5,8 @@ import {
   HttpCode,
   HttpException,
   HttpStatus,
+  Inject,
+  Optional,
   Param,
   Post,
   Req,
@@ -13,8 +15,23 @@ import type { Request } from 'express';
 import { z } from 'zod';
 import { CharacterService } from './character.service';
 import { AuthService } from '../auth/auth.service';
+import {
+  InMemorySlidingWindowRateLimiter,
+  type RateLimiter,
+} from '../../common/rate-limiter';
 
 const ACCESS_COOKIE = 'xt_access';
+
+/**
+ * Anti-scrape rate limit cho `GET /character/profile/:id`.
+ *
+ * 120 request/IP/15 phút. Đủ lớn cho các flow bình thường (leaderboard 50
+ * tên tập đoàn + chat tap-name + boss damage list) nhưng đủ chặt để chặn
+ * enumerate cuid để tìm hết player. Cùng pattern với PR #60 (`POST /auth/register`).
+ */
+export const PROFILE_RATE_LIMIT_WINDOW_MS = 15 * 60 * 1000;
+export const PROFILE_RATE_LIMIT_MAX = 120;
+export const PROFILE_RATE_LIMITER = 'CHARACTER_PROFILE_RATE_LIMITER';
 
 const OnboardInput = z.object({
   name: z
@@ -35,10 +52,20 @@ function fail(code: string, status = HttpStatus.BAD_REQUEST): never {
 
 @Controller('character')
 export class CharacterController {
+  private readonly profileLimiter: RateLimiter;
+
   constructor(
     private readonly chars: CharacterService,
     private readonly auth: AuthService,
-  ) {}
+    @Optional() @Inject(PROFILE_RATE_LIMITER) profileLimiter?: RateLimiter,
+  ) {
+    this.profileLimiter =
+      profileLimiter ??
+      new InMemorySlidingWindowRateLimiter(
+        PROFILE_RATE_LIMIT_WINDOW_MS,
+        PROFILE_RATE_LIMIT_MAX,
+      );
+  }
 
   private async requireUserId(req: Request): Promise<string> {
     const id = await this.auth.userIdFromAccess(req.cookies?.[ACCESS_COOKIE]);
@@ -55,8 +82,12 @@ export class CharacterController {
 
   @Get('profile/:id')
   async profile(@Req() req: Request, @Param('id') id: string) {
-    // Yêu cầu phải đăng nhập để xem profile (anti-scrape).
+    // Yêu cầu phải đăng nhập để xem profile (anti-scrape lớp 1).
     await this.requireUserId(req);
+    // Per-IP rate limit (lớp 2): chặn enumerate cuid hàng loạt.
+    const ip = req.ip ?? 'unknown';
+    const limit = await this.profileLimiter.check(`ip:${ip}`);
+    if (!limit.allowed) fail('RATE_LIMITED', HttpStatus.TOO_MANY_REQUESTS);
     const profile = await this.chars.findPublicProfile(id);
     if (!profile) fail('NOT_FOUND', HttpStatus.NOT_FOUND);
     return { ok: true, data: { profile } };
