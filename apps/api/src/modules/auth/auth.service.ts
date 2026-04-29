@@ -175,7 +175,14 @@ export class AuthService {
     if (!rl.allowed) throw new AuthError('RATE_LIMITED');
 
     const user = await this.prisma.user.findUnique({ where: { email: input.email } });
-    if (!user || user.banned) return { devToken: null };
+    if (!user || user.banned) {
+      // Timing side-channel mitigation: chạy argon2.hash giả với cùng chi phí
+      // (~100ms) để response time path-này tương đương path-có-user. Không có
+      // dummy work, attacker đo network latency có thể phân biệt email tồn
+      // tại vs không (Devin Review fix r3163261711).
+      await argon2.hash('xt-forgot-password-dummy-padding', ARGON2_OPTS);
+      return { devToken: null };
+    }
 
     // Token format: `<tokenId>.<secret>` — `tokenId` là `id` DB row (non-secret,
     // chỉ để lookup O(1)); `secret` là 32-byte URL-safe base64 (~43 ký tự).

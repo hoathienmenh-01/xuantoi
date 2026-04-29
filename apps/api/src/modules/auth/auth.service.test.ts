@@ -415,4 +415,25 @@ describe('AuthService', () => {
       auth.resetPassword({ token: 'no-dot-here-xxxxxxxxx', newPassword: 'NewPass1234' }),
     ).rejects.toMatchObject({ code: 'INVALID_RESET_TOKEN' });
   });
+
+  it('forgotPassword: timing parity user-exists vs not-exists (Devin Review fix r3163261711 chống enum)', async () => {
+    await auth.register({ email: 'fp-timing-yes@xt.local', password: PASSWORD }, ctx);
+
+    // Warm up cache argon2 (1st call có overhead init).
+    await auth.forgotPassword({ email: 'fp-timing-yes@xt.local' }, ctx);
+
+    const t1 = Date.now();
+    await auth.forgotPassword({ email: 'fp-timing-yes@xt.local' }, ctx);
+    const dExists = Date.now() - t1;
+
+    const t2 = Date.now();
+    await auth.forgotPassword({ email: 'fp-timing-nope@xt.local' }, ctx);
+    const dMissing = Date.now() - t2;
+
+    // Cả 2 path phải chạy argon2.hash → chênh lệch ≤ 50ms (overhead DB query
+    // + transaction). Nếu missing không có dummy work, dMissing ≪ dExists
+    // (vài ms vs ~100ms+).
+    const ratio = dMissing / Math.max(dExists, 1);
+    expect(ratio).toBeGreaterThan(0.5);
+  });
 });
