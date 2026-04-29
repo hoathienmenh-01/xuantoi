@@ -85,28 +85,23 @@
 
 Mỗi PR đều `Merged` vào `main`, branch base = `main`. Smoke local (typecheck/lint/test/build) đã chạy ở mỗi PR; smoke E2E 6/6 đã pass tại PR #44 (snapshot `4d8af10`).
 
-### PR #76 — `feat(api): smart economy safety — `pnpm audit:ledger` script + 8 vitest test` (G21) — **Pending merge**
+### PR #77 — `feat(web): skeleton loaders for MarketView (buy + sell tabs) (L5 cont)` — **Pending merge**
 
-- **Branch**: `devin/1777453677-g21-audit-ledger-script`. **Base**: `main` @ `c314a0b`. **Status**: **Pending merge**.
-- **Mục tiêu** (Smart economy safety §4 from prompt user — "Kiểm tra ledger consistency / Script audit ledger"): Phát hiện sớm dupe/cheat/bug khi `Character.linhThach` hoặc `InventoryItem.qty` không khớp với ledger (`CurrencyLedger.delta` / `ItemLedger.qtyDelta`). Read-only — an toàn chạy production để monitor định kỳ.
+- **Branch**: `devin/1777454551-l5-market-skeleton`. **Base**: `main` @ `0d4abb4`. **Status**: **Pending merge**.
+- **Mục tiêu** (L5 skeleton series cont — Smart UX polish §6 from prompt user): MarketView trước đây không có skeleton — chỉ hiển thị empty/blank flash khi đang fetch buy listings + my listings + inventory. Người chơi có thể tưởng "không có gì" trong khi data chưa về.
 - **Giải pháp**:
-  - **`apps/api/scripts/audit-ledger.ts`** (170 line): export `auditLedger(prisma)` returning `{charactersScanned, itemKeysScanned, currencyDiscrepancies, inventoryDiscrepancies}`. Sử dụng Prisma `groupBy` (chứ không loop từng character) để O(1) DB query thay vì O(N).
-    - Currency check: `groupBy(['characterId','currency'])._sum.delta` → so với `Character.{linhThach,tienNgoc}`.
-    - Inventory check: `groupBy(['characterId','itemKey'])._sum.qtyDelta` (ItemLedger) vs `groupBy(['characterId','itemKey'])._sum.qty` (InventoryItem). Inventory aggregate gộp cả item equipped + bag stacks.
-    - CLI mode: log discrepancy chi tiết, exit 1 nếu có, exit 0 nếu sạch. Script idempotent, không mutate DB.
-  - **`apps/api/scripts/audit-ledger.test.ts`** (8 test, real Postgres): no-character clean, currency match clean, linhThach over-recorded, tienNgoc under-recorded, inventory match clean, dupe detection (inventory > ledger), consume mismatch (inventory > 0 nhưng ledger sum 0), aggregate equipped + bag stacks.
-  - **`apps/api/package.json`**: thêm `"audit:ledger": "ts-node scripts/audit-ledger.ts"`.
+  - **`apps/web/src/views/MarketView.vue`**: import `SkeletonTable` + `SkeletonBlock`, thêm `loading = ref(true)` set false sau `refreshAll()` trong `onMounted`. Tab Mua: `<SkeletonTable :rows="6" :cols="4" test-id="market-buy-skeleton" />`. Tab Bán: 3 `<SkeletonBlock height="h-12" />` cho list myListings, ẩn empty state khi loading.
+  - **`apps/web/src/views/__tests__/MarketView.test.ts`** (new, 3 test): skeleton render khi pending fetch tab Mua → ẩn sau resolve; skeleton tab Bán render sau switch tab; empty state hiển thị khi listings rỗng (skeleton ẩn).
 - **Files**:
-  - `apps/api/scripts/audit-ledger.ts` (new, 170 line)
-  - `apps/api/scripts/audit-ledger.test.ts` (new, 165 line, 8 test)
-  - `apps/api/package.json` (+1 / -0)
+  - `apps/web/src/views/MarketView.vue` (+15 / -3)
+  - `apps/web/src/views/__tests__/MarketView.test.ts` (new, 166 line, 3 test)
   - `docs/AI_HANDOFF_REPORT.md` updated
-- **Tests**: +8 vitest API. Total local: **301/301** API (was 293, +8 audit-ledger).
-- **Local verified**: `pnpm typecheck` ✅ · `pnpm lint` ✅ · `pnpm --filter @xuantoi/api test` ✅ 301/301 · `pnpm build` ✅
-- **Risk**: low. Read-only script. Không đụng schema/migration/runtime code. Có thể chạy production để monitor mà không lo data loss.
-- **Rollback**: `git revert`. Không mất dữ liệu.
+- **Tests**: +3 vitest web. Total local: **79/79** web (was 76, +3 MarketView).
+- **Local verified**: `pnpm typecheck` ✅ · `pnpm lint` ✅ · `pnpm --filter @xuantoi/web test` ✅ 79/79
+- **Risk**: low. UI-only polish. Không đụng API/DB. SkeletonTable/SkeletonBlock đã được test và dùng trong LeaderboardView/ProfileView/MissionView/AdminView từ PR #67/#68.
+- **Rollback**: `git revert`. Empty state cũ vẫn hoạt động.
 
-### PR #72 — `feat(admin): filter audit log by action prefix + actor email (G18)` — **Pending merge**
+### PR #71 — `feat(api,web): GET /mail/unread-count + FE hydrate badge on mount (G17 — M7)` — **Pending merge**
 
 - **Branch**: `devin/1777451169-g20-topup-csv-export` *(branch tên cũ — task pivot từ topup CSV sang giftcode filter)*. **Base**: `main` @ `e102c6b`. **Status**: **Pending merge**.
 - **Mục tiêu** (Smart admin §3 — "Bộ lọc tìm giftcode"): `GET /admin/giftcodes` chỉ accept `limit`. Closed beta tạo nhiều mã promo → admin cần lọc theo prefix code và status (active / revoked / expired / exhausted) để truy soát mã hỏng / hết hạn.
