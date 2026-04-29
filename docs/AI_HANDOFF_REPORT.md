@@ -1,6 +1,6 @@
 # AI Handoff Report — Xuân Tôi
 
-> **Snapshot**: `main` @ `909d60c` (Merge PR #78 audit session 8 progress, 29 Apr 2026 ~17:00 UTC). **Merged into main since session 6** (17 PR — tất cả CI 5/5 xanh khi merge): PR #62 (G8 — M11 profile rate-limit), #63 (G9 — M3 WS `mission:progress` + emitter throttle 500ms), #64 (G10 — H6 Playwright CI matrix job), #65 (G11 — FE `MissionView` subscribe `mission:progress`), #66 (G12 — L7 admin `POST /admin/inventory/revoke` + ledger `ADMIN_REVOKE`), #67 (G13 — L5 skeleton Leaderboard+Profile), #68 (G14 — L5 cont skeleton MissionView+AdminView), #69 (G15 — L2 `MARKET_FEE_PCT` env config), #70 (G16 — admin user filter role+banned), #71 (G17 — M7 `GET /mail/unread-count` + FE badge hydrate), #72 (G18 — admin audit log filter prefix+email), #73 (G19 — admin topup filter date+email), #74 (G20 — admin giftcode filter q+status), #76 (G21 — smart economy safety `pnpm audit:ledger` + 9 vitest), #77 (L5 cont — MarketView skeleton + 3 vitest), #75 (audit session 7 refresh — mark resolved Known Issues H6/M3/M11/L2/L7), #78 (audit session 8 progress — bump snapshot c8123df, 16 PR list). **0 PR open Pending merge** (verified 29/4 09:55 UTC: GitHub `is:pr is:open` → 0 results, 78 closed).
+> **Snapshot**: `main` @ `ec37f10` (Merge PR #80 M9 daily login reward, 29 Apr 2026 ~10:25 UTC). **Merged into main since session 6** (19 PR — tất cả CI 5/5 xanh khi merge): PR #62 (G8 — M11 profile rate-limit), #63 (G9 — M3 WS `mission:progress` + emitter throttle 500ms), #64 (G10 — H6 Playwright CI matrix job), #65 (G11 — FE `MissionView` subscribe `mission:progress`), #66 (G12 — L7 admin `POST /admin/inventory/revoke` + ledger `ADMIN_REVOKE`), #67 (G13 — L5 skeleton Leaderboard+Profile), #68 (G14 — L5 cont skeleton MissionView+AdminView), #69 (G15 — L2 `MARKET_FEE_PCT` env config), #70 (G16 — admin user filter role+banned), #71 (G17 — M7 `GET /mail/unread-count` + FE badge hydrate), #72 (G18 — admin audit log filter prefix+email), #73 (G19 — admin topup filter date+email), #74 (G20 — admin giftcode filter q+status), #76 (G21 — smart economy safety `pnpm audit:ledger` + 9 vitest), #77 (L5 cont — MarketView skeleton + 3 vitest), #75 (audit session 7 refresh — mark resolved Known Issues H6/M3/M11/L2/L7), #78 (audit session 8 progress — bump snapshot c8123df, 16 PR list), #79 (audit session 9 cleanup — fix stale Section 2/17/20/21), #80 (M9 daily login reward — model + BE + FE + ledger).
 > **Người viết**: AI engineer session 28/4 sess.6 (audit refresh sau khi PR #58/#59/#60 đã merge — header report cũ vẫn ghi #59/#60 "Open" → đó là tồn tại lỗi thời và đã được fix bởi PR docs này).
 > **Đối tượng đọc**: AI kế nhiệm sẽ tiếp tục đưa dự án tới beta / production.
 >
@@ -12,9 +12,9 @@
 >
 > Roadmap kế tiếp (xem §20/§21): **Tất cả tầm G/M/H/L đã được giải quyết trong session 6–7**. Còn lại (Open, low priority hoặc post-beta): M6 (`/logs/me` endpoint), M7 (CSP CDN review), M9 (logout-all `passwordVersion` — intentional trade-off), M10 (shop daily limit), L3 (proverbs corpus), L6 (logout-all confirm modal).
 >
-> **Session 9b in-flight (29/4 ~10:00 UTC)**: PR #80 — M9 Smart gameplay daily login reward (model `DailyLoginClaim` mới, BE `DailyLoginService` + endpoints `GET/POST /daily-login/{me,claim}` + ledger `DAILY_LOGIN`, FE `DailyLoginCard` + i18n VI/EN + NextAction `DAILY_LOGIN_AVAILABLE`). Local test xanh **api 347/347, web 83/83**. Status: **Pending CI / Pending merge / Needs runtime smoke**. Xem mục Recent Changes ở dưới để có đầy đủ files/tests/risk/rollback.
+> **Session 9b done (29/4 ~10:25 UTC)**: PR #80 **Merged into main** @ `ec37f10` — M9 Smart gameplay daily login reward (model `DailyLoginClaim`, BE `DailyLoginService` + endpoints `GET/POST /daily-login/{me,claim}` + ledger `DAILY_LOGIN`, FE `DailyLoginCard` + i18n VI/EN + NextAction `DAILY_LOGIN_AVAILABLE`, +12 vitest API + +4 vitest web). Status feature: **Done / Needs runtime smoke** (chưa test live UI: login → Home → DailyLoginCard click claim → toast → +100 LT + streak badge). Xem mục Recent Changes ở dưới để có đầy đủ files/tests/risk/rollback.
 >
-> **Smart beta features còn lại** (an toàn, có thể làm bất kỳ lúc nào sau khi #80 merge): G22 admin giftcode FE panel consumer cho endpoint #74.
+> **Session 9c in-flight (29/4 ~10:30 UTC)**: PR G22 — Admin giftcode FE panel (consumer cho endpoint `GET /admin/giftcodes?q=&status=` + `POST /admin/giftcodes` + `POST /admin/giftcodes/:code/revoke` đã có từ PR #74). Thêm tab `Giftcode` vào `AdminView.vue` với filter q + status, list table, create form (code + LT + TN + EXP + maxRedeems + expiresInDays), revoke action. Helper `giftCodeStatusOf()` mirror BE logic. +11 vitest web (`apps/web/src/api/__tests__/admin.giftcodes.test.ts`). i18n VI/EN. Local test xanh **web 94/94**. Status: **Pending CI / Pending merge**.
 >
 > **Note replay-gap PR #47** đã closed bởi PR #53 (cherry-pick `32a33a6` vào main) — không còn drift giữa GitHub PR status và `main`.
 >
@@ -85,13 +85,34 @@
 
 ---
 
-## Recent Changes (PR #33→#78 — tất cả đã merge `main`)
+## Recent Changes (PR #33→#80 — tất cả đã merge `main`; PR G22 in-flight)
 
 Mỗi PR đều `Merged` vào `main`, branch base = `main`. Smoke local (typecheck/lint/test/build) đã chạy ở mỗi PR; smoke E2E 6/6 đã pass tại PR #44 (snapshot `4d8af10`); H6 Playwright golden path đã wire CI matrix qua PR #64.
 
-### PR #80 — `feat(api,web): M9 daily login reward — idempotent + ledger DAILY_LOGIN + FE card` — **Pending merge**
+### PR G22 (session 9c) — `feat(web): admin giftcode panel — list/filter/create/revoke` — **Pending merge**
 
-- **Branch**: `devin/1777457450-m9-daily-login-reward` (rebased on `main` @ `f24fe63` sau PR #79 merge — origin gốc commit `bf1375a` từ branch cũ `devin/1777455742-m9-daily-login-reward` chưa kịp mở PR trước session 9). **Base**: `main` @ `f24fe63`. **Status**: code complete + local typecheck/lint/web test xanh; PR mở session 9b, CI đang chạy.
+- **Branch**: `devin/1777458198-g22-admin-giftcode-fe`. **Base**: `main` @ `ec37f10`. **Status**: code complete + local typecheck/lint/web test/shared test/build xanh; PR mở session 9c, CI đang chạy.
+- **Mục tiêu** (Smart admin §3 + Recommended Roadmap G22): consumer FE cho admin giftcode endpoints đã có từ PR #74 — admin trước đây phải gọi API trực tiếp (curl/Postman) để tạo và list giftcode. Closed beta cần UI để vận hành team có thể tạo code khuyến mãi (welcome 100 LT, event reward, etc.) và thu hồi an toàn.
+- **Giải pháp FE**:
+  - **`apps/web/src/api/admin.ts`** (modified): thêm `AdminGiftCodeRow` + `AdminGiftCreateInput` + `GiftCodeStatus` types. Wrappers `adminListGiftcodes(filters?)`, `adminCreateGiftcode(input)`, `adminRevokeGiftcode(code)`. Helper pure-function `giftCodeStatusOf(row, now?)` mirror BE logic: REVOKED ưu tiên cao nhất → EXPIRED nếu `expiresAt < now` → EXHAUSTED nếu `redeemCount >= maxRedeems` → ACTIVE.
+  - **`apps/web/src/views/AdminView.vue`** (modified): thêm tab `giftcodes` (insert giữa `audit` và `boss`). Filter bar: input `q` (placeholder "Tìm theo mã"), select `status` (ACTIVE/REVOKED/EXPIRED/EXHAUSTED + All), button Search. Button "+ Tạo Giftcode" mở inline create form chỉ hiện cho ADMIN (`isAdmin()` guard). Form có 6 field: code (4–32, A-Z 0-9 _ -), Linh Thạch (string), Tiên Ngọc (number), EXP (string), Max Redeems (optional number), Expires In Days (optional number → BE nhận ISO datetime). Submit gọi `adminCreateGiftcode()` rồi refresh list. Table 7 cột (code/rewards/redeemed/expires/status/createdAt/actions). Status badge color-coded (emerald=ACTIVE, red=REVOKED, ink=EXPIRED/EXHAUSTED). Button Revoke chỉ hiện cho ADMIN + status=ACTIVE; confirm dialog trước khi revoke.
+  - **i18n VI/EN** (`apps/web/src/i18n/{vi,en}.json`): thêm `admin.tab.giftcodes`, `admin.giftcodes.{filter, status, col, empty, createBtn, createTitle, create.{code, linhThach, tienNgoc, exp, maxRedeems, maxRedeemsPlaceholder, expiresDays, expiresDaysPlaceholder}, submitCreate, creating, createdToast, revokeBtn, revokeConfirm, revokedToast, itemsLabel}`. Cả 2 ngôn ngữ.
+- **API contracts** (đã có sẵn từ PR #74):
+  - `GET /api/admin/giftcodes?q=&status=&limit=` → `{ ok:true, data:{ codes:[AdminGiftCodeRow] } }` — guard MOD/ADMIN.
+  - `POST /api/admin/giftcodes` body `{ code, rewardLinhThach, rewardTienNgoc, rewardExp, rewardItems, maxRedeems?, expiresAt? }` → `{ ok:true, data:{ code:AdminGiftCodeRow } }` — guard ADMIN, audit log `admin.giftcode.create`.
+  - `POST /api/admin/giftcodes/:code/revoke` → `{ ok:true, data:{ code:AdminGiftCodeRow } }` — guard ADMIN, audit log `admin.giftcode.revoke`.
+- **Tests** (+11 vitest web, total web 94/94):
+  - `apps/web/src/api/__tests__/admin.giftcodes.test.ts`: `giftCodeStatusOf` (6 case bao toàn priority logic), `adminListGiftcodes` (3 case: filter pass-through, default params, BE error throw), `adminCreateGiftcode`/`adminRevokeGiftcode` (2 case: payload + URL encoding).
+  - Mock `apiClient.get/post` từ `@/api/client`.
+- **Files** (5 thay đổi): `apps/web/src/api/admin.ts`, `apps/web/src/views/AdminView.vue`, `apps/web/src/i18n/{vi,en}.json`, `apps/web/src/api/__tests__/admin.giftcodes.test.ts`.
+- **Risk**: Thấp — pure FE work, không có migration / không đụng economy / không thay đổi BE. ADMIN guard double-checked (FE: `v-if="isAdmin()"` cho create/revoke buttons; BE: `RequireAdmin()` decorator có sẵn từ PR #74). Helper `giftCodeStatusOf` là pure function, deterministic, dễ test.
+- **Rollback**: Revert single PR; không cần migration rollback (no schema change).
+- **Runtime smoke còn thiếu**: Cần admin login → tab Giftcode → filter, tạo code "DEVIN_TEST_001" với 100 LT 5 redeem 7 ngày → revoke → quan sát toast + list refresh.
+- **`AI_HANDOFF_REPORT.md updated`**: §0 header, Recent Changes (this entry), §6 Completed Features (G22 done), §20 Roadmap (gỡ G22 khỏi Immediate).
+
+### PR #80 — `feat(api,web): M9 daily login reward — idempotent + ledger DAILY_LOGIN + FE card` — **Merged into main** @ `ec37f10` (29/4 ~10:25 UTC)
+
+- **Branch**: `devin/1777457450-m9-daily-login-reward` (rebased on `main` @ `f24fe63` sau PR #79 merge). **Base**: `main` @ `f24fe63`. **CI**: 5/5 xanh (build×2, e2e-smoke×2, Devin Review). Có fix-up commit thêm seed `DailyLoginClaim` cho 2 test `next-action.service.test.ts` (CULTIVATE_IDLE fallback) + thêm 2 test mới cho DAILY_LOGIN_AVAILABLE coverage.
 - **Mục tiêu** (Smart gameplay beta §9 — "Daily login reward đơn giản nếu đã có RewardClaimLog"): closed beta cần một feedback loop hằng ngày giữ player online + làm tone "tu tiên hằng ngày". `RewardClaimLog` chưa tồn tại → tạo model mới `DailyLoginClaim` có unique `(characterId, claimDateLocal)` để chống double-claim.
 - **Giải pháp BE**:
   - **Schema** (`apps/api/prisma/schema.prisma`): thêm model `DailyLoginClaim { id, characterId, claimDateLocal:String, linhThachDelta:BigInt, streakAtClaim:Int, createdAt }` với `@@unique([characterId, claimDateLocal])` + `@@index([characterId, createdAt])`. `Character.dailyLoginClaims` relation. **Migration mới** `20260429100000_add_daily_login_claim`.
