@@ -234,7 +234,16 @@
   },
   "leaderboard": {
     "title": "Leaderboard",
-    "subtitle": "Top 50 cultivators — sorted by realm and power.",
+    "subtitle": {
+      "power": "Top 50 cultivators — sorted by realm and power.",
+      "topup": "Top 50 spenders — total approved Tiên Ngọc orders.",
+      "sect": "Top 50 sects — sorted by treasury linh thạch."
+    },
+    "tab": {
+      "power": "Power",
+      "topup": "Topup",
+      "sect": "Sects"
+    },
     "loading": "Querying the heavens…",
     "error": "Failed to load leaderboard.",
     "retry": "Retry",
@@ -243,7 +252,14 @@
       "name": "Name",
       "realm": "Realm",
       "sect": "Sect",
-      "power": "Power"
+      "power": "Power",
+      "totalTienNgoc": "Tiên Ngọc",
+      "sectName": "Sect",
+      "leaderName": "Leader",
+      "leader": "Leader",
+      "level": "Level",
+      "members": "Members",
+      "treasury": "Treasury"
     }
   },
   "profile": {

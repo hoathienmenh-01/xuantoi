@@ -89,7 +89,30 @@
 
 ---
 
-## Recent Changes (PR #33→#97 đã merged trên main; session 9f audit refresh in-flight)
+## Recent Changes (PR #33→#98 đã merged trên main; PR #99 FE leaderboard tabs in-flight session 9f)
+
+### PR #99 — `feat(web): LeaderboardView tabs Power/Topup/Sect — consume PR #94 BE` — **Pending merge** session 9f
+
+- **Branch**: `devin/1777483089-fe-leaderboard-tabs`. **Base**: `main` @ `4072a3d` (sau PR #98 docs audit refresh merged). **Status**: code complete + typecheck/lint/test/build all xanh local (web 133→137 vitest, +4 net = 6 new test cover tab switch + topup table + sect table BigInt format + lazy-fetch + aria-selected, replace 3 cũ với mock 3-fn).
+- **Mục tiêu** (Roadmap §20 session 9f task B): consume PR #94 BE leaderboard topup/sect endpoints. Trước PR #99: `LeaderboardView.vue` chỉ render top power; `GET /leaderboard/topup` + `GET /leaderboard/sect` chưa có FE consumer.
+- **Giải pháp** (FE-only):
+  1. **API client `apps/web/src/api/leaderboard.ts`**: thêm `LeaderboardTopupRow` (rank, characterId, name, realmKey, realmStage, totalTienNgoc:number, sectKey) + `LeaderboardSectRow` (rank, sectId, sectKey, name, level, treasuryLinhThach:string BigInt, memberCount, leaderName) + `fetchLeaderboardTopup()` + `fetchLeaderboardSect()`.
+  2. **`LeaderboardView.vue`** rewrite với 3 tab `power | topup | sect`:
+     - Tablist `role=tablist` với `data-testid=leaderboard-tab-{power,topup,sect}` + `aria-selected` đúng cho a11y.
+     - Lazy-fetch: chỉ gọi `fetch{Power,Topup,Sect}` lần đầu user click tab đó (cache trong refs). Không re-fetch nếu click cùng tab 2 lần.
+     - Power table: y nguyên (rank/name/realm/sect/power).
+     - Topup table: rank/name/realm/sect/totalTienNgoc với rank ≤3 highlight amber.
+     - Sect table: rank/sectName(i18n nếu có sectKey, else fallback `name` BE)/leaderName/level/memberCount/treasuryLinhThach. Treasury format BigInt-string với `formatBigIntString()` (regex thousand separator) để tránh `Number()` overflow.
+  3. **i18n** `apps/web/src/i18n/{vi,en}.json`: refactor `leaderboard.subtitle` từ string → object `{power, topup, sect}`; thêm `leaderboard.tab.{power, topup, sect}`; thêm `leaderboard.col.{totalTienNgoc, sectName, leader, level, members, treasury}`.
+  4. **Test** `apps/web/src/views/__tests__/LeaderboardView.test.ts`: refactor mock từ 1-fn thành 3-fn (`fetchPower/Topup/Sect`); giữ 4 power test cũ (skeleton, empty, error+retry, render power, rank highlight, lazy-fetch chỉ power) + 4 test mới (tab topup render + format, tab sect render + BigInt format, click cùng tab 2 lần fetch chỉ 1, aria-selected).
+- **Files**: `apps/web/src/api/leaderboard.ts` (+27 line), `apps/web/src/views/LeaderboardView.vue` (rewrite, 108→302 line), `apps/web/src/views/__tests__/LeaderboardView.test.ts` (rewrite, 171→307 line, 6→10 test), `apps/web/src/i18n/{vi,en}.json` (refactor subtitle + add tab + cols).
+- **Tests local**: web vitest 133→**137 pass / 137 total** (17 file). typecheck ✅, lint ✅, build ✅.
+- **Risk**: Thấp — FE-only, không touch BE/schema/economy/auth. i18n key `leaderboard.subtitle` shape thay đổi (string → object) — nhưng chỉ `LeaderboardView.vue` consume key này, đã grep verify. Rollback: revert single PR.
+- **Bước tiếp theo (post-merge)**: task C session 9f roadmap (admin self-demote prevention) hoặc task D (forgot/reset-password endpoints).
+
+### PR #98 — `docs(handoff): session 9f audit refresh — bump snapshot ee933ad + mark PR #92→#97 Merged + add session 9f roadmap A-D` — **Merged into main** @ `4072a3d` (29/4 ~17:18 UTC, CI 4/4 ✅)
+
+- **Branch**: `devin/1777482757-audit-session-9f-refresh`. **Base**: `main` @ `ee933ad`. Docs-only, +28/-15 line `docs/AI_HANDOFF_REPORT.md`. Bump snapshot `3283e42 → ee933ad`, đồng bộ trạng thái 6 PR session 9d→9e (#92/#93/#94/#95/#96/#97), thêm sub-section Immediate session 9f với task A→D.
 
 ### PR #97 — `fix(web): mobile responsive — AppShell sidebar drawer + AdminView tables overflow-x-auto` — **Merged into main** @ `ee933ad` (29/4 ~16:47 UTC, CI 5/5 ✅)
 
@@ -1567,8 +1590,8 @@ Admin hiện tại có thể vào `/admin` → Users → tìm → **Set role = A
 
 **Top priority (session 9f sẽ tự làm theo thứ tự)**:
 
-A. **(IN PROGRESS) Docs audit refresh** — PR #98 `audit-session-9f-refresh` (this PR): bump snapshot `3283e42 → ee933ad`, mark PR #94/#95/#96/#97 từ `Pending merge → Merged into main`, add immediate session 9f tasks A→D.
-B. **FE LeaderboardView tabs Power/Topup/Sect** — consume BE PR #94 (`GET /leaderboard/topup` + `GET /leaderboard/sect`). `apps/web/src/views/LeaderboardView.vue` + `apps/web/src/api/leaderboard.ts` + i18n vi/en + vitest cover tab switch + topup/sect rows + skeleton + error map. Risk thấp (FE-only, không touch schema/BE/economy).
+A. ~~**Docs audit refresh**~~ — **Done by PR #98** (Merged into main @ `4072a3d`, 29/4 ~17:18 UTC, CI 4/4 ✅) — bump snapshot `3283e42 → ee933ad`, mark PR #94/#95/#96/#97 từ `Pending merge → Merged into main`, add immediate session 9f tasks A→D.
+B. **(IN PROGRESS) FE LeaderboardView tabs Power/Topup/Sect** — PR #99 `fe-leaderboard-tabs` consume BE PR #94 (`GET /leaderboard/topup` + `GET /leaderboard/sect`). 3 tab + lazy-fetch + i18n vi/en + 10 vitest. Code complete + typecheck/lint/build/test 137/137 xanh local. Risk thấp (FE-only, không touch schema/BE/economy).
 C. **Self-demote prevention (admin)** — rule 9 §19 ghi rõ "FE hiện không chặn self-demote". Thêm guard cả FE (`AdminView.users` set-role disable nếu `userId === currentAdminId` và targetRole !== 'ADMIN') + BE (`POST /admin/users/:id/role` 400 `CANT_DEMOTE_SELF` nếu `actorId === userId` và newRole !== 'ADMIN'). Risk thấp, security hardening.
 D. **`POST /api/_auth/forgot-password` + `reset-password`** + email scaffold qua Mailhog (closed beta nice-to-have): `PasswordResetToken` model + `/forgot-password` (silent ok always để chống user enumeration) + `/reset-password` (consume token, invalidate other tokens, bump passwordVersion). Risk thấp (chỉ thêm endpoint + token model + email mailhog).
 
