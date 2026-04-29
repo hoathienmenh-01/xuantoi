@@ -234,7 +234,16 @@
   },
   "leaderboard": {
     "title": "Phong Thần Bảng",
-    "subtitle": "Top 50 đạo hữu mạnh nhất — sort theo cảnh giới và lực.",
+    "subtitle": {
+      "power": "Top 50 đạo hữu mạnh nhất — sort theo cảnh giới và lực.",
+      "topup": "Top 50 nạp Tiên Ngọc — tổng đơn đã duyệt.",
+      "sect": "Top 50 tông môn — sort theo linh thạch khố."
+    },
+    "tab": {
+      "power": "Cảnh Giới",
+      "topup": "Tiên Ngọc",
+      "sect": "Tông Môn"
+    },
     "loading": "Đang truy vấn thiên cơ…",
     "error": "Không truy vấn được bảng.",
     "retry": "Thử lại",
@@ -243,7 +252,14 @@
       "name": "Đạo Hiệu",
       "realm": "Cảnh Giới",
       "sect": "Tông Môn",
-      "power": "Lực"
+      "power": "Lực",
+      "totalTienNgoc": "Tiên Ngọc",
+      "sectName": "Tông Môn",
+      "leaderName": "Tông Chủ",
+      "leader": "Tông Chủ",
+      "level": "Cấp",
+      "members": "Đệ Tử",
+      "treasury": "Linh Thạch Khố"
     }
   },
   "profile": {
