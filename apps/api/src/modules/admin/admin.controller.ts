@@ -144,11 +144,24 @@ export class AdminController {
   async topups(
     @Query('status') status: string | undefined,
     @Query('page') page: string | undefined,
+    @Query('from') from: string | undefined,
+    @Query('to') to: string | undefined,
+    @Query('email') email: string | undefined,
   ) {
     const p = Math.max(0, Number.parseInt(page ?? '0', 10) || 0);
     const st: TopupStatus | null =
       status === 'PENDING' || status === 'APPROVED' || status === 'REJECTED' ? status : null;
-    const r = await this.admin.listTopups(st, p);
+    const filters: { fromDate?: Date; toDate?: Date; userEmail?: string } = {};
+    if (from) {
+      const d = new Date(from);
+      if (!Number.isNaN(d.getTime())) filters.fromDate = d;
+    }
+    if (to) {
+      const d = new Date(to);
+      if (!Number.isNaN(d.getTime())) filters.toDate = d;
+    }
+    if (email && email.length > 0 && email.length <= 120) filters.userEmail = email;
+    const r = await this.admin.listTopups(st, p, filters);
     return { ok: true, data: r };
   }
 

@@ -1,6 +1,6 @@
 # AI Handoff Report — Xuân Tôi
 
-> **Snapshot**: `main` @ `81706a9` (Merge PR #61 audit session 6 docs, 28 Apr 2026 22:05 UTC). PR #52..#61 đều đã merge `main`. **PR #62 (G8 — M11 profile rate-limit) Pending merge** — branch `devin/1777414051-g8-profile-rate-limit`.
+> **Snapshot**: `main` @ `e102c6b` (Merge PR #62 G8 profile rate-limit, 28 Apr 2026). PR #52..#62 đã merge `main`. **11 PR Pending merge**: #63..#72 + **#73 (G19 — admin topup list filter range date + email)**.
 > **Người viết**: AI engineer session 28/4 sess.6 (audit refresh sau khi PR #58/#59/#60 đã merge — header report cũ vẫn ghi #59/#60 "Open" → đó là tồn tại lỗi thời và đã được fix bởi PR docs này).
 > **Đối tượng đọc**: AI kế nhiệm sẽ tiếp tục đưa dự án tới beta / production.
 >
@@ -84,6 +84,33 @@
 ## Recent Changes (PR #33→#60 — tất cả đã merge `main`)
 
 Mỗi PR đều `Merged` vào `main`, branch base = `main`. Smoke local (typecheck/lint/test/build) đã chạy ở mỗi PR; smoke E2E 6/6 đã pass tại PR #44 (snapshot `4d8af10`).
+
+### PR #73 — `feat(admin): topup list filter range date + user email (G19)` — **Pending merge**
+
+- **Branch**: `devin/1777419928-g19-topup-date-filter`. **Base**: `main` @ `e102c6b`. **Status**: **Pending merge**.
+- **Mục tiêu** (Smart admin §3 prompt user — "Bộ lọc tìm topup"): Trước đây `AdminService.listTopups(status, page)` chỉ filter theo status — closed beta sẽ có nhiều đơn nạp, admin cần lọc theo khoảng ngày tạo và email người nạp để truy soát/đối chiếu chuyển khoản.
+- **Giải pháp**:
+  - **BE `AdminService.listTopups(status, page, filters)`**: thêm 3 filter — `fromDate` (`createdAt.gte`), `toDate` (`createdAt.lte`), `userEmail` (resolve email → userId list → sentinel `'__none__'` nếu rỗng). Combine bằng `Prisma.TopupOrderWhereInput.AND`.
+  - **BE `AdminController.topups`**: 3 query params — `from` (ISO), `to` (ISO), `email` (max 120 char). Validate `Date.parse` không NaN; bỏ qua param invalid silent.
+  - **FE `apps/web/src/api/admin.ts`**: `adminListTopups(status, page, filters?)`.
+  - **FE `AdminView.vue`** topups tab: thêm 2 input `type="date"` + 1 input email. Date `to` clamp end-of-day 23:59:59 trước khi gửi ISO. data-testid để E2E.
+  - **i18n**: `admin.topups.filter.{from, to, emailPlaceholder}` (vi + en).
+- **Files**:
+  - `apps/api/src/modules/admin/admin.service.ts` (+22 / -1)
+  - `apps/api/src/modules/admin/admin.controller.ts` (+15 / -2)
+  - `apps/api/src/modules/admin/admin-list-topups-filter.test.ts` (new, 130 line, **8 test**)
+  - `apps/web/src/api/admin.ts` (+11 / -3)
+  - `apps/web/src/views/AdminView.vue` (+44 / -1)
+  - `apps/web/src/i18n/{vi,en}.json` (+3 each)
+- **Tests**: 8 test mới — không filter, status only, fromDate, toDate, range, userEmail, combine status+range+email, email không match → 0. Tổng API test: **267/267** local (was 259, +8).
+- **Local verified**: `pnpm typecheck` ✅ · `pnpm lint` ✅ · `pnpm test` ✅ · `pnpm build` ✅.
+- **Risk**: low. Backward-compat: caller cũ `listTopups(status, page)` không pass filter vẫn hoạt động identical (param default `{}`).
+- **Backward compat**: existing FE call sites đều OK.
+- **Runtime smoke**: Needs runtime smoke — `/admin` tab Topups → chọn `from=2026-04-01`, `to=2026-04-15` → list chỉ trong range; nhập email user A → list chỉ A's orders.
+- **Rollback**: revert; FE filter chỉ là UI state.
+- **Bước tiếp**: G20 — daily login reward (cần model RewardClaimLog), M6 mission analytics, hoặc admin export CSV cho topup/audit.
+
+---
 
 ### PR #60 — `feat(api): rate-limit register endpoint per-IP (anti-bot, security hardening)` — prompt §8 — **Merged** `993a95f`
 

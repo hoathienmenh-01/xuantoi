@@ -87,12 +87,18 @@ export async function adminGrant(
 }
 
 export async function adminListTopups(
-  status: 'PENDING' | 'APPROVED' | 'REJECTED' | '' ,
+  status: 'PENDING' | 'APPROVED' | 'REJECTED' | '',
   page: number,
+  filters: { from?: string; to?: string; email?: string } = {},
 ): Promise<Page<TopupOrderView & { userEmail: string }>> {
+  const params: Record<string, string | number> = { page };
+  if (status) params.status = status;
+  if (filters.from) params.from = filters.from;
+  if (filters.to) params.to = filters.to;
+  if (filters.email) params.email = filters.email;
   const { data } = await apiClient.get<Envelope<Page<TopupOrderView & { userEmail: string }>>>(
     '/admin/topups',
-    { params: status ? { status, page } : { page } },
+    { params },
   );
   return unwrap(data);
 }

@@ -763,7 +763,10 @@
       "filter": {
         "PENDING": "Pending",
         "APPROVED": "Approved",
-        "REJECTED": "Rejected"
+        "REJECTED": "Rejected",
+        "from": "From",
+        "to": "To",
+        "emailPlaceholder": "User email"
       },
       "approveConfirm": "Approve {code} and credit {ngoc} Tien Ngoc?",
       "rejectConfirm": "Reject {code}?",

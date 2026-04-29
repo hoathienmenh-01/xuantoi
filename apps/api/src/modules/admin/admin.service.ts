@@ -224,13 +224,34 @@ export class AdminService {
 
   // ---------- topup ----------
 
-  async listTopups(status: TopupStatus | null, page: number): Promise<{
+  async listTopups(
+    status: TopupStatus | null,
+    page: number,
+    filters: { fromDate?: Date; toDate?: Date; userEmail?: string } = {},
+  ): Promise<{
     rows: (TopupOrderView & { userEmail: string })[];
     total: number;
     page: number;
     pageSize: number;
   }> {
-    const where: Prisma.TopupOrderWhereInput = status ? { status } : {};
+    const conditions: Prisma.TopupOrderWhereInput[] = [];
+    if (status) conditions.push({ status });
+    if (filters.fromDate || filters.toDate) {
+      const range: Prisma.DateTimeFilter = {};
+      if (filters.fromDate) range.gte = filters.fromDate;
+      if (filters.toDate) range.lte = filters.toDate;
+      conditions.push({ createdAt: range });
+    }
+    if (filters.userEmail) {
+      const matchUsers = await this.prisma.user.findMany({
+        where: { email: { contains: filters.userEmail, mode: 'insensitive' } },
+        select: { id: true },
+      });
+      const ids = matchUsers.map((u) => u.id);
+      conditions.push({ userId: ids.length > 0 ? { in: ids } : '__none__' });
+    }
+    const where: Prisma.TopupOrderWhereInput =
+      conditions.length > 0 ? { AND: conditions } : {};
     const [rows, total] = await Promise.all([
       this.prisma.topupOrder.findMany({
         where,
