@@ -31,4 +31,22 @@ export class LeaderboardController {
     const rows = await this.svc.topByPower(n);
     return { ok: true, data: { rows } };
   }
+
+  @Get('topup')
+  async topByTopup(@Req() req: Request, @Query('limit') limit?: string) {
+    const userId = await this.auth.userIdFromAccess(req.cookies?.[ACCESS_COOKIE]);
+    if (!userId) fail('UNAUTHENTICATED', HttpStatus.UNAUTHORIZED);
+    const n = limit ? Number(limit) : undefined;
+    const rows = await this.svc.topByTopup(n);
+    return { ok: true, data: { rows } };
+  }
+
+  @Get('sect')
+  async topBySect(@Req() req: Request, @Query('limit') limit?: string) {
+    const userId = await this.auth.userIdFromAccess(req.cookies?.[ACCESS_COOKIE]);
+    if (!userId) fail('UNAUTHENTICATED', HttpStatus.UNAUTHORIZED);
+    const n = limit ? Number(limit) : undefined;
+    const rows = await this.svc.topBySect(n);
+    return { ok: true, data: { rows } };
+  }
 }

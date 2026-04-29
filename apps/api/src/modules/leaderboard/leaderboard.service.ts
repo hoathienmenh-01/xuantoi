@@ -37,13 +37,38 @@ export interface LeaderboardRow {
   sectKey: string | null;
 }
 
+export interface LeaderboardTopupRow {
+  rank: number;
+  characterId: string;
+  name: string;
+  realmKey: string;
+  realmStage: number;
+  totalTienNgoc: number;
+  sectKey: string | null;
+}
+
+export interface LeaderboardSectRow {
+  rank: number;
+  sectId: string;
+  sectKey: string | null;
+  name: string;
+  level: number;
+  treasuryLinhThach: string;
+  memberCount: number;
+  leaderName: string | null;
+}
+
+function clampLimit(raw: number | undefined): number {
+  const n = Number.isFinite(raw) ? Math.floor(Number(raw)) : DEFAULT_LIMIT;
+  return Math.min(Math.max(1, n), MAX_LIMIT);
+}
+
 @Injectable()
 export class LeaderboardService {
   constructor(private readonly prisma: PrismaService) {}
 
   async topByPower(limit = DEFAULT_LIMIT): Promise<LeaderboardRow[]> {
-    const n = Number.isFinite(limit) ? Math.floor(limit) : DEFAULT_LIMIT;
-    const safe = Math.min(Math.max(1, n), MAX_LIMIT);
+    const safe = clampLimit(limit);
     const rows = await this.prisma.character.findMany({
       where: { user: { banned: false } },
       select: {
@@ -78,6 +103,97 @@ export class LeaderboardService {
       power: r.power,
       level: r.level,
       sectKey: r.sect ? SECT_NAME_TO_KEY[r.sect.name] ?? null : null,
+    }));
+  }
+
+  /**
+   * Smart beta — leaderboard top nạp Tiên Ngọc (only count `APPROVED` orders).
+   *
+   * Sort: tổng `tienNgocAmount` desc → loại banned user / user chưa tạo character.
+   * Closed-beta scale (< 500 user nạp) → groupBy + per-row character lookup OK.
+   * Scale up → cache hourly hoặc raw SQL với JOIN.
+   */
+  async topByTopup(limit = DEFAULT_LIMIT): Promise<LeaderboardTopupRow[]> {
+    const safe = clampLimit(limit);
+    const groups = await this.prisma.topupOrder.groupBy({
+      by: ['userId'],
+      where: { status: 'APPROVED' },
+      _sum: { tienNgocAmount: true },
+      orderBy: { _sum: { tienNgocAmount: 'desc' } },
+      take: HARD_FETCH_CAP,
+    });
+    if (groups.length === 0) return [];
+    const userIds = groups.map((g) => g.userId);
+    const chars = await this.prisma.character.findMany({
+      where: { userId: { in: userIds }, user: { banned: false } },
+      select: {
+        id: true,
+        userId: true,
+        name: true,
+        realmKey: true,
+        realmStage: true,
+        sect: { select: { name: true } },
+      },
+    });
+    const charByUser = new Map(chars.map((c) => [c.userId, c]));
+    const result: LeaderboardTopupRow[] = [];
+    for (const g of groups) {
+      const c = charByUser.get(g.userId);
+      if (!c) continue;
+      const total = g._sum.tienNgocAmount ?? 0;
+      if (total <= 0) continue;
+      result.push({
+        rank: 0, // assigned below after slice
+        characterId: c.id,
+        name: c.name,
+        realmKey: c.realmKey,
+        realmStage: c.realmStage,
+        totalTienNgoc: total,
+        sectKey: c.sect ? SECT_NAME_TO_KEY[c.sect.name] ?? null : null,
+      });
+      if (result.length >= safe) break;
+    }
+    return result.map((r, i) => ({ ...r, rank: i + 1 }));
+  }
+
+  /**
+   * Smart beta — leaderboard tông môn theo `treasuryLinhThach` (linh thạch
+   * tích luỹ từ donate).
+   *
+   * Sort: `treasuryLinhThach` desc → `level` desc → `memberCount` desc → `createdAt` asc.
+   * Sect số lượng nhỏ (3 seed + tự lập tay) → findMany sort + slice OK.
+   */
+  async topBySect(limit = DEFAULT_LIMIT): Promise<LeaderboardSectRow[]> {
+    const safe = clampLimit(limit);
+    const sects = await this.prisma.sect.findMany({
+      orderBy: [
+        { treasuryLinhThach: 'desc' },
+        { level: 'desc' },
+        { createdAt: 'asc' },
+      ],
+      include: { _count: { select: { characters: true } } },
+      take: safe,
+    });
+    if (sects.length === 0) return [];
+    const leaderIds = sects
+      .map((s) => s.leaderId)
+      .filter((x): x is string => !!x);
+    const leaders = leaderIds.length
+      ? await this.prisma.character.findMany({
+          where: { id: { in: leaderIds } },
+          select: { id: true, name: true },
+        })
+      : [];
+    const leaderMap = new Map(leaders.map((l) => [l.id, l.name]));
+    return sects.map((s, i) => ({
+      rank: i + 1,
+      sectId: s.id,
+      sectKey: SECT_NAME_TO_KEY[s.name] ?? null,
+      name: s.name,
+      level: s.level,
+      treasuryLinhThach: s.treasuryLinhThach.toString(),
+      memberCount: s._count.characters,
+      leaderName: s.leaderId ? (leaderMap.get(s.leaderId) ?? null) : null,
     }));
   }
 }
