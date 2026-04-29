@@ -89,11 +89,29 @@
 
 ---
 
-## Recent Changes (PR #33→#98 đã merged trên main; PR #99 FE leaderboard tabs in-flight session 9f)
+## Recent Changes (PR #33→#99 đã merged trên main; PR #100 in-flight session 9f)
 
-### PR #99 — `feat(web): LeaderboardView tabs Power/Topup/Sect — consume PR #94 BE` — **Pending merge** session 9f
+### PR #100 — `feat(web,api): admin self-demote/self-target prevention — FE guards + BE setRole/setBanned vitest` — **Pending merge** session 9f
 
-- **Branch**: `devin/1777483089-fe-leaderboard-tabs`. **Base**: `main` @ `4072a3d` (sau PR #98 docs audit refresh merged). **Status**: code complete + typecheck/lint/test/build all xanh local (web 133→137 vitest, +4 net = 6 new test cover tab switch + topup table + sect table BigInt format + lazy-fetch + aria-selected, replace 3 cũ với mock 3-fn).
+- **Branch**: `devin/1777483905-admin-self-demote-prevention`. **Base**: `main` @ `5a93d22` (sau PR #99 merged). **Status**: code complete + typecheck/lint/test/build all xanh local (web 137→149 vitest, +12 từ `adminGuards.test.ts`; api +2 vitest setRole/setBanned self-block — chưa run cần infra:up).
+- **Mục tiêu** (Roadmap §20 session 9f task C, Known Issues §19 rule 9 "FE hiện không chặn self-demote"): BE `admin.service.ts` đã throw `CANNOT_TARGET_SELF` cho `setRole`/`setBanned`/`grant` (line 121, 140, 159), nhưng FE `AdminView.vue` vẫn hiển thị enabled select role + grant + ban button cho row của chính admin → user click → confirm dialog → toast error → confusion. Audit gap: BE `setRole` + `setBanned` self-block chưa có vitest lock-in (chỉ có `grant` + `revoke`).
+- **Giải pháp**:
+  1. **Helper module** `apps/web/src/lib/adminGuards.ts` (mới): pure function `isSelfTarget()`, `canChangeRole({actorRole, actorUserId, targetUserId})`, `canTargetUser({actorUserId, targetUserId})` trả `{allowed, reason: 'NOT_ADMIN'|'SELF_TARGET'}`. Unit test `apps/web/src/lib/__tests__/adminGuards.test.ts` (+12 case) cover null/undefined actor, all role permutations, self vs other.
+  2. **`apps/web/src/views/AdminView.vue`**:
+     - `import { isSelfTarget, canChangeRole, canTargetUser }` + helper `isSelfRow(u)`.
+     - `changeRole()`: dùng `canChangeRole()` → nếu `SELF_TARGET` push toast `errors.CANNOT_TARGET_SELF` + force-refresh để revert select về role cũ (UX revert).
+     - `toggleBan()` + `openGrant()`: dùng `canTargetUser()` → guard trước confirm dialog.
+     - Template: select role + grant button + ban button thêm `:disabled="isSelfRow(u)"` + tooltip `selfDemoteBlocked` + class `disabled:cursor-not-allowed disabled:opacity-60` + `data-testid` cho mỗi nút theo userId. Self row email cell thêm badge `selfBadge` (highlight amber) + row bg amber/5 + `data-self="true"` cho test/debug.
+  3. **i18n** `apps/web/src/i18n/{vi,en}.json`: thêm `admin.users.selfBadge` ("Bạn"/"You") + `admin.users.selfDemoteBlocked` (giải thích lock-out protection).
+  4. **BE test** `apps/api/src/modules/admin/topup-admin.service.test.ts` (+2 it): lock-in `admin.setRole(self)` + `admin.setBanned(self)` throws `CANNOT_TARGET_SELF`.
+- **Files**: `apps/web/src/lib/adminGuards.ts` (mới, +57), `apps/web/src/lib/__tests__/adminGuards.test.ts` (mới, +75, 12 vitest), `apps/web/src/views/AdminView.vue` (+~50 template + 4 handler guard), `apps/web/src/i18n/{vi,en}.json` (+2 key), `apps/api/src/modules/admin/topup-admin.service.test.ts` (+25, +2 it).
+- **Tests local**: web typecheck ✅, lint ✅, vitest 137→**149/149** (18 file). build ✅. api vitest 2 mới chưa run vì cần infra:up; logic đã hardcoded từ trước — test chỉ lock-in.
+- **Risk**: Thấp — BE không thay đổi logic (chỉ thêm test). FE thêm guard ở UI + handler defensive, không xoá code cũ. i18n key mới (không sửa key cũ).
+- **Bước tiếp theo (post-merge)**: task D session 9f — `forgot/reset-password` endpoints + Mailhog scaffold.
+
+### PR #99 — `feat(web): LeaderboardView tabs Power/Topup/Sect — consume PR #94 BE` — **Merged into main** @ `5a93d22` (29/4 ~17:35 UTC, CI 5/5 ✅)
+
+- **Branch**: `devin/1777483089-fe-leaderboard-tabs`. **Base**: `main` @ `4072a3d` (sau PR #98 docs audit refresh merged). **Status**: Merged. typecheck/lint/test/build all xanh local (web 133→137 vitest, +4 net = 6 new test cover tab switch + topup table + sect table BigInt format + lazy-fetch + aria-selected, replace 3 cũ với mock 3-fn).
 - **Mục tiêu** (Roadmap §20 session 9f task B): consume PR #94 BE leaderboard topup/sect endpoints. Trước PR #99: `LeaderboardView.vue` chỉ render top power; `GET /leaderboard/topup` + `GET /leaderboard/sect` chưa có FE consumer.
 - **Giải pháp** (FE-only):
   1. **API client `apps/web/src/api/leaderboard.ts`**: thêm `LeaderboardTopupRow` (rank, characterId, name, realmKey, realmStage, totalTienNgoc:number, sectKey) + `LeaderboardSectRow` (rank, sectId, sectKey, name, level, treasuryLinhThach:string BigInt, memberCount, leaderName) + `fetchLeaderboardTopup()` + `fetchLeaderboardSect()`.
@@ -1590,9 +1608,9 @@ Admin hiện tại có thể vào `/admin` → Users → tìm → **Set role = A
 
 **Top priority (session 9f sẽ tự làm theo thứ tự)**:
 
-A. ~~**Docs audit refresh**~~ — **Done by PR #98** (Merged into main @ `4072a3d`, 29/4 ~17:18 UTC, CI 4/4 ✅) — bump snapshot `3283e42 → ee933ad`, mark PR #94/#95/#96/#97 từ `Pending merge → Merged into main`, add immediate session 9f tasks A→D.
-B. **(IN PROGRESS) FE LeaderboardView tabs Power/Topup/Sect** — PR #99 `fe-leaderboard-tabs` consume BE PR #94 (`GET /leaderboard/topup` + `GET /leaderboard/sect`). 3 tab + lazy-fetch + i18n vi/en + 10 vitest. Code complete + typecheck/lint/build/test 137/137 xanh local. Risk thấp (FE-only, không touch schema/BE/economy).
-C. **Self-demote prevention (admin)** — rule 9 §19 ghi rõ "FE hiện không chặn self-demote". Thêm guard cả FE (`AdminView.users` set-role disable nếu `userId === currentAdminId` và targetRole !== 'ADMIN') + BE (`POST /admin/users/:id/role` 400 `CANT_DEMOTE_SELF` nếu `actorId === userId` và newRole !== 'ADMIN'). Risk thấp, security hardening.
+A. ~~**Docs audit refresh**~~ — **Done by PR #98** (Merged into main @ `4072a3d`, 29/4 ~17:18 UTC, CI 4/4 ✅).
+B. ~~**FE LeaderboardView tabs Power/Topup/Sect**~~ — **Done by PR #99** (Merged into main @ `5a93d22`, 29/4 ~17:35 UTC, CI 5/5 ✅) — consume BE PR #94, 3 tab + lazy-fetch + i18n vi/en + 10 vitest, web 133→137.
+C. **(IN PROGRESS — PR #100 in-flight, local checks ✅)** **Self-demote prevention (admin)** — rule 9 §19 "FE hiện không chặn self-demote". BE `admin.service.ts` đã throw `CANNOT_TARGET_SELF` cho `setRole`/`setBanned`/`grant` (line 121, 140, 159) — bổ sung FE guard ở `apps/web/src/views/AdminView.vue` (disable select role + grant + ban button cho row của chính admin, badge "Bạn", tooltip lock-out warning) + helper module `apps/web/src/lib/adminGuards.ts` (12 vitest pure) + BE vitest +2 (`setRole` self + `setBanned` self) lock-in. Web vitest 137→149. Branch `devin/1777483905-admin-self-demote-prevention`.
 D. **`POST /api/_auth/forgot-password` + `reset-password`** + email scaffold qua Mailhog (closed beta nice-to-have): `PasswordResetToken` model + `/forgot-password` (silent ok always để chống user enumeration) + `/reset-password` (consume token, invalidate other tokens, bump passwordVersion). Risk thấp (chỉ thêm endpoint + token model + email mailhog).
 
 ---

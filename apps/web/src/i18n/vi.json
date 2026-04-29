@@ -828,7 +828,9 @@
       "grantTitle": "Cộng/Trừ tài sản",
       "grantLinh": "Linh thạch (có thể âm)",
       "grantNgoc": "Tiên ngọc (số nguyên, có thể âm)",
-      "grantReason": "Lý do (lưu vào audit log)"
+      "grantReason": "Lý do (lưu vào audit log)",
+      "selfBadge": "Bạn",
+      "selfDemoteBlocked": "Không thể tự thao tác lên chính tài khoản của bạn (chống lock-out)."
     },
     "topups": {
       "notePlaceholder": "Ghi chú khi duyệt/từ chối…",

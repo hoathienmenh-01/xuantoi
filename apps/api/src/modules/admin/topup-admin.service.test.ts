@@ -169,6 +169,28 @@ describe('AdminService.grant', () => {
     ).rejects.toMatchObject({ code: 'CANNOT_TARGET_SELF' });
   });
 
+  it('setRole: tự đổi role chính mình → CANNOT_TARGET_SELF (chống self-demote lock-out)', async () => {
+    const adminUser = await makeUserChar(prisma, { role: 'ADMIN' });
+    await expect(
+      admin.setRole(adminUser.userId, 'ADMIN', adminUser.userId, 'PLAYER'),
+    ).rejects.toMatchObject({ code: 'CANNOT_TARGET_SELF' });
+    await expect(
+      admin.setRole(adminUser.userId, 'ADMIN', adminUser.userId, 'MOD'),
+    ).rejects.toMatchObject({ code: 'CANNOT_TARGET_SELF' });
+    // role hiện tại không đổi
+    const u = await prisma.user.findUniqueOrThrow({ where: { id: adminUser.userId } });
+    expect(u.role).toBe('ADMIN');
+  });
+
+  it('setBanned: tự ban chính mình → CANNOT_TARGET_SELF', async () => {
+    const adminUser = await makeUserChar(prisma, { role: 'ADMIN' });
+    await expect(
+      admin.setBanned(adminUser.userId, 'ADMIN', adminUser.userId, true),
+    ).rejects.toMatchObject({ code: 'CANNOT_TARGET_SELF' });
+    const u = await prisma.user.findUniqueOrThrow({ where: { id: adminUser.userId } });
+    expect(u.banned).toBe(false);
+  });
+
   it('grant: trừ quá số dư → INVALID_INPUT, atomic rollback', async () => {
     const target = await makeUserChar(prisma, { linhThach: 50n, tienNgoc: 5 });
     const adminUser = await makeUserChar(prisma, { role: 'ADMIN' });
