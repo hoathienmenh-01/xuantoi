@@ -6,7 +6,9 @@ interface Props {
   open: boolean;
   title: string;
   message?: string;
+  /** Override label nút confirm. Default fallback i18n `common.confirm`. */
   confirmText?: string;
+  /** Override label nút cancel. Default fallback i18n `common.cancel`. */
   cancelText?: string;
   /** Khi true, nút confirm dùng style cảnh báo (đỏ) — dùng cho thao tác phá huỷ. */
   danger?: boolean;
@@ -17,10 +19,12 @@ interface Props {
 }
 
 const props = withDefaults(defineProps<Props>(), {
+  message: '',
+  confirmText: '',
+  cancelText: '',
   danger: false,
   loading: false,
   testId: 'confirm-modal',
-  message: '',
 });
 
 const emit = defineEmits<{
@@ -30,8 +34,8 @@ const emit = defineEmits<{
 
 const { t } = useI18n();
 
-const labelConfirm = computed(() => props.confirmText ?? t('common.confirm'));
-const labelCancel = computed(() => props.cancelText ?? t('common.cancel'));
+const labelConfirm = computed(() => props.confirmText || t('common.confirm'));
+const labelCancel = computed(() => props.cancelText || t('common.cancel'));
 
 function onKeydown(ev: KeyboardEvent): void {
   if (!props.open) return;
