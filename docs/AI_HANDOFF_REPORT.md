@@ -89,7 +89,57 @@
 
 ---
 
-## Recent Changes (PR #33→#85 — tất cả đã merge `main`; G23 PR #84 Pending merge)
+## Recent Changes (PR #33→#86 — tất cả đã merge `main`; L3 PR #87 + M6 in-flight session 9d)
+
+### PR — `feat(api): GET /logs/me — self audit log (CurrencyLedger + ItemLedger keyset paginated) (M6)` — **Pending merge**
+
+- **Branch**: `devin/1777469824-m6-logs-me`. **Base**: `main` @ `011e930` (sau PR #86 audit refresh merged). **Status**: code complete + local typecheck/lint/api test 369/369/build xanh; PR mở session 9d.
+- **Mục tiêu** (Recommended Roadmap §20 M6 + Smart admin/economy §3,4 — minh bạch ledger cho người chơi): tới giờ CurrencyLedger + ItemLedger là audit-trail nội bộ (admin only — `apps/api/src/modules/admin/admin.controller.ts` + `pnpm audit:ledger` script). Người chơi không có cách tự xem mình đã nhận/mất tiền/item ở đâu → khi có thắc mắc support "Sao tôi mất 500 LT?" admin phải tra DB tay. Endpoint `/logs/me` mở read-only self-view audit chronological cho user.
+- **Giải pháp** (BE only — module mới `apps/api/src/modules/logs/`, không thay đổi schema):
+  - **`logs.service.ts`** (new, ~205 line):
+    - `LogsService.listForUser(userId, { type, limit, cursor })` lookup `Character.id` của user (throw `NO_CHARACTER` nếu chưa onboard) rồi query `CurrencyLedger` hoặc `ItemLedger` filtered theo `characterId`.
+    - **Type filter**: `type='currency'` hoặc `type='item'` — riêng từng ledger để keyset pagination đơn giản. Không hỗ trợ `type='all'` để tránh phức tạp merge cursor (FE có thể gọi 2 lần parallel).
+    - **Keyset pagination**: `ORDER BY createdAt DESC, id DESC` + cursor `(createdAt, id)` để stable khi 2 entry cùng `createdAt` (race condition trong cùng `$transaction`). Tận dụng index có sẵn `@@index([characterId, createdAt])`.
+    - **Cursor opaque**: `encodeCursor(c)` = base64url của `${createdAt.toISOString()}|${id}`; `decodeCursor(s)` validate format strict, throw `LogsError('INVALID_CURSOR')` cho mọi case (non-base64, missing separator, invalid ISO, empty id).
+    - **Limit clamp**: min=1, max=50, default=20 (qua `LOGS_LIMIT_*` constants).
+    - **BigInt serialize**: `delta.toString()` để FE giữ nguyên độ chính xác BigInt.
+    - **Privacy**: trả `actorUserId` (cuid) nguyên dạng — **không** lookup email actor để tránh leak admin PII tới user.
+  - **`logs.controller.ts`** (new, ~70 line): `@Controller('logs')` với `@Get('me')` — auth qua cookie `xt_access` + `AuthService.userIdFromAccess()` (cùng pattern `DailyLoginController`); zod `ListQuery` validate `type/limit/cursor`; map `LogsError.code` → HTTP status (`NO_CHARACTER` → 404, `INVALID_CURSOR` → 400). Chưa add rate-limit (read-only, low risk; có thể thêm sau nếu lạm dụng).
+  - **`logs.module.ts`** (new): import `AuthModule`, providers `LogsService` + `PrismaService`.
+  - **`apps/api/src/app.module.ts`**: thêm `LogsModule` vào imports.
+- **API contract**:
+  ```
+  GET /logs/me?type=currency&limit=20&cursor=<opaque>
+  → { ok: true, data: { entries: LogEntry[], nextCursor: string | null } }
+  ```
+  - `LogEntryCurrency` = `{ kind: 'CURRENCY', id, createdAt, reason, refType, refId, actorUserId, currency: 'LINH_THACH'|'TIEN_NGOC', delta: string }`
+  - `LogEntryItem` = `{ kind: 'ITEM', id, createdAt, reason, refType, refId, actorUserId, itemKey, qtyDelta: number }`
+  - Errors: `UNAUTHENTICATED` (401), `INVALID_INPUT` (400), `NO_CHARACTER` (404), `INVALID_CURSOR` (400)
+- **Files** (4 file new + 1 file modified):
+  - `apps/api/src/modules/logs/logs.service.ts` (new, 205 line)
+  - `apps/api/src/modules/logs/logs.controller.ts` (new, 70 line)
+  - `apps/api/src/modules/logs/logs.module.ts` (new, 13 line)
+  - `apps/api/src/modules/logs/logs.service.test.ts` (new, ~330 line, 20 vitest)
+  - `apps/api/src/app.module.ts` (modified, +2 line)
+- **Risk**: Thấp — read-only endpoint, không thay schema/migration, không đụng economy/inventory. User chỉ thấy ledger của character thuộc user hiện tại (kiểm tra qua `prisma.character.findUnique({ where: { userId } })`). Test "isolation" verify character A không thấy ledger character B.
+- **Rollback**: revert single PR. App.module unregister `LogsModule`, FE chưa wire → 0 impact.
+- **Test added**: +20 vitest API integration (Postgres + `wipeAll`):
+  - **Cursor encode/decode** (6 test): round-trip, ký tự đặc biệt, non-base64, missing separator, invalid ISO, empty id.
+  - **listForUser() currency** (11 test): empty ledger, `NO_CHARACTER`, list 5 DESC order, BigInt serialize, limit clamp min=1/max=50, pagination 2 page no-dup/no-skip, tie-break stable when same `createdAt`, character A↔B isolation, invalid cursor, default limit=20.
+  - **listForUser() item** (3 test): list DESC + qtyDelta sign preserved, pagination cross-page no-dup, type filter (currency-only vs item-only).
+  - Tổng api 349 → 369.
+- **CI status (local)**: typecheck ✅ (3 project), lint ✅ (max-warnings 0), api test ✅ (369/369), build ✅.
+- **Runtime smoke**: **Needs runtime smoke** — chưa hit endpoint thật qua HTTP với cookie auth thật. Sẽ smoke khi FE tab "Hoạt động" wire (next PR).
+- **`AI_HANDOFF_REPORT.md updated`**: Recent Changes (this entry), §20 Roadmap M6 → Resolved/Done.
+- **Bước tiếp theo**: FE tab "Hoạt động" trong ProfileView/SettingsView — list logs với infinite scroll dùng `nextCursor`, format reason qua i18n `logs.reason.${reason}`, format delta theo currency/item.
+
+### PR #86 — `docs(handoff): session 9d audit refresh — bump snapshot 05b05c0 + L6/L6b/G23 Resolved` — **Merged into main** @ `011e930` (29/4, CI 4/4 xanh)
+
+- **Branch**: `devin/1777468789-audit-session-9d-refresh` (đã merged). **Base**: `main` @ `05b05c0` (sau PR #84 G23 merged). **Merge commit**: `011e930`. **Status**: Merged into main.
+- **Mục tiêu** (Smart docs/handoff §7 — đồng bộ report sau cascade 5 PR #81/#82/#83/#84/#85): header còn snapshot `ec37f10`, L6/L6b vẫn ghi "Pending merge", L5/G22/M9 vẫn nằm trong Immediate Roadmap, PR #84 G23 ghi "Pending merge" — refresh single-PR docs-only thay vì sửa từng PR riêng lẻ.
+- **Files** (1 thay đổi): `docs/AI_HANDOFF_REPORT.md` (+34/-28 line — bump §3 Snapshot, §2 Current Branch/CI, §2 PR merged table, §16 Known Issues L6 Resolved, §20 Roadmap Immediate restruck).
+- **Risk**: Cực thấp — docs only, không touch code/test/migration.
+- **CI status**: 4/4 ✅ build×2 + e2e-smoke×2.
 
 ### PR #85 — `test(web): SettingsView logout-all confirm modal integration — 7 test (L6b)` — **Merged into main** @ `bbb6718` (29/4 ~13:02 UTC, CI 5/5 xanh)
 
@@ -1176,7 +1226,7 @@ _(Không có lỗi làm app không chạy / mất tiền / auth hỏng tại com
 | ~~M3~~ | ~~Chưa có WS `mission:progress` push.~~ | **Resolved by PR #63 + #65** (Merged into main) — BE `MissionWsEmitter` 500ms throttle per-user, emit `'mission:progress'` payload `{characterId, changes: MissionProgressChange[]}` sau `MissionService.track()`. FE `MissionView` subscribe và apply delta in-place. Files: `apps/api/src/modules/mission/mission-ws.emitter.ts`, `apps/web/src/views/MissionView.vue`. |
 | ~~M4~~ | ~~`ItemLedger` audit table chưa có.~~ | **Resolved** by **PR #40** (model + migration `20260428102849_itemledger` + hook 6 grant flows + market post/cancel/buy + 7 test trong `item-ledger.test.ts`). |
 | ~~M5~~ | ~~`CurrencyLedger.actorUserId` chưa index.~~ | **Resolved** by **PR #43** — thêm `@@index([actorUserId, createdAt])` cho cả `CurrencyLedger` và `ItemLedger`. Migration `20260428112804_actor_user_id_index` (ADD INDEX only). |
-| M6 | LogsModule (G3 cũ) chưa build — không có `/logs/me` endpoint. | **Open** — low priority, chỉ khi cần UI xem log action. |
+| ~~M6~~ | ~~LogsModule (G3 cũ) chưa build — không có `/logs/me` endpoint.~~ | **Resolved by PR M6** (Pending merge session 9d) — `apps/api/src/modules/logs/` module mới với `GET /logs/me?type=currency\|item&limit=20&cursor=<opaque>`, keyset pagination `(createdAt DESC, id DESC)`, BigInt serialize as string, character-isolation guard. +20 vitest API integration. **Bước tiếp**: FE tab "Hoạt động" wire (next PR sau merge). |
 | M7 | CSP production-ready nhưng chưa test deploy với CDN/asset domain khác. | **Open** — khi deploy: review `script-src`, `connect-src`. |
 | M8 | Admin guard kiểm `role === 'ADMIN' \|\| 'MOD'` — MOD có quyền broad gần ADMIN (grant currency, approve topup, broadcast mail, spawn boss). | **Resolved** by PR E — thêm `@RequireAdmin()` decorator + reflector trong `AdminGuard`; ADMIN-only cho grant / role-set / approve-topup / reject-topup / giftcode-create / giftcode-revoke / mail-send / mail-broadcast / boss-admin-spawn. MOD vẫn được: GET (read) + ban (đã có hierarchy MOD↦PLAYER ở service). 8 unit test thuê reflector cho guard. |
 | M9 | Settings logout-all không bump `passwordVersion` → access token cũ (15m) vẫn valid ở thiết bị khác. | **Open** (intentional trade-off, document trong `SECURITY.md`) — nếu cần force ngay, bump `passwordVersion` hoặc implement revocation list. |
@@ -1227,7 +1277,7 @@ _(Không có lỗi làm app không chạy / mất tiền / auth hỏng tại com
 | `POST /api/_auth/verify-email` | Thiếu | Closed beta không cần |
 | `GET /api/leaderboard/{power,topup,sect}` | **Power**: đã có (PR #59 — `GET /leaderboard?limit=50` top by realm+power, clamp 1≤limit≤50). Topup/sect chưa có. | Power done; topup/sect Nice-to-have post-beta. |
 | `WS mission:progress` (server-push tracker) | **Có** (PR #63 BE emitter throttle 500ms + PR #65 FE handler `MissionView`) | — |
-| `GET /api/logs/me` (G3 cũ) | Thiếu | Low (M6) |
+| ~~`GET /api/logs/me` (G3 cũ)~~ | ~~Thiếu~~ | **Resolved by PR M6** (Pending merge session 9d) — `apps/api/src/modules/logs/` module + 20 vitest. |
 | `POST /api/admin/inventory/revoke` (`ADMIN_REVOKE` ledger) | **Có** (PR #66 — endpoint + 9 vitest) | — |
 | `GET /api/mail/unread-count` (M7 hydrate badge) | **Có** (PR #71) | — |
 | `GET /api/admin/economy/alerts` (smart admin) | **Có** (PR #54) | — |
@@ -1343,13 +1393,14 @@ Admin hiện tại có thể vào `/admin` → Users → tìm → **Set role = A
 2. ~~**G22 — Admin giftcode FE panel**~~ — **Done by PR #81** (Merged into main @ `c4f3468`, 29/4 ~10:31 UTC). Status: **Done / Needs runtime smoke**.
 3. ~~**L5 — MissionView claim flow vitest**~~ — **Done by PR #82** (Merged into main @ `45e42dc`, 29/4 ~12:30 UTC). +9 vitest.
 4. ~~**L6 — Logout-all confirm modal**~~ — **Done by PR #83** (component, Merged into main @ `78261eb`) + **PR #85** (integration vitest, Merged into main @ `bbb6718`).
-5. **G23 — Giftcode duplicate code → CODE_EXISTS error code** — **Pending merge** (PR #84, CI 4/4 ✅, conflict resolved by session 9d). Sau khi merge: gỡ khỏi Immediate.
-6. **Runtime smoke tích hợp sau toàn bộ PR #46→#85 merge cascade** — **Needs runtime smoke**. Checklist (15 phút, theo `docs/QA_CHECKLIST.md`): register/login (verify rate-limit 5/IP/15min), HomeView (next-action panel + onboarding checklist + DailyLoginCard claim flow), sidebar badges polling 60s, leaderboard render top 50 + tap-name → profile, admin economy alerts panel, mission claim + WS `mission:progress` real-time, mail unread badge hydrate trên login, NPC shop buy + ledger row, market post/cancel/buy với `MARKET_FEE_PCT` env, admin giftcode panel filter q/status + create + revoke (PR #81 + duplicate error rõ qua PR #84 sau khi merge), admin user filter role+banned, admin audit filter action+actor, admin topup filter date+email, admin inventory revoke + `ADMIN_REVOKE` ledger, `pnpm audit:ledger` script, MarketView skeleton, SettingsView logout-all confirm modal.
-7. **L3 — Proverbs corpus expansion** (loading screen): hiện 30+ câu lặp nhanh; thêm 50–100 câu Hán-Việt cổ phong vào `packages/shared/src/proverbs.ts`. Risk thấp, value vừa (UX polish).
-8. **M6 — `GET /logs/me` endpoint** (tự xem audit log của mình từ `AdminAuditLog` filter `actorUserId = me`): low priority, hữu ích cho UX trong-suốt + debug user-side. Cần thiết kế list endpoint + FE view (Profile tab "Hoạt động"?).
-9. **M10 — Shop daily limit** + per-item rate-limit (post-beta nice-to-have).
-10. **M7 — CSP production CDN review** (chỉ khi triển khai prod).
-11. **M9 (auth) — Settings logout-all `passwordVersion` bump** (intentional trade-off post-beta — document trong `docs/SECURITY.md` hiện đã có).
+5. ~~**G23 — Giftcode duplicate code → CODE_EXISTS error code**~~ — **Done by PR #84** (Merged into main @ `05b05c0`, 29/4 ~13:25 UTC).
+6. ~~**L3 — Proverbs corpus expansion**~~ — **Done by PR #87** (Pending merge, CI 5/5 ✅) — expand 7 → 64 câu chia 4 chủ đề + 8 vitest invariants. Sau merge: gỡ khỏi Immediate.
+7. ~~**M6 — `GET /logs/me` endpoint**~~ — **Done by PR M6** (Pending merge session 9d) — module BE + 20 vitest. Bước tiếp: FE tab "Hoạt động" (next PR sau merge).
+8. **Runtime smoke tích hợp sau toàn bộ PR #46→#87 merge cascade** — **Needs runtime smoke**. Checklist (15 phút, theo `docs/QA_CHECKLIST.md`): register/login (verify rate-limit 5/IP/15min), HomeView (next-action panel + onboarding checklist + DailyLoginCard claim flow), sidebar badges polling 60s, leaderboard render top 50 + tap-name → profile, admin economy alerts panel, mission claim + WS `mission:progress` real-time, mail unread badge hydrate trên login, NPC shop buy + ledger row, market post/cancel/buy với `MARKET_FEE_PCT` env, admin giftcode panel filter q/status + create + revoke (PR #81 + duplicate error rõ PR #84), admin user filter role+banned, admin audit filter action+actor, admin topup filter date+email, admin inventory revoke + `ADMIN_REVOKE` ledger, `pnpm audit:ledger` script, MarketView skeleton, SettingsView logout-all confirm modal, AuthView proverbs corpus đa dạng (PR #87).
+9. **FE — Profile/Settings tab "Hoạt động"** wire `GET /logs/me` (consumer cho M6): infinite scroll dùng `nextCursor`, format `reason` qua i18n `logs.reason.${reason}`, format `delta` theo currency/itemKey. Risk thấp, value vừa (UX trong-suốt).
+10. **M10 — Shop daily limit** + per-item rate-limit (post-beta nice-to-have).
+11. **M7 — CSP production CDN review** (chỉ khi triển khai prod).
+12. **M9 (auth) — Settings logout-all `passwordVersion` bump** (intentional trade-off post-beta — document trong `docs/SECURITY.md` hiện đã có).
 
 ### Before Closed Beta
 
