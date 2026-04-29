@@ -85,7 +85,33 @@
 
 ---
 
-## Recent Changes (PR #33→#83 — tất cả đã merge `main`; G23 + L6b in-flight)
+## Recent Changes (PR #33→#84 — tất cả đã merge `main`; L3 in-flight session 9d)
+
+### PR — `feat(shared): proverbs corpus expand 7 → 64 + corpus invariants test (L3)` — **Pending merge**
+
+- **Branch**: `devin/1777469379-l3-proverbs-expand`. **Base**: `main` @ `05b05c0` (sau khi PR #84 G23 merged). **Status**: code complete + local typecheck/lint/test/build xanh; PR mở session 9d.
+- **Mục tiêu** (Smart UX polish §6 + Recommended Roadmap L3 — proverbs loading screen ít lặp): `packages/shared/src/proverbs.ts` chỉ có **7 câu** (thiếu so với mức thoải mái cho loading splash) → người chơi mở `AuthView` thấy lặp lại nhanh, mất cảm giác cổ phong. Header report cũ ghi nhầm "30+ câu" — thực tế chỉ 7. Closed beta cần corpus rộng để loading screen đa dạng.
+- **Giải pháp** (1 file source + 1 file test):
+  - **`packages/shared/src/proverbs.ts`**: mở rộng `PROVERBS` từ 7 → 64 câu Hán-Việt cổ phong, chia 4 chủ đề rõ rệt (16 câu mỗi chủ đề):
+    1. **Tu tâm — định ý — vô niệm** (16 câu): "Tâm tịnh như nước, đạo tự nhiên thành.", "Một niệm khởi, vạn pháp sinh.", "Phiền não tức bồ đề.", "Vạn duyên buông xuống, một niệm bất sinh.", v.v.
+    2. **Hành đạo — tu luyện — đột phá** (16 câu): "Vô vi nhi vô bất vi.", "Đạo khả đạo, phi thường đạo.", "Trúc cơ vạn nhật, đắc đạo nhất triêu.", "Tu đạo như nghịch thuỷ hành châu, bất tiến tắc thoái.", v.v.
+    3. **Bản tính tự nhiên — vô thường — nhân quả** (16 câu): "Hoa rơi tự có ý, nước chảy tự vô tình.", "Thiên đạo vô thân, thường dữ thiện nhân.", "Đại trí nhược ngu, đại xảo nhược chuyết.", "Trồng dưa được dưa, trồng đậu được đậu.", v.v.
+    4. **Khí phách quân tử — chí khí — bằng hữu** (16 câu): "Thiên hành kiện, quân tử dĩ tự cường bất tức.", "Tu thân, tề gia, trị quốc, bình thiên hạ.", "Phú quý bất năng dâm, bần tiện bất năng di, uy vũ bất năng khuất.", "Quân tử chi giao đạm như thuỷ.", "Núi cao còn có núi cao hơn.", v.v.
+    - JSDoc comment bổ sung tiêu chí thêm câu mới (cổ phong, không tôn giáo cụ thể, không trích nguyên kinh có bản quyền, ngắn ≤80 ký tự).
+  - **`packages/shared/src/proverbs.test.ts`**: thêm `describe('PROVERBS corpus')` với 4 invariant test (≥50 câu, no-empty/trim, no-duplicate, consistent punctuation `.` hoặc `!`); thêm 4 test cho `randomProverb` boundary (rng=0 trả câu đầu, rng=0.999 trả câu cuối, rng=0.5 trả câu giữa, per-index coverage loop). Tổng test shared 47 → 55 (+8 vitest).
+- **Tiêu chí chọn câu**:
+  - Phong cách Hán-Việt cổ phong, hợp game tu tiên MUD.
+  - Không gây hiểu nhầm tôn giáo cụ thể (Phật/Đạo/Nho hoà trộn theo style xianxia chung).
+  - Không trích nguyên văn kinh điển có bản quyền (paraphrase/cô đọng).
+  - Câu ngắn (`<= 80 ký tự` khi có thể) để vừa loading splash trên mobile.
+- **Files** (2 thay đổi):
+  - `packages/shared/src/proverbs.ts` (modified, 17 line → 91 line)
+  - `packages/shared/src/proverbs.test.ts` (modified, 20 line → 66 line)
+- **Risk**: Cực thấp — chỉ data + test thêm, không thay đổi API/signature `randomProverb()`. `AuthView.vue` consumer không cần code change. Không có migration / không đụng economy / không thay đổi BE.
+- **Rollback**: revert single PR.
+- **Test added**: +8 vitest shared. Tổng shared 47 → 55.
+- **CI status (local)**: typecheck ✅ (3 project), lint ✅, shared test ✅ (55/55), web test ✅ (123/123), build ✅.
+- **`AI_HANDOFF_REPORT.md updated`**: Recent Changes (this entry), Known Issues §16 L3 → Resolved, Roadmap §20 strike L3 (next-up: M6 `/logs/me`).
 
 ### PR — `test(web): SettingsView logout-all confirm modal integration — 7 test (L6b)` — **Pending merge**
 
@@ -1185,7 +1211,7 @@ _(Không có lỗi làm app không chạy / mất tiền / auth hỏng tại com
 |---|---|---|
 | L1 | Hard-code VN/EN còn lẻ tẻ. | **Resolved (PR F)** — audit cuối: 554/554 key và vi.json/en.json sync, 400 used key all resolve. Fix 12 key admin vẫn English (`roleLabel`, `tab.audit`, `users.col.role`, `users.banned`, `roleChangeConfirm`, `roleChangedToast`, `topups.col.user/status/note`, `audit.col.actor/action/meta`). Các "identical en≡vi" còn lại (locale names, EXP, HP/MP, WS, OK, Boss, A Linh, currency names) là đúng ý đồ — universal/native term. |
 | ~~L2~~ | ~~Market fee 5% hard-code.~~ | **Resolved by PR #69** (Merged into main) — `MARKET_FEE_PCT` env var, validate bounds [0, 0.5], default 0.05. File: `apps/api/src/modules/market/market.service.ts`. |
-| L3 | Proverbs loading screen chỉ 30+ câu — lặp nhanh. | **Open** — mở rộng corpus. |
+| ~~L3~~ | ~~Proverbs loading screen chỉ 7 câu — lặp nhanh.~~ | **Resolved by PR L3** (session 9d) — `packages/shared/src/proverbs.ts` mở rộng từ 7 → 64 câu chia 4 chủ đề (tu tâm 16 + hành đạo 16 + bản tính tự nhiên 16 + khí phách quân tử 16). +8 vitest mới (`PROVERBS corpus`: ≥50 câu, no-empty/trim, no-dup, consistent punctuation; `randomProverb` boundary cases rng=0/0.999/0.5 + per-index coverage). Tổng shared 47 → 55. |
 | ~~L4~~ | ~~Không có tên item localized.~~ | **Resolved** by **PR #57** — `apps/web/src/lib/itemName.ts` helper + 11 vitest test, dedupe across `MissionView`/`MailView`/`GiftCodeView`/`ShopView`. |
 | ~~L5~~ | ~~Một số view chưa skeleton loader.~~ | **Resolved** — `LeaderboardView` + `ProfileView` (PR #67 merged), `MissionView` + `AdminView` (PR #68 merged), `MarketView` (PR #77 merged). Skeleton coverage đầy đủ trên tất cả view chính. |
 | ~~L5b~~ | ~~`MissionView.vue` (268 line) chưa có vitest riêng.~~ | **Resolved by PR #82** (Merged into main @ `45e42dc`) — `apps/web/src/views/__tests__/MissionView.test.ts` +9 vitest cover claim button enable/disable, claimed badge, click claim happy path, error handler, WS `mission:progress` apply, sort, tab filter, empty state. |
