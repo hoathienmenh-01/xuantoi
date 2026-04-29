@@ -1,15 +1,9 @@
 /**
- * Smart economy safety — audit ledger consistency.
+ * Smart economy safety — audit ledger consistency (CLI wrapper).
  *
- * Quét toàn bộ DB so sánh:
- *   1. SUM(CurrencyLedger.delta WHERE currency=LINH_THACH) per character
- *      vs Character.linhThach.
- *   2. SUM(CurrencyLedger.delta WHERE currency=TIEN_NGOC) per character
- *      vs Character.tienNgoc.
- *   3. SUM(ItemLedger.qtyDelta) per (character, itemKey)
- *      vs SUM(InventoryItem.qty) per (character, itemKey).
- *
- * Phát hiện dupe/cheat/bug ledger. Exit code != 0 nếu có discrepancy.
+ * Pure logic now lives in `apps/api/src/modules/admin/ledger-audit.ts` (also
+ * dùng cho admin endpoint `GET /admin/economy/audit-ledger`). File này chỉ
+ * là CLI thin wrapper để chạy ad-hoc trên prod DB qua pnpm script.
  *
  * Chạy:
  *   pnpm --filter @xuantoi/api audit:ledger
@@ -20,115 +14,14 @@
  * Read-only — không mutate DB, an toàn chạy production để monitor.
  */
 import { PrismaClient } from '@prisma/client';
+import { auditLedger, type AuditResult } from '../src/modules/admin/ledger-audit';
 
-export type CharacterDiscrepancy = {
-  characterId: string;
-  field: 'linhThach' | 'tienNgoc';
-  ledgerSum: bigint;
-  characterValue: bigint;
-  diff: bigint;
-};
-
-export type InventoryDiscrepancy = {
-  characterId: string;
-  itemKey: string;
-  ledgerSum: number;
-  inventorySum: number;
-  diff: number;
-};
-
-export type AuditResult = {
-  charactersScanned: number;
-  itemKeysScanned: number;
-  currencyDiscrepancies: CharacterDiscrepancy[];
-  inventoryDiscrepancies: InventoryDiscrepancy[];
-};
-
-export async function auditLedger(prisma: PrismaClient): Promise<AuditResult> {
-  const characters = await prisma.character.findMany({
-    select: { id: true, linhThach: true, tienNgoc: true },
-  });
-
-  const ledgerByChar = await prisma.currencyLedger.groupBy({
-    by: ['characterId', 'currency'],
-    _sum: { delta: true },
-  });
-
-  const ledgerLookup = new Map<string, bigint>();
-  for (const row of ledgerByChar) {
-    const key = `${row.characterId}:${row.currency}`;
-    ledgerLookup.set(key, row._sum.delta ?? 0n);
-  }
-
-  const currencyDiscrepancies: CharacterDiscrepancy[] = [];
-  for (const c of characters) {
-    const ltSum = ledgerLookup.get(`${c.id}:LINH_THACH`) ?? 0n;
-    if (ltSum !== c.linhThach) {
-      currencyDiscrepancies.push({
-        characterId: c.id,
-        field: 'linhThach',
-        ledgerSum: ltSum,
-        characterValue: c.linhThach,
-        diff: c.linhThach - ltSum,
-      });
-    }
-    const tnSum = ledgerLookup.get(`${c.id}:TIEN_NGOC`) ?? 0n;
-    const tnVal = BigInt(c.tienNgoc);
-    if (tnSum !== tnVal) {
-      currencyDiscrepancies.push({
-        characterId: c.id,
-        field: 'tienNgoc',
-        ledgerSum: tnSum,
-        characterValue: tnVal,
-        diff: tnVal - tnSum,
-      });
-    }
-  }
-
-  const itemLedgerByKey = await prisma.itemLedger.groupBy({
-    by: ['characterId', 'itemKey'],
-    _sum: { qtyDelta: true },
-  });
-  const inventoryByKey = await prisma.inventoryItem.groupBy({
-    by: ['characterId', 'itemKey'],
-    _sum: { qty: true },
-  });
-
-  const ledgerSumLookup = new Map<string, number>();
-  for (const row of itemLedgerByKey) {
-    ledgerSumLookup.set(`${row.characterId}:${row.itemKey}`, row._sum.qtyDelta ?? 0);
-  }
-  const inventorySumLookup = new Map<string, number>();
-  for (const row of inventoryByKey) {
-    inventorySumLookup.set(`${row.characterId}:${row.itemKey}`, row._sum.qty ?? 0);
-  }
-
-  const allKeys = new Set<string>([...ledgerSumLookup.keys(), ...inventorySumLookup.keys()]);
-  const inventoryDiscrepancies: InventoryDiscrepancy[] = [];
-  for (const key of allKeys) {
-    const ledgerSum = ledgerSumLookup.get(key) ?? 0;
-    const inventorySum = inventorySumLookup.get(key) ?? 0;
-    if (ledgerSum !== inventorySum) {
-      const sepIdx = key.indexOf(':');
-      const characterId = key.slice(0, sepIdx);
-      const itemKey = key.slice(sepIdx + 1);
-      inventoryDiscrepancies.push({
-        characterId,
-        itemKey,
-        ledgerSum,
-        inventorySum,
-        diff: inventorySum - ledgerSum,
-      });
-    }
-  }
-
-  return {
-    charactersScanned: characters.length,
-    itemKeysScanned: allKeys.size,
-    currencyDiscrepancies,
-    inventoryDiscrepancies,
-  };
-}
+export {
+  auditLedger,
+  type AuditResult,
+  type CharacterDiscrepancy,
+  type InventoryDiscrepancy,
+} from '../src/modules/admin/ledger-audit';
 
 function formatResult(r: AuditResult): string {
   const lines: string[] = [];

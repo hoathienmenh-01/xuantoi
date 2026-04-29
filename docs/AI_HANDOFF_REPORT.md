@@ -91,9 +91,31 @@
 
 ---
 
-## Recent Changes (PR #33→#109 đã merged trên main; PR #110 fix env SMTP_FROM in-flight session 9g task F1)
+## Recent Changes (PR #33→#110 đã merged trên main; PR #111 admin audit-ledger endpoint in-flight session 9g task E.c)
 
-### PR #110 — `fix(env): quote SMTP_FROM trong .env.example để bash source .env không fail (session 9g task F1)` — **In-flight (Pending merge)** session 9g task F1
+### PR #111 — `feat(admin): smart economy safety endpoint GET /admin/economy/audit-ledger + UI button trong AdminView Stats tab (session 9g task E.c)` — **In-flight (Pending merge)** session 9g task E.c
+
+- **Branch**: `devin/1777492785-admin-audit-ledger-endpoint`. **Base**: `main` post-PR #110 (`4c214eb`). **Status**: code complete + local typecheck/lint/web test 190/190/build/api audit-ledger test 15/15 all xanh.
+- **Mục tiêu**: script `apps/api/scripts/audit-ledger.ts` đã tồn tại từ trước (verify SUM(CurrencyLedger.delta) khớp Character.linhThach/tienNgoc + SUM(ItemLedger.qtyDelta) khớp InventoryItem.qty). Trước đây admin phải SSH vào server gõ `pnpm audit:ledger` để chạy. Closed-beta cần on-demand check từ AdminView. PR này: (1) refactor pure logic ra `apps/api/src/modules/admin/ledger-audit.ts` (script trở thành thin CLI wrapper, re-export để giữ test cũ) + thêm `auditResultToJson()` serialize bigint → string cho HTTP, (2) `AdminService.runLedgerAudit()` reuse PrismaService, (3) controller endpoint `GET /admin/economy/audit-ledger` (ADMIN/MOD đọc được, cùng tier với `economy/alerts`), (4) FE helper `adminAuditLedger()` + `AdminLedgerAudit` types, (5) UI panel violet-500 trong AdminView Stats tab với button "Chạy audit" + hiển thị scanned count + clean state hoặc danh sách discrepancy.
+- **Changes BE**:
+  1. **`apps/api/src/modules/admin/ledger-audit.ts`** (mới, ~165 line): export `auditLedger(prisma)` (logic gốc move từ script), `AuditResult/CharacterDiscrepancy/InventoryDiscrepancy` types, `AuditResultJson` (bigint→string version), `auditResultToJson()` helper.
+  2. **`apps/api/scripts/audit-ledger.ts`**: refactor thành thin CLI wrapper — re-export auditLedger + types từ `../src/modules/admin/ledger-audit`, giữ nguyên `formatResult()` + `main()` để `pnpm audit:ledger` hoạt động không đổi. Test cũ `apps/api/scripts/audit-ledger.test.ts` (9 case) vẫn pass nhờ re-export.
+  3. **`apps/api/src/modules/admin/admin.service.ts`** (+ ~14 line): import `auditLedger`/`auditResultToJson`/`AuditResultJson` từ `./ledger-audit`; thêm method `runLedgerAudit(): Promise<AuditResultJson>` reuse `this.prisma`.
+  4. **`apps/api/src/modules/admin/admin.controller.ts`** (+ ~14 line): endpoint `@Get('economy/audit-ledger') economyAuditLedger()` trả `{ ok: true, data: AuditResultJson }`. ADMIN/MOD đọc được.
+  5. **`apps/api/src/modules/admin/admin-audit-ledger.test.ts`** (mới, ~135 line, **+6 vitest**): cover empty DB, ledger khớp, linhThach mismatch (verify bigint→string), tienNgoc mismatch, inventory mismatch, multi-entry sum.
+- **Changes FE**:
+  6. **`apps/web/src/api/admin.ts`** (+ ~35 line): types `AdminLedgerAuditCharDiscrepancy/InvDiscrepancy/AdminLedgerAudit` + helper `adminAuditLedger()` GET endpoint.
+  7. **`apps/web/src/views/AdminView.vue`** (+ ~70 line): import `adminAuditLedger`/`AdminLedgerAudit`; ref `ledgerAudit`/`ledgerAuditRunning` + computed `ledgerAuditTotal`; async `runLedgerAudit()` (handle err qua `handleErr`); panel violet-500 trong Stats tab với button + hiển thị scanned/clean/fail/danh sách currency+inventory discrepancy. `data-testid` cho `admin-ledger-audit-clean` và `admin-ledger-audit-fail` để E2E tests dễ assert.
+  8. **`apps/web/src/i18n/vi.json`** (+9 keys `admin.ledgerAudit.*`): title/subtitle/run/running/scanned/clean/fail/currencyHeading/inventoryHeading.
+  9. **`apps/web/src/i18n/en.json`** (+9 keys song song với vi).
+  10. **`apps/web/src/api/__tests__/admin.audit-ledger.test.ts`** (mới, ~85 line, **+3 vitest**): mock `apiClient.get` cover clean / discrepancies với bigint string / `ok: false` throw.
+- **Tests added**: **+6 BE vitest** (api `admin/admin-audit-ledger.test.ts`) + **+3 FE vitest** (web `admin.audit-ledger.test.ts`). Web baseline: 187 → **190** (file count 23 → **24**). API audit-ledger combined: 9 → **15** (script test 9 + service test 6).
+- **CI status (local)**: `pnpm typecheck` ✅ · `pnpm lint` ✅ (max-warnings 0) · `pnpm --filter @xuantoi/web test` ✅ **190/190** · `pnpm --filter @xuantoi/api test -- audit-ledger` ✅ **15/15** · `pnpm build` ✅.
+- **Risk**: Thấp-trung — (a) refactor pure logic vào src/ là behavior-preserving (re-export giữ API surface), test cũ pass; (b) endpoint read-only chỉ groupBy 4 query (không write), MOD/ADMIN guard giống `economy/alerts`; (c) UI panel additive, isolated trong Stats tab; (d) parity test (PR #107) auto-verify vi/en symmetric.
+- **Rollback**: revert single PR. Không touch schema/migration/seed.
+- **`AI_HANDOFF_REPORT.md updated`**: Recent Changes (this entry).
+
+### PR #110 — `fix(env): quote SMTP_FROM trong .env.example để bash source .env không fail (session 9g task F1)` — **Merged into main** @ `4c214eb` (29/4 ~20:05 UTC, CI 5/5 ✅) session 9g task F1
 
 - **Branch**: `devin/1777492223-env-example-smtp-from-quote`. **Base**: `main` @ post-PR #109 (`58fa69d`). **Status**: docs/config-only.
 - **Mục tiêu**: smoke runtime 9g phát hiện F1 (Low): `apps/api/.env.example` line 31 `SMTP_FROM=Xuân Tôi <noreply@xuantoi.local>` chứa ký tự `<`/`>` + space không quote → admin/dev nào dùng `set -a && source .env && set +a` để load shell sẽ fail (`bash: <noreply@xuantoi.local>: No such file or directory`). Tuy NestJS dùng dotenv parse fine (không bị ảnh hưởng), `.env.example` là tài liệu tham khảo cho dev → quote lại để tương thích cả `bash source` lẫn dotenv.

@@ -6,6 +6,7 @@ import { CurrencyError, CurrencyService } from '../character/currency.service';
 import { TopupService, type TopupOrderView } from '../topup/topup.service';
 import { RealtimeService } from '../realtime/realtime.service';
 import { InventoryService } from '../inventory/inventory.service';
+import { auditLedger, auditResultToJson, type AuditResultJson } from './ledger-audit';
 
 export class AdminError extends Error {
   constructor(
@@ -706,6 +707,21 @@ export class AdminService {
       staleHours,
       generatedAt: new Date(now).toISOString(),
     };
+  }
+
+  /**
+   * Smart economy safety: chạy ledger audit on-demand từ admin endpoint.
+   *
+   * Reuse pure logic `auditLedger()` từ `ledger-audit.ts` (cùng dùng với CLI script
+   * `pnpm audit:ledger`). Verify SUM(CurrencyLedger.delta) per character + currency
+   * khớp Character.linhThach/tienNgoc; SUM(ItemLedger.qtyDelta) khớp InventoryItem.qty.
+   *
+   * Read-only — không mutate DB. Discrepancies trả về để FE hiển thị, admin có thể
+   * chuyển sang manual investigation flow.
+   */
+  async runLedgerAudit(): Promise<AuditResultJson> {
+    const result = await auditLedger(this.prisma);
+    return auditResultToJson(result);
   }
 
   private async audit(actorId: string, action: string, meta: Prisma.InputJsonValue): Promise<void> {

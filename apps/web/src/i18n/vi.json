@@ -819,6 +819,17 @@
       "stalePendingTopups": "Topup PENDING quá hạn",
       "badgeTooltip": "{count} cảnh báo kinh tế cần xem"
     },
+    "ledgerAudit": {
+      "title": "Audit ngân quỹ",
+      "subtitle": "Verify CurrencyLedger sum khớp Character.linhThach/tienNgoc và ItemLedger.qtyDelta khớp InventoryItem.qty.",
+      "run": "Chạy audit",
+      "running": "Đang chạy…",
+      "scanned": "Đã quét: {chars} nhân vật, {pairs} cặp (char, item).",
+      "clean": "Sổ sách khớp — không có discrepancy.",
+      "fail": "Phát hiện {count} discrepancy/discrepancies.",
+      "currencyHeading": "Currency mismatch",
+      "inventoryHeading": "Inventory mismatch"
+    },
     "noPermission": "Bạn không có quyền vào khu này.",
     "users": {
       "searchPlaceholder": "Tìm email hoặc đạo hiệu…",
