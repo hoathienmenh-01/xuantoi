@@ -89,9 +89,9 @@
 
 ---
 
-## Recent Changes (PR #33→#100 đã merged trên main; PR #101 + PR #102 in-flight session 9f)
+## Recent Changes (PR #33→#100 đã merged trên main; PR #101 stack pending merge session 9f)
 
-### PR #102 — `feat(web): forgot/reset-password views + AuthView "Quên huyền pháp?" link + 12 vitest` — **Pending merge** session 9f (stacked on PR #101)
+### PR #102 — `feat(web): forgot/reset-password views + AuthView "Quên huyền pháp?" link + 12 vitest` — **Merged into PR #101 branch** @ `5ca225e` (29/4 ~18:10 UTC, CI 5/5 ✅) — sẽ vào main khi PR #101 merge
 
 - **Branch**: `devin/1777485608-fe-forgot-reset-views-stacked` (stacked trên PR #101 vì cần shared types `ForgotPasswordInput` + `ResetPasswordInput`). **Status**: code complete + typecheck/lint/test/build all xanh local (web 137→**149 vitest**, +12 mới).
 - **Mục tiêu** (Roadmap §20 session 9f task D follow-up): consume PR #101 BE bằng FE form views — đóng nốt luồng forgot/reset cho closed beta.
@@ -1635,7 +1635,7 @@ Admin hiện tại có thể vào `/admin` → Users → tìm → **Set role = A
 A. ~~**Docs audit refresh**~~ — **Done by PR #98** (Merged into main @ `4072a3d`, 29/4 ~17:18 UTC, CI 4/4 ✅).
 B. ~~**FE LeaderboardView tabs Power/Topup/Sect**~~ — **Done by PR #99** (Merged into main @ `5a93d22`, 29/4 ~17:35 UTC, CI 5/5 ✅) — consume BE PR #94, 3 tab + lazy-fetch + i18n vi/en + 10 vitest, web 133→137.
 C. ~~**Self-demote prevention (admin)**~~ — **Done by PR #100** (Merged into main @ `47d34b5`, 29/4 ~17:45 UTC, CI 5/5 ✅) — FE guards `AdminView.vue` + helper `adminGuards.ts` (12 vitest pure) + BE vitest +2 lock-in. Web vitest 137→149.
-D. **(IN PROGRESS — BE = PR #101 in-flight + FE = PR #102 stacked on #101, local checks ✅)** **forgot/reset-password full stack**: PR #101 BE (`POST /api/_auth/forgot-password` + `reset-password` + `PasswordResetToken` model + `EmailService` mailhog scaffold + 11 vitest BE) + PR #102 FE (`/auth/forgot-password` + `/auth/reset-password` views + AuthView "Quên huyền pháp?" link + 12 vitest, web 137→149).
+D. **(IN PROGRESS — PR #101 stack pending merge, includes PR #102 FE merged in branch)** **forgot/reset-password full stack**: PR #101 BE (`POST /api/_auth/forgot-password` + `reset-password` + `PasswordResetToken` model + `EmailService` mailhog scaffold + 11 vitest BE) + PR #102 FE merged into PR #101 branch @ `5ca225e` (`/auth/forgot-password` + `/auth/reset-password` views + AuthView "Quên huyền pháp?" link + 12 vitest, web 137→149).
 
 ---
 

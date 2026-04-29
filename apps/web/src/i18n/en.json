@@ -850,7 +850,9 @@
       "grantTitle": "Grant / Deduct Currency",
       "grantLinh": "Spirit stones (can be negative)",
       "grantNgoc": "Tien Ngoc (integer, can be negative)",
-      "grantReason": "Reason (written to audit log)"
+      "grantReason": "Reason (written to audit log)",
+      "selfBadge": "You",
+      "selfDemoteBlocked": "Cannot target your own account (lock-out protection)."
     },
     "topups": {
       "notePlaceholder": "Note for approval/rejection…",
