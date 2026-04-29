@@ -224,9 +224,16 @@ export class AdminController {
   }
 
   @Get('audit')
-  async audit(@Query('page') page: string | undefined) {
+  async audit(
+    @Query('page') page: string | undefined,
+    @Query('action') action: string | undefined,
+    @Query('email') email: string | undefined,
+  ) {
     const p = Math.max(0, Number.parseInt(page ?? '0', 10) || 0);
-    const r = await this.admin.listAudit(p);
+    const filters: { actionPrefix?: string; actorEmail?: string } = {};
+    if (action && action.length > 0 && action.length <= 64) filters.actionPrefix = action;
+    if (email && email.length > 0 && email.length <= 120) filters.actorEmail = email;
+    const r = await this.admin.listAudit(p, filters);
     return { ok: true, data: r };
   }
 

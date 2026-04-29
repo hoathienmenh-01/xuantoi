@@ -119,9 +119,15 @@ export async function adminRejectTopup(id: string, note: string): Promise<void> 
   unwrap(data);
 }
 
-export async function adminListAudit(page: number): Promise<Page<AdminAuditRow>> {
+export async function adminListAudit(
+  page: number,
+  filters: { action?: string; email?: string } = {},
+): Promise<Page<AdminAuditRow>> {
+  const params: Record<string, string | number> = { page };
+  if (filters.action) params.action = filters.action;
+  if (filters.email) params.email = filters.email;
   const { data } = await apiClient.get<Envelope<Page<AdminAuditRow>>>('/admin/audit', {
-    params: { page },
+    params,
   });
   return unwrap(data);
 }

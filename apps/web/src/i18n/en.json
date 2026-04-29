@@ -779,6 +779,10 @@
         "actor": "Actor",
         "action": "Action",
         "meta": "Meta"
+      },
+      "filter": {
+        "actionPlaceholder": "Filter by action (e.g. user., topup.)",
+        "emailPlaceholder": "Filter by actor email"
       }
     },
     "boss": {

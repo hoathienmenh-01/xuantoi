@@ -1,6 +1,6 @@
 # AI Handoff Report — Xuân Tôi
 
-> **Snapshot**: `main` @ `81706a9` (Merge PR #61 audit session 6, 28 Apr 2026 22:05 UTC). PR #52..#61 đã merge `main`. **6 PR Pending merge**: #62 (G8 — M11 profile rate-limit, CI ✅ 3/3), #63 (G9 — M3 WS `mission:progress`, CI ✅ 3/3), #64 (G10 — H6 wire Playwright smoke vào CI, CI ✅ 5/5), #65 (G11 — FE handler `mission:progress` stacked trên #63, CI ✅ 3/3), #66 (G12 — L7 admin revoke inventory, CI ✅ 3/3), **#67 (G13 — L5 skeleton loaders cho LeaderboardView + ProfileView)**.
+> **Snapshot**: `main` @ `81706a9` (Merge PR #61 audit session 6, 28 Apr 2026 22:05 UTC). PR #52..#61 đã merge `main`. **11 PR Pending merge**: #62..#71 + **#72 (G18 — admin audit log filter by action prefix + actor email)**.
 > **Người viết**: AI engineer session 28/4 sess.6 (audit refresh sau khi PR #58/#59/#60 đã merge — header report cũ vẫn ghi #59/#60 "Open" → đó là tồn tại lỗi thời và đã được fix bởi PR docs này).
 > **Đối tượng đọc**: AI kế nhiệm sẽ tiếp tục đưa dự án tới beta / production.
 >
@@ -85,29 +85,30 @@
 
 Mỗi PR đều `Merged` vào `main`, branch base = `main`. Smoke local (typecheck/lint/test/build) đã chạy ở mỗi PR; smoke E2E 6/6 đã pass tại PR #44 (snapshot `4d8af10`).
 
-### PR #67 — `feat(web): skeleton loaders for Leaderboard + Profile views (L5)` — **Pending merge**
+### PR #72 — `feat(admin): filter audit log by action prefix + actor email (G18)` — **Pending merge**
 
-- **Branch**: `devin/1777417180-g13-skeleton-loaders`. **Base**: `main` @ `81706a9`. **Status**: **Pending merge**.
-- **Mục tiêu** (L5 — UX polish): Trước đây các view có async fetch dùng dòng text `"Đang tải..."` đơn điệu. Replace bằng skeleton loaders (xám pulse) → user perceive faster, FE chuyên nghiệp hơn, đúng pattern industry standard.
+- **Branch**: `devin/1777419470-g18-admin-audit-filter`. **Base**: `main` @ `81706a9`. **Status**: **Pending merge**.
+- **Mục tiêu** (Smart admin §3 from prompt user — "Bộ lọc audit log"): Trước đây admin audit tab chỉ pagination — không filter. Khi closed beta có nhiều audit entry (ban/grant/revoke/topup/etc.), admin cần filter nhanh theo loại action và người thực hiện.
 - **Giải pháp**:
-  - **`SkeletonBlock.vue`** (new, 30 line): block xám với `animate-pulse`, props `height` / `width` / `rounded` / `testId`. Default `h-4 w-full rounded`. `aria-hidden=true` để screen reader bỏ qua.
-  - **`SkeletonTable.vue`** (new, 32 line): grid `rows × cols` ô skeleton (default 6×5) — dùng cho bảng dữ liệu (Leaderboard/Shop/Admin). Inline style `gridTemplateColumns: repeat(N, minmax(0, 1fr))`.
-  - **`LeaderboardView.vue`**: replace `<div v-if="loading">{{ t('leaderboard.loading') }}</div>` bằng `<SkeletonTable :rows="10" :cols="5" test-id="leaderboard-skeleton" />`.
-  - **`ProfileView.vue`**: replace text loading bằng skeleton 2-section (header card + stats grid 2×4) — match chính xác layout của state đã load.
+  - **BE `AdminService.listAudit(page, filters)`**: thêm 2 filter — `actionPrefix` (prisma `startsWith` — search "user.", "topup.", "inventory.revoke" …) + `actorEmail` (resolve email→userId→`actorUserId IN [...]`). Trick: nếu email không match user nào, dùng sentinel `'__none__'` để force 0 row (tránh `where IN []` warning).
+  - **BE `AdminController.audit`**: 2 query params `action` (max 64 char) + `email` (max 120 char). Validate length tránh DoS qua param dài.
+  - **FE `apps/web/src/api/admin.ts`**: `adminListAudit(page, filters?)`.
+  - **FE `AdminView.vue`** audit tab: 2 input filter + nút search. data-testid để E2E.
+  - **i18n**: `admin.audit.filter.{actionPlaceholder, emailPlaceholder}` (vi + en).
 - **Files**:
-  - `apps/web/src/components/ui/SkeletonBlock.vue` (new, 30 line)
-  - `apps/web/src/components/ui/SkeletonTable.vue` (new, 32 line)
-  - `apps/web/src/views/LeaderboardView.vue` (+8 / -4)
-  - `apps/web/src/views/ProfileView.vue` (+13 / -1)
-  - `apps/web/src/components/__tests__/Skeleton.test.ts` (new, 65 line, 5 test)
-  - `apps/web/src/views/__tests__/LeaderboardView.test.ts` (+5 / -3 — update 1 test cho skeleton thay text)
-- **Tests**: web pass **69/69** local (was 64 trên main, +5 skeleton).
+  - `apps/api/src/modules/admin/admin.service.ts` (+22 / -3)
+  - `apps/api/src/modules/admin/admin.controller.ts` (+10 / -2)
+  - `apps/api/src/modules/admin/admin-list-audit-filter.test.ts` (new, 105 line, **7 test**)
+  - `apps/web/src/api/admin.ts` (+10 / -2)
+  - `apps/web/src/views/AdminView.vue` (+22 / -1)
+  - `apps/web/src/i18n/{vi,en}.json` (+5 each)
+- **Tests**: 7 test mới — không filter, actionPrefix prefix-match, actionPrefix exact, không match → 0, actorEmail substring case-insensitive, actorEmail không match → 0, combine actionPrefix + actorEmail. Tổng API test: **266/266** local (was 259, +7).
 - **Local verified**: `pnpm typecheck` ✅ · `pnpm lint` ✅ · `pnpm test` ✅ · `pnpm build` ✅.
-- **Risk**: low. UI-only, không đụng API/DB.
-- **Backward compat**: Component mới không bắt buộc — view khác có thể giữ nguyên text loading.
-- **Runtime smoke**: Needs runtime smoke — mở `/leaderboard` chậm, `/profile/:id` chậm, verify thấy skeleton thay vì text.
-- **Rollback**: revert. Không mất dữ liệu.
-- **Bước tiếp**: G14 — wire skeleton thêm cho MissionView/MarketView/AdminView, hoặc L2 market fee config.
+- **Risk**: low. Backward-compat: caller cũ không pass filter vẫn hoạt động identical (param default `{}`).
+- **Backward compat**: existing `adminListAudit(page)` calls đều OK.
+- **Runtime smoke**: Needs runtime smoke — `/admin` tab Audit → nhập "user." → list chỉ entry user.*; xoá filter → full list; nhập email admin → list chỉ admin's actions.
+- **Rollback**: revert; FE filter chỉ là UI state.
+- **Bước tiếp**: G19 — M6 mission analytics aggregate, daily login reward (mới model RewardClaimLog), hoặc topup list filter date range.
 
 ---
 
