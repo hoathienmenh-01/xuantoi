@@ -164,7 +164,8 @@ async function main(): Promise<void> {
     const total = result.currencyDiscrepancies.length + result.inventoryDiscrepancies.length;
     if (total > 0) {
       console.error(`\n[FAIL] ${total} discrepancy/discrepancies found.`);
-      process.exit(1);
+      process.exitCode = 1;
+      return;
     }
     console.log('\n[OK] Ledger audit clean.');
   } finally {
@@ -175,6 +176,6 @@ async function main(): Promise<void> {
 if (require.main === module) {
   main().catch((e: unknown) => {
     console.error(e);
-    process.exit(2);
+    process.exitCode = 2;
   });
 }
