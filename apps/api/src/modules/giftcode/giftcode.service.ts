@@ -161,10 +161,53 @@ export class GiftCodeService {
     return toView(row);
   }
 
-  async list(limit = 100): Promise<GiftCodeView[]> {
+  async list(
+    limit = 100,
+    filters: { q?: string; status?: 'ACTIVE' | 'REVOKED' | 'EXPIRED' | 'EXHAUSTED' } = {},
+  ): Promise<GiftCodeView[]> {
+    const reqLimit = Math.min(Math.max(1, limit), 500);
+    const ands: Prisma.GiftCodeWhereInput[] = [];
+    if (filters.q) {
+      ands.push({ code: { contains: filters.q.toUpperCase(), mode: 'insensitive' } });
+    }
+    // ACTIVE và EXHAUSTED đều cần app-layer filter (compare 2 cột redeemCount/maxRedeems —
+    // Prisma không hỗ trợ). Để tránh DB take cắt mất rows match khi có nhiều rows
+    // không-match, luôn fetch FETCH_BUFFER (500), filter ở app layer, rồi slice về reqLimit.
+    const FETCH_BUFFER = 500;
+    if (filters.status === 'REVOKED') {
+      ands.push({ revokedAt: { not: null } });
+    } else if (filters.status === 'EXPIRED') {
+      ands.push({ revokedAt: null, expiresAt: { lt: new Date() } });
+    } else if (filters.status === 'EXHAUSTED') {
+      ands.push({ revokedAt: null, maxRedeems: { not: null } });
+      const rows = await this.prisma.giftCode.findMany({
+        where: { AND: ands },
+        orderBy: { createdAt: 'desc' },
+        take: FETCH_BUFFER,
+      });
+      return rows
+        .filter((r) => r.maxRedeems !== null && r.redeemCount >= r.maxRedeems)
+        .slice(0, reqLimit)
+        .map(toView);
+    } else if (filters.status === 'ACTIVE') {
+      ands.push({
+        revokedAt: null,
+        OR: [{ expiresAt: null }, { expiresAt: { gte: new Date() } }],
+      });
+      const rows = await this.prisma.giftCode.findMany({
+        where: { AND: ands },
+        orderBy: { createdAt: 'desc' },
+        take: FETCH_BUFFER,
+      });
+      return rows
+        .filter((r) => r.maxRedeems === null || r.redeemCount < r.maxRedeems)
+        .slice(0, reqLimit)
+        .map(toView);
+    }
     const rows = await this.prisma.giftCode.findMany({
+      where: ands.length > 0 ? { AND: ands } : undefined,
       orderBy: { createdAt: 'desc' },
-      take: Math.min(Math.max(1, limit), 500),
+      take: reqLimit,
     });
     return rows.map(toView);
   }

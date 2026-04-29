@@ -261,9 +261,21 @@ export class AdminController {
   }
 
   @Get('giftcodes')
-  async giftList(@Query('limit') limit: string | undefined) {
+  async giftList(
+    @Query('limit') limit: string | undefined,
+    @Query('q') q: string | undefined,
+    @Query('status') status: string | undefined,
+  ) {
     const l = Math.max(1, Math.min(500, Number.parseInt(limit ?? '100', 10) || 100));
-    const r = await this.giftCodes.list(l);
+    const filters: Parameters<typeof this.giftCodes.list>[1] = {};
+    if (q && typeof q === 'string') {
+      const trimmed = q.trim().slice(0, 64);
+      if (trimmed) filters.q = trimmed;
+    }
+    if (status === 'ACTIVE' || status === 'REVOKED' || status === 'EXPIRED' || status === 'EXHAUSTED') {
+      filters.status = status;
+    }
+    const r = await this.giftCodes.list(l, filters);
     return { ok: true, data: { codes: r } };
   }
 
