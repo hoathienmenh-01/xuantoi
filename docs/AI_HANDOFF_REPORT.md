@@ -1,6 +1,6 @@
 # AI Handoff Report — Xuân Tôi
 
-> **Snapshot**: `main` @ `e102c6b` (Merge PR #62 G8 profile rate-limit, 28 Apr 2026). PR #52..#62 đã merge `main`. **PR #74 (G20 — admin giftcode list filter q + status) Pending merge** — branch `devin/1777451169-g20-topup-csv-export`. Stack PR khác: #63..#73 cũng pending merge (xem mỗi PR entry).
+> **Snapshot**: `main` @ `62f20e5` (Merge PR #72 G18 admin audit filter, 29 Apr 2026 09:00 UTC). **Merged into main since session 6**: PR #62 (G8 — M11 profile rate-limit), #64 (G10 — H6 Playwright CI), #66 (G12 — L7 admin inventory revoke `POST /admin/users/:id/inventory/revoke` + ledger `ADMIN_REVOKE`), #67 (G13 — L5 skeleton Leaderboard+Profile), #72 (G18 — admin audit log filter), #73 (G19 — admin topup filter date+email). **5 PR open Pending merge** (CI ✅ 5/5): #63 (G9 — M3 WS `mission:progress` + emitter throttle), #69 (G15 — L2 `MARKET_FEE_PCT` env config), #70 (G16 — admin user filter role+banned), #71 (G17 — M7 `GET /mail/unread-count` + FE badge hydrate), #74 (G20 — admin giftcode filter q+status, fix Devin Review truncation).
 > **Người viết**: AI engineer session 28/4 sess.6 (audit refresh sau khi PR #58/#59/#60 đã merge — header report cũ vẫn ghi #59/#60 "Open" → đó là tồn tại lỗi thời và đã được fix bởi PR docs này).
 > **Đối tượng đọc**: AI kế nhiệm sẽ tiếp tục đưa dự án tới beta / production.
 >
@@ -10,7 +10,7 @@
 >
 > **Trạng thái (28/4 session 6)**: PR #33..#60 đã merge `main`. PR #59 thêm leaderboard (BE + FE + 7 test). PR #60 thêm rate-limit `POST /auth/register` per-IP (+2 test) — security hardening. Vitest scaffold (PR B / replay PR #47) đã trên main; web test set hiện 64 test (toast 9 + game 8 + auth 7 + badges 9 + NextActionPanel 6 + OnboardingChecklist 8 + itemName 11 + LeaderboardView 6).
 >
-> Roadmap kế tiếp (xem §20/§21): ~~M11 rate-limit `GET /character/profile/:id`~~ → **Pending merge PR #62**; ~~M3 WS `mission:progress` push~~ → **Pending merge PR #63** — còn lại: H6 wire Playwright vào CI, L5 skeleton loaders, L7 `POST /admin/inventory/revoke`, L2 market fee 5% → config, M6/M7/M9/M10, smart features tiếp từ prompt user.
+> Roadmap kế tiếp (xem §20/§21): ~~M11 rate-limit profile~~ → ✅ Merged PR #62; ~~H6 Playwright CI~~ → ✅ Merged PR #64; ~~L7 admin inventory revoke~~ → ✅ Merged PR #66; ~~L5 skeleton Leaderboard+Profile~~ → ✅ Merged PR #67; ~~G18 admin audit filter~~ → ✅ Merged PR #72; ~~G19 admin topup filter~~ → ✅ Merged PR #73. **Open Pending merge (CI xanh)**: M3 WS `mission:progress` → PR #63; L2 market fee env → PR #69; G16 admin user filter → PR #70; M7 mail unread count → PR #71; G20 admin giftcode filter → PR #74. **Tiếp theo**: G21 admin giftcode FE panel consumer (PR #74 endpoint), M9 daily login reward, L5 cont MissionView+MarketView+AdminView (phần Mission/Admin merged via stacked PR #68).
 >
 > **Note replay-gap PR #47** đã closed bởi PR #53 (cherry-pick `32a33a6` vào main) — không còn drift giữa GitHub PR status và `main`.
 >
