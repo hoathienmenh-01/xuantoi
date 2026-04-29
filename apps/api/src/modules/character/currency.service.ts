@@ -25,7 +25,8 @@ export type LedgerReason =
   | 'MISSION_CLAIM'
   | 'GIFTCODE_REDEEM'
   | 'MAIL_CLAIM'
-  | 'SHOP_BUY';
+  | 'SHOP_BUY'
+  | 'DAILY_LOGIN';
 
 export interface CurrencyApplyInput {
   characterId: string;

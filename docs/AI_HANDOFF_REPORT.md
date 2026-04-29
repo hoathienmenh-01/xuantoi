@@ -10,7 +10,11 @@
 >
 > **Trạng thái (28/4 session 6)**: PR #33..#60 đã merge `main`. PR #59 thêm leaderboard (BE + FE + 7 test). PR #60 thêm rate-limit `POST /auth/register` per-IP (+2 test) — security hardening. Vitest scaffold (PR B / replay PR #47) đã trên main; web test set hiện 64 test (toast 9 + game 8 + auth 7 + badges 9 + NextActionPanel 6 + OnboardingChecklist 8 + itemName 11 + LeaderboardView 6).
 >
-> Roadmap kế tiếp (xem §20/§21): **Tất cả tầm G/M/H/L đã được giải quyết trong session 6–7**. Còn lại (Open, low priority hoặc post-beta): M6 (`/logs/me` endpoint), M7 (CSP CDN review), M9 (logout-all `passwordVersion` — intentional trade-off), M10 (shop daily limit), L3 (proverbs corpus), L6 (logout-all confirm modal). **Smart beta features chưa làm** (an toàn, có thể làm bất kỳ lúc nào): M9 (Smart gameplay) daily login reward (idempotent với `RewardClaimLog`), G22 admin giftcode FE panel consumer cho endpoint #74.
+> Roadmap kế tiếp (xem §20/§21): **Tất cả tầm G/M/H/L đã được giải quyết trong session 6–7**. Còn lại (Open, low priority hoặc post-beta): M6 (`/logs/me` endpoint), M7 (CSP CDN review), M9 (logout-all `passwordVersion` — intentional trade-off), M10 (shop daily limit), L3 (proverbs corpus), L6 (logout-all confirm modal).
+>
+> **Session 9 in-flight (29/4 ~09:50 UTC)**: PR #79 — M9 Smart gameplay daily login reward (model `DailyLoginClaim` mới, BE `DailyLoginService` + endpoints `GET/POST /daily-login/{me,claim}` + ledger `DAILY_LOGIN`, FE `DailyLoginCard` + i18n VI/EN + NextAction `DAILY_LOGIN_AVAILABLE`). Local test xanh **api 347/347, web 83/83**. Status: **Pending CI / Pending merge / Needs runtime smoke**. Xem mục Recent Changes ở dưới để có đầy đủ files/tests/risk/rollback.
+>
+> **Smart beta features còn lại** (an toàn, có thể làm bất kỳ lúc nào sau khi #79 merge): G22 admin giftcode FE panel consumer cho endpoint #74.
 >
 > **Note replay-gap PR #47** đã closed bởi PR #53 (cherry-pick `32a33a6` vào main) — không còn drift giữa GitHub PR status và `main`.
 >
@@ -84,6 +88,42 @@
 ## Recent Changes (PR #33→#60 — tất cả đã merge `main`)
 
 Mỗi PR đều `Merged` vào `main`, branch base = `main`. Smoke local (typecheck/lint/test/build) đã chạy ở mỗi PR; smoke E2E 6/6 đã pass tại PR #44 (snapshot `4d8af10`).
+
+### PR #79 — `feat(api,web): M9 daily login reward — idempotent + ledger DAILY_LOGIN + FE card` — **Pending merge / Pending CI**
+
+- **Branch**: `devin/1777455742-m9-daily-login-reward`. **Base**: `main` @ `c8123df` (sau PR #75/#78 merge). **Status**: code complete + local typecheck/lint/test xanh; PR vừa mở, CI đang chạy lần đầu.
+- **Mục tiêu** (Smart gameplay beta §9 — "Daily login reward đơn giản nếu đã có RewardClaimLog"): closed beta cần một feedback loop hằng ngày giữ player online + làm tone "tu tiên hằng ngày". `RewardClaimLog` chưa tồn tại → tạo model mới `DailyLoginClaim` có unique `(characterId, claimDateLocal)` để chống double-claim.
+- **Giải pháp BE**:
+  - **Schema** (`apps/api/prisma/schema.prisma`): thêm model `DailyLoginClaim { id, characterId, claimDateLocal:String, linhThachDelta:BigInt, streakAtClaim:Int, createdAt }` với `@@unique([characterId, claimDateLocal])` + `@@index([characterId, createdAt])`. `Character.dailyLoginClaims` relation. **Migration mới** `20260429100000_add_daily_login_claim`.
+  - **`apps/api/src/modules/daily-login/daily-login.service.ts`** (new, ~170 line): `DailyLoginService.status(userId)` → `{ todayDateLocal, canClaimToday, currentStreak, nextRewardLinhThach }`. `claim(userId)` → INSERT `DailyLoginClaim` + `CurrencyService.applyTx({ delta:100n, reason:'DAILY_LOGIN', refType:'DailyLoginClaim', refId:todayDateLocal })` trong **1 `$transaction`**. Catch `Prisma.P2002` (unique violation) → idempotent return `{ claimed:false, linhThachDelta:'0' }`. Streak: nếu hôm qua đã claim → `+1`, else reset `=1`. Helpers `getLocalDateString(now, tz)` (Intl.DateTimeFormat 'en-CA' YYYY-MM-DD), `addDaysLocal(dateLocal, days)`. Tz lấy từ `getMissionResetTz()` (mission.service) — Asia/Ho_Chi_Minh mặc định.
+  - **`apps/api/src/modules/daily-login/daily-login.controller.ts`** (new): `GET /daily-login/me` + `POST /daily-login/claim` (cùng auth pattern cookie `xt_access` như mission controller). Throw `NO_CHARACTER` → 404.
+  - **`apps/api/src/modules/daily-login/daily-login.module.ts`** (new): import `AuthModule` + `CharacterModule` (cho `CurrencyService`).
+  - **`apps/api/src/app.module.ts`**: import `DailyLoginModule`.
+  - **`apps/api/src/modules/character/currency.service.ts`**: thêm `'DAILY_LOGIN'` vào `LedgerReason` union.
+  - **NextAction smart §2** (`apps/api/src/modules/next-action/next-action.service.ts`): thêm `DAILY_LOGIN_AVAILABLE` (priority 2) — query `dailyLoginClaim.findUnique({ characterId_claimDateLocal })` cho ngày hôm nay, push action nếu chưa claim.
+  - **`apps/api/src/test-helpers.ts`**: `wipeAll` xoá `dailyLoginClaim` trước character.
+- **Giải pháp FE**:
+  - **`apps/web/src/api/dailyLogin.ts`** (new): `getDailyLoginStatus()` + `claimDailyLogin()` axios wrappers, `DailyLoginStatus` + `DailyLoginClaimResult` types (BigInt-as-string).
+  - **`apps/web/src/components/DailyLoginCard.vue`** (new): card amber border, hiển thị `availableHint` + button "Nhận quà" hoặc `claimedHint` + streak badge × N. Test ID `daily-login-card`/`daily-login-claim-btn`. Toast success/already-claimed.
+  - **`apps/web/src/views/HomeView.vue`**: render `<DailyLoginCard>` giữa `OnboardingChecklist` và `NextActionPanel`.
+  - **`apps/web/src/api/nextAction.ts`**: thêm `'DAILY_LOGIN_AVAILABLE'` vào `NextActionKey`.
+  - **i18n VI/EN** (`apps/web/src/i18n/{vi,en}.json`): `home.dailyLogin.{title, availableHint, claimedHint, claim, claiming, successToast, alreadyClaimedToast}` + `home.nextAction.items.DAILY_LOGIN_AVAILABLE`.
+- **Files** (17 thay đổi):
+  - **BE new**: `apps/api/src/modules/daily-login/daily-login.{service,controller,module}.ts`, `apps/api/src/modules/daily-login/daily-login.service.test.ts`, `apps/api/prisma/migrations/20260429100000_add_daily_login_claim/migration.sql`
+  - **BE modified**: `apps/api/prisma/schema.prisma`, `apps/api/src/app.module.ts`, `apps/api/src/modules/character/currency.service.ts`, `apps/api/src/modules/next-action/next-action.service.ts`, `apps/api/src/test-helpers.ts`
+  - **FE new**: `apps/web/src/api/dailyLogin.ts`, `apps/web/src/components/DailyLoginCard.vue`, `apps/web/src/components/__tests__/DailyLoginCard.test.ts`
+  - **FE modified**: `apps/web/src/api/nextAction.ts`, `apps/web/src/views/HomeView.vue`, `apps/web/src/i18n/vi.json`, `apps/web/src/i18n/en.json`
+- **API contracts mới**:
+  - `GET /api/daily-login/me` → `{ ok:true, data:{ todayDateLocal:'2026-04-29', canClaimToday:bool, currentStreak:int, nextRewardLinhThach:'100' } }`. 401 nếu chưa auth, 404 nếu không có character.
+  - `POST /api/daily-login/claim` → `{ ok:true, data:{ claimed:bool, linhThachDelta:'100'|'0', newStreak:int, claimDateLocal:'YYYY-MM-DD' } }`. Idempotent — call lần 2 cùng ngày trả `claimed:false, delta:'0'`.
+- **Tests**:
+  - `apps/api/src/modules/daily-login/daily-login.service.test.ts`: **+12 vitest** (helpers VN/UTC tz; `status()` first-time / no-character / already-claimed; `claim()` first → +100 LT + ledger DAILY_LOGIN + claim row; idempotent same-day không double credit; streak +1 sau hôm qua; streak reset sau gap >1 ngày; NO_CHARACTER throw).
+  - `apps/web/src/components/__tests__/DailyLoginCard.test.ts`: **+4 vitest** (canClaim render button; claimed render hint+streak; click claim → API + toast success + reload status; server idempotent → toast alreadyClaimed).
+  - **Total local verified 29/4 09:49 UTC**: api **347/347** ✅ (was 335 baseline, +12), web **83/83** ✅ (was 79, +4), shared 47/47 ✅ → tổng workspace **477 pass**.
+- **Local verified**: `pnpm --filter @xuantoi/api typecheck` ✅, `pnpm --filter @xuantoi/api lint` ✅, api test ✅, `pnpm --filter @xuantoi/web typecheck` ✅, `pnpm --filter @xuantoi/web lint` ✅, web test ✅. CI Playwright matrix sẽ verify trên PR.
+- **Risk**: low–medium. Migration mới (1 bảng + 1 unique index) — backward compatible, không touch dữ liệu cũ. Idempotency P2002 catch ngay cả nếu race 2 request cùng lúc. Reward `100n` linh thạch hardcode cho closed beta, có thể move env config sau.
+- **Rollback**: `git revert` → drop module. Nếu cần undo migration: `DROP TABLE "DailyLoginClaim";` (FK CASCADE từ Character → tự dọn). Ledger DAILY_LOGIN row giữ lại làm audit.
+- **Runtime smoke**: **chưa test live UI**. `Needs runtime smoke` — login player → vào `/` → click "Nhận quà" trong DailyLoginCard → verify toast + linh thạch tăng + button biến mất + reload page vẫn không claim được + sang ngày mới claim được tiếp + streak +1.
 
 ### PR #77 — `feat(web): skeleton loaders for MarketView (buy + sell tabs) (L5 cont)` — **Pending merge**
 

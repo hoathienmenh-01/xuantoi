@@ -184,6 +184,7 @@ model Character {
   itemLedger      ItemLedger[]
   missionProgress MissionProgress[]
   mails           Mail[]
+  dailyLoginClaims DailyLoginClaim[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -452,4 +453,24 @@ model ItemLedger {
   @@index([reason, createdAt])
   @@index([refType, refId])
   @@index([actorUserId, createdAt])
+}
+
+/// Idempotency log cho phần thưởng đăng nhập hằng ngày.
+/// Mỗi (character, ngày-local) có tối đa 1 hàng — unique constraint đảm bảo
+/// không double-claim. `claimDateLocal` là `YYYY-MM-DD` theo `MISSION_RESET_TZ`
+/// (Asia/Ho_Chi_Minh mặc định) để mốc reset trùng với daily mission.
+model DailyLoginClaim {
+  id             String   @id @default(cuid())
+  characterId    String
+  character      Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  /// `YYYY-MM-DD` theo timezone reset; vd "2026-04-29".
+  claimDateLocal String
+  /// Số linh thạch đã trao tại lần claim này (positive). BigInt để khớp Character.linhThach.
+  linhThachDelta BigInt
+  /// Số ngày liên tiếp đã claim trước + bao gồm lần này (1 nếu mới hoặc bị gãy chuỗi).
+  streakAtClaim  Int
+  createdAt      DateTime @default(now())
+
+  @@unique([characterId, claimDateLocal])
+  @@index([characterId, createdAt])
 }

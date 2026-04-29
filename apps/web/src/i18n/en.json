@@ -109,6 +109,15 @@
       "successToast": "Breakthrough succeeded — realm advanced.",
       "notAtPeakToast": "Not enough accumulated qi to break through."
     },
+    "dailyLogin": {
+      "title": "Daily Login Reward",
+      "availableHint": "+{amount} spirit stones waiting — tap “Claim”.",
+      "claimedHint": "Already claimed today. Streak: {streak} day(s).",
+      "claim": "Claim",
+      "claiming": "Claiming…",
+      "successToast": "Claimed +{amount} spirit stones (streak {streak}).",
+      "alreadyClaimedToast": "Already claimed today."
+    },
     "lastTick": "Last tick: +{gain} EXP · {time}",
     "loadingChar": "Loading character…",
     "nextAction": {
@@ -119,6 +128,7 @@
         "NO_CHARACTER": "You haven't onboarded yet — complete character creation first.",
         "BREAKTHROUGH_READY": "Qi is full! Ready to break through to the next realm.",
         "MISSION_CLAIMABLE": "{count} mission(s) ready to claim.",
+        "DAILY_LOGIN_AVAILABLE": "Today's login reward is ready — claim some spirit stones.",
         "MAIL_UNCLAIMED": "{count} mail(s) with rewards waiting.",
         "MAIL_UNREAD": "{count} unread mail(s).",
         "BOSS_ACTIVE": "A boss is live: {name} Lv.{level}.",
