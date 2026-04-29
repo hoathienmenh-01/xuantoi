@@ -21,6 +21,7 @@ import { HealthModule } from './modules/health/health.module';
 import { NextActionModule } from './modules/next-action/next-action.module';
 import { LeaderboardModule } from './modules/leaderboard/leaderboard.module';
 import { DailyLoginModule } from './modules/daily-login/daily-login.module';
+import { LogsModule } from './modules/logs/logs.module';
 import { RedisModule } from './common/redis.module';
 
 @Module({
@@ -48,6 +49,7 @@ import { RedisModule } from './common/redis.module';
     NextActionModule,
     LeaderboardModule,
     DailyLoginModule,
+    LogsModule,
   ],
 })
 export class AppModule {}
