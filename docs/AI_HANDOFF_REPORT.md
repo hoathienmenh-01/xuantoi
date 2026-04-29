@@ -1,6 +1,6 @@
 # AI Handoff Report — Xuân Tôi
 
-> **Snapshot**: `main` @ `81706a9` (Merge PR #61 audit session 6, 28 Apr 2026 22:05 UTC). PR #52..#61 đã merge `main`. **10 PR Pending merge**: #62..#70 + **#71 (G17 — M7 mail unread badge BE: `GET /mail/unread-count` + FE hydrate)**.
+> **Snapshot**: `main` @ `e102c6b` (Merge PR #62 G8 profile rate-limit, 28 Apr 2026). PR #52..#62 đã merge `main`. **PR #74 (G20 — admin giftcode list filter q + status) Pending merge** — branch `devin/1777451169-g20-topup-csv-export`. Stack PR khác: #63..#73 cũng pending merge (xem mỗi PR entry).
 > **Người viết**: AI engineer session 28/4 sess.6 (audit refresh sau khi PR #58/#59/#60 đã merge — header report cũ vẫn ghi #59/#60 "Open" → đó là tồn tại lỗi thời và đã được fix bởi PR docs này).
 > **Đối tượng đọc**: AI kế nhiệm sẽ tiếp tục đưa dự án tới beta / production.
 >
@@ -85,30 +85,24 @@
 
 Mỗi PR đều `Merged` vào `main`, branch base = `main`. Smoke local (typecheck/lint/test/build) đã chạy ở mỗi PR; smoke E2E 6/6 đã pass tại PR #44 (snapshot `4d8af10`).
 
-### PR #71 — `feat(api,web): GET /mail/unread-count + FE hydrate badge on mount (G17 — M7)` — **Pending merge**
+### PR #74 — `feat(api): admin giftcode list filter q + status (G20)` — **Pending merge**
 
-- **Branch**: `devin/1777418952-g17-mail-unread-count`. **Base**: `main` @ `81706a9`. **Status**: **Pending merge**.
-- **Mục tiêu** (M7 — Smart UX §6 "Mail unread badge"): Trước đây `apps/web/src/stores/game.ts:25` `unreadMail` là delta-only counter (+1 khi WS `mail:new`, =0 khi `clearMailBadge`). **Bug**: lúc user login lại / refresh page, badge luôn = 0 dù inbox còn mail chưa đọc — sai số rõ rệt.
+- **Branch**: `devin/1777451169-g20-topup-csv-export` *(branch tên cũ — task pivot từ topup CSV sang giftcode filter)*. **Base**: `main` @ `e102c6b`. **Status**: **Pending merge**.
+- **Mục tiêu** (Smart admin §3 — "Bộ lọc tìm giftcode"): `GET /admin/giftcodes` chỉ accept `limit`. Closed beta tạo nhiều mã promo → admin cần lọc theo prefix code và status (active / revoked / expired / exhausted) để truy soát mã hỏng / hết hạn.
 - **Giải pháp**:
-  - **BE `MailService.unreadCount(userId)`**: cheap `prisma.mail.count` filter `recipientId + readAt=null + (expiresAt=null OR expiresAt > now)`. Sử dụng index `Mail.@@index(recipientId, readAt)` cover sẵn. Trả 0 nếu user chưa có character (silent — không throw).
-  - **BE endpoint** `GET /mail/unread-count` (`apps/api/src/modules/mail/mail.controller.ts`): trả `{ count: number }`. Yêu cầu cookie auth.
-  - **FE `apps/web/src/api/mail.ts`**: thêm `fetchMailUnreadCount()`.
-  - **FE `apps/web/src/stores/game.ts`**: hàm `hydrateUnreadMail()` (silent error). Vẫn giữ delta WS (`mail:new` += 1).
-  - **FE `apps/web/src/components/shell/AppShell.vue`**: `onMounted` gọi `game.hydrateUnreadMail()` ngay sau `badges.start()` → mỗi lần shell mount (login fresh / refresh page) badge có số đúng.
+  - **`GiftCodeService.list(limit, filters)`**: thêm `q` (substring uppercase, case-insensitive) + `status` (4 giá trị). ACTIVE = chưa revoke + chưa expire + chưa exhaust (loại exhaust ở app layer vì Prisma không filter compare 2 cột `redeemCount < maxRedeems`). EXHAUSTED tương tự.
+  - **`AdminController.giftList`**: 2 query params mới — `q` (max 64 char), `status` (whitelist 4 giá trị).
 - **Files**:
-  - `apps/api/src/modules/mail/mail.service.ts` (+22)
-  - `apps/api/src/modules/mail/mail.controller.ts` (+10)
-  - `apps/api/src/modules/mail/mail-unread-count.test.ts` (new, 110 line, **7 test**)
-  - `apps/web/src/api/mail.ts` (+6)
-  - `apps/web/src/stores/game.ts` (+13 / -1)
-  - `apps/web/src/components/shell/AppShell.vue` (+1)
-- **Tests**: 7 test mới — inbox rỗng, không có character (silent), readAt filter, expired filter, expiresAt=null vẫn đếm, expiresAt > now vẫn đếm, user khác không lẫn. Tổng API test: **266/266** local (was 259, +7).
-- **Local verified**: `pnpm typecheck` ✅ · `pnpm lint` ✅ · `pnpm test` ✅ · `pnpm build` ✅.
-- **Risk**: low. Endpoint mới, không đổi cấu trúc existing. WS delta vẫn hoạt động. FE hydrate là silent error → không phá flow nếu API tạm chết.
-- **Backward compat**: `MailService.inbox` không đổi, `unreadMail` ref vẫn làm việc với WS event như cũ.
-- **Runtime smoke**: Needs runtime smoke — gửi mail cho user, login → badge `≥ 1` ngay (không cần mở inbox). Đọc 1 mail → WS `clearMailBadge` reset; refresh page → badge re-hydrate đúng số còn lại chưa đọc.
-- **Rollback**: revert; FE chỉ silent — không phá UI.
-- **Bước tiếp**: G18 — M6 mission analytics aggregate API hoặc smart admin filter cho topup/audit log.
+  - `apps/api/src/modules/giftcode/giftcode.service.ts` (+34 / -3)
+  - `apps/api/src/modules/admin/admin.controller.ts` (+15 / -3)
+  - `apps/api/src/modules/giftcode/giftcode-list-filter.test.ts` (new, 102 line, **8 test**)
+- **Tests**: 8 test mới — không filter, q substring, status × 4 (ACTIVE / REVOKED / EXPIRED / EXHAUSTED), combine q+status, q không match → 0. Tổng API test: **270/270** local.
+- **Local verified**: `pnpm typecheck` ✅ · `pnpm lint` ✅ · `pnpm --filter @xuantoi/api test` ✅ · `pnpm build` ✅.
+- **Risk**: low. BE-only, additive query params (default behavior unchanged).
+- **FE consumer**: chưa có (admin FE giftcode management chưa tồn tại). Endpoint phục vụ external tool / admin CLI / future panel (G21).
+- **Runtime smoke**: `curl -H "Cookie: …" "http://localhost:3000/admin/giftcodes?status=ACTIVE&q=PROMO"` → list active codes match.
+- **Rollback**: revert; backward-compat caller chỉ có `?limit=`.
+- **Bước tiếp**: G21 — admin giftcode FE panel (consumer cho endpoint này), hoặc admin export CSV.
 
 ---
 
