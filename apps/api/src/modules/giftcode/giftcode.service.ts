@@ -175,10 +175,12 @@ export class GiftCodeService {
       ands.push({ revokedAt: null, expiresAt: { lt: new Date() } });
     } else if (filters.status === 'EXHAUSTED') {
       // maxRedeems != null AND redeemCount >= maxRedeems
-      // Prisma không filter trực tiếp được — fetch rồi filter, hoặc dùng raw.
-      // Vì list giới hạn 500 rows, fetch full + filter ở app layer.
+      // Prisma không filter trực tiếp được (compare 2 cột) → fetch rồi filter ở app layer.
+      // Vì list giới hạn 500 rows, OK. Phải merge `ands` (gồm `q` filter) vào where
+      // để combine `q` + `status=EXHAUSTED` hoạt động đúng.
+      ands.push({ revokedAt: null, maxRedeems: { not: null } });
       const rows = await this.prisma.giftCode.findMany({
-        where: { revokedAt: null, maxRedeems: { not: null } },
+        where: { AND: ands },
         orderBy: { createdAt: 'desc' },
         take: Math.min(Math.max(1, limit), 500),
       });

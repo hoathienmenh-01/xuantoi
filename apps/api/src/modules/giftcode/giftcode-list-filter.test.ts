@@ -96,6 +96,18 @@ describe('GiftCodeService.list filter', () => {
     expect(rows.map((r) => r.code)).toEqual(['PROMO_A']);
   });
 
+  it('combine q="burn" + status=EXHAUSTED → BURNED (regression test Devin Review #74)', async () => {
+    await seedFixtures();
+    const rows = await gift.list(100, { q: 'burn', status: 'EXHAUSTED' });
+    expect(rows.map((r) => r.code)).toEqual(['BURNED']);
+  });
+
+  it('combine q="welcome" + status=EXHAUSTED → 0 (q filter áp vào EXHAUSTED branch)', async () => {
+    await seedFixtures();
+    const rows = await gift.list(100, { q: 'welcome', status: 'EXHAUSTED' });
+    expect(rows.length).toBe(0);
+  });
+
   it('combine q="zzz_no_match" → 0 rows', async () => {
     await seedFixtures();
     const rows = await gift.list(100, { q: 'zzz_no_match' });
