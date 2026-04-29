@@ -79,6 +79,11 @@ const routes: RouteRecordRaw[] = [
     component: () => import('@/views/ProfileView.vue'),
   },
   {
+    path: '/activity',
+    name: 'activity',
+    component: () => import('@/views/ActivityView.vue'),
+  },
+  {
     path: '/leaderboard',
     name: 'leaderboard',
     component: () => import('@/views/LeaderboardView.vue'),

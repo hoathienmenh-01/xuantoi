@@ -218,6 +218,7 @@
       "leaderboard": "Leaderboard",
       "topup": "Top Up",
       "settings": "Settings",
+      "activity": "Activity",
       "admin": "Admin"
     },
     "badge": {
@@ -254,6 +255,55 @@
     "spirit": "Spirit",
     "speed": "Speed",
     "luck": "Luck"
+  },
+  "activity": {
+    "title": "Activity Log",
+    "subtitle": "History of currency and item changes for your character.",
+    "tabs": {
+      "currency": "Currency",
+      "item": "Items"
+    },
+    "loading": "Loading…",
+    "loadMore": "Load more",
+    "loadingMore": "Loading more…",
+    "empty": "No transactions yet.",
+    "noCharacter": "You don't have a character yet — finish onboarding first.",
+    "errors": {
+      "UNAUTHENTICATED": "Session expired — please sign in again.",
+      "NO_CHARACTER": "You don't have a character yet — no activity log.",
+      "INVALID_CURSOR": "Page cursor invalid — reload the page.",
+      "UNKNOWN": "Could not load activity log. Please try again."
+    },
+    "currencyLabel": {
+      "LINH_THACH": "Linh Thạch",
+      "TIEN_NGOC": "Tiên Ngọc"
+    },
+    "reasons": {
+      "CULTIVATE_TICK": "Cultivation tick",
+      "BREAKTHROUGH_COST": "Breakthrough cost",
+      "BREAKTHROUGH_REWARD": "Breakthrough reward",
+      "MISSION_REWARD": "Mission reward",
+      "DAILY_LOGIN": "Daily login",
+      "MAIL_CLAIM": "Mail claim",
+      "GIFTCODE_REDEEM": "Gift code redeem",
+      "TOPUP_APPROVED": "Top-up approved",
+      "ADMIN_GRANT": "Admin grant",
+      "ADMIN_REVOKE": "Admin revoke",
+      "MARKET_LIST": "Market list",
+      "MARKET_CANCEL": "Market cancel",
+      "MARKET_BUY": "Market buy",
+      "MARKET_SELL": "Market sell",
+      "MARKET_FEE": "Market fee",
+      "SHOP_BUY": "NPC shop buy",
+      "SHOP_SELL": "NPC shop sell",
+      "SECT_DONATE": "Sect donate",
+      "INVENTORY_EQUIP": "Equip",
+      "INVENTORY_UNEQUIP": "Unequip",
+      "INVENTORY_USE": "Use item",
+      "BOSS_REWARD": "Boss reward",
+      "DUNGEON_DROP": "Dungeon drop",
+      "ACHIEVEMENT": "Achievement"
+    }
   },
   "settings": {
     "title": "Settings",
