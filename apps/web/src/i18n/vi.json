@@ -763,7 +763,10 @@
       "filter": {
         "PENDING": "Chờ duyệt",
         "APPROVED": "Đã duyệt",
-        "REJECTED": "Bị từ chối"
+        "REJECTED": "Bị từ chối",
+        "from": "Từ",
+        "to": "Đến",
+        "emailPlaceholder": "Email người nạp"
       },
       "approveConfirm": "Duyệt đơn {code} cộng {ngoc} tiên ngọc?",
       "rejectConfirm": "Từ chối đơn {code}?",

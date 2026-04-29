@@ -52,6 +52,9 @@ const grantReason = ref('');
 // Topups tab
 const topupStatus = ref<'PENDING' | 'APPROVED' | 'REJECTED' | ''>('PENDING');
 const topupPage = ref(0);
+const topupFromDate = ref('');
+const topupToDate = ref('');
+const topupEmailFilter = ref('');
 const topups = ref<(TopupOrderView & { userEmail: string })[]>([]);
 const topupTotal = ref(0);
 const topupNote = ref('');
@@ -124,7 +127,22 @@ async function refreshUsers(): Promise<void> {
 async function refreshTopups(): Promise<void> {
   loading.value = true;
   try {
-    const r = await adminListTopups(topupStatus.value, topupPage.value);
+    const filters: { from?: string; to?: string; email?: string } = {};
+    // Cả `from` và `to` đều dùng local timezone (consistent). `new Date("YYYY-MM-DD")`
+    // mặc định parse UTC midnight → admin múi giờ +7 chọn from=10/4 sẽ bỏ sót đơn
+    // tạo trong khoảng 0h–7h local 10/4. Fix: setHours theo local cho cả 2 đầu.
+    if (topupFromDate.value) {
+      const d = new Date(topupFromDate.value);
+      d.setHours(0, 0, 0, 0);
+      filters.from = d.toISOString();
+    }
+    if (topupToDate.value) {
+      const d = new Date(topupToDate.value);
+      d.setHours(23, 59, 59, 999);
+      filters.to = d.toISOString();
+    }
+    if (topupEmailFilter.value) filters.email = topupEmailFilter.value;
+    const r = await adminListTopups(topupStatus.value, topupPage.value, filters);
     topups.value = r.rows;
     topupTotal.value = r.total;
   } catch (e) {
@@ -495,6 +513,36 @@ const isAdmin = () => game.character?.role === 'ADMIN';
             :placeholder="t('admin.topups.notePlaceholder')"
             class="px-2 py-1 bg-ink-700/40 border border-ink-300/30 rounded flex-1"
           />
+        </div>
+        <div class="flex gap-2 items-center text-xs flex-wrap">
+          <label class="flex items-center gap-1">
+            {{ t('admin.topups.filter.from') }}
+            <input
+              v-model="topupFromDate"
+              data-testid="admin-topup-from-date"
+              type="date"
+              class="px-2 py-1 bg-ink-700/40 border border-ink-300/30 rounded"
+              @change="topupPage = 0; refreshTopups()"
+            />
+          </label>
+          <label class="flex items-center gap-1">
+            {{ t('admin.topups.filter.to') }}
+            <input
+              v-model="topupToDate"
+              data-testid="admin-topup-to-date"
+              type="date"
+              class="px-2 py-1 bg-ink-700/40 border border-ink-300/30 rounded"
+              @change="topupPage = 0; refreshTopups()"
+            />
+          </label>
+          <input
+            v-model="topupEmailFilter"
+            data-testid="admin-topup-email-filter"
+            :placeholder="t('admin.topups.filter.emailPlaceholder')"
+            class="px-2 py-1 bg-ink-700/40 border border-ink-300/30 rounded"
+            @keydown.enter="topupPage = 0; refreshTopups()"
+          />
+          <MButton @click="topupPage = 0; refreshTopups()">{{ t('common.search') }}</MButton>
         </div>
 
         <table class="w-full text-sm">
