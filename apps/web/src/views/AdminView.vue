@@ -466,6 +466,7 @@ async function approveTopup(o: TopupOrderView): Promise<void> {
     await adminApproveTopup(o.id, topupNote.value);
     toast.push({ type: 'success', text: t('admin.topups.approvedToast') });
     await refreshTopups();
+    refreshPendingTopupCount();
   } catch (e) {
     handleErr(e);
   }
@@ -477,9 +478,21 @@ async function rejectTopup(o: TopupOrderView): Promise<void> {
     await adminRejectTopup(o.id, topupNote.value);
     toast.push({ type: 'success', text: t('admin.topups.rejectedToast') });
     await refreshTopups();
+    refreshPendingTopupCount();
   } catch (e) {
     handleErr(e);
   }
+}
+
+function refreshPendingTopupCount(): void {
+  // Fire-and-forget refresh after approve/reject so the tab badge updates
+  // immediately instead of waiting up to 60s for the next poll. Lỗi im lặng
+  // giữ giá trị cũ — không phá flow chính.
+  adminListTopups('PENDING', 0)
+    .then((r) => {
+      pendingTopupCount.value = r.total;
+    })
+    .catch(() => null);
 }
 
 async function refreshGiftcodes(): Promise<void> {
