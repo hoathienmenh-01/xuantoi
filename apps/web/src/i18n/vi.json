@@ -854,7 +854,13 @@
         "allRoles": "Tất cả vai trò",
         "allStatus": "Tất cả trạng thái",
         "active": "Hoạt động",
-        "banned": "Bị khoá"
+        "banned": "Bị khoá",
+        "advanced": "Bộ lọc nâng cao",
+        "linhThachMin": "Linh thạch ≥",
+        "linhThachMax": "Linh thạch ≤",
+        "tienNgocMin": "Tiên ngọc ≥",
+        "tienNgocMax": "Tiên ngọc ≤",
+        "realmKey": "Cảnh giới (key)"
       },
       "col": {
         "email": "Email",

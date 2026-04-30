@@ -96,12 +96,45 @@ export class AdminController {
     @Query('page') page: string | undefined,
     @Query('role') role: string | undefined,
     @Query('banned') banned: string | undefined,
+    @Query('linhThachMin') linhThachMin: string | undefined,
+    @Query('linhThachMax') linhThachMax: string | undefined,
+    @Query('tienNgocMin') tienNgocMin: string | undefined,
+    @Query('tienNgocMax') tienNgocMax: string | undefined,
+    @Query('realmKey') realmKey: string | undefined,
   ) {
     const p = Math.max(0, Number.parseInt(page ?? '0', 10) || 0);
-    const filters: { role?: Role; banned?: boolean } = {};
+    const filters: {
+      role?: Role;
+      banned?: boolean;
+      linhThachMin?: bigint;
+      linhThachMax?: bigint;
+      tienNgocMin?: number;
+      tienNgocMax?: number;
+      realmKey?: string;
+    } = {};
     if (role === 'PLAYER' || role === 'MOD' || role === 'ADMIN') filters.role = role;
     if (banned === 'true') filters.banned = true;
     else if (banned === 'false') filters.banned = false;
+    // Parse smart filter: nếu user gõ string không hợp lệ thì bỏ qua thay vì 400.
+    const parseBig = (s: string | undefined): bigint | undefined => {
+      if (!s) return undefined;
+      try {
+        const n = BigInt(s);
+        return n >= 0n ? n : undefined;
+      } catch {
+        return undefined;
+      }
+    };
+    const parseInt32 = (s: string | undefined): number | undefined => {
+      if (!s) return undefined;
+      const n = Number.parseInt(s, 10);
+      return Number.isFinite(n) && n >= 0 ? n : undefined;
+    };
+    filters.linhThachMin = parseBig(linhThachMin);
+    filters.linhThachMax = parseBig(linhThachMax);
+    filters.tienNgocMin = parseInt32(tienNgocMin);
+    filters.tienNgocMax = parseInt32(tienNgocMax);
+    if (realmKey && /^[a-z0-9_-]{1,32}$/.test(realmKey)) filters.realmKey = realmKey;
     const r = await this.admin.listUsers(q, p, filters);
     return { ok: true, data: r };
   }

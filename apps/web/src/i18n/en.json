@@ -854,7 +854,13 @@
         "allRoles": "All roles",
         "allStatus": "All statuses",
         "active": "Active",
-        "banned": "Banned"
+        "banned": "Banned",
+        "advanced": "Advanced filter",
+        "linhThachMin": "LinhThach ≥",
+        "linhThachMax": "LinhThach ≤",
+        "tienNgocMin": "TienNgoc ≥",
+        "tienNgocMax": "TienNgoc ≤",
+        "realmKey": "Realm (key)"
       },
       "col": {
         "email": "Email",

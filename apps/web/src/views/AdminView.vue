@@ -31,6 +31,7 @@ import {
   type AdminEconomyReport,
   type AdminGiftCodeRow,
   type AdminLedgerAudit,
+  type AdminListUsersFilters,
   type AdminStats,
   type AdminUserRow,
   type GiftCodeStatus,
@@ -81,6 +82,12 @@ const userQuery = ref('');
 const userPage = ref(0);
 const userRoleFilter = ref<'' | Role>('');
 const userBannedFilter = ref<'' | 'true' | 'false'>('');
+// Smart admin filter expand (9h-F)
+const userLinhThachMin = ref('');
+const userLinhThachMax = ref('');
+const userTienNgocMin = ref('');
+const userTienNgocMax = ref('');
+const userRealmFilter = ref('');
 const users = ref<AdminUserRow[]>([]);
 const userTotal = ref(0);
 const grantOpen = ref<string | null>(null);
@@ -228,10 +235,21 @@ async function runEconomyReport(): Promise<void> {
 async function refreshUsers(): Promise<void> {
   loading.value = true;
   try {
-    const filters: { role?: Role; banned?: boolean } = {};
+    const filters: AdminListUsersFilters = {};
     if (userRoleFilter.value) filters.role = userRoleFilter.value;
     if (userBannedFilter.value === 'true') filters.banned = true;
     else if (userBannedFilter.value === 'false') filters.banned = false;
+    if (userLinhThachMin.value.trim()) filters.linhThachMin = userLinhThachMin.value.trim();
+    if (userLinhThachMax.value.trim()) filters.linhThachMax = userLinhThachMax.value.trim();
+    if (userTienNgocMin.value.trim()) {
+      const n = Number.parseInt(userTienNgocMin.value, 10);
+      if (Number.isFinite(n) && n >= 0) filters.tienNgocMin = n;
+    }
+    if (userTienNgocMax.value.trim()) {
+      const n = Number.parseInt(userTienNgocMax.value, 10);
+      if (Number.isFinite(n) && n >= 0) filters.tienNgocMax = n;
+    }
+    if (userRealmFilter.value) filters.realmKey = userRealmFilter.value;
     const r = await adminListUsers(userQuery.value, userPage.value, filters);
     users.value = r.rows;
     userTotal.value = r.total;
@@ -790,6 +808,69 @@ const isAdmin = () => game.character?.role === 'ADMIN';
           </select>
           <MButton @click="userPage = 0; refreshUsers()">{{ t('common.search') }}</MButton>
         </div>
+
+        <!-- Smart admin filter expand (9h-F): currency range + realmKey -->
+        <details class="text-xs">
+          <summary class="cursor-pointer text-cyan-300 hover:text-cyan-200 select-none">
+            {{ t('admin.users.filter.advanced') }}
+          </summary>
+          <div class="mt-2 grid grid-cols-2 md:grid-cols-5 gap-2 items-end" data-testid="admin-users-advanced-filter">
+            <label class="flex flex-col">
+              <span class="text-ink-300 mb-0.5">{{ t('admin.users.filter.linhThachMin') }}</span>
+              <input
+                v-model="userLinhThachMin"
+                type="text"
+                inputmode="numeric"
+                placeholder="0"
+                class="px-2 py-1 bg-ink-700/40 border border-ink-300/30 rounded"
+                @keydown.enter="userPage = 0; refreshUsers()"
+              />
+            </label>
+            <label class="flex flex-col">
+              <span class="text-ink-300 mb-0.5">{{ t('admin.users.filter.linhThachMax') }}</span>
+              <input
+                v-model="userLinhThachMax"
+                type="text"
+                inputmode="numeric"
+                placeholder="∞"
+                class="px-2 py-1 bg-ink-700/40 border border-ink-300/30 rounded"
+                @keydown.enter="userPage = 0; refreshUsers()"
+              />
+            </label>
+            <label class="flex flex-col">
+              <span class="text-ink-300 mb-0.5">{{ t('admin.users.filter.tienNgocMin') }}</span>
+              <input
+                v-model="userTienNgocMin"
+                type="text"
+                inputmode="numeric"
+                placeholder="0"
+                class="px-2 py-1 bg-ink-700/40 border border-ink-300/30 rounded"
+                @keydown.enter="userPage = 0; refreshUsers()"
+              />
+            </label>
+            <label class="flex flex-col">
+              <span class="text-ink-300 mb-0.5">{{ t('admin.users.filter.tienNgocMax') }}</span>
+              <input
+                v-model="userTienNgocMax"
+                type="text"
+                inputmode="numeric"
+                placeholder="∞"
+                class="px-2 py-1 bg-ink-700/40 border border-ink-300/30 rounded"
+                @keydown.enter="userPage = 0; refreshUsers()"
+              />
+            </label>
+            <label class="flex flex-col">
+              <span class="text-ink-300 mb-0.5">{{ t('admin.users.filter.realmKey') }}</span>
+              <input
+                v-model="userRealmFilter"
+                type="text"
+                placeholder="luyenkhi / truclo / kimdan"
+                class="px-2 py-1 bg-ink-700/40 border border-ink-300/30 rounded"
+                @keydown.enter="userPage = 0; refreshUsers()"
+              />
+            </label>
+          </div>
+        </details>
 
         <div class="overflow-x-auto">
           <table class="w-full text-sm min-w-[640px]">

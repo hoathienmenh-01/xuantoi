@@ -108,3 +108,64 @@ describe('AdminService.listUsers (G16 — filter by role/banned)', () => {
     expect(r.rows[0].id).toBe(u1.userId);
   });
 });
+
+describe('AdminService.listUsers (9h-F — smart filter range/realm)', () => {
+  it('linhThachMin filter chỉ trả character >= ngưỡng', async () => {
+    await makeUserChar(prisma, { linhThach: 100n });
+    await makeUserChar(prisma, { linhThach: 5000n });
+    await makeUserChar(prisma, { linhThach: 99999n });
+    const r = await admin.listUsers(undefined, 0, { linhThachMin: 1000n });
+    expect(r.total).toBe(2);
+    expect(r.rows.every((row) => BigInt(row.character?.linhThach ?? '0') >= 1000n)).toBe(true);
+  });
+
+  it('linhThachMax filter chỉ trả character <= ngưỡng', async () => {
+    await makeUserChar(prisma, { linhThach: 100n });
+    await makeUserChar(prisma, { linhThach: 5000n });
+    await makeUserChar(prisma, { linhThach: 99999n });
+    const r = await admin.listUsers(undefined, 0, { linhThachMax: 5000n });
+    expect(r.total).toBe(2);
+    expect(r.rows.every((row) => BigInt(row.character?.linhThach ?? '0') <= 5000n)).toBe(true);
+  });
+
+  it('linhThach min + max range', async () => {
+    await makeUserChar(prisma, { linhThach: 100n });
+    await makeUserChar(prisma, { linhThach: 5000n });
+    await makeUserChar(prisma, { linhThach: 50000n });
+    await makeUserChar(prisma, { linhThach: 99999n });
+    const r = await admin.listUsers(undefined, 0, { linhThachMin: 1000n, linhThachMax: 60000n });
+    expect(r.total).toBe(2);
+  });
+
+  it('tienNgocMin + tienNgocMax range', async () => {
+    await makeUserChar(prisma, { tienNgoc: 0 });
+    await makeUserChar(prisma, { tienNgoc: 100 });
+    await makeUserChar(prisma, { tienNgoc: 5000 });
+    const r = await admin.listUsers(undefined, 0, { tienNgocMin: 50, tienNgocMax: 1000 });
+    expect(r.total).toBe(1);
+    expect(r.rows[0].character?.tienNgoc).toBe(100);
+  });
+
+  it('realmKey filter chỉ trả character có realmKey khớp', async () => {
+    await makeUserChar(prisma, { realmKey: 'luyenkhi' });
+    await makeUserChar(prisma, { realmKey: 'truclo' });
+    await makeUserChar(prisma, { realmKey: 'truclo' });
+    const r = await admin.listUsers(undefined, 0, { realmKey: 'truclo' });
+    expect(r.total).toBe(2);
+    expect(r.rows.every((row) => row.character?.realmKey === 'truclo')).toBe(true);
+  });
+
+  it('combine linhThach range + realmKey + role', async () => {
+    await makeUserChar(prisma, { linhThach: 5000n, realmKey: 'truclo' });
+    await makeUserChar(prisma, { linhThach: 100n, realmKey: 'truclo' }); // dưới min
+    await makeUserChar(prisma, { linhThach: 5000n, realmKey: 'luyenkhi' }); // realm khác
+    const r = await admin.listUsers(undefined, 0, {
+      linhThachMin: 1000n,
+      realmKey: 'truclo',
+      role: Role.PLAYER,
+    });
+    expect(r.total).toBe(1);
+    expect(r.rows[0].character?.linhThach).toBe('5000');
+    expect(r.rows[0].character?.realmKey).toBe('truclo');
+  });
+});
