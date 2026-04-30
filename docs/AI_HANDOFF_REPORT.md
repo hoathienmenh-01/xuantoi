@@ -93,25 +93,31 @@
 
 ---
 
-## Recent Changes (PR #33→#114 đã merged trên main; PR session 9h-E smart economy report in-flight)
+## Recent Changes (PR #33→#115 đã merged trên main; PR session 9h-F smart users filter expand in-flight)
 
-### PR session 9h-E (in-flight) — `feat(admin): smart economy report — top 10 whales theo linhThach + tienNgoc + circulation snapshot (GET /admin/economy/report)` — **Pending merge**
+### PR session 9h-F (in-flight) — `feat(admin): smart users filter expand — currency range (linhThach/tienNgoc) + realmKey` — **Pending merge**
 
-- **Branch**: `devin/1777525664-economy-report-tab`. **Base**: `main` @ post-PR #114 merge. **Status**: Stats tab admin panel mới, in-flight.
-- **Mục tiêu**: thêm read-only endpoint `GET /admin/economy/report` + AdminView panel — admin closed beta cần overview "ai đang giàu nhất" + tổng circulation linh thạch / tiên ngọc để xác định reward target / phát hiện kinh tế bất thường (bot/exploit). Top 10 đủ overview, không quá nhiều rows trên UI.
+- **Branch**: `devin/1777526486-admin-users-filter-expand`. **Base**: `main` @ `6f18ce6` (post PR #115 merge). **Status**: in-flight.
+- **Mục tiêu**: mở rộng `GET /admin/users` với 5 query param mới (`linhThachMin/Max`, `tienNgocMin/Max`, `realmKey`) + AdminView Users tab `<details>` "Bộ lọc nâng cao" — smart admin tìm whale (linhThach > 50000), tìm tài khoản đáng nghi (tienNgoc cao bất thường nhưng mới đăng ký), filter theo realm để xem nhóm character ở giai đoạn nào. Bổ sung cho task 9h-E (smart economy report top 10) — admin nhìn top trước, sau đó dùng filter này deep dive.
 - **Changes**:
-  1. **`apps/api/src/modules/admin/admin.service.ts`** (+99 line): `getEconomyReport()` chạy 5 query `Promise.all` (aggregate `_sum` linhThach/tienNgoc/tienNgocKhoa, `count()` total, `count({where: cultivating: true})`, 2× `findMany orderBy desc take 10`). bigint linhThach serialize → string.
-  2. **`apps/api/src/modules/admin/admin.controller.ts`** (+13): `@Get('economy/report')` reuse JwtAdminGuard (ADMIN/MOD readable).
-  3. **`apps/api/src/modules/admin/admin-economy-report.test.ts`** (mới, +120, +6 vitest BE): empty DB / sort linhThach DESC / sort tienNgoc DESC / circulation total + cultivating count / top giới hạn 10 / bigint > MAX_SAFE_INTEGER serialize / row payload đầy đủ.
-  4. **`apps/web/src/api/admin.ts`** (+41): `adminEconomyReport()` helper + types `AdminEconomyReport` + `*TopRowLinh` / `*TopRowTien`.
-  5. **`apps/web/src/views/AdminView.vue`** (+82): panel cyan-500 trong Stats tab → button "Tạo báo cáo" + 5 stat cards (linhThach total, tienNgoc total, tienNgocKhoa total, characterCount, cultivatingCount) + 2 cột top whales với name + email.
-  6. **`apps/web/src/i18n/{vi,en}.json`** (+13 key mỗi file): `admin.economyReport.*`.
-  7. **`apps/web/src/api/__tests__/admin.economy-report.test.ts`** (mới, +93, +3 vitest FE): GET endpoint clean response, parse top whales với linhThach bigint string, throw on `ok=false`.
-- **Tests added**: +6 vitest BE + 3 vitest FE. Sau rebase trên main post-PR #114: web baseline `199 → 202` (file `25 → 26`).
-- **CI status (local)**: `pnpm typecheck` ✅ / `pnpm lint` ✅ / `pnpm --filter @xuantoi/web test` ✅ 193/193 (pre-rebase, 25 file) / BE vitest **chưa chạy local** (Postgres không có sẵn) → CI verify.
-- **Risk**: thấp — read-only endpoint, không mutate DB. 5 query parallel có thể nặng nếu DB lớn (10k+ char) nhưng closed-beta vài trăm character chạy < 50ms. Production sau này nên cache 60s nếu admin traffic tăng.
+  1. **`apps/api/src/modules/admin/admin.service.ts`** (+18 line): `listUsers()` thêm filter param `linhThachMin/Max` (bigint), `tienNgocMin/Max` (number), `realmKey` (string). Build nested `{ character: { is: charConditions } }` chỉ khi có ít nhất 1 condition. User không có character tự bị loại khỏi kết quả khi filter character set (intentional — admin filter character cụ thể không quan tâm user trống).
+  2. **`apps/api/src/modules/admin/admin.controller.ts`** (+30 line): `@Get('users')` thêm 5 `@Query` decorator + parse helpers `parseBig` / `parseInt32` (drop string không hợp lệ thay vì 400 → admin gõ tay không bị block). `realmKey` validate regex `[a-z0-9_-]{1,32}` (không cho injection).
+  3. **`apps/api/src/modules/admin/admin-list-users-filter.test.ts`** (+59 line, +6 BE vitest): linhThachMin DESC, linhThachMax ASC, range min+max, tienNgoc range, realmKey exact, combine 3 filter (linhThach + realm + role).
+  4. **`apps/web/src/api/admin.ts`** (+12 line + interface): export `AdminListUsersFilters` interface + `adminListUsers()` truyền params nếu có.
+  5. **`apps/web/src/views/AdminView.vue`** (+5 ref + +60 line UI): 5 ref state mới (`userLinhThachMin/Max`, `userTienNgocMin/Max`, `userRealmFilter`). UI `<details>` collapse mặc định, mở ra hiện 5 input grid 5 cột. Enter trên input chạy `refreshUsers()` (giống cũ).
+  6. **`apps/web/src/i18n/{vi,en}.json`** (+6 key mỗi file): `admin.users.filter.{advanced,linhThachMin,linhThachMax,tienNgocMin,tienNgocMax,realmKey}`.
+  7. **`apps/web/src/api/__tests__/admin.list-users-filter.test.ts`** (mới, +5 FE vitest): empty filters, full filters, single linhThachMin, combine role+banned+range, tienNgocMin=0 boundary.
+- **Tests added**: +6 vitest BE + 5 vitest FE (web `199 → 204`, file `25 → 26`). Sau merge cả 9h-E + 9h-F: dự kiến web `202 + 5 = 207/207` (`27 file`).
+- **CI status (local)**: `pnpm typecheck` ✅ / `pnpm lint` ✅ / `pnpm --filter @xuantoi/web test` ✅ 204/204 / BE vitest CI verify.
+- **Risk**: thấp — additive query param, default behavior khi không truyền filter giữ nguyên. Nested where trên `character.is` dùng index có sẵn (`Character.realmKey`). UI `<details>` collapse mặc định không phá layout cũ.
 - **Rollback**: revert single PR.
 - **`AI_HANDOFF_REPORT.md updated`**: ✅ — Recent Changes (this entry).
+
+### PR #115 — `feat(admin): smart economy report — top 10 whales (linhThach + tienNgoc) + circulation snapshot via GET /admin/economy/report (session 9h task E)` — **Merged into main** @ `6f18ce6` session 9h task E — **Resolved**
+
+- **Branch**: `devin/1777525664-economy-report-tab`. **Status**: Merged. CI 5/5 ✅.
+- **Changes**: `admin.service.ts` `getEconomyReport()` 5 query parallel + bigint serialize. `admin.controller.ts` `@Get('economy/report')`. AdminView Stats panel cyan + 5 stat cards + 2 cột top whales. i18n 13 key mỗi locale. +6 BE vitest + 3 FE vitest (web 199 → 202, file 25 → 26).
+- **Risk**: thấp — read-only.
 
 ### PR #114 — `feat(web): smart onboarding expand — track Leaderboard + Mail visits via localStorage (6-step checklist) (session 9h task D)` — **Merged into main** session 9h task D — **Resolved**
 
