@@ -1,6 +1,8 @@
 # AI Handoff Report — Xuân Tôi
 
-> **Snapshot (session 9n kickoff — audit refresh post-9m close-out)**: `main` @ `d332a18` (Merge PR #164 `test(api): giftcode-race.test.ts — 5 vitest concurrent economy safety (double-grant prevention)`, 30 Apr 2026 ~11:51 UTC). **Session 9m close-out (5/5 PR merged)**: PR #160 (docs audit refresh kickoff @ `873a0a3`), #161 (docs CHANGELOG catch-up sessions 9g/9h/9i/9j/9l @ `9c1e63a`), #162 (test API topup.service +17 vitest @ `0f56438`), #163 (test API email.service +14 vitest @ `ba17380`), #164 (test API giftcode-race +5 vitest @ `d332a18`). **Zero open PRs** at audit time 30/4 ~12:10 UTC. **Baseline verified local 30/4 ~12:10 UTC trên branch audit refresh**: `pnpm typecheck` ✅ (3 project) · `pnpm lint` ✅ · `pnpm --filter @xuantoi/shared test` ✅ **96/96** (6 file) · `pnpm --filter @xuantoi/web test` ✅ **509/509** (54 file) · `pnpm build` ✅ (PWA precache 47 entries / 763.79 KiB). API test chưa chạy local (cần `pnpm infra:up` — Postgres+Redis); CI matrix verify trên PR — session 9m PR #162/#163/#164 đã merge xanh, baseline API tăng từ ~259 lên **+36 test** (topup 17 + email 14 + giftcode-race 5). **Lưu ý**: cần `pnpm --filter @xuantoi/api exec prisma generate` trước khi chạy `pnpm typecheck` local vì `@prisma/client` types sinh ra từ `prisma generate`; thiếu sẽ fail TS2305 ở `apps/api/src/modules/topup/topup.service.ts` + `test-helpers.ts`. CI auto-run vì `prebuild` hook. Cần `pnpm build` (hoặc `pnpm --filter @xuantoi/shared build`) trước khi chạy web test local vì `@xuantoi/shared` export từ `dist/`. **Roadmap session 9n**: tiếp tục backlog post-9m — chọn task an toàn có giá trị cao nhất theo §20.
+> **Snapshot (session 9n-B in-flight)**: `main` @ `4b5b799` (Merge PR #165 `docs(handoff): session 9n kickoff — audit refresh post-9m close-out`, 30 Apr 2026 ~12:13 UTC). **Session 9n-A close-out**: PR #165 (docs audit refresh @ `4b5b799`). **Session 9n-B in-flight (this PR branch `devin/1777551718-audit-ledger-cli-json`)**: smart audit-ledger CLI `--json` flag + 13 vitest unit (parseArgs 4 + formatResult 5 + formatResultJson 4) + ADMIN_GUIDE §11 docs.
+
+> **Snapshot (session 9n kickoff — audit refresh post-9m close-out, merged as PR #165)**: `main` @ `d332a18` (Merge PR #164 `test(api): giftcode-race.test.ts — 5 vitest concurrent economy safety (double-grant prevention)`, 30 Apr 2026 ~11:51 UTC). **Session 9m close-out (5/5 PR merged)**: PR #160 (docs audit refresh kickoff @ `873a0a3`), #161 (docs CHANGELOG catch-up sessions 9g/9h/9i/9j/9l @ `9c1e63a`), #162 (test API topup.service +17 vitest @ `0f56438`), #163 (test API email.service +14 vitest @ `ba17380`), #164 (test API giftcode-race +5 vitest @ `d332a18`). **Zero open PRs** at audit time 30/4 ~12:10 UTC. **Baseline verified local 30/4 ~12:10 UTC trên branch audit refresh**: `pnpm typecheck` ✅ (3 project) · `pnpm lint` ✅ · `pnpm --filter @xuantoi/shared test` ✅ **96/96** (6 file) · `pnpm --filter @xuantoi/web test` ✅ **509/509** (54 file) · `pnpm build` ✅ (PWA precache 47 entries / 763.79 KiB). API test chưa chạy local (cần `pnpm infra:up` — Postgres+Redis); CI matrix verify trên PR — session 9m PR #162/#163/#164 đã merge xanh, baseline API tăng từ ~259 lên **+36 test** (topup 17 + email 14 + giftcode-race 5). **Lưu ý**: cần `pnpm --filter @xuantoi/api exec prisma generate` trước khi chạy `pnpm typecheck` local vì `@prisma/client` types sinh ra từ `prisma generate`; thiếu sẽ fail TS2305 ở `apps/api/src/modules/topup/topup.service.ts` + `test-helpers.ts`. CI auto-run vì `prebuild` hook. Cần `pnpm build` (hoặc `pnpm --filter @xuantoi/shared build`) trước khi chạy web test local vì `@xuantoi/shared` export từ `dist/`. **Roadmap session 9n**: tiếp tục backlog post-9m — chọn task an toàn có giá trị cao nhất theo §20.
 
 > **Snapshot (session 9m kickoff — audit refresh)**: `main` @ `f103485` (Merge PR #159 `test(web): UI primitive render tests — ConfirmModal 17 + SkeletonBlock 4 + SkeletonTable 4`, 30 Apr 2026 ~11:00 UTC). **Session 9l close-out (4/4 PR merged)**: PR #156 (audit refresh @ `739b10a`), #157 (docs RELEASE_NOTES + CHANGELOG @ `64d02fd`), #158 (handoff M9 Resolved @ `a1079dc`), #159 (UI primitive tests +25 vitest @ `f103485`). **Zero open PRs**. **Baseline verified local 30/4 ~11:05 UTC**: `pnpm typecheck` ✅ (3 project) · `pnpm lint` ✅ · `pnpm --filter @xuantoi/shared test` ✅ **96/96** (6 file) · `pnpm --filter @xuantoi/web test` ✅ **509/509** (54 file — includes PR #159 +25 test) · `pnpm build` ✅ (PWA precache 47 entries / 763.79 KiB). **Lưu ý**: cần `pnpm build` (hoặc `pnpm --filter @xuantoi/shared build`) trước khi chạy web test local vì `@xuantoi/shared` export từ `dist/` — thiếu build sẽ fail 15 test file với "Failed to resolve entry for package @xuantoi/shared". CI không gặp vì CI build trước test. **Roadmap session 9m**: tiếp tục backlog post-9k — chọn task an toàn có giá trị cao nhất.
 >
@@ -123,9 +125,31 @@
 
 ---
 
-## Recent Changes (PR #33→#164 đã merged trên main; session 9m close-out 5/5 PR merged: #160 audit refresh / #161 changelog catch-up / #162 topup tests / #163 email tests / #164 giftcode-race tests; session 9n kickoff **this PR** docs audit refresh post-close-out)
+## Recent Changes (PR #33→#165 đã merged trên main; session 9n kickoff #165 audit refresh merged @ `4b5b799`; session 9n-B **this PR** smart audit-ledger CLI `--json` flag + formatResult unit tests + ADMIN_GUIDE)
 
-### PR session 9n kickoff (in-flight, this PR) — `docs(handoff): session 9n kickoff — audit refresh post-9m close-out — bump snapshot f103485 → d332a18 + mark PR #160..#164 Merged + ghi nhận +36 API vitest baseline + reset Roadmap Immediate` — **Pending merge**
+### PR session 9n-B (in-flight, this PR) — `feat(api,docs): smart audit-ledger CLI — --json flag + formatResult/parseArgs unit tests + ADMIN_GUIDE §11` — **Pending merge**
+
+- **Branch**: `devin/1777551718-audit-ledger-cli-json`. **Base**: `main` @ `4b5b799` (post PR #165 merge).
+- **Vì sao**: `pnpm --filter @xuantoi/api audit:ledger` (PR #76 + PR #112 endpoint) đã có nhưng chỉ in human-readable text → khó parse cho cron/CI/monitoring pipeline. PR này thêm `--json` flag để emit machine-parseable output (giữ exit code semantics: 0 clean / 1 discrepancy / 2 error). Đồng thời export `parseArgs`/`formatResult`/`formatResultJson` để có thể unit test pure functions không cần Postgres (fast feedback). Bonus: docs `ADMIN_GUIDE §11` ghi cách dùng CLI cho devops + ví dụ cron job + caveat về BigInt → string serialize.
+- **Files**:
+  - `apps/api/scripts/audit-ledger.ts` — refactor: export `parseArgs`/`formatResult`/`formatResultJson`; add `formatResultJson()` BigInt-safe (serialize `bigint` → `string`); thêm `--json` branch trong `main()`; doc comment exit codes.
+  - `apps/api/scripts/audit-ledger-format.test.ts` — **new** 13 vitest unit (parseArgs 4 + formatResult 5 + formatResultJson 4), không cần DB.
+  - `docs/ADMIN_GUIDE.md` — thêm §11 (renumber §11→§12 reset env, §12→§13 liên kết).
+  - `docs/AI_HANDOFF_REPORT.md` — Recent Changes (this entry) + §12 Tests + §16 Known Issues (no change) + §20 Roadmap (close 9n-B promote 9n-C).
+- **Tests added**: 13 vitest unit (`audit-ledger-format.test.ts`).
+- **CI status (local 30/4 ~12:25 UTC)**: `pnpm typecheck` ✅ (3 project) · `pnpm lint` ✅ (max-warnings 0) · `pnpm --filter @xuantoi/api exec vitest run scripts/audit-ledger-format.test.ts` ✅ **13/13** (unit, no DB) · existing `audit-ledger.test.ts` (10 vitest needs DB) — không thay đổi behavior, chỉ refactor export. CI matrix sẽ run full API test với Postgres.
+- **Risk**: 🟢 thấp — `formatResult()` behavior preserved exactly (only exported); new `formatResultJson()` + `parseArgs()` are additive; CLI default behavior unchanged; no DB schema change.
+- **Rollback**: revert single PR — restore old `audit-ledger.ts` (formatResult inline private) + xoá `audit-ledger-format.test.ts` + revert ADMIN_GUIDE §11.
+- **`AI_HANDOFF_REPORT.md updated`**: Recent Changes + §20 Roadmap (close 9n-B promote 9n-C).
+
+### PR #165 — `docs(handoff): session 9n kickoff — audit refresh post-9m close-out (bump snapshot f103485 → d332a18 + mark PR #160..#164 Merged)` — **Merged into main** @ `4b5b799` (30/4 ~12:13 UTC, CI ✅) — **Resolved**
+
+- **Branch**: `devin/1777551102-audit-refresh-9m-close-out`. **Base**: `main` @ `d332a18` (post PR #164 merge).
+- Bump top snapshot `f103485 → d332a18`, §2 commit audit + PR table thêm 5 hàng #160..#164, §12 Tổng baseline session 9n, §20 Roadmap Immediate (close 9m close-out 5/5 done; promote 10 backlog items post-9m), §21 Exact PR Plan (mark 9m table done, add 9n-A entry).
+- **Files**: `docs/AI_HANDOFF_REPORT.md` only (+120/-35). **Tests added**: 0 (docs-only). CI ✅ 5/5 (build x2, e2e-smoke x2, Devin Review).
+- **Risk**: 🟢 (docs-only). **Rollback**: revert single PR.
+
+### PR session 9n kickoff (legacy in-flight pointer — see PR #165 above) — **Merged**
 
 - **Branch**: `devin/1777551102-audit-refresh-9m-close-out`. **Base**: `main` @ `d332a18` (post PR #164 merge). **Status**: docs-only, in-flight.
 - **Vì sao**: snapshot block cũ ghi `main @ f103485` (PR #159) nhưng PRs #160..#164 đã merged sau đó. §2 commit audit + recent changes table + Roadmap Immediate đều stale. AI sau đọc report sẽ nhầm trạng thái close-out session 9m. PR này:
@@ -2165,11 +2189,11 @@ Admin hiện tại có thể vào `/admin` → Users → tìm → **Set role = A
 - 4. **test(api): email.service +14 vitest unit (no DB needed)** — Merged PR #163 @ `ba17380`.
 - 5. **test(api): giftcode-race +5 vitest concurrent (double-grant prevention)** — Merged PR #164 @ `d332a18`.
 
-**This PR (session 9n kickoff, docs audit)**: audit refresh post-9m close-out — bump snapshot `f103485 → d332a18`, mark #160..#164 merged, ghi nhận +36 API vitest baseline trong §12. Then continue with highest-priority code task.
+**Session 9n-A done**: PR #165 audit refresh merged @ `4b5b799` (30/4 ~12:13 UTC, CI ✅ 5/5). **Session 9n-B (this PR)**: smart audit-ledger CLI `--json` flag + 13 vitest unit + ADMIN_GUIDE §11 docs. Then continue with highest-priority code task.
 
-**Backlog còn lại (post-9m, an toàn nếu credit còn)** — ưu tiên theo §22 priority order (Critical/High > runtime smoke > missing API/page > economy safety > E2E > admin/security > docs > i18n/UX > smart beta > post-beta):
+**Backlog còn lại (post-9n-B, an toàn nếu credit còn)** — ưu tiên theo §22 priority order (Critical/High > runtime smoke > missing API/page > economy safety > E2E > admin/security > docs > i18n/UX > smart beta > post-beta):
 
-1. **Smart audit helper script** — `scripts/audit-ledger.mjs` verify `CurrencyLedger` sum per user = actual `linhThach`/`tienNgoc` balance + `ItemLedger` sum vs inventory qty. **Risk 🟢 thấp** — script-only, read-only, no schema change. Endpoint `GET /admin/economy/audit-ledger` đã có trên main (PR #112) → script CLI cho devops chạy local. Giá trị: phát hiện sớm ledger drift trước beta. **Test**: cover happy path + intentional drift seed → script exit 1 + report file. **Next: this session priority #1**.
+1. ~~**Smart audit helper script `audit:ledger`**~~ — **Already done (PR #76 BE + PR #112 endpoint)**. **Enhanced this session**: PR session 9n-B (this PR) thêm `--json` flag + unit test coverage cho `formatResult`/`formatResultJson`/`parseArgs` (13 vitest no-DB). Pure logic ở `apps/api/src/modules/admin/ledger-audit.ts`; CLI wrapper ở `apps/api/scripts/audit-ledger.ts`; admin endpoint `GET /admin/economy/audit-ledger`. Cron monitoring example documented in `docs/ADMIN_GUIDE.md §11`.
 
 2. **API service tests còn thiếu (sau 9m)** — kiểm tra coverage gap:
    - `mail.service.test.ts` mở rộng WS `mail:new` integration end-to-end.
@@ -2385,19 +2409,24 @@ F. ~~**`docs/CHANGELOG.md` bootstrap**~~ — **Done by PR #104** (Merged into ma
 
 ### Session 9n (current)
 
-#### PR session 9n-A (in-flight, this PR) — `docs(handoff): session 9n kickoff — audit refresh post-9m close-out`
-- **Branch**: `devin/1777551102-audit-refresh-9m-close-out`. **Base**: `main` @ `d332a18` (post PR #164 merge). **Status**: docs-only, in-flight.
-- **Files**: `docs/AI_HANDOFF_REPORT.md` only.
-- **Updates**: header §0 snapshot bump `f103485 → d332a18` + §2 commit audit/CI/PR table + Recent Changes (this entry + 5 entry mới #160..#164) + §12 Tổng baseline session 9n + §20 Roadmap Immediate (close 9m, promote 9n) + §21 Exact PR Plan (mark 9m table done, add 9n).
-- **Tests added**: 0 (docs-only).
-- **CI status (local 30/4 ~12:10 UTC, base `d332a18`)**: typecheck ✅ / lint ✅ / shared 96/96 ✅ / web 509/509 ✅ / build ✅ (PWA 47 entries 763.79 KiB). API test cần infra:up local; CI matrix verify.
-- **Risk**: 🟢 thấp (docs-only). **Rollback**: revert single PR.
+| PR | Task | Status |
+|---|---|---|
+| #165 | session 9n-A — docs(handoff): audit refresh post-9m close-out | **Merged into main** @ `4b5b799` |
 
-#### Sẽ làm tiếp (session 9n) — sau khi PR session 9n-A merge
+#### PR session 9n-B (in-flight, this PR) — `feat(api,docs): smart audit-ledger CLI — --json flag + formatResult/parseArgs unit tests + ADMIN_GUIDE §11`
+- **Branch**: `devin/1777551718-audit-ledger-cli-json`. **Base**: `main` @ `4b5b799` (post PR #165 merge). **Status**: in-flight.
+- **Files**: `apps/api/scripts/audit-ledger.ts` (refactor + add `--json` + export pure helpers); `apps/api/scripts/audit-ledger-format.test.ts` (new, 13 vitest unit); `docs/ADMIN_GUIDE.md` (+§11); `docs/AI_HANDOFF_REPORT.md`.
+- **Tests added**: 13 vitest unit (parseArgs 4 + formatResult 5 + formatResultJson 4) — fast, no DB needed.
+- **CI status (local 30/4 ~12:25 UTC)**: typecheck ✅ / lint ✅ / new vitest 13/13 ✅ / shared 96/96 ✅. API integration `audit-ledger.test.ts` (10 vitest) cần Postgres → CI verify.
+- **Risk**: 🟢 thấp — `formatResult()` behavior preserved exactly; new `formatResultJson()` + `parseArgs()` additive; CLI default behavior unchanged (default = human-readable, exit code 0/1/2).
+- **Rollback**: revert single PR.
 
-- **session 9n-B (priority #1)**: Smart audit helper script `scripts/audit-ledger.mjs` — verify CurrencyLedger sum vs balance + ItemLedger sum vs inventory qty. Read-only CLI cho devops. Test cover happy + intentional drift seed → exit 1 + report file.
-- **session 9n-C (priority #2)**: API test gap — `mail.service.test.ts` mở rộng WS `mail:new` integration; `chat.service.test.ts` Redis failover; `cultivation.processor.test.ts` multi-instance lock.
+#### Sẽ làm tiếp (session 9n) — sau khi PR session 9n-B merge
+
+- **session 9n-C (priority #1)**: API test gap — `mail.service.test.ts` mở rộng WS `mail:new` integration; `chat.service.test.ts` Redis failover; `cultivation.processor.test.ts` multi-instance lock.
 - **session 9n-D**: i18n parity audit cho keys mới session 9j (mission/mail/giftcode/admin) — grep VN hard-code còn sót.
+- **session 9n-E**: Mobile responsive smoke — viewport <375px audit cho AppShell + AdminView + InventoryView qua Playwright config.
+- **session 9n-F**: Smart admin economy alerts thresholds — env override `ECONOMY_ALERTS_DEFAULT_STALE_HOURS` cho `getEconomyAlerts(staleHours)` (currently hard-code 24h default + 1..720h range).
 
 ### Done (chuỗi #33→#45 đã merge trên `main` tại `e99a35f`)
 
