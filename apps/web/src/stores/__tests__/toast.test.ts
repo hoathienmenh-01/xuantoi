@@ -1,5 +1,6 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { setActivePinia, createPinia } from 'pinia';
+import { i18n } from '@/i18n';
 import { useToastStore } from '@/stores/toast';
 
 describe('useToastStore', () => {
@@ -95,5 +96,55 @@ describe('useToastStore', () => {
     toast.push({ text: 'b' });
     toast.clear();
     expect(toast.toasts).toHaveLength(0);
+  });
+});
+
+describe('useToastStore — i18n title resolution', () => {
+  let originalLocale: string;
+
+  beforeEach(() => {
+    setActivePinia(createPinia());
+    vi.useFakeTimers();
+    originalLocale = (i18n.global.locale as unknown as { value: string }).value;
+  });
+
+  afterEach(() => {
+    (i18n.global.locale as unknown as { value: string }).value = originalLocale;
+  });
+
+  it('locale=vi → default title dùng key `toast.title.info` ("Tin tức")', () => {
+    (i18n.global.locale as unknown as { value: string }).value = 'vi';
+    const toast = useToastStore();
+    toast.push('hello');
+    expect(toast.toasts[0].title).toBe('Tin tức');
+  });
+
+  it('locale=en → default title dùng key `toast.title.info` ("Info")', () => {
+    (i18n.global.locale as unknown as { value: string }).value = 'en';
+    const toast = useToastStore();
+    toast.push('hello');
+    expect(toast.toasts[0].title).toBe('Info');
+  });
+
+  it('locale=en → warning/error/success/system titles đều dịch sang en', () => {
+    (i18n.global.locale as unknown as { value: string }).value = 'en';
+    const toast = useToastStore();
+    toast.push({ type: 'warning', text: 'w' });
+    toast.push({ type: 'error', text: 'e' });
+    toast.push({ type: 'success', text: 's' });
+    toast.push({ type: 'system', text: 'y' });
+    expect(toast.toasts.map((t) => t.title)).toEqual([
+      'Warning',
+      'Error',
+      'Success',
+      'Heavenly Herald',
+    ]);
+  });
+
+  it('caller-supplied `title` override luôn thắng default i18n key', () => {
+    (i18n.global.locale as unknown as { value: string }).value = 'en';
+    const toast = useToastStore();
+    toast.push({ type: 'info', text: 'x', title: 'Custom Title' });
+    expect(toast.toasts[0].title).toBe('Custom Title');
   });
 });
