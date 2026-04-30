@@ -23,6 +23,7 @@ import {
 } from '@/api/combat';
 import AppShell from '@/components/shell/AppShell.vue';
 import MButton from '@/components/ui/MButton.vue';
+import { extractApiErrorCodeOrDefault } from '@/lib/apiError';
 
 const auth = useAuthStore();
 const game = useGameStore();
@@ -120,7 +121,7 @@ async function onAbandon(): Promise<void> {
 }
 
 function handleErr(e: unknown): void {
-  const code = (e as { code?: string })?.code ?? 'UNKNOWN';
+  const code = extractApiErrorCodeOrDefault(e, 'UNKNOWN');
   const text = t(`dungeon.errors.${code}`, '__missing__');
   toast.push({
     type: 'error',

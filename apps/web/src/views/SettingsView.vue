@@ -9,6 +9,7 @@ import { changePassword, logoutAll } from '@/api/auth';
 import { setLocale, type LocaleKey } from '@/i18n';
 import AppShell from '@/components/shell/AppShell.vue';
 import MButton from '@/components/ui/MButton.vue';
+import { extractApiErrorCodeOrDefault } from '@/lib/apiError';
 import ConfirmModal from '@/components/ui/ConfirmModal.vue';
 
 const auth = useAuthStore();
@@ -69,7 +70,7 @@ async function submitChangePassword(): Promise<void> {
     await auth.logout();
     router.replace('/auth');
   } catch (e) {
-    const code = (e as { code?: string }).code ?? 'UNKNOWN';
+    const code = extractApiErrorCodeOrDefault(e, 'UNKNOWN');
     const text = t(`settings.errors.${code}`, '__missing__');
     toast.push({
       type: 'error',
@@ -103,7 +104,7 @@ async function submitLogoutAll(): Promise<void> {
     auth.user = null;
     router.replace('/auth');
   } catch (e) {
-    const code = (e as { code?: string }).code ?? 'UNKNOWN';
+    const code = extractApiErrorCodeOrDefault(e, 'UNKNOWN');
     const text = t(`settings.errors.${code}`, '__missing__');
     toast.push({
       type: 'error',

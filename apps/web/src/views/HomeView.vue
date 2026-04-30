@@ -12,6 +12,7 @@ import MButton from '@/components/ui/MButton.vue';
 import NextActionPanel from '@/components/NextActionPanel.vue';
 import OnboardingChecklist from '@/components/OnboardingChecklist.vue';
 import DailyLoginCard from '@/components/DailyLoginCard.vue';
+import { extractApiErrorCode } from '@/lib/apiError';
 
 const auth = useAuthStore();
 const router = useRouter();
@@ -73,7 +74,7 @@ async function onBreakthrough(): Promise<void> {
     await game.breakthrough();
     toast.push({ type: 'system', text: t('home.breakthrough.successToast') });
   } catch (e) {
-    const code = (e as { code?: string })?.code;
+    const code = extractApiErrorCode(e);
     if (code === 'NOT_AT_PEAK') {
       toast.push({ type: 'warning', text: t('home.breakthrough.notAtPeakToast') });
     } else {

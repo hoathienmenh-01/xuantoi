@@ -5,6 +5,7 @@ import { useI18n } from 'vue-i18n';
 import { useToastStore } from '@/stores/toast';
 import * as authApi from '@/api/auth';
 import MButton from '@/components/ui/MButton.vue';
+import { extractApiErrorCodeOrDefault } from '@/lib/apiError';
 
 /**
  * Trang `/auth/forgot-password` (public).
@@ -42,7 +43,7 @@ async function onSubmit(): Promise<void> {
     devToken.value = out.devToken;
     toast.push({ type: 'success', text: t('auth.forgot.sent') });
   } catch (e) {
-    showServerError((e as { code?: string })?.code ?? 'UNKNOWN');
+    showServerError(extractApiErrorCodeOrDefault(e, 'UNKNOWN'));
   } finally {
     loading.value = false;
   }

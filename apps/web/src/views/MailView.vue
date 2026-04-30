@@ -9,6 +9,7 @@ import { claimMail, listMail, readMail, type MailView } from '@/api/mail';
 import AppShell from '@/components/shell/AppShell.vue';
 import MButton from '@/components/ui/MButton.vue';
 import { formatItemRewardList } from '@/lib/itemName';
+import { extractApiErrorCodeOrDefault } from '@/lib/apiError';
 
 const auth = useAuthStore();
 const game = useGameStore();
@@ -79,7 +80,7 @@ async function onClaim(m: MailView): Promise<void> {
 }
 
 function handleErr(e: unknown): void {
-  const code = (e as { code?: string })?.code ?? 'UNKNOWN';
+  const code = extractApiErrorCodeOrDefault(e, 'UNKNOWN');
   const text = t(`mail.errors.${code}`, '__missing__');
   toast.push({
     type: 'error',

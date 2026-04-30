@@ -21,6 +21,7 @@ import { on } from '@/ws/client';
 import AppShell from '@/components/shell/AppShell.vue';
 import MButton from '@/components/ui/MButton.vue';
 import { itemName } from '@/lib/itemName';
+import { extractApiErrorCodeOrDefault } from '@/lib/apiError';
 
 const auth = useAuthStore();
 const game = useGameStore();
@@ -201,7 +202,7 @@ async function onAttack(): Promise<void> {
 }
 
 function handleErr(e: unknown): void {
-  const code = (e as { code?: string })?.code ?? 'UNKNOWN';
+  const code = extractApiErrorCodeOrDefault(e, 'UNKNOWN');
   const text = t(`boss.errors.${code}`, '__missing__');
   toast.push({
     type: 'error',

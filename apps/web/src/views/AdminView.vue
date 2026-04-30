@@ -663,7 +663,7 @@ async function confirmGiftcodeRevoke(): Promise<void> {
     await refreshGiftcodes();
     refreshActiveGiftcodeCount();
   } catch (e) {
-    const code = (e as { code?: string }).code;
+    const code = extractApiErrorCode(e);
     const key = mapGiftcodeRevokeErrorKey(code);
     // Helper chỉ map riêng CODE_NOT_FOUND / CODE_REVOKED. Mọi code khác
     // (UNAUTHENTICATED, FORBIDDEN, ADMIN_ONLY, NOT_FOUND, ...) cần dùng

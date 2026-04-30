@@ -5,6 +5,7 @@ import { useI18n } from 'vue-i18n';
 import { useToastStore } from '@/stores/toast';
 import * as authApi from '@/api/auth';
 import MButton from '@/components/ui/MButton.vue';
+import { extractApiErrorCodeOrDefault } from '@/lib/apiError';
 
 /**
  * Trang `/auth/reset-password?token=...` (public).
@@ -60,7 +61,7 @@ async function onSubmit(): Promise<void> {
     toast.push({ type: 'success', text: t('auth.reset.success') });
     router.push('/auth');
   } catch (e) {
-    showServerError((e as { code?: string })?.code ?? 'INVALID_RESET_TOKEN');
+    showServerError(extractApiErrorCodeOrDefault(e, 'INVALID_RESET_TOKEN'));
   } finally {
     loading.value = false;
   }

@@ -20,6 +20,7 @@ import {
 import { listInventory, type InventoryView } from '@/api/inventory';
 import AppShell from '@/components/shell/AppShell.vue';
 import MButton from '@/components/ui/MButton.vue';
+import { extractApiErrorCodeOrDefault } from '@/lib/apiError';
 import SkeletonBlock from '@/components/ui/SkeletonBlock.vue';
 import SkeletonTable from '@/components/ui/SkeletonTable.vue';
 
@@ -159,7 +160,7 @@ async function onPost(): Promise<void> {
 }
 
 function handleErr(e: unknown): void {
-  const code = (e as { code?: string })?.code ?? 'UNKNOWN';
+  const code = extractApiErrorCodeOrDefault(e, 'UNKNOWN');
   const text = t(`market.errors.${code}`, '__missing__');
   toast.push({
     type: 'error',
