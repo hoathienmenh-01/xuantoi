@@ -93,7 +93,28 @@
 
 ---
 
-## Recent Changes (PR #33→#110 đã merged trên main; 0 PR open tại đầu session 9h)
+## Recent Changes (PR #33→#110 đã merged trên main; PR session 9h-A docs audit refresh + 9h-B replay admin audit-ledger endpoint in-flight)
+
+### PR session 9h-B (in-flight) — `feat(admin): replay orphan commit 7e27aa9 — GET /admin/economy/audit-ledger endpoint + AdminView panel button + 6 BE vitest + 3 FE vitest + i18n` — **Pending merge**
+
+- **Branch**: `devin/1777523851-replay-admin-audit-ledger-endpoint`. **Base**: `devin/1777523096-audit-session-9g-refresh-pr110` (stacked trên PR session 9h-A vì cũng sửa `docs/AI_HANDOFF_REPORT.md`). Khi PR 9h-A merge, PR này sẽ auto-rebase vào main.
+- **Mục tiêu**: replay orphan commit `7e27aa9` (admin endpoint `GET /admin/economy/audit-ledger` + AdminView panel) chưa vào main — được session 9h audit phát hiện. Trước replay, admin muốn on-demand check ledger consistency phải SSH server gõ `pnpm audit:ledger` (PR #76, G21). Closed-beta cần nguy bay trên UI.
+- **Changes (cherry-pick `7e27aa9` resolve `docs/AI_HANDOFF_REPORT.md` `--ours`)**:
+  1. **`apps/api/src/modules/admin/ledger-audit.ts`** (mới, +167): pure `auditLedger(prisma)` move từ script + `auditResultToJson()` serialize bigint → string cho HTTP response.
+  2. **`apps/api/scripts/audit-ledger.ts`** (refactor -129/+xx): re-export pure logic từ `ledger-audit.ts`, giữ CLI entrypoint và 9 vitest test cũ vẫn pass.
+  3. **`apps/api/src/modules/admin/admin.service.ts`** (+16): `runLedgerAudit()` reuse `PrismaService`.
+  4. **`apps/api/src/modules/admin/admin.controller.ts`** (+17): `@Get('economy/audit-ledger')` + JwtAdminGuard (ADMIN/MOD readable).
+  5. **`apps/api/src/modules/admin/admin-audit-ledger.test.ts`** (mới, +141, +6 vitest BE): empty DB ok, ledger khớp, linhThach mismatch, tienNgoc mismatch, inventory mismatch, multi-entry sum.
+  6. **`apps/web/src/api/admin.ts`** (+35): `adminAuditLedger()` helper + types `AdminLedgerAudit/Char/Inv`.
+  7. **`apps/web/src/views/AdminView.vue`** (+83): panel violet-500 trong Stats tab + button "Chạy audit" + render discrepancy table.
+  8. **`apps/web/src/i18n/{vi,en}.json`** (+11 key mỗi file): `admin.ledgerAudit.*`.
+  9. **`apps/web/src/api/__tests__/admin.audit-ledger.test.ts`** (mới, +78, +3 vitest FE): clean response, discrepancies bigint string, throw on `ok=false`.
+- **Tests added**: +6 vitest BE (api `~395 → ~401`) + 3 vitest FE (web `187 → 190`, file `23 → 24`).
+- **CI status (local)**: `pnpm typecheck` ✅ / `pnpm lint` ✅ / `pnpm --filter @xuantoi/web test` ✅ **190/190** (24 file) / `pnpm build` ✅ (web precache 45 entries / 743.16 KiB). API test chưa run local (cần Postgres `pnpm infra:up`); CI matrix `e2e-smoke` sẽ chạy full api test set.
+- **Risk**: thấp–trung — refactor behavior-preserving (script `audit-ledger.test.ts` 9/9 vẫn pass), endpoint read-only, không touch schema/migration. Devin Review fix `1fff79a` (preserve itemKey colon) + `b08c0ad` (`process.exitCode + return` thay `process.exit(1)`) đã có trong main từ trước PR này — logic của script vẫn an toàn.
+- **Rollback**: revert single PR. Endpoint không ảnh hưởng existing data path.
+- **`AI_HANDOFF_REPORT.md updated`**: ✅ — Recent Changes (this entry), §20 task B (replay) mở trong PR 9h-A; §21 PR 9h-B trong PR 9h-A.
+
 
 ### PR #110 — `fix(env): quote SMTP_FROM trong .env.example để bash source .env không fail (session 9g task F1)` — **Merged into main** @ `4c214eb` (29/4 ~19:55 UTC, CI 5/5 ✅) session 9g task F1
 
