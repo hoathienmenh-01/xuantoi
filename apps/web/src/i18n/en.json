@@ -24,7 +24,18 @@
     "pageNext": "Next ›",
     "pagePrev": "‹ Prev",
     "all": "All",
-    "loadingData": "Loading…"
+    "loadingData": "Loading…",
+    "apiFallback": {
+      "register": "Registration failed",
+      "login": "Login failed",
+      "changePassword": "Change password failed",
+      "forgotPassword": "Send request failed",
+      "resetPassword": "Reset password failed",
+      "logoutAll": "Logout all failed",
+      "shopLoad": "Load shop failed",
+      "shopBuy": "Purchase failed",
+      "onboard": "Onboard failed"
+    }
   },
   "locale": {
     "label": "Language",
