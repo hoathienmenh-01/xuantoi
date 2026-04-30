@@ -1,12 +1,14 @@
 # AI Handoff Report — Xuân Tôi
 
-> **Snapshot (session 9n-J in-flight, shared missions catalog tests — rebased post-#173)**: `main` @ `f68da8f` (Merge PR #173 `test(shared) combat catalog integrity 40 vitest`, 30 Apr 2026 ~16:20 UTC). **Session 9n progress (9 PR merged + 0 in-flight)**: PR #165..#173 merged. **This PR (9n-J, branch `devin/1777556128-shared-missions-tests`)**: smart catalog integrity tests cho `packages/shared/src/missions.ts` — trước đây 0 test cho 184 dòng mission catalog (10 mission DAILY/WEEKLY/ONCE). +18 vitest cover: catalog invariants (period coverage, key unique, name/desc non-empty, goalAmount > 0, quality enum, period enum, goalKind enum (10 enum value), reward presence, reward số > 0), **cross-ref invariant** ITEMS catalog (mọi reward.items.itemKey PHẢI tồn tại), design rule lock-in (DAILY < WEEKLY cultivate goal), helper lookups, partition invariant (sum DAILY+WEEKLY+ONCE = MISSIONS). Shared baseline (post-#173) 136 → **154** (7 → 8 file).
+> **Snapshot (session 9n-K in-flight, shared core-types catalog tests — rebased post-#174)**: `main` @ `c1302af` (Merge PR #174 `test(shared) missions catalog integrity 18 vitest`, 30 Apr 2026 ~16:35 UTC). **Session 9n progress (10 PR merged + 0 in-flight)**: PR #165..#174 merged. **This PR (9n-K, branch `devin/1777564100-shared-core-types-tests`)**: smart catalog integrity tests cho 3 file shared còn trống test — `enums.ts` (50 dòng, 0 test trước), `ws-events.ts` (99 dòng, 0 test trước), `api-contracts.ts` (82 dòng, 0 test trước). +66 vitest unit (enums 17 + ws-events 19 + api-contracts 30) cover enum values/order/uniqueness + WS heartbeat/reconnect/cultivation tick constants + zod schema validation (Email/Password/Login/Register/ChangePassword/Forgot/Reset/PublicUser) + AuthErrorCode enum + AUTH_ERROR_VI i18n map (VN char `[À-ỹ]` regex guard). Shared baseline (post-#173+#174) 154 → **220** (9 → 12 file).
+
+> **Snapshot (session 9n-J merged as PR #174)**: smart catalog integrity tests cho `packages/shared/src/missions.ts` — +18 vitest cover MISSIONS catalog (period/quality/goalKind enum + cross-ref ITEMS + design rule lock-in DAILY < WEEKLY cultivate goal) + helper lookups + partition invariant.
 
 > **Snapshot (session 9n-I merged as PR #173)**: smart catalog integrity tests cho `packages/shared/src/combat.ts` — +40 vitest cover MONSTERS/DUNGEONS/SKILLS catalog + rollDamage RNG invariants + huyết tế design rule + STAMINA constants.
 
 > **Snapshot (session 9n-H merged as PR #172)**: `docs/CHANGELOG.md` catch-up session 9m (PR #160..#164) + session 9n (PR #165..#171) — backfill section API service test coverage push + smart audit-ledger/economy-alerts CLI + TROUBLESHOOTING + i18n parity fixes.
 
-> **Snapshot (session 9n-G merged as PR #171)**: i18n parity fix cho fallback Error messages ở `apps/web/src/api/{auth,shop,character}.ts` — thêm i18n keys `common.apiFallback.{register,login,changePassword,forgotPassword,resetPassword,logoutAll,shopLoad,shopBuy,onboard}` ở vi.json + en.json + helper `fallbackError(op)`. +19 vitest. Web vitest baseline 513 → 532.
+> **Snapshot (session 9n-G merged as PR #171)**: i18n parity fix cho fallback Error messages ở `apps/web/src/api/{auth,shop,character}.ts` — thêm i18n keys `common.apiFallback.{register,login,changePassword,forgotPassword,resetPassword,logoutAll,shopLoad,shopBuy,onboard}` ở vi.json + en.json + helper `fallbackError(op)`. +19 vitest cover cả 2 locale + BE error precedence. Web vitest baseline 513 → **532**.
 
 > **Snapshot (session 9n-F merged as PR #170)**: `apps/web/src/stores/toast.ts` Pinia store dùng `i18n.global.t('toast.title.<type>')` thay vì hard-code VN titles. +4 vitest locale switch.
 
@@ -1935,7 +1937,7 @@ apps/api/src/modules/character/currency.service.ts:88   data: { tienNgoc: { incr
 | Ops | **7 test** (`ops.processor.test.ts`) | — | — |
 | Realtime | 10 test (`realtime.gateway.test.ts`) | Ban user during connection | Medium |
 | Rate limiter | 8 test (`rate-limiter.test.ts`) | — | — |
-| Shared (realms/catalog/proverbs/shop/topup/boss) | **96 test** (6 file, post session 9j close) — boss 22 (PR #148) + catalog 17 + proverbs 11 (PR #87 +8 invariants) + realms 27 + shop 9 (PR #147) + topup 10 (PR #147) | — | — |
+| Shared (realms/catalog/proverbs/shop/topup/boss/combat/missions/core-types) | **162 test** (9 file, post session 9n-K this PR on top of main — **pending: PR #173 +40 combat + PR #174 +18 missions**) — boss 22 (PR #148) + catalog 17 + proverbs 11 (PR #87 +8 invariants) + realms 27 + shop 9 (PR #147) + topup 10 (PR #147) + **enums 17 (9n-K)** + **ws-events 19 (9n-K)** + **api-contracts 30 (9n-K)**. Sau khi 3 PR pending merge (9n-I/9n-J/9n-K) đều merge: tổng shared ≈ **220 test** (12 file) — bao gồm combat 40 + missions 18. | — | — |
 | **Web Vitest** | **484 test** (51 file, post session 9k task C this PR base `5a815b3`) — baseline cũ 187 (23 file) + session 9i +115 (K/K1/K2/F/G tasks: AppShell 15 + HomeView 9 + GiftCodeView 10 + LeaderboardView 10 skeleton + ProfileView 12 + apiError helper 17 + extractApiErrorCode migration) + session 9j +164 (task B Topup 10 + Mail 14 + task D Shop 19 + task E Inventory 15 + task F Auth 14 + task G Onboarding 16 + task H Dungeon 13 + task I Sect 12 + task J NotFound+router 8 + task K Boss 12 + task L Chat+Locale 17 + task M MButton+MToast 14) + **session 9k task C +18 AdminView render-level (this PR)** — onMounted role guard 4 + tab badge 4 + tab switch 2 + Export CSV 3 + Giftcode revoke ConfirmModal 5. | Render-level cho `AppShell` nav badge interaction (`breakthroughReady` vừa wire PR #107); runtime smoke for full claim/buy flow E2E (session 9k task B — Playwright matrix expand). | Low |
 | **E2E Playwright** | **Wired** (PR #64) — `apps/web/e2e/golden.spec.ts` matrix job `e2e-smoke` với Postgres+Redis services, build api+web, run `E2E_SMOKE=1 pnpm --filter @xuantoi/web e2e:smoke`. | Full happy-path expand (M6 `/activity` browse, daily login claim, mission claim, market post/buy). | Low |
 | **Economy integration** | Rải rác trong từng service + `item-ledger.test.ts` consistency check + `pnpm audit:ledger` script | Cross-module: market post → buy, ngân sách sect | Low |
@@ -2453,21 +2455,39 @@ F. ~~**`docs/CHANGELOG.md` bootstrap**~~ — **Done by PR #104** (Merged into ma
 |---|---|---|
 | #165 | session 9n-A — docs(handoff): audit refresh post-9m close-out | **Merged into main** @ `4b5b799` |
 | #166 | session 9n-B — feat(api,docs): audit-ledger CLI --json + unit tests + ADMIN_GUIDE §11 | **Merged into main** @ `0b1b6da` |
+| #167 | session 9n-C — feat(api,docs): smart admin economy alerts thresholds env override + 22 vitest + ADMIN_GUIDE §11.3 + .env.example | **Merged into main** |
+| #168 | session 9n-D — docs(TROUBLESHOOTING): §15 ledger drift + §16 topup stale alerts flood | **Merged into main** |
+| #169 | session 9n-E — feat(api,docs): smart economy-alerts CLI + 18 vitest + extract queryEconomyAlerts() + ADMIN_GUIDE §11.3 | **Merged into main** |
+| #170 | session 9n-F — fix(web,i18n): toast.ts Pinia store i18n.global.t('toast.title.<type>') + 4 vitest | **Merged into main** |
+| #171 | session 9n-G — fix(web,i18n): api fallback Error messages `common.apiFallback.<op>` (9 chỗ auth/shop/character) + 19 vitest | **Merged into main** @ `c02573a` |
+| #172 | session 9n-H — docs(CHANGELOG): catch-up session 9m + 9n | **Pending merge** (rebased 30/4 ~15:45 UTC, CI ✅ on force-push) |
+| #173 | session 9n-I — test(shared): smart combat catalog integrity (+40 vitest) | **Pending merge** (rebased 30/4 ~15:45 UTC, CI ✅ on force-push) |
+| #174 | session 9n-J — test(shared): smart missions catalog integrity (+18 vitest) | **Pending merge** (rebased 30/4 ~15:45 UTC, CI ✅ on force-push) |
 
-#### PR session 9n-C (in-flight, this PR) — `feat(api,docs): smart admin economy alerts thresholds — ECONOMY_ALERTS_DEFAULT_STALE_HOURS / _MIN_ / _MAX_ env override + 22 vitest unit + ADMIN_GUIDE §11.3 + .env.example`
-- **Branch**: `devin/1777552393-economy-alerts-env-thresholds`. **Base**: `main` @ `0b1b6da` (post PR #166 merge). **Status**: in-flight.
-- **Files**: `apps/api/src/modules/admin/economy-alerts-config.ts` (new pure helper); `apps/api/src/modules/admin/economy-alerts-config.test.ts` (new 22 vitest); `apps/api/src/modules/admin/admin.controller.ts` (inject ConfigService + resolve bounds + clampStaleHours); `apps/web/src/api/admin.ts` (bounds optional field); `apps/api/.env.example`; `docs/ADMIN_GUIDE.md` (+§11.3); `docs/AI_HANDOFF_REPORT.md`.
-- **Tests added**: 22 vitest unit (no DB).
-- **CI status (local 30/4 ~12:40 UTC)**: typecheck ✅ / lint ✅ / new vitest 22/22 ✅ / shared 96/96 ✅ / web 509/509 ✅.
-- **Risk**: 🟢 thấp — controller behavior preserved cho query in-range; default behavior unchanged khi env absent; response field `data.bounds` additive.
-- **Rollback**: revert single PR.
+#### PR session 9n-K (in-flight, this PR) — `test(shared): smart core-types catalog tests — enums/ws-events/api-contracts +66 vitest`
+- **Branch**: `devin/1777564100-shared-core-types-tests`. **Base**: `main` @ `c02573a` (post PR #171 merge). **Status**: in-flight.
+- **Files**: `packages/shared/src/enums.test.ts` (new 17 vitest) · `packages/shared/src/ws-events.test.ts` (new 19 vitest) · `packages/shared/src/api-contracts.test.ts` (new 30 vitest) · `docs/AI_HANDOFF_REPORT.md`.
+- **Why**: 3 file core types shared (tổng 231 dòng) trước đây không có test dedicated. Lỗi typo/đổi tên enum (vd `QUALITIES` bỏ `'THAN'`, `WS_HEARTBEAT_INTERVAL_MS` set > 60s, `AuthErrorCode` thêm/bớt code) sẽ không bị bắt ở compile time vì được dùng gián tiếp qua zod schema + type union. Test lock-in giá trị cụ thể + invariant quan hệ (heartbeat timeout < interval, throttle < cultivation tick).
+- **Tests added**: 66 vitest unit (no DB, no side effect).
+- **Invariants locked**:
+  - `ROLES` = exactly `[PLAYER, MOD, ADMIN]`; `QUALITIES` = 5-tier `[PHAM, LINH, HUYEN, TIEN, THAN]`.
+  - `ITEM_TYPES` ⊇ 6 base equip slots (cross-ref với `EQUIP_SLOTS`).
+  - `REALM_TIERS` = 6-tier phàm → vĩnh hằng (snake_case regex).
+  - `WS_HEARTBEAT_TIMEOUT_MS` < `WS_HEARTBEAT_INTERVAL_MS` < 60s (proxy guard).
+  - `MISSION_PROGRESS_PUSH_THROTTLE_MS` < `CULTIVATION_TICK_MS` (tránh drop legit event).
+  - `ApiOk/ApiErr` envelope shape + zod discriminated union.
+  - `Password` zod: ≥8 chars + phải có chữ + phải có số (message VN).
+  - `AuthErrorCode` = 7 codes; `AUTH_ERROR_VI` map mọi code → non-empty VN string (regex `[À-ỹ]` guard không leak EN).
+- **CI status (local)**: typecheck ✅ / lint ✅ / new vitest 66/66 ✅ / shared total 162/162 ✅ / web 532/532 ✅ / build ✅.
+- **Risk**: 🟢 thấp — test-only, lock invariants. No runtime behavior change.
+- **Rollback**: revert single PR (xóa 3 file test).
 
-#### Sẽ làm tiếp (session 9n) — sau khi PR session 9n-C merge
+#### Sẽ làm tiếp (session 9n) — sau khi 9n-K merge
 
-- **session 9n-D (priority #1)**: API test gap — `mail.service.test.ts` mở rộng WS `mail:new` integration; `chat.service.test.ts` Redis failover; `cultivation.processor.test.ts` multi-instance lock.
-- **session 9n-E**: i18n parity audit cho keys mới session 9j (mission/mail/giftcode/admin) — grep VN hard-code còn sót.
-- **session 9n-F**: Mobile responsive smoke — viewport <375px audit cho AppShell + AdminView + InventoryView qua Playwright config.
-- **session 9n-G**: Admin quick-action filter polish — bulk CSV export UX, topup approve batch confirm.
+- **session 9n-L**: API test gap — `mail.service.test.ts` mở rộng WS `mail:new` integration; `chat.service.test.ts` Redis failover; `cultivation.processor.test.ts` multi-instance lock.
+- **session 9n-M**: Mobile responsive smoke — viewport <375px audit cho AppShell + AdminView + InventoryView qua Playwright config.
+- **session 9n-N**: Admin quick-action filter polish — bulk CSV export UX, topup approve batch confirm.
+- **session 9n-O**: Runtime smoke on local dev — verify `AppShell` nav badge render + `common.apiFallback.<op>` flow end-to-end.
 
 ### Done (chuỗi #33→#45 đã merge trên `main` tại `e99a35f`)
 
