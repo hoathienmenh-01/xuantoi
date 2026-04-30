@@ -1,6 +1,8 @@
 # AI Handoff Report — Xuân Tôi
 
-> **Snapshot (session 9p task I, this PR)**: `main` @ `643d8b8` (Merge PR #197 leaderboard.controller tests, 30/4 ~19:38 UTC). **Session 9p task I (this PR)**: controller-level tests cho 3 controller — `daily-login.controller` (11 vitest auth + envelope + DailyLoginError NO_CHARACTER → 404 + idempotent reclaim + unknown rethrow), `next-action.controller` (6 vitest auth + envelope + empty actions + service no-call when auth fail + propagate), `giftcode.controller` (19 vitest auth + zod input boundaries + delegation + 8 GiftCodeError → status mapping {404/409/400} + unknown rethrow). +36 vitest. API baseline **667 → 703** (62 file).
+> **Snapshot (session 9p task J, this PR)**: `main` @ `cbefe05` (Merge PR #198 controller trio tests, 30/4 ~19:46 UTC). **Session 9p task J (this PR)**: controller-level tests cho 3 controller tiếp — `logs.controller` (15 vitest auth + zod query 9 case incl coerce/boundaries + LogsError NO_CHARACTER→404/INVALID_CURSOR→400), `shop.controller` (17 vitest 2 endpoint, GET /shop/npc public-after-auth synchronous + POST /shop/buy zod boundaries + ShopError 5-code mapping {404/409/400}), `topup.controller` (14 vitest 3 endpoint, GET /topup/packages public no-auth + zod→INVALID_PACKAGE special + TopupError 5-code mapping {400/429/409}). +46 vitest. API baseline **703 → 749** (65 file).
+>
+> **Snapshot (session 9p task I, merged)**: `main` @ `cbefe05` (Merge PR #198, 30/4 ~19:46 UTC). **PR #198**: `apps/api/src/modules/{daily-login,next-action,giftcode}/*.controller.test.ts` (+36 vitest). API baseline **667 → 703**. CI ✅.
 >
 > **Snapshot (session 9p task H, merged)**: `main` @ `643d8b8` (Merge PR #197, 30/4 ~19:38 UTC). **PR #197**: `apps/api/src/modules/leaderboard/leaderboard.controller.test.ts` (+14 vitest, lock-in auth + delegation + limit parsing). API baseline **653 → 667**. CI ✅.
 >
@@ -187,9 +189,32 @@
 
 ---
 
-## Recent Changes (PR #33→#197 đã merged trên main; session 9p task I **this PR** controller-level tests cho 3 controller: daily-login + next-action + giftcode)
+## Recent Changes (PR #33→#198 đã merged trên main; session 9p task J **this PR** controller-level tests cho 3 controller: logs + shop + topup)
 
-### PR session 9p task I (in-flight, this PR) — `test(api): daily-login + next-action + giftcode controller +36 vitest` — **Pending merge**
+### PR session 9p task J (in-flight, this PR) — `test(api): logs + shop + topup controller +46 vitest` — **Pending merge**
+
+- **Branch**: `devin/1777578271-controller-trio2-tests`. **Base**: `main` @ `cbefe05` (post PR #198 merge).
+- **Vì sao**: 3 controller ở `apps/api/src/modules/{logs,shop,topup}/*.controller.ts` chưa có vitest trực tiếp. Service-level test đã cover business logic; controller layer chứa các risk silent regression đặc biệt ở:
+  - **`LogsController`**: zod `coerce.number().int().min(1).max(50).default(20)` cho `?limit=` — boundary 0/51/1.5/string "5". Cursor opaque min(1).
+  - **`ShopController`**: 2 endpoint khác pattern (`GET /shop/npc` synchronous `shop.list()` no userId, `POST /shop/buy` async with userId+args), zod itemKey 1..64 + qty 1..99, ShopError 5 code → {404,404,409,400,400}.
+  - **`TopupController`**: 3 endpoint khác bản — `GET /topup/packages` **public** (không auth!), `GET /topup/me` auth + listForUser, `POST /topup/create` auth + zod (zod fail → `INVALID_PACKAGE` *không* `INVALID_INPUT` — đặc biệt!), TopupError 5 code → {400,429,409,409,409}.
+- **Files** (3 file new):
+  - `apps/api/src/modules/logs/logs.controller.test.ts` (15 vitest): auth × 2 + zod query 9 case (default, type enum, type ngoài enum 400, limit coerce string→int, limit 0/51/1.5 boundaries, cursor passthrough, cursor empty 400) + delegation envelope + LogsError 2-code mapping + unknown rethrow.
+  - `apps/api/src/modules/shop/shop.controller.test.ts` (17 vitest): GET /shop/npc 3 case (auth + envelope + list no-args) + POST /shop/buy: auth + zod boundaries 6 case (null/empty key/qty 0/100/99 boundary/key>64) + delegation arg passthrough + ShopError 5-code mapping table + unknown rethrow.
+  - `apps/api/src/modules/topup/topup.controller.test.ts` (14 vitest): GET /topup/packages public + GET /topup/me 2 case + POST /topup/create: auth + zod 3 case (null/empty/>64 → `INVALID_PACKAGE` *không* INVALID_INPUT) + delegation + TopupError 5-code mapping {400,429,409,409,409} + unknown rethrow.
+- **Lock-in invariants**:
+  - `LogsController`: zod `coerce.number()` accept `"5"` → 5; min/max/int validate.
+  - `ShopController`: `list()` synchronous (no userId), `buy()` async (userId + key + qty); ShopError mapping.
+  - `TopupController`: `packages()` no auth + return TOPUP_PACKAGES const; zod fail → `INVALID_PACKAGE`; TopupError mapping incl 429 cho TOO_MANY_PENDING.
+  - All 3: cookie missing/invalid → 401 (trừ `/topup/packages` public).
+  - All 3: unknown error rethrow nguyên.
+- **Tests**: 46/46 vitest mới ✅ (5.57s). API baseline 703 → **749** (65 file). typecheck ✅ (sau 1 fix `Parameters<typeof Class>` → `ConstructorParameters<typeof ShopError>[0]`) · lint ✅.
+- **Risk**: 🟢 thấp — test-only, pure unit. No runtime change.
+- **Rollback**: revert single PR (xóa 3 file test).
+
+### PR #198 — `test(api): daily-login + next-action + giftcode controller +36 vitest (session 9p task I)` — **Merged into main** @ `cbefe05` (30/4 ~19:46 UTC). CI ✅.
+
+### PR session 9p task I (closed, merged) — `test(api): daily-login + next-action + giftcode controller +36 vitest` — **Merged into main** @ `cbefe05`
 
 - **Branch**: `devin/1777577849-controller-trio-tests`. **Base**: `main` @ `643d8b8` (post PR #197 merge).
 - **Vì sao**: 3 controller ở `apps/api/src/modules/{daily-login,next-action,giftcode}/*.controller.ts` chưa có vitest trực tiếp. Service-level test đã cover business logic; controller layer chứa 4 risk silent regression: auth guard, zod input validation, error → HTTP status mapping, envelope shape `{ok:true,data}`. Đặc biệt **`GiftCodeController` map 8 error code vào 3 status lớp** (404/409/400) — sai một case = FE i18n key sai/UX confusing.
@@ -2671,7 +2696,8 @@ F. ~~**`docs/CHANGELOG.md` bootstrap**~~ — **Done by PR #104** (Merged into ma
 | #195 | session 9p task F — test(web): LocaleSwitcher render + click toggle +8 vitest | **Merged into main** @ `3109497` (30/4 ~19:21 UTC, CI ✅) |
 | #196 | session 9p task G — test(web): UI atoms MButton + MToast + SkeletonBlock + SkeletonTable +33 vitest | **Merged into main** @ `0eccccc` (30/4 ~19:30 UTC, CI ✅) |
 | #197 | session 9p task H — test(api): leaderboard.controller auth + delegation + limit parsing +14 vitest | **Merged into main** @ `643d8b8` (30/4 ~19:38 UTC, CI ✅) |
-| this PR | session 9p task I — test(api): daily-login + next-action + giftcode controller +36 vitest | **Pending merge** (in-flight) |
+| #198 | session 9p task I — test(api): daily-login + next-action + giftcode controller +36 vitest | **Merged into main** @ `cbefe05` (30/4 ~19:46 UTC, CI ✅) |
+| this PR | session 9p task J — test(api): logs + shop + topup controller +46 vitest | **Pending merge** (in-flight) |
 
 #### PR session 9p task C (in-flight, this PR) — `test(api): ops.service + mission.scheduler ghost-cleanup +12 pure unit`
 
