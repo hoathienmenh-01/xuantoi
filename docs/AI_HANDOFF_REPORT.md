@@ -1804,7 +1804,7 @@ apps/api/src/modules/character/currency.service.ts:88   data: { tienNgoc: { incr
 | Chat | 9 test (`chat.service.test.ts`) | Redis failover test | Low |
 | Boss | **16 test** (`boss.service.test.ts`) — +7 cho `adminSpawn` (PR #36) | Spawn cron auto (feature chưa có) | Medium |
 | Admin/Topup | **13 test** (`admin-stats` 3 + `topup-admin` 10) + **17 test** (`topup.service.test.ts` session 9m) — createOrder happy/invalid/limit/isolation/uniqueness/persistence/slot-free, listForUser empty/sorted/isolation/cap-50, bankInfo, toView normal/fallback, economy safety (no currency change/no ledger entry) | — | — |
-| GiftCode | 12 test (`giftcode.service.test.ts`) | Expire during redeem race | Low |
+| GiftCode | 12 test (`giftcode.service.test.ts`) + **5 race test** (`giftcode-race.test.ts` session 9m) — concurrent maxRedeems=1 (3 users), maxRedeems=2 (5 users), same-user double-redeem (unique index), concurrent items grant, revoke-during-redeem consistency | — | — |
 | Mail | 14 test (`mail.service.test.ts`) | WS `mail:new` tích hợp end-to-end | Low |
 | Mission | **26 test** (`mission.service.test.ts`) — +7 cho timezone (PR #42) | — | — |
 | **Shop** | **10 test** (`shop.service.test.ts`) (PR #39) | Daily limit (feature chưa có) | — |
@@ -1818,7 +1818,7 @@ apps/api/src/modules/character/currency.service.ts:88   data: { tienNgoc: { incr
 | **Economy integration** | Rải rác trong từng service + `item-ledger.test.ts` consistency check + `pnpm audit:ledger` script | Cross-module: market post → buy, ngân sách sect | Low |
 | **Logs (G3 cũ/M6)** | **20 test** (`logs.service.test.ts`) (PR #88) — cursor encode/decode 6 + listForUser currency 11 + listForUser item 3 | — | — |
 
-**Tổng (`vitest run` thực tế, baseline session 9m trên main @ `0f56438` + this PR branch)**: **~426 test API (cần infra:up — +17 topup session 9m + 14 email session 9m) + 96 test shared + 509 test web = ~1031 test pass expected**. CI xanh. Real Postgres + real Redis service trên CI; local dùng `infra/docker-compose.dev.yml` (`docker compose up -d pg redis`). Web count 509 (54 file). Shared count 96 (6 file). API count ~426 (+17 topup + 14 email session 9m). Email tests chạy local OK (không cần DB).
+**Tổng (`vitest run` thực tế, baseline session 9m trên main @ `ba17380` + this PR branch)**: **~431 test API (cần infra:up — +17 topup + 14 email + 5 giftcode-race session 9m) + 96 test shared + 509 test web = ~1036 test pass expected**. CI xanh. Real Postgres + real Redis service trên CI; local dùng `infra/docker-compose.dev.yml` (`docker compose up -d pg redis`). Web count 509 (54 file). Shared count 96 (6 file). API count ~431 (+17 topup + 14 email + 5 giftcode-race session 9m).
 
 **Chạy**:
 ```bash
@@ -2304,11 +2304,14 @@ F. ~~**`docs/CHANGELOG.md` bootstrap**~~ — **Done by PR #104** (Merged into ma
 #### PR session 9m-C — `test(api): topup.service.test.ts — 17 vitest economy safety` — **Merged** PR #162 @ `0f56438`
 - TopupService 17 tests: createOrder 8 + listForUser 4 + bankInfo 1 + toView 2 + economy safety 2. Test-only.
 
-#### PR session 9m-D (this PR) — `test(api): email.service.test.ts — 14 vitest unit (no DB)`
-- **Branch**: `devin/1777549062-email-service-tests`. **Base**: `main` @ `0f56438`.
-- **File**: `apps/api/src/modules/email/email.service.test.ts` (new) + `docs/AI_HANDOFF_REPORT.md`.
-- **Tests added**: 14 — mode selection (4: console default/explicit/smtp/smtp+auth) + send console (2: log verify/text-only) + sendPasswordResetEmail (6: default URL/custom URL/URL-encode/subject/expiry minutes/min-1-phút) + SMTP_FROM (2: default/custom).
-- **Risk**: 🟢 thấp — test-only, unit test (no DB/Redis needed), no production code change.
+#### PR session 9m-D — `test(api): email.service.test.ts — 14 vitest unit` — **Merged** PR #163 @ `ba17380`
+- EmailService 14 unit tests: mode selection 4 + send console 2 + sendPasswordResetEmail 6 + SMTP_FROM 2. No DB needed. Test-only.
+
+#### PR session 9m-E (this PR) — `test(api): giftcode-race.test.ts — 5 vitest concurrent economy safety`
+- **Branch**: `devin/1777549692-economy-race-tests`. **Base**: `main` @ `ba17380`.
+- **File**: `apps/api/src/modules/giftcode/giftcode-race.test.ts` (new) + `docs/AI_HANDOFF_REPORT.md`.
+- **Tests added**: 5 — concurrent maxRedeems=1 (3 users, verify exactly 1 wins + total currency correct) + maxRedeems=2 (5 users) + same-user double-redeem (unique index guard) + concurrent items grant (no over-grant) + revoke-during-redeem consistency.
+- **Risk**: 🟢 thấp — test-only, integration test (needs Postgres), no production code change.
 - **Rollback**: revert single PR.
 
 ### Done (chuỗi #33→#45 đã merge trên `main` tại `e99a35f`)
