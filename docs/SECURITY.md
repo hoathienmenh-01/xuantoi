@@ -13,6 +13,7 @@ Tóm tắt các kiểm soát an ninh đang có và các điểm còn cần cải
 - **Reuse detection**: nếu một refresh token cũ đã revoke được present lại → **revoke toàn bộ chain refresh token của user đó** (assume kẻ tấn công đã copy token → kill mọi phiên).
 - **Password change**: `passwordVersion` tăng mỗi lần đổi password → guard sẽ reject access token có `passwordVersion` cũ + revoke mọi refresh token.
 - **Rate limit login**: 5 fail / 15 phút / (IP + email) qua `LoginAttempt` table. Banned user bị reject ở đăng nhập + revoke refresh.
+- **Logout-all (POST `/api/_auth/logout-all`)**: revoke mọi refresh token còn active của user (`updateMany where revokedAt IS NULL → revokedAt = now()`). **Không bump `passwordVersion`** vì password chưa đổi → access tokens hiện hành (15 phút TTL) vẫn valid trên các thiết bị khác cho tới khi hết hạn. Sau đó các device đó cần refresh → fail vì refresh đã revoke → buộc re-login. Nếu cần force-kill session ngay lập tức (ví dụ token bị compromise trước khi hết 15 phút): phải đổi password hoặc bump `JWT_ACCESS_SECRET` rồi redeploy. Behavior intentional để tránh vô tình invalidate toàn bộ access token khi user chỉ muốn đăng xuất các device khác sau reset session.
 
 > Không có email verification / forgot password tự động → out of scope cho closed beta. Reset password phải qua admin (xoá user, viết script reset thủ công, hoặc đổi `passwordHash` qua `prisma studio`).
 
