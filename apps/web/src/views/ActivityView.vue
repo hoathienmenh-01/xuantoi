@@ -19,6 +19,7 @@ import {
 import AppShell from '@/components/shell/AppShell.vue';
 import SkeletonBlock from '@/components/ui/SkeletonBlock.vue';
 import MButton from '@/components/ui/MButton.vue';
+import { extractApiErrorCodeOrDefault } from '@/lib/apiError';
 
 const { t, te } = useI18n();
 const auth = useAuthStore();
@@ -85,7 +86,7 @@ async function load(reset = false): Promise<void> {
     entries.value = entries.value.concat(result.entries);
     cursor.value = result.nextCursor;
   } catch (e) {
-    const code = (e as { code?: string })?.code ?? 'UNKNOWN';
+    const code = extractApiErrorCodeOrDefault(e, 'UNKNOWN');
     error.value = code;
   } finally {
     loading.value = false;

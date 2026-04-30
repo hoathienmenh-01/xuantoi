@@ -11,6 +11,7 @@ import {
   type ChatMessageView,
 } from '@/api/chat';
 import { on } from '@/ws/client';
+import { extractApiErrorCodeOrDefault } from '@/lib/apiError';
 
 const game = useGameStore();
 const toast = useToastStore();
@@ -69,7 +70,7 @@ async function send(): Promise<void> {
 }
 
 function handleErr(e: unknown): void {
-  const code = (e as { code?: string })?.code ?? 'UNKNOWN';
+  const code = extractApiErrorCodeOrDefault(e, 'UNKNOWN');
   const key = `chat.errors.${code}`;
   const text = t(key, '__missing__');
   toast.push({

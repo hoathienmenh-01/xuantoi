@@ -6,6 +6,7 @@ import { useAuthStore } from '@/stores/auth';
 import { useToastStore } from '@/stores/toast';
 import { getCharacter, onboard, type OnboardInput } from '@/api/character';
 import MButton from '@/components/ui/MButton.vue';
+import { extractApiErrorCode } from '@/lib/apiError';
 
 const router = useRouter();
 const auth = useAuthStore();
@@ -61,7 +62,7 @@ async function finish(): Promise<void> {
     toast.push({ type: 'success', text: t('auth.register.success') });
     router.replace('/home');
   } catch (e) {
-    const code = (e as { code?: string })?.code;
+    const code = extractApiErrorCode(e);
     if (code === 'NAME_TAKEN') {
       toast.push({ type: 'error', text: t('onboarding.step2.errors.taken') });
       step.value = 2;

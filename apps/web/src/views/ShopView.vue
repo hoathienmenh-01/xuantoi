@@ -9,6 +9,7 @@ import { useToastStore } from '@/stores/toast';
 import { buyFromShop, listNpcShop, type ShopEntry } from '@/api/shop';
 import AppShell from '@/components/shell/AppShell.vue';
 import MButton from '@/components/ui/MButton.vue';
+import { extractApiErrorCodeOrDefault } from '@/lib/apiError';
 
 const auth = useAuthStore();
 const game = useGameStore();
@@ -71,10 +72,7 @@ async function buy(e: ShopEntry): Promise<void> {
     });
     await game.fetchState().catch(() => null);
   } catch (err) {
-    const code =
-      err && typeof err === 'object' && 'code' in err
-        ? String((err as { code?: string }).code)
-        : 'UNKNOWN';
+    const code = extractApiErrorCodeOrDefault(err, 'UNKNOWN');
     toast.push({
       type: 'error',
       text: t(`shop.errors.${code}`, t('shop.errors.UNKNOWN')),

@@ -15,6 +15,7 @@ import {
 } from '@/api/topup';
 import AppShell from '@/components/shell/AppShell.vue';
 import MButton from '@/components/ui/MButton.vue';
+import { extractApiErrorCodeOrDefault } from '@/lib/apiError';
 
 const auth = useAuthStore();
 const game = useGameStore();
@@ -65,7 +66,7 @@ async function buy(pkg: TopupPackage): Promise<void> {
 }
 
 function handleErr(e: unknown): void {
-  const code = (e as { code?: string }).code ?? 'ERR';
+  const code = extractApiErrorCodeOrDefault(e, 'ERR');
   const text = t(`topup.errors.${code}`, '__missing__');
   toast.push({
     type: 'error',

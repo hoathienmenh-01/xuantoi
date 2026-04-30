@@ -11,6 +11,7 @@ import { useI18n } from 'vue-i18n';
 import { realmByKey, fullRealmName } from '@xuantoi/shared';
 import AppShell from '@/components/shell/AppShell.vue';
 import SkeletonTable from '@/components/ui/SkeletonTable.vue';
+import { extractApiErrorCodeOrDefault } from '@/lib/apiError';
 import {
   fetchLeaderboardPower,
   fetchLeaderboardTopup,
@@ -45,7 +46,7 @@ async function load(target: Tab = tab.value): Promise<void> {
       sectRows.value = await fetchLeaderboardSect(50);
     }
   } catch (e) {
-    const code = (e as { code?: string })?.code ?? 'UNKNOWN';
+    const code = extractApiErrorCodeOrDefault(e, 'UNKNOWN');
     error.value = code;
   } finally {
     loading.value = false;

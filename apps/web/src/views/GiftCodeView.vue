@@ -9,6 +9,7 @@ import { redeemGiftCode, type GiftCodeRedeemResult } from '@/api/giftcode';
 import AppShell from '@/components/shell/AppShell.vue';
 import MButton from '@/components/ui/MButton.vue';
 import { itemName } from '@/lib/itemName';
+import { extractApiErrorCodeOrDefault } from '@/lib/apiError';
 
 const auth = useAuthStore();
 const game = useGameStore();
@@ -43,7 +44,7 @@ async function onRedeem(): Promise<void> {
     });
     await game.fetchState().catch(() => null);
   } catch (e) {
-    const err = (e as { code?: string })?.code ?? 'UNKNOWN';
+    const err = extractApiErrorCodeOrDefault(e, 'UNKNOWN');
     const label = t(`giftcode.errors.${err}`, '__missing__');
     toast.push({
       type: 'error',

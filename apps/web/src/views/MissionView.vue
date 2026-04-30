@@ -13,6 +13,7 @@ import {
 } from '@/api/mission';
 import AppShell from '@/components/shell/AppShell.vue';
 import MButton from '@/components/ui/MButton.vue';
+import { extractApiErrorCodeOrDefault } from '@/lib/apiError';
 import { formatItemRewardList } from '@/lib/itemName';
 import { applyMissionProgressFrame } from '@/lib/missionProgress';
 import { on as wsOn } from '@/ws/client';
@@ -90,7 +91,7 @@ async function onClaim(m: MissionProgressView): Promise<void> {
 }
 
 function handleErr(e: unknown): void {
-  const code = (e as { code?: string })?.code ?? 'UNKNOWN';
+  const code = extractApiErrorCodeOrDefault(e, 'UNKNOWN');
   const text = t(`mission.errors.${code}`, '__missing__');
   toast.push({
     type: 'error',

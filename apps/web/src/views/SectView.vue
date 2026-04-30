@@ -18,6 +18,7 @@ import {
 } from '@/api/sect';
 import AppShell from '@/components/shell/AppShell.vue';
 import MButton from '@/components/ui/MButton.vue';
+import { extractApiErrorCodeOrDefault } from '@/lib/apiError';
 
 const auth = useAuthStore();
 const game = useGameStore();
@@ -133,7 +134,7 @@ function realmText(key: string, stage: number): string {
 }
 
 function handleErr(e: unknown): void {
-  const code = (e as { code?: string })?.code ?? 'UNKNOWN';
+  const code = extractApiErrorCodeOrDefault(e, 'UNKNOWN');
   const text = t(`sect.errors.${code}`, '__missing__');
   toast.push({
     type: 'error',
