@@ -1,4 +1,5 @@
 import { defineStore } from 'pinia';
+import { i18n } from '@/i18n';
 import { resolveToastDuration } from '@/lib/toastDuration';
 
 export type ToastType = 'info' | 'warning' | 'error' | 'success' | 'system';
@@ -19,14 +20,24 @@ export interface ToastInput {
   duration?: number;
 }
 
-const TITLE_MAP: Record<Toast['type'], string> = {
-  info: 'Tin tức',
-  warning: 'Cảnh báo',
-  error: 'Lỗi',
-  success: 'Thành công',
+/**
+ * Resolve toast title qua i18n key `toast.title.<type>` (đã định nghĩa
+ * sẵn ở `apps/web/src/i18n/{vi,en}.json`). Trước đây Pinia store hard-code
+ * VN làm fail i18n parity khi user switch sang en — caller có thể truyền
+ * `title` override, nhưng default title luôn theo locale hiện tại.
+ *
+ * Truy cập i18n qua `i18n.global.t(...)` (Vue plugin instance) thay vì
+ * `useI18n()` vì Pinia action không phải Vue setup context. Legacy mode
+ * = false → `t` là function trả `string`.
+ */
+const TITLE_KEY: Record<Toast['type'], string> = {
+  info: 'toast.title.info',
+  warning: 'toast.title.warning',
+  error: 'toast.title.error',
+  success: 'toast.title.success',
 };
+const TITLE_KEY_SYSTEM = 'toast.title.system';
 
-const TITLE_SYSTEM = 'Thiên Đạo Sứ Giả';
 const ANTI_SPAM_MS = 1200;
 const MAX_TOASTS = 4;
 
@@ -54,7 +65,8 @@ export const useToastStore = defineStore('toast', {
       if (recent) return;
 
       const duration = resolveToastDuration(type, raw.duration);
-      const title = raw.title ?? (isSystem ? TITLE_SYSTEM : TITLE_MAP[type]);
+      const t = i18n.global.t.bind(i18n.global);
+      const title = raw.title ?? (isSystem ? t(TITLE_KEY_SYSTEM) : t(TITLE_KEY[type]));
 
       const id = `t_${now}_${Math.random().toString(36).slice(2, 8)}`;
       this.toasts.push({ id, type, text, title, duration, createdAt: now });
