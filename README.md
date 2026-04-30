@@ -82,6 +82,9 @@ Xem chi tiết spec **blueprint gốc** trong [`docs/04_TECH_STACK_VA_DATA_MODEL
 
 ## Tài liệu developer
 
+> 👉 **AI/dev mới: bắt đầu ở [`docs/START_HERE.md`](./docs/START_HERE.md)** — file này định tuyến tới đúng doc theo mục đích (trạng thái hiện tại / vision / roadmap / economy / content / balance / live ops).
+
+- [`docs/START_HERE.md`](./docs/START_HERE.md) — **cổng vào docs**, đọc trước tiên.
 - [`docs/RUN_LOCAL.md`](./docs/RUN_LOCAL.md) — dựng môi trường dev đầy đủ (infra, migrate, bootstrap, dev server).
 - [`docs/DEPLOY.md`](./docs/DEPLOY.md) — deploy api + web ra production (env, build, migrate, smoke checklist).
 - [`docs/ADMIN_GUIDE.md`](./docs/ADMIN_GUIDE.md) — admin ops: duyệt topup, grant currency, gift code, mail, ban.

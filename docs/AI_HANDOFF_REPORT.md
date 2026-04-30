@@ -1,6 +1,10 @@
 # AI Handoff Report — Xuân Tôi
 
-> **Snapshot (session 9q, this PR — docs blueprint refresh)**: `main` @ `bd55e5b` (PR #204 admin.controller +97 vitest merged). **Session 9q (this PR)**: docs-only — refresh `04` + `05` thành long-term blueprint, tạo 6 docs mới: [`GAME_DESIGN_BIBLE.md`](./GAME_DESIGN_BIBLE.md), [`LONG_TERM_ROADMAP.md`](./LONG_TERM_ROADMAP.md), [`ECONOMY_MODEL.md`](./ECONOMY_MODEL.md), [`CONTENT_PIPELINE.md`](./CONTENT_PIPELINE.md), [`BALANCE_MODEL.md`](./BALANCE_MODEL.md), [`LIVE_OPS_MODEL.md`](./LIVE_OPS_MODEL.md). KHÔNG sửa runtime code, KHÔNG migration, KHÔNG refactor. Risk: low (docs-only). Baseline tests **1133 vitest** (api 1133, +shared 238 +web 555 sau merge của session 9p task L/M/N qua PR #201/#202/#204), KHÔNG thay đổi vì không đụng test.
+> 👉 **AI/dev mới: ĐỌC [`docs/START_HERE.md`](./START_HERE.md) TRƯỚC.** File đó định tuyến bạn tới đúng doc theo mục đích (trạng thái / vision / roadmap / economy / content / balance / live ops).
+
+> **Snapshot (session 9q-2, this PR — START_HERE entry doc)**: docs-only — thêm [`docs/START_HERE.md`](./START_HERE.md) làm cổng vào cho AI/dev mới (decision table theo mục đích + reading order theo role + DO/DON'T + map 25 file docs). Cập nhật `README.md` add pointer tới START_HERE. Không sửa runtime code. Risk: low.
+>
+> **Snapshot (session 9q, merged)**: `main` @ `bd55e5b` (PR #204 admin.controller +97 vitest merged). **Session 9q (this PR)**: docs-only — refresh `04` + `05` thành long-term blueprint, tạo 6 docs mới: [`GAME_DESIGN_BIBLE.md`](./GAME_DESIGN_BIBLE.md), [`LONG_TERM_ROADMAP.md`](./LONG_TERM_ROADMAP.md), [`ECONOMY_MODEL.md`](./ECONOMY_MODEL.md), [`CONTENT_PIPELINE.md`](./CONTENT_PIPELINE.md), [`BALANCE_MODEL.md`](./BALANCE_MODEL.md), [`LIVE_OPS_MODEL.md`](./LIVE_OPS_MODEL.md). KHÔNG sửa runtime code, KHÔNG migration, KHÔNG refactor. Risk: low (docs-only). Baseline tests **1133 vitest** (api 1133, +shared 238 +web 555 sau merge của session 9p task L/M/N qua PR #201/#202/#204), KHÔNG thay đổi vì không đụng test.
 > 
 > **Mục đích PR docs này** (cho AI/dev đọc handoff sau):
 > 1. **`GAME_DESIGN_BIBLE.md`** — vision, core loop, gameplay system, product principles. Cảm xúc + invariants + dependency overview.
