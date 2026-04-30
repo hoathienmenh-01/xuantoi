@@ -1,6 +1,6 @@
 # AI Handoff Report — Xuân Tôi
 
-> **Snapshot (session 9o kickoff — audit refresh post-9n close-out)**: `main` @ `e40a4c5` (Merge PR #179, 30 Apr 2026 ~17:15 UTC). **Session 9n fully closed (15 PR merged #165..#179)**: all merged. PR #182 (chat.service WS+history +11 vitest, replaces #180) + PR #183 (mission.processor +8 vitest, replaces #181) open, CI ✅, pending user merge. **Baseline verified local 30/4 ~17:05 UTC**: `pnpm typecheck` ✅ · `pnpm lint` ✅ · shared **220/220** · web **547/547** (post-#179) · `pnpm build` ✅. API test chưa chạy local (cần infra:up). **Session 9o**: audit refresh → chọn task tiếp theo.
+> **Snapshot (session 9o progress)**: `main` @ `59e0901` (Merge PR #188, 30 Apr 2026 ~17:48 UTC). **Session 9o merged**: PR #184 (audit refresh) @ `b283cb9`, PR #186 (chat.service WS+history +11 vitest) @ `1b587bc`, PR #187 (mission.processor +8 vitest) @ `295ae6b`, PR #188 (cultivation processor+service +14 vitest) @ `59e0901`. **i18n parity audit**: no VN hard-code in production templates — project i18n clean. **Baseline**: `pnpm typecheck` ✅ · `pnpm lint` ✅ · shared **220/220** · web **547/547** · `pnpm build` ✅. API test chưa chạy local (cần infra:up, estimated ~619+ post-#186/#187/#188).
 
 > **Snapshot (session 9n-O merged as PR #179)**: ws/client.ts resolveWsOrigin +15 vitest. Web test baseline 532 → **547**.
 
@@ -74,9 +74,9 @@
 ## 2. Current Branch / CI / PR Status
 
 - **Default branch**: `main`.
-- **Commit audit (session 9o kickoff)**: `e40a4c5 Merge pull request #179` (HEAD `main`, 30/4 ~17:15 UTC).
-- **CI gần nhất trên main**: xanh — PR #179 ✅; toàn bộ session 9n (#165..#179) xanh khi merge.
-- **PR open đáng kể (audit time 30/4 ~17:20 UTC)**: **2 PR open** — #182 (chat.service WS+history tests, replaces #180) CI ✅ · #183 (mission.processor tests, replaces #181) CI ✅ — cả hai pending user merge. **PR #180, #181 superseded** (stale merge conflict flag) — close manually.
+- **Commit audit (session 9o progress)**: `59e0901 Merge pull request #188` (HEAD `main`, 30/4 ~17:48 UTC).
+- **CI gần nhất trên main**: xanh — PR #188 ✅; session 9o: #184, #186, #187, #188 all merged.
+- **PR open đáng kể (audit time 30/4 ~17:50 UTC)**: **0 PR open**. **PR #180, #181, #182, #183, #185 superseded** — close manually.
 - **Commit audit (trước đó, session 9n kickoff)**: `d332a18` (PR #164, 30/4 ~11:51 UTC).
 - **Commit audit (trước đó, session 9m kickoff)**: `f103485 Merge pull request #159 from hoathienmenh-01/devin/1777546019-ui-primitive-tests` (HEAD `main`, 30/4 ~11:00 UTC).
 - **Commit audit (trước đó, session 9i close)**: `27552a8 Merge pull request #118 from hoathienmenh-01/devin/1777527557-admin-tab-badges` (HEAD `main`, 30/4 ~06:18 UTC).
@@ -84,6 +84,10 @@
 - **PR merged gần đây ảnh hưởng lớn**:
   | PR | Chủ đề | Impact |
   |---|---|---|
+  | #188 | test(api): cultivation processor+service pure unit +14 vitest (session 9o) | Job guard, stamina regen, EXP grant, breakthrough, mission isolation, per-char error isolation, scheduleRecurring — merge `59e0901` |
+  | #187 | test(api): mission.processor reset worker +8 vitest (session 9o) | BullMQ job guard + error propagation + log branches — merge `295ae6b` |
+  | #186 | test(api): chat.service WS emit + history isolation +11 vitest (session 9o) | WS broadcast/room + sect isolation + history ordering — merge `1b587bc` |
+  | #184 | docs(handoff): session 9o audit refresh (session 9o) | Bump snapshot `e40a4c5` → PR table + baselines — merge `b283cb9` |
   | #179 | test(web): ws/client.ts resolveWsOrigin +15 vitest (session 9n-O) | WS origin strip path regression lock-in — merge `e40a4c5` |
   | #178 | test(api): AllExceptionsFilter +21 vitest (session 9n-N) | Security no-leak + envelope contract — merge `e20d2fe` |
   | #177 | test(api): realtime.service +20 vitest (session 9n-M) | Attach/detach/emit/broadcast/room/bind — merge `d531c49` |
@@ -1947,17 +1951,17 @@ apps/api/src/modules/character/currency.service.ts:88   data: { tienNgoc: { incr
 | Bootstrap | **7 test** (`scripts/bootstrap.test.ts`) (PR #33) | — | — |
 | Character/Currency | 9 test (`currency.service.test.ts`) | Test breakthrough multi-stage | Low |
 | Character/Profile | **6 test** (`character.service.test.ts`) (PR #38) | — | — |
-| Cultivation | 5 test (`cultivation.processor.test.ts`) | Multi-instance lock test | Medium |
+| Cultivation | **19 test** (`cultivation.processor.test.ts` 5 integration + `cultivation.processor.pure.test.ts` 11 pure unit PR #188 + `cultivation.service.test.ts` 3 pure unit PR #188) — pure unit cover: job.name guard, stamina regen SQL, empty cultivating early-return, EXP grant + payload shape, auto-breakthrough stage<9, stage-9 cap, mission.track failure isolation, per-char error isolation, CULTIVATE_SECONDS/GAIN_EXP/BREAKTHROUGH mission tracking, scheduleRecurring cleanup. | Multi-instance lock test (needs real DB concurrent) | Low |
 | Combat | 7 test (`combat.service.test.ts`) | Skill with status effect chain | Low |
 | Inventory | **19 test** (`inventory.service.test.ts`) (PR #34) + **7 test** (`item-ledger.test.ts`) (PR #40) | Concurrency `Promise.all` race | Low |
 | Market | **10 test** (`market.service.test.ts`) — +2 ledger flow (PR #40) | Fee config test | Low |
 | Sect | 7 test (`sect.service.test.ts`) | Leader transfer (feature chưa có) | Low |
-| Chat | 9 test (`chat.service.test.ts`) | Redis failover test | Low |
+| Chat | **20 test** (`chat.service.test.ts` 9 + `chat.service.ws-history.test.ts` 11 PR #186) — +11 cover: WS emit `sendWorld`→broadcast / `sendSect`→emitToRoom / mutual exclusion, history ordering oldest-first / empty / sect A↔B isolation breach check / WORLD↔SECT isolation / `historySect` NO_CHARACTER/NO_SECT, view shape + text trim. | Redis failover test | Low |
 | Boss | **16 test** (`boss.service.test.ts`) — +7 cho `adminSpawn` (PR #36) | Spawn cron auto (feature chưa có) | Medium |
 | Admin/Topup | **13 test** (`admin-stats` 3 + `topup-admin` 10) + **17 test** (`topup.service.test.ts` session 9m) — createOrder happy/invalid/limit/isolation/uniqueness/persistence/slot-free, listForUser empty/sorted/isolation/cap-50, bankInfo, toView normal/fallback, economy safety (no currency change/no ledger entry) | — | — |
 | GiftCode | 12 test (`giftcode.service.test.ts`) + **5 race test** (`giftcode-race.test.ts` session 9m) — concurrent maxRedeems=1 (3 users), maxRedeems=2 (5 users), same-user double-redeem (unique index), concurrent items grant, revoke-during-redeem consistency | — | — |
 | Mail | **34 test** (`mail.service.test.ts` 14 + `mail.service.ws-and-prune.test.ts` 20 session 9n-L) — +20 cover WS `mail:new` emit spy cho sendToCharacter/broadcast + pruneExpired (claim cũ/expired không reward/expired có reward GIỮ) + validateInput edge cases (subject>120/body>2000/items>10/qty<=0/itemKey rỗng/reward âm/boundary OK) | Full WS integration end-to-end qua socket.io client | Low |
-| Mission | **26 test** (`mission.service.test.ts`) — +7 cho timezone (PR #42) | — | — |
+| Mission | **34 test** (`mission.service.test.ts` 26 + `mission.processor.test.ts` 8 PR #187) — +8 pure unit cover: process('reset') order DAILY→WEEKLY, skip non-reset job name, skip empty name, error propagation (DAILY fail → no WEEKLY), 4 log branch combos (daily=weekly=0 / daily>0 / weekly>0 / both>0). | — | — |
 | **Shop** | **10 test** (`shop.service.test.ts`) (PR #39) | Daily limit (feature chưa có) | — |
 | Health | 4 test (`health.controller.test.ts`) | — | — |
 | Ops | **7 test** (`ops.processor.test.ts`) | — | — |
@@ -2264,14 +2268,9 @@ Admin hiện tại có thể vào `/admin` → Users → tìm → **Set role = A
 
 1b. ~~**Smart admin economy alerts thresholds env-tunable**~~ — **Done this session PR #167 (in-flight)**. `ECONOMY_ALERTS_DEFAULT_STALE_HOURS` / `_MIN_` / `_MAX_` override. Doc ở `ADMIN_GUIDE §11.3`, `.env.example`.
 
-2. **API service tests còn thiếu (sau 9m)** — kiểm tra coverage gap:
-   - `mail.service.test.ts` mở rộng WS `mail:new` integration end-to-end.
-   - `chat.service.test.ts` Redis failover branch.
-   - `boss.service.test.ts` spawn cron auto branch (chưa có feature, skip).
-   - `cultivation.processor.test.ts` multi-instance lock.
-   - **Risk 🟢 thấp** — test-only. **Priority**: medium (test gap trong §12).
+2. ~~**API service tests còn thiếu (sau 9m)**~~ — **Mostly Done session 9o**: `chat.service.ws-history.test.ts` +11 vitest (PR #186 Merged), `mission.processor.test.ts` +8 vitest (PR #187 Merged), `cultivation.processor.pure.test.ts` +11 + `cultivation.service.test.ts` +3 vitest (PR #188 Merged). **Remaining low-priority gaps**: `chat.service.test.ts` Redis failover branch (Low), `boss.service.test.ts` spawn cron auto (feature chưa có, skip), cultivation multi-instance lock (needs real DB concurrent, Low).
 
-3. **i18n parity audit cho mission/mail/giftcode/admin keys mới sau 9j** — grep `\['"\`].*[À-ỹ].*['"\`]\` trong .vue/.ts để bắt VN hard-code còn sót. **Risk 🟢 thấp** — docs/i18n only.
+3. ~~**i18n parity audit cho mission/mail/giftcode/admin keys mới sau 9j**~~ — **Done session 9o**: grep `[À-ỹ]` trong `<template>` sections of all `.vue` files — **no hard-coded VN strings found** in production templates. All VN characters are in: comments, test fixtures, regex patterns (`OnboardingView NAME_RE`), or intentional labels (`Tiếng Việt` in SettingsView). Project i18n is clean.
 
 4. **Mobile responsive smoke** — viewport <375px audit cho AppShell + AdminView + InventoryView. Chưa có test E2E mobile-specific. **Risk 🟢 thấp** — Playwright config viewport.
 
