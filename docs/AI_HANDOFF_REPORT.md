@@ -1,6 +1,8 @@
 # AI Handoff Report — Xuân Tôi
 
-> **Snapshot (session 9p task C, this PR)**: `main` @ `4b1d5b6` (Merge PR #191 ledger-audit-json.test.ts +12 vitest, 30 Apr 2026 ~18:35 UTC). **Session 9p task C (this PR)**: pure-unit tests cho `OpsService.scheduleRecurring` + `MissionScheduler.onModuleInit` — ghost cleanup invariant (xoá repeatable cũ tên 'prune'/'reset' trước add lại), không xoá nhầm tên khác, `add()` 1 lần với `repeat.every` từ constant queue, `removeOnComplete/removeOnFail` cap 10, interval constants chính xác (24h cho ops, 10min cho mission). +12 vitest, mocked BullMQ Queue, no Redis. API baseline **641 → 653** (verified local 30/4 18:54 UTC với real Postgres + Redis: 58 file / 653 pass).
+> **Snapshot (session 9p task D, this PR)**: `main` @ `08b9f1f` (Merge PR #192 ops + mission scheduler ghost-cleanup +12 vitest, 30 Apr 2026 ~18:58 UTC). **Session 9p task D (this PR)**: docs catch-up `docs/CHANGELOG.md` thêm 3 section (session 9n+ tail PR #172→#179, session 9o PR #184→#189, session 9p PR #190→#192) — đồng bộ với `AI_HANDOFF_REPORT.md`. Docs-only, no code change. API baseline giữ **653** (no test added).
+>
+> **Snapshot (session 9p task C, merged)**: `main` @ `08b9f1f` (Merge PR #192, 30/4 ~18:58 UTC). **PR #192**: `apps/api/src/modules/ops/ops.service.test.ts` + `apps/api/src/modules/mission/mission.scheduler.test.ts` (+12 pure-unit vitest, lock-in BullMQ ghost-cleanup invariant). API baseline **641 → 653**. CI ✅.
 >
 > **Snapshot (session 9p task B, merged)**: `main` @ `4b1d5b6` (Merge PR #191, 30/4 ~18:35 UTC). **PR #191**: `apps/api/src/modules/admin/ledger-audit-json.test.ts` (+12 pure-unit vitest, lock-in BigInt→string serializer cho admin economy ledger view). API baseline **629 → 641**. CI ✅ · Devin Review ✅.
 >
@@ -177,9 +179,20 @@
 
 ---
 
-## Recent Changes (PR #33→#191 đã merged trên main; session 9p task C **this PR** pure-unit tests cho OpsService + MissionScheduler ghost cleanup)
+## Recent Changes (PR #33→#192 đã merged trên main; session 9p task D **this PR** docs CHANGELOG catch-up sessions 9n+ tail / 9o / 9p)
 
-### PR session 9p task C (in-flight, this PR) — `test(api): ops.service + mission.scheduler ghost-cleanup invariant +12 pure unit (mocked BullMQ Queue)` — **Pending merge**
+### PR session 9p task D (in-flight, this PR) — `docs(changelog): catch-up sessions 9n+ tail / 9o / 9p (PR #172→#192)` — **Pending merge**
+
+- **Branch**: `devin/1777575721-changelog-catchup-9o-9p`. **Base**: `main` @ `08b9f1f` (post PR #192 merge).
+- **Vì sao**: `docs/CHANGELOG.md` chưa cập nhật từ session 9n (last entry PR #165→#171). Sessions 9n tail (PR #172→#179), 9o (PR #184→#189), 9p (PR #190→#192) toàn bộ chỉ ghi trong `AI_HANDOFF_REPORT.md` mà không có summary trong CHANGELOG → người đọc nhanh / release notes thiếu thông tin. CHANGELOG là tóm tắt nhân-văn cho người chơi/admin/dev, AI_HANDOFF_REPORT là deep audit log cho AI/dev — 2 file phải đồng bộ.
+- **Files**: `docs/CHANGELOG.md` (3 section mới: session 9n+ tail, 9o, 9p) · `docs/AI_HANDOFF_REPORT.md` (snapshot bump + session 9p table row + this PR detail).
+- **Tests**: docs-only, không thêm test. CHANGELOG được lưu để người đọc tham chiếu.
+- **CI**: typecheck/lint/test/build không bị ảnh hưởng (no code change).
+- **Risk / rollback**: 🟢 zero — docs-only. Rollback = revert PR.
+
+### PR #192 — `test(api): ops.service + mission.scheduler ghost-cleanup invariant +12 pure unit (mocked BullMQ Queue)` — **Merged into main** @ `08b9f1f` (30/4 ~18:58 UTC). CI ✅.
+
+### PR session 9p task C (closed, merged) — `test(api): ops.service + mission.scheduler ghost-cleanup invariant +12 pure unit (mocked BullMQ Queue)` — **Merged into main** @ `08b9f1f`
 
 - **Branch**: `devin/1777575164-scheduler-ghost-cleanup-unit-tests`. **Base**: `main` @ `4b1d5b6` (post PR #191 merge).
 - **Vì sao**: 2 service ngắn (29 line mỗi) untested có invariant rất quan trọng — TRƯỚC khi add lại job repeatable, MỌI job tên cũ phải bị `removeRepeatableByKey` để tránh "ghost job" tích lũy khi đổi interval / hot-reload / app restart. Bug regression nếu code tương lai bỏ vòng lặp xoá → 2 job repeatable chạy song song → prune chạy 2 lần / mission reset 2 lần / log nhân đôi / overload Postgres và Redis. Ngoài ra cần lock-in: `add('prune'/'reset', ...)` chỉ gọi 1 lần với `repeat.every` đúng constant từ queue, `removeOnComplete/removeOnFail` cap = 10 (không tích log vô hạn), interval constants stable (24h ops / 10min mission). Pure-unit mock BullMQ Queue (`getRepeatableJobs`, `removeRepeatableByKey`, `add`) — không cần Redis / `infra:up`.
@@ -2560,7 +2573,8 @@ F. ~~**`docs/CHANGELOG.md` bootstrap**~~ — **Done by PR #104** (Merged into ma
 |---|---|---|
 | #190 | session 9p task A — test(api): HealthController.readyz failure paths +10 pure unit | **Merged into main** @ `24597f0` (30/4 ~18:13 UTC, CI 5/5 ✅) |
 | #191 | session 9p task B — test(api): admin/ledger-audit auditResultToJson +12 pure unit | **Merged into main** @ `4b1d5b6` (30/4 ~18:35 UTC, CI ✅) |
-| this PR | session 9p task C — test(api): ops.service + mission.scheduler ghost-cleanup +12 pure unit | **Pending merge** (in-flight) |
+| #192 | session 9p task C — test(api): ops.service + mission.scheduler ghost-cleanup +12 pure unit | **Merged into main** @ `08b9f1f` (30/4 ~18:58 UTC, CI ✅) |
+| this PR | session 9p task D — docs(changelog): catch-up sessions 9n+ tail / 9o / 9p (PR #172→#192) | **Pending merge** (in-flight) |
 
 #### PR session 9p task C (in-flight, this PR) — `test(api): ops.service + mission.scheduler ghost-cleanup +12 pure unit`
 

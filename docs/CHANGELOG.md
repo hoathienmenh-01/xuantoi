@@ -10,7 +10,51 @@ Tóm tắt **người chơi / vận hành / dev** dễ đọc, theo PR đã merg
 
 ## [Unreleased]
 
-> Pending merge: PR #172 (docs CHANGELOG catch-up 9m+9n — this PR) · PR #173 (test shared combat 40 vitest) · PR #174 (test shared missions 18 vitest).
+> Pending merge: docs CHANGELOG catch-up sessions 9o + 9p (this PR).
+
+---
+
+## [session 9p — PR #190 → #192, merged 30/4 18:13→18:58 UTC]
+
+### Internal — API pure-unit test coverage push (no runtime change)
+
+- **HealthController.readyz failure paths** (PR #190): +10 vitest (mocked PrismaService.$queryRaw + Redis.ping). Lock-in 503 envelope shape khi DB hoặc Redis fail / Redis trả non-PONG; happy path không gọi `res.status`; error stringify fallback (Error vs non-Error); `version` env override + default. `apps/api/src/modules/health/health.controller.unit.test.ts`. API baseline 619 → 629.
+- **admin/ledger-audit `auditResultToJson` JSON serializer** (PR #191): +12 vitest pure-unit cho serializer dùng bởi admin endpoint `GET /admin/economy/audit-ledger`. Lock-in BigInt→string preserve precision khi vượt `Number.MAX_SAFE_INTEGER` (chính lý do tồn tại serializer); negative diff giữ dấu; zero giữ "0"; inventoryDiscrepancies (number) passthrough; JSON.stringify roundtrip safety; no input mutation. `apps/api/src/modules/admin/ledger-audit-json.test.ts`. API baseline 629 → 641.
+- **Scheduler ghost-cleanup invariant** (PR #192): +12 vitest pure-unit cho `OpsService.scheduleRecurring` + `MissionScheduler.onModuleInit` (mocked BullMQ Queue). Lock-in: trước add lại job repeatable, MỌI job tên match cũ phải bị `removeRepeatableByKey` (tránh ghost duplication khi hot-reload / interval change); non-match name không xoá nhầm; `add()` 1 lần với `repeat.every` từ constant + `removeOnComplete/removeOnFail` cap 10; constant interval lock (`OPS_PRUNE_INTERVAL_MS === 24h`, `MISSION_RESET_INTERVAL_MS === 10min`). `apps/api/src/modules/ops/ops.service.test.ts` + `apps/api/src/modules/mission/mission.scheduler.test.ts`. API baseline 641 → 653.
+
+### Docs
+
+- **AI_HANDOFF_REPORT** liên tục bumped sau mỗi PR (snapshot, Recent Changes, §21 Session 9p table).
+
+---
+
+## [session 9o — PR #184 → #189, merged 30/4 17:30→17:52 UTC]
+
+### Internal — API service WS / queue test coverage push
+
+- **chat.service WS + history** (PR #186): +11 vitest cho `ChatService` — emit events, room join/leave, history pagination, anti-spam moderation paths. `apps/api/src/modules/chat/chat.service.ws-history.test.ts`. API baseline 597 → 608.
+- **mission.processor reset** (PR #187): +8 vitest cho `MissionResetProcessor` — DAILY/WEEKLY window reset, idempotent, không throw khi reset rỗng. `apps/api/src/modules/mission/mission.processor.test.ts`. API baseline 608 → 616.
+- **cultivation processor + service** (PR #188): +14 vitest cho `CultivationProcessor` (tick/breakthrough job paths) + `CultivationService` (start/stop/snapshot). Lock-in EXP accumulation, breakthroughReady invariant, ledger atomicity. API baseline 616 → 619.
+
+### Docs
+
+- **Audit refresh session 9o kickoff + progress** (PR #184 / #189): bump snapshot + close-out cascade.
+
+---
+
+## [session 9n+ tail — PR #172 → #179, merged 30/4 13:15→17:00 UTC]
+
+### Added — Tests-only PRs (lock-in coverage, no runtime change)
+
+- **shared catalogs** (PR #173 +40 / #174 +18 / #175 +shared core types): combat formulas, mission templates, item/realm catalog Zod schemas. Shared baseline 96 → 220 vitest.
+- **mail WS prune** (PR #176): MailService prune-on-claim invariant.
+- **realtime.service** (PR #177): WS service emit + room mapping unit tests.
+- **AllExceptionsFilter** (PR #178): error envelope shape lock-in (HTTP code + i18n message key + stack masking).
+- **ws/client (web) `resolveWsOrigin`** (PR #179): +15 vitest pure-unit. Web baseline 532 → 547.
+
+### Docs
+
+- **CHANGELOG session 9n catch-up** (PR #172): backfill session 9n entries.
 
 ---
 
