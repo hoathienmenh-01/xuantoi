@@ -1,4 +1,5 @@
 import { defineStore } from 'pinia';
+import { resolveToastDuration } from '@/lib/toastDuration';
 
 export type ToastType = 'info' | 'warning' | 'error' | 'success' | 'system';
 
@@ -52,7 +53,7 @@ export const useToastStore = defineStore('toast', {
       );
       if (recent) return;
 
-      const duration = raw.duration ?? (type === 'warning' || type === 'error' ? 3600 : 2600);
+      const duration = resolveToastDuration(type, raw.duration);
       const title = raw.title ?? (isSystem ? TITLE_SYSTEM : TITLE_MAP[type]);
 
       const id = `t_${now}_${Math.random().toString(36).slice(2, 8)}`;

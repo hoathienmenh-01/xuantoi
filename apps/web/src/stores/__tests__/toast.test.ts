@@ -16,14 +16,33 @@ describe('useToastStore', () => {
     expect(t.type).toBe('info');
     expect(t.title).toBe('Tin tức');
     expect(t.text).toBe('Hello');
-    expect(t.duration).toBe(2600);
+    expect(t.duration).toBe(3000);
   });
 
   it('push warning uses longer duration and warning title', () => {
     const toast = useToastStore();
     toast.push({ type: 'warning', text: 'careful' });
     expect(toast.toasts[0].title).toBe('Cảnh báo');
-    expect(toast.toasts[0].duration).toBe(3600);
+    expect(toast.toasts[0].duration).toBe(5000);
+  });
+
+  it('push error uses longest default duration', () => {
+    const toast = useToastStore();
+    toast.push({ type: 'error', text: 'boom' });
+    expect(toast.toasts[0].type).toBe('error');
+    expect(toast.toasts[0].duration).toBe(6000);
+  });
+
+  it('push success uses success default duration', () => {
+    const toast = useToastStore();
+    toast.push({ type: 'success', text: 'done' });
+    expect(toast.toasts[0].duration).toBe(3500);
+  });
+
+  it('caller override duration takes precedence over default policy', () => {
+    const toast = useToastStore();
+    toast.push({ type: 'error', text: 'flash', duration: 100 });
+    expect(toast.toasts[0].duration).toBe(100);
   });
 
   it('"warn" alias maps to warning type', () => {
