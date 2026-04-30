@@ -1,6 +1,8 @@
 # AI Handoff Report — Xuân Tôi
 
-> **Snapshot (session 9p task B, this PR)**: `main` @ `24597f0` (Merge PR #190 health.controller.unit.test.ts +10 vitest, 30 Apr 2026 ~18:13 UTC). **Session 9p task B (this PR)**: pure-unit tests cho `auditResultToJson` — bigint→string preserve precision (>MAX_SAFE_INTEGER), negative diff, zero, multi-row order independence, inventoryDiscrepancies number passthrough, JSON.stringify roundtrip safety, no input mutation (+12 vitest, no DB). API baseline **629 → 641** (verified local 30/4 18:21 UTC với real Postgres + Redis: 56 file / 641 pass).
+> **Snapshot (session 9p task C, this PR)**: `main` @ `4b1d5b6` (Merge PR #191 ledger-audit-json.test.ts +12 vitest, 30 Apr 2026 ~18:35 UTC). **Session 9p task C (this PR)**: pure-unit tests cho `OpsService.scheduleRecurring` + `MissionScheduler.onModuleInit` — ghost cleanup invariant (xoá repeatable cũ tên 'prune'/'reset' trước add lại), không xoá nhầm tên khác, `add()` 1 lần với `repeat.every` từ constant queue, `removeOnComplete/removeOnFail` cap 10, interval constants chính xác (24h cho ops, 10min cho mission). +12 vitest, mocked BullMQ Queue, no Redis. API baseline **641 → 653** (verified local 30/4 18:54 UTC với real Postgres + Redis: 58 file / 653 pass).
+>
+> **Snapshot (session 9p task B, merged)**: `main` @ `4b1d5b6` (Merge PR #191, 30/4 ~18:35 UTC). **PR #191**: `apps/api/src/modules/admin/ledger-audit-json.test.ts` (+12 pure-unit vitest, lock-in BigInt→string serializer cho admin economy ledger view). API baseline **629 → 641**. CI ✅ · Devin Review ✅.
 >
 > **Snapshot (session 9p task A, merged)**: `main` @ `24597f0` (Merge PR #190, 30/4 ~18:13 UTC). **PR #190**: `apps/api/src/modules/health/health.controller.unit.test.ts` (+10 pure-unit vitest). API baseline **619 → 629**. CI 5/5 ✅ · Devin Review ✅.
 >
@@ -175,9 +177,29 @@
 
 ---
 
-## Recent Changes (PR #33→#190 đã merged trên main; session 9p task B **this PR** pure-unit tests cho ledger-audit auditResultToJson)
+## Recent Changes (PR #33→#191 đã merged trên main; session 9p task C **this PR** pure-unit tests cho OpsService + MissionScheduler ghost cleanup)
 
-### PR session 9p task B (in-flight, this PR) — `test(api): admin/ledger-audit auditResultToJson +12 pure unit (bigint→string preserve precision/sign/zero, inventory passthrough, JSON.stringify safety, no input mutation)` — **Pending merge**
+### PR session 9p task C (in-flight, this PR) — `test(api): ops.service + mission.scheduler ghost-cleanup invariant +12 pure unit (mocked BullMQ Queue)` — **Pending merge**
+
+- **Branch**: `devin/1777575164-scheduler-ghost-cleanup-unit-tests`. **Base**: `main` @ `4b1d5b6` (post PR #191 merge).
+- **Vì sao**: 2 service ngắn (29 line mỗi) untested có invariant rất quan trọng — TRƯỚC khi add lại job repeatable, MỌI job tên cũ phải bị `removeRepeatableByKey` để tránh "ghost job" tích lũy khi đổi interval / hot-reload / app restart. Bug regression nếu code tương lai bỏ vòng lặp xoá → 2 job repeatable chạy song song → prune chạy 2 lần / mission reset 2 lần / log nhân đôi / overload Postgres và Redis. Ngoài ra cần lock-in: `add('prune'/'reset', ...)` chỉ gọi 1 lần với `repeat.every` đúng constant từ queue, `removeOnComplete/removeOnFail` cap = 10 (không tích log vô hạn), interval constants stable (24h ops / 10min mission). Pure-unit mock BullMQ Queue (`getRepeatableJobs`, `removeRepeatableByKey`, `add`) — không cần Redis / `infra:up`.
+- **Files**:
+  - `apps/api/src/modules/ops/ops.service.test.ts` — **new** 6 vitest pure-unit cho `OpsService.scheduleRecurring`:
+    - queue rỗng → chỉ `add('prune', {}, { repeat: { every: 24h }, removeOnComplete: 10, removeOnFail: 10 })` 1 lần.
+    - 1 prune cũ → `removeRepeatableByKey(oldKey)` trước `add` (verify call order).
+    - 3 prune cũ → 3 lần `removeRepeatableByKey` với đúng key.
+    - non-prune (`reset`, `other`) trong queue → KHÔNG xoá nhầm.
+    - mix prune + non-prune → chỉ xoá prune.
+    - `OPS_PRUNE_INTERVAL_MS === 24 * 60 * 60 * 1000` constant lock.
+  - `apps/api/src/modules/mission/mission.scheduler.test.ts` — **new** 6 vitest pure-unit cho `MissionScheduler.onModuleInit`:
+    - mirror tests cho `reset` job + `MISSION_RESET_INTERVAL_MS === 10 * 60 * 1000` constant lock.
+- **Tests**: 12 vitest mới (verified local 30/4 18:53 UTC, 757ms). API baseline **641 → 653** (verified local 30/4 18:54 UTC với real Postgres + Redis: 58 file / 653 pass).
+- **Risk / rollback**: 🟢 thấp — pure test additions, không thay đổi runtime, không schema change. Rollback = revert PR (xóa 2 file test).
+- **Audit update**: §0 snapshot bump `4b1d5b6` → kickoff session 9p task C, Recent Changes block, §21 thêm task C entry.
+
+### PR #191 — `test(api): admin/ledger-audit auditResultToJson +12 pure unit (session 9p task B)` — **Merged into main** @ `4b1d5b6` (30/4 ~18:35 UTC). CI ✅.
+
+### PR session 9p task B (closed, merged) — `test(api): admin/ledger-audit auditResultToJson +12 pure unit (bigint→string preserve precision/sign/zero, inventory passthrough, JSON.stringify safety, no input mutation)` — **Merged into main** @ `4b1d5b6`
 
 - **Branch**: `devin/1777573112-ledger-audit-json-tests`. **Base**: `main` @ `24597f0` (post PR #190 merge).
 - **Vì sao**: `auditResultToJson` (165 line trong `apps/api/src/modules/admin/ledger-audit.ts`) là pure helper biến `AuditResult` (bigint cho ledgerSum/characterValue/diff) sang `AuditResultJson` (string) cho admin HTTP endpoint `GET /admin/economy/audit-ledger` — KHÔNG có test riêng. CLI script đã có `audit-ledger-format.test.ts` test `formatResultJson` nhưng đó là function khác (CLI output format). Thiếu lock-in cho contract: BigInt → string preserve precision khi vượt `Number.MAX_SAFE_INTEGER` (chính lý do tồn tại serializer thay vì gửi number); negative diff giữ dấu "-N"; zero giữ "0"; inventoryDiscrepancies (number) passthrough không bị string-ify nhầm; JSON.stringify không throw "Do not know how to serialize a BigInt"; input không bị mutate. Bug regression nếu ai đó "tối ưu" sau này thành `Number(d.ledgerSum)` sẽ làm tròn sai cho character giàu — silent corruption ledger view. Pure-unit no DB.
@@ -2537,11 +2559,29 @@ F. ~~**`docs/CHANGELOG.md` bootstrap**~~ — **Done by PR #104** (Merged into ma
 | PR | Task | Status |
 |---|---|---|
 | #190 | session 9p task A — test(api): HealthController.readyz failure paths +10 pure unit | **Merged into main** @ `24597f0` (30/4 ~18:13 UTC, CI 5/5 ✅) |
-| this PR | session 9p task B — test(api): admin/ledger-audit auditResultToJson +12 pure unit | **Pending merge** (in-flight) |
+| #191 | session 9p task B — test(api): admin/ledger-audit auditResultToJson +12 pure unit | **Merged into main** @ `4b1d5b6` (30/4 ~18:35 UTC, CI ✅) |
+| this PR | session 9p task C — test(api): ops.service + mission.scheduler ghost-cleanup +12 pure unit | **Pending merge** (in-flight) |
 
-#### PR session 9p task B (in-flight, this PR) — `test(api): admin/ledger-audit auditResultToJson +12 pure unit`
+#### PR session 9p task C (in-flight, this PR) — `test(api): ops.service + mission.scheduler ghost-cleanup +12 pure unit`
 
-- **Branch**: `devin/1777573112-ledger-audit-json-tests`. **Base**: `main` @ `24597f0` (post PR #190 merge). **Status**: in-flight.
+- **Branch**: `devin/1777575164-scheduler-ghost-cleanup-unit-tests`. **Base**: `main` @ `4b1d5b6` (post PR #191 merge). **Status**: in-flight.
+- **Files**: `apps/api/src/modules/ops/ops.service.test.ts` (new 6 vitest) · `apps/api/src/modules/mission/mission.scheduler.test.ts` (new 6 vitest) · `docs/AI_HANDOFF_REPORT.md`.
+- **Why**: lock-in BullMQ ghost-cleanup invariant cho 2 scheduler — repeatable cũ phải bị xoá trước add lại để tránh job nhân đôi khi hot-reload / interval change. Pure-unit no Redis.
+- **Tests added**: 12 vitest unit (no DB/Redis).
+- **Branches locked** (mirrored cho cả ops + mission):
+  - queue rỗng → `add()` 1 lần với `repeat.every` từ constant queue + `removeOnComplete/removeOnFail` cap 10.
+  - 1 job cũ tên match → `removeRepeatableByKey(oldKey)` trước `add` (verify call order).
+  - 3 job cũ tên match → 3 lần `removeRepeatableByKey` đúng key.
+  - non-match name (`reset`/`prune`/`other`) → KHÔNG xoá nhầm.
+  - mix match + non-match → chỉ xoá match.
+  - constant interval lock (`OPS_PRUNE_INTERVAL_MS === 24h` / `MISSION_RESET_INTERVAL_MS === 10min`).
+- **CI status (local)**: typecheck ✅ · lint ✅ · 12/12 vitest mới ✅ · API 58 file / **653/653** ✅ (verified với real Postgres + Redis 30/4 18:54 UTC, was 56/641) · shared 220/220 ✅ · web 547/547 ✅.
+- **Risk**: 🟢 thấp — test-only, lock-in scheduler invariants. No runtime change.
+- **Rollback**: revert single PR (xóa 2 file test).
+
+#### PR session 9p task B (closed, merged) — `test(api): admin/ledger-audit auditResultToJson +12 pure unit`
+
+- **Branch**: `devin/1777573112-ledger-audit-json-tests`. **Base**: `main` @ `24597f0` (post PR #190 merge). **Status**: Merged @ `4b1d5b6` (30/4 ~18:35 UTC).
 - **Files**: `apps/api/src/modules/admin/ledger-audit-json.test.ts` (new 12 vitest pure-unit) · `docs/AI_HANDOFF_REPORT.md`.
 - **Why**: lock-in JSON serializer contract cho admin endpoint `GET /admin/economy/audit-ledger`. Bigint→string preserve precision khi vượt MAX_SAFE_INTEGER là chính lý do tồn tại serializer; chưa có test tương ứng.
 - **Tests added**: 12 vitest unit (no DB).
