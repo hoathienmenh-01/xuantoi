@@ -1,0 +1,163 @@
+import { describe, it, expect } from 'vitest';
+import {
+  BOSSES,
+  bossByKey,
+  pickBossByRotation,
+  BOSS_ATTACK_COOLDOWN_MS,
+  BOSS_STAMINA_PER_HIT,
+  BOSS_LIFETIME_MS,
+  BOSS_RESPAWN_DELAY_MS,
+} from './boss';
+import { ITEMS } from './items';
+
+/**
+ * BOSSES catalog integrity (session 9j task O): economy/reward safety for
+ * world boss system. Drop pools reference ITEMS by key — dangling refs
+ * would silently break reward distribution at endgame.
+ */
+
+describe('BOSSES catalog integrity', () => {
+  it('ít nhất 1 boss được định nghĩa', () => {
+    expect(BOSSES.length).toBeGreaterThan(0);
+  });
+
+  it('tất cả key unique', () => {
+    const keys = BOSSES.map((b) => b.key);
+    expect(new Set(keys).size).toBe(keys.length);
+  });
+
+  it('tất cả boss có baseMaxHp > 0', () => {
+    for (const b of BOSSES) {
+      expect(b.baseMaxHp, `${b.key} baseMaxHp`).toBeGreaterThan(0);
+    }
+  });
+
+  it('atk > 0 và def >= 0', () => {
+    for (const b of BOSSES) {
+      expect(b.atk, `${b.key} atk`).toBeGreaterThan(0);
+      expect(b.def, `${b.key} def`).toBeGreaterThanOrEqual(0);
+    }
+  });
+
+  it('baseRewardLinhThach > 0 (boss không thể không cho reward)', () => {
+    for (const b of BOSSES) {
+      expect(b.baseRewardLinhThach, `${b.key} baseRewardLinhThach`).toBeGreaterThan(0);
+    }
+  });
+
+  it('name + description không rỗng', () => {
+    for (const b of BOSSES) {
+      expect(b.name.trim().length).toBeGreaterThan(0);
+      expect(b.description.trim().length).toBeGreaterThan(0);
+    }
+  });
+
+  it('recommendedRealm không rỗng', () => {
+    for (const b of BOSSES) {
+      expect(b.recommendedRealm.trim().length).toBeGreaterThan(0);
+    }
+  });
+
+  it('topDropPool chỉ chứa itemKey hợp lệ (no dangling refs)', () => {
+    const itemKeys = new Set(ITEMS.map((i) => i.key));
+    for (const b of BOSSES) {
+      for (const k of b.topDropPool) {
+        expect(itemKeys.has(k), `${b.key} topDropPool has dangling ${k}`).toBe(true);
+      }
+    }
+  });
+
+  it('midDropPool chỉ chứa itemKey hợp lệ (no dangling refs)', () => {
+    const itemKeys = new Set(ITEMS.map((i) => i.key));
+    for (const b of BOSSES) {
+      for (const k of b.midDropPool) {
+        expect(itemKeys.has(k), `${b.key} midDropPool has dangling ${k}`).toBe(true);
+      }
+    }
+  });
+
+  it('topDropPool không rỗng (top-1 cần item)', () => {
+    for (const b of BOSSES) {
+      expect(b.topDropPool.length, `${b.key} topDropPool empty`).toBeGreaterThan(0);
+    }
+  });
+
+  it('midDropPool không rỗng (top 2-3 cần item)', () => {
+    for (const b of BOSSES) {
+      expect(b.midDropPool.length, `${b.key} midDropPool empty`).toBeGreaterThan(0);
+    }
+  });
+
+  it('mid-tier boss mạnh hơn entry-tier (monotonic power scaling)', () => {
+    // Boss index cao hơn trong array thường là tier cao hơn — atk + hp phải tăng.
+    for (let i = 1; i < BOSSES.length; i++) {
+      const prev = BOSSES[i - 1];
+      const curr = BOSSES[i];
+      expect(
+        curr.baseMaxHp,
+        `${curr.key} baseMaxHp (${curr.baseMaxHp}) should >= ${prev.key} (${prev.baseMaxHp})`,
+      ).toBeGreaterThanOrEqual(prev.baseMaxHp);
+      expect(
+        curr.atk,
+        `${curr.key} atk (${curr.atk}) should >= ${prev.key} (${prev.atk})`,
+      ).toBeGreaterThanOrEqual(prev.atk);
+      expect(
+        curr.baseRewardLinhThach,
+        `${curr.key} reward should >= ${prev.key}`,
+      ).toBeGreaterThanOrEqual(prev.baseRewardLinhThach);
+    }
+  });
+});
+
+describe('bossByKey()', () => {
+  it('resolve known key', () => {
+    const first = BOSSES[0];
+    const found = bossByKey(first.key);
+    expect(found).toBeDefined();
+    expect(found?.name).toBe(first.name);
+  });
+
+  it('returns undefined cho unknown key', () => {
+    expect(bossByKey('void_dragon_xyz')).toBeUndefined();
+  });
+});
+
+describe('pickBossByRotation()', () => {
+  it('seed=0 → boss[0]', () => {
+    expect(pickBossByRotation(0).key).toBe(BOSSES[0].key);
+  });
+
+  it('seed=BOSSES.length → boss[0] (modulo wrap)', () => {
+    expect(pickBossByRotation(BOSSES.length).key).toBe(BOSSES[0].key);
+  });
+
+  it('seed=BOSSES.length+1 → boss[1] (rotation deterministic)', () => {
+    if (BOSSES.length > 1) {
+      expect(pickBossByRotation(BOSSES.length + 1).key).toBe(BOSSES[1].key);
+    }
+  });
+
+  it('seed rất lớn vẫn resolve được boss hợp lệ (no out-of-range)', () => {
+    const b = pickBossByRotation(999999);
+    expect(BOSSES.map((x) => x.key)).toContain(b.key);
+  });
+});
+
+describe('Boss tuning constants', () => {
+  it('BOSS_ATTACK_COOLDOWN_MS hợp lý (1-5s để tránh flood)', () => {
+    expect(BOSS_ATTACK_COOLDOWN_MS).toBeGreaterThanOrEqual(1000);
+    expect(BOSS_ATTACK_COOLDOWN_MS).toBeLessThanOrEqual(5000);
+  });
+
+  it('BOSS_STAMINA_PER_HIT > 0 (không free hit)', () => {
+    expect(BOSS_STAMINA_PER_HIT).toBeGreaterThan(0);
+  });
+
+  it('BOSS_LIFETIME_MS hợp lý (>= 10 phút)', () => {
+    expect(BOSS_LIFETIME_MS).toBeGreaterThanOrEqual(10 * 60 * 1000);
+  });
+
+  it('BOSS_RESPAWN_DELAY_MS >= 1 phút (tránh spam spawn)', () => {
+    expect(BOSS_RESPAWN_DELAY_MS).toBeGreaterThanOrEqual(60 * 1000);
+  });
+});
