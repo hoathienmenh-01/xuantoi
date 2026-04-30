@@ -1791,7 +1791,8 @@ apps/api/src/modules/character/currency.service.ts:88   data: { tienNgoc: { incr
 
 | Area | Existing Tests | Missing | Priority |
 |---|---|---|---|
-| Auth | **18 test** (`auth.service.test.ts`) — +3 cho `logoutAll` (PR #37) | Email verification / password reset flow chưa có feature | — |
+| Auth | **18 test** (`auth.service.test.ts`) — +3 cho `logoutAll` (PR #37) | Email verification flow chưa có feature | — |
+| Email | **14 test** (`email.service.test.ts` session 9m) — mode selection (4: console default/explicit/smtp/smtp+auth), send console (2: log verify/text-only), sendPasswordResetEmail (6: default URL/custom URL/URL-encode/subject/expiry minutes/min-1-phút), SMTP_FROM (2: default/custom) | — | — |
 | Bootstrap | **7 test** (`scripts/bootstrap.test.ts`) (PR #33) | — | — |
 | Character/Currency | 9 test (`currency.service.test.ts`) | Test breakthrough multi-stage | Low |
 | Character/Profile | **6 test** (`character.service.test.ts`) (PR #38) | — | — |
@@ -1817,7 +1818,7 @@ apps/api/src/modules/character/currency.service.ts:88   data: { tienNgoc: { incr
 | **Economy integration** | Rải rác trong từng service + `item-ledger.test.ts` consistency check + `pnpm audit:ledger` script | Cross-module: market post → buy, ngân sách sect | Low |
 | **Logs (G3 cũ/M6)** | **20 test** (`logs.service.test.ts`) (PR #88) — cursor encode/decode 6 + listForUser currency 11 + listForUser item 3 | — | — |
 
-**Tổng (`vitest run` thực tế, baseline session 9m trên main @ `9c1e63a` + this PR branch)**: **~412 test API (cần infra:up — +17 topup.service.test.ts session 9m) + 96 test shared + 509 test web = ~1017 test pass expected**. CI xanh. Real Postgres + real Redis service trên CI; local dùng `infra/docker-compose.dev.yml` (`docker compose up -d pg redis`). Web count 509 (54 file, session 9l PR #159 +25). Shared count 96 (6 file). API count ~412 (+17 topup service tests session 9m).
+**Tổng (`vitest run` thực tế, baseline session 9m trên main @ `0f56438` + this PR branch)**: **~426 test API (cần infra:up — +17 topup session 9m + 14 email session 9m) + 96 test shared + 509 test web = ~1031 test pass expected**. CI xanh. Real Postgres + real Redis service trên CI; local dùng `infra/docker-compose.dev.yml` (`docker compose up -d pg redis`). Web count 509 (54 file). Shared count 96 (6 file). API count ~426 (+17 topup + 14 email session 9m). Email tests chạy local OK (không cần DB).
 
 **Chạy**:
 ```bash
@@ -2300,11 +2301,14 @@ F. ~~**`docs/CHANGELOG.md` bootstrap**~~ — **Done by PR #104** (Merged into ma
 #### PR session 9m-B — `docs(changelog): catch-up sessions 9g/9h/9i/9j/9l` — **Merged** PR #161 @ `9c1e63a`
 - +98 lines, 5 new session sections covering PR #105→#159. Docs-only.
 
-#### PR session 9m-C (this PR) — `test(api): topup.service.test.ts — 17 vitest economy safety`
-- **Branch**: `devin/1777548417-topup-service-tests`. **Base**: `main` @ `9c1e63a`.
-- **File**: `apps/api/src/modules/topup/topup.service.test.ts` (new) + `docs/AI_HANDOFF_REPORT.md`.
-- **Tests added**: 17 — createOrder (8: happy/invalid/limit/isolation/uniqueness/persistence/slot-free/all-packages) + listForUser (4: empty/sorted/isolation/cap-50) + bankInfo (1) + toView (2: normal/fallback) + economy safety (2: no-currency-change/no-ledger).
-- **Risk**: 🟢 thấp — test-only, no code change to production code.
+#### PR session 9m-C — `test(api): topup.service.test.ts — 17 vitest economy safety` — **Merged** PR #162 @ `0f56438`
+- TopupService 17 tests: createOrder 8 + listForUser 4 + bankInfo 1 + toView 2 + economy safety 2. Test-only.
+
+#### PR session 9m-D (this PR) — `test(api): email.service.test.ts — 14 vitest unit (no DB)`
+- **Branch**: `devin/1777549062-email-service-tests`. **Base**: `main` @ `0f56438`.
+- **File**: `apps/api/src/modules/email/email.service.test.ts` (new) + `docs/AI_HANDOFF_REPORT.md`.
+- **Tests added**: 14 — mode selection (4: console default/explicit/smtp/smtp+auth) + send console (2: log verify/text-only) + sendPasswordResetEmail (6: default URL/custom URL/URL-encode/subject/expiry minutes/min-1-phút) + SMTP_FROM (2: default/custom).
+- **Risk**: 🟢 thấp — test-only, unit test (no DB/Redis needed), no production code change.
 - **Rollback**: revert single PR.
 
 ### Done (chuỗi #33→#45 đã merge trên `main` tại `e99a35f`)
