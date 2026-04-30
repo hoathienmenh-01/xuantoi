@@ -1,14 +1,14 @@
 # AI Handoff Report — Xuân Tôi
 
-> **Snapshot**: `main` @ `0fc1431` (Merge PR #117 `feat(admin): smart recent activity widget — inline last 5 audit entries on Stats tab (session 9h task G)`, 30 Apr 2026 ~05:49 UTC). **Merged into main since session 9d** (toàn bộ chuỗi 9d→9g task A/B/C/D/E.a/F1 đã vào main): PR #84/#86/#87/#88/#89/#90/#91 (session 9d), **#92** (docs BETA_CHECKLIST refresh — Merged @ `a5821ee`), **#93** (docs handoff session 9e audit refresh — Merged @ `d37b6d4`), **#94** (BE leaderboard topup + sect — Merged @ `fed47a6`), **#95** (ops backup/restore Postgres script + docs — Merged @ session 9e), **#96** (scripts backup/restore reliability — SIGPIPE-safe + pg_terminate_backend — Merged @ `253c4b1`), **#97** (FE mobile responsive AppShell drawer + AdminView tables — Merged @ `ee933ad`), **#98** (docs handoff session 9f audit refresh — Merged @ `4072a3d`), **#99** (FE LeaderboardView tabs Power/Topup/Sect — Merged @ `5a93d22`), **#100** (admin self-demote/self-target prevention — Merged @ `47d34b5`), **#101** (auth forgot/reset-password BE + EmailService — Merged @ `6f3faf4`), **#102** (auth forgot/reset-password FE views stacked — Merged @ `5ca225e` rồi vào main qua PR #101 merge), **#103** (auth forgotPassword timing-fix Devin Review — Merged @ `3c1aa39`), **#104** (docs/CHANGELOG.md bootstrap — Merged @ `c026f37`), **#105** (docs handoff session 9g audit refresh — Merged @ `a907eb1`), **#106** (FE admin inventory revoke UI — Merged @ `7d1965e`), **#107** (FE i18n parity test + breakthroughReady badge — Merged @ `82f2020`), **#108** (docs handoff session 9g task D runtime smoke 9d→9g — Merged @ `0a6c664`), **#109** (FE smart admin economy alerts badge + 60s polling — Merged @ `58fa69d`), **#110** (env fix `SMTP_FROM` quote — Merged @ `4c214eb`), **#111** (docs handoff session 9h audit refresh — Merged @ `43f626e`), **#112** (replay orphan commit `7e27aa9` admin audit-ledger endpoint + UI — Merged @ `f4e67f4`), **#113** (Playwright golden expand daily login + leaderboard tabs gated `E2E_FULL=1` — Merged @ `8cdb93c`), **#114** (smart onboarding expand Leaderboard/Mail visits → 6-step — Merged @ `885e56c`), **#115** (smart admin economy report top 10 whales + circulation — Merged @ `6f18ce6`), **#116** (smart admin users filter expand currency range + realmKey — Merged @ `7b6f927`), **#117** (smart admin recent activity widget Stats tab — Merged @ `0fc1431`).
-> **Người viết**: AI engineer session 9i (audit refresh 30/4 ~05:55 UTC sau khi toàn bộ chuỗi PR #111–#117 đã merge cascade vào main — header cũ snapshot `4c214eb` (PR #110) không còn đúng; PR #117 ghi `In-flight (Pending merge)` trong report cũ nhưng đã merged @ `0fc1431` → audit này bump snapshot + chuyển PR #111..#117 sang Merged + close session 9h task A/B/C/D/E/F/G + thêm session 9i roadmap mới với top priority docs/RELEASE_NOTES.md bootstrap + smart admin badges + UX polish).
+> **Snapshot**: `main` @ `27552a8` (Merge PR #118 `feat(admin): smart tab badge — pending topup count on Topups tab nav (session 9h task H)`, 30 Apr 2026 ~06:18 UTC). **Merged into main since session 9d** (toàn bộ chuỗi 9d→9g task A/B/C/D/E.a/F1 đã vào main): PR #84/#86/#87/#88/#89/#90/#91 (session 9d), **#92** (docs BETA_CHECKLIST refresh — Merged @ `a5821ee`), **#93** (docs handoff session 9e audit refresh — Merged @ `d37b6d4`), **#94** (BE leaderboard topup + sect — Merged @ `fed47a6`), **#95** (ops backup/restore Postgres script + docs — Merged @ session 9e), **#96** (scripts backup/restore reliability — SIGPIPE-safe + pg_terminate_backend — Merged @ `253c4b1`), **#97** (FE mobile responsive AppShell drawer + AdminView tables — Merged @ `ee933ad`), **#98** (docs handoff session 9f audit refresh — Merged @ `4072a3d`), **#99** (FE LeaderboardView tabs Power/Topup/Sect — Merged @ `5a93d22`), **#100** (admin self-demote/self-target prevention — Merged @ `47d34b5`), **#101** (auth forgot/reset-password BE + EmailService — Merged @ `6f3faf4`), **#102** (auth forgot/reset-password FE views stacked — Merged @ `5ca225e` rồi vào main qua PR #101 merge), **#103** (auth forgotPassword timing-fix Devin Review — Merged @ `3c1aa39`), **#104** (docs/CHANGELOG.md bootstrap — Merged @ `c026f37`), **#105** (docs handoff session 9g audit refresh — Merged @ `a907eb1`), **#106** (FE admin inventory revoke UI — Merged @ `7d1965e`), **#107** (FE i18n parity test + breakthroughReady badge — Merged @ `82f2020`), **#108** (docs handoff session 9g task D runtime smoke 9d→9g — Merged @ `0a6c664`), **#109** (FE smart admin economy alerts badge + 60s polling — Merged @ `58fa69d`), **#110** (env fix `SMTP_FROM` quote — Merged @ `4c214eb`), **#111** (docs handoff session 9h audit refresh — Merged @ `43f626e`), **#112** (replay orphan commit `7e27aa9` admin audit-ledger endpoint + UI — Merged @ `f4e67f4`), **#113** (Playwright golden expand daily login + leaderboard tabs gated `E2E_FULL=1` — Merged @ `8cdb93c`), **#114** (smart onboarding expand Leaderboard/Mail visits → 6-step — Merged @ `885e56c`), **#115** (smart admin economy report top 10 whales + circulation — Merged @ `6f18ce6`), **#116** (smart admin users filter expand currency range + realmKey — Merged @ `7b6f927`), **#117** (smart admin recent activity widget Stats tab — Merged @ `0fc1431`), **#118** (smart admin tab badge — pending topup count on Topups tab nav + Devin Review fix re-fetch sau approve/reject — Merged @ `27552a8` session 9h task H).
+> **Người viết**: AI engineer session 9i (audit refresh 30/4 ~06:20 UTC sau khi toàn bộ chuỗi PR #111–#118 đã merge cascade vào main — header cũ snapshot `4c214eb` (PR #110) không còn đúng; PR #117 ghi `In-flight (Pending merge)` trong report cũ, PR #118 (session 9h task H pending topup badge) mới merged @ `27552a8` → audit này bump snapshot + chuyển PR #111..#118 sang Merged + close session 9h task A/B/C/D/E/F/G/H + thêm session 9i roadmap mới với top priority docs/RELEASE_NOTES.md bootstrap + smart giftcode unredeemed badge (topup đã xong qua #118) + UX polish).
 > **Đối tượng đọc**: AI kế nhiệm sẽ tiếp tục đưa dự án tới beta / production.
 >
 > Báo cáo trung thực. Mọi tuyên bố "đã xong" đều có PR + file + test chứng minh. Khi chưa verify runtime, ghi rõ **"Needs runtime smoke"**.
 >
 > **Baseline session 9i (đã verify local 30/4 ~05:55 UTC trên main @ `0fc1431`)**: `pnpm typecheck` ✅ (3 project, sau khi `prisma generate` + `shared build`) · `pnpm lint` ✅ (max-warnings 0) · `pnpm --filter @xuantoi/shared test` ✅ **55/55** (3 file: catalog 17 + proverbs 11 + realms 27) · `pnpm --filter @xuantoi/web test` ✅ **207/207** (27 file: AdminAuditLedger (FE) 3 + AdminGiftcodeApi 11 + AdminInventoryRevoke 7 + AdminEconomyReport 3 + AdminListUsersFilter 5 + ConfirmModal 13 + DailyLoginCard 4 + NextActionPanel 6 + OnboardingChecklist 11 + Skeleton 5 + i18nParity 6 + adminAlerts 13 + adminGuards 12 + itemName 11 + missionProgress 7 + onboardingVisits 6 + auth 7 + badges 9 + game 8 + toast 9 + ActivityView 10 + ForgotPasswordView 5 + LeaderboardView 10 + MarketView 3 + MissionView 9 + ResetPasswordView 7 + SettingsView 7). API test: chưa run trong session 9i (cần `pnpm infra:up` + `prisma migrate deploy`); CI matrix `e2e-smoke` + build job vẫn xanh trên PR #111..#117 (5/5 ✅); api test set ~401/401 (395 + PR #112 +6 admin audit-ledger + PR #115 +6 economy report + PR #116 +6 list-users-filter ⇒ ~413/413 — số chính xác sẽ verify khi infra-up).
 >
-> **Trạng thái (30/4 session 9i, ~05:55 UTC)**: PR #33..#117 đã merge `main` (PR #111/#112/#113/#114/#115/#116/#117 cascade merged session 9h, cả task A/B/C/D/E/F/G đóng — orphan branch `devin/1777492785-admin-audit-ledger-endpoint` (commit `7e27aa9`) đã được replay vào main qua PR #112; admin audit-ledger endpoint + UI giờ đã sống trên main). Toàn bộ Critical/High/Medium đã Resolved trừ M7 (CSP CDN — chỉ verify khi prod deploy), M9 (logout-all `passwordVersion` — intentional trade-off, đã document trong `docs/SECURITY.md`), M10 (shop daily limit — post-beta nice-to-have). Low: tất cả Resolved (L1..L7 đầy đủ cả BE lẫn FE). **0 PR open** (PR docs audit refresh session 9i này là PR open duy nhất sẽ mở). Roadmap session 9i top priority: docs audit refresh (this PR) → smart admin notification badge cho pending topup + giftcode count → docs/RELEASE_NOTES.md bootstrap → smart UX polish badges/toast → test coverage expand.
+> **Trạng thái (30/4 session 9i, ~06:20 UTC)**: PR #33..#118 đã merge `main` (PR #111/#112/#113/#114/#115/#116/#117/#118 cascade merged session 9h, cả task A/B/C/D/E/F/G/H đóng — orphan branch `devin/1777492785-admin-audit-ledger-endpoint` (commit `7e27aa9`) đã được replay vào main qua PR #112; admin audit-ledger endpoint + UI + recent activity widget + pending topup badge giờ đã sống trên main). Toàn bộ Critical/High/Medium đã Resolved trừ M7 (CSP CDN — chỉ verify khi prod deploy), M9 (logout-all `passwordVersion` — intentional trade-off, đã document trong `docs/SECURITY.md`), M10 (shop daily limit — post-beta nice-to-have). Low: tất cả Resolved (L1..L7 đầy đủ cả BE lẫn FE). **0 PR open** (PR docs audit refresh session 9i này là PR open duy nhất). Roadmap session 9i top priority: docs audit refresh (this PR) → docs/RELEASE_NOTES.md bootstrap → smart giftcode unredeemed badge (topup đã xong qua PR #118) → smart UX polish toast duration → test coverage expand.
 >
 > **Lưu ý**: `pnpm audit:ledger` SCRIPT đã có trong main từ PR #76 (G21, commit `e5ece30` + Devin Review fixes `1fff79a` + `b08c0ad`); 9 vitest test chạy với real Postgres (test helpers `makeUserChar` + `wipeAll`). Endpoint admin `GET /admin/economy/audit-ledger` (commit `7e27aa9`) chưa vào main, là task replay session 9h B.
 >
@@ -38,9 +38,9 @@
 ## 2. Current Branch / CI / PR Status
 
 - **Default branch**: `main`.
-- **Commit audit**: `0fc1431 Merge pull request #117 from hoathienmenh-01/devin/1777527139-admin-recent-activity-widget` (HEAD `main`, 30/4 ~05:49 UTC).
-- **CI gần nhất trên main**: xanh — PR #117 5/5; trước đó PR #111..#116 cũng 5/5 xanh khi merge (cascade session 9h).
-- **PR open đáng kể**: **0 PR open** — toàn bộ chuỗi session 9d→9h (#84..#117, trừ #85 đã đóng) đã merged hết vào main tính đến 30/4 ~05:49 UTC. PR docs audit session 9i refresh này là PR open duy nhất sẽ mở trong session 9i.
+- **Commit audit**: `27552a8 Merge pull request #118 from hoathienmenh-01/devin/1777527557-admin-tab-badges` (HEAD `main`, 30/4 ~06:18 UTC).
+- **CI gần nhất trên main**: xanh — PR #118 5/5 (4 GH Action + Devin Review); trước đó PR #111..#117 cũng 5/5 xanh khi merge (cascade session 9h).
+- **PR open đáng kể**: **0 PR open** — toàn bộ chuỗi session 9d→9h (#84..#118, trừ #85 đã đóng) đã merged hết vào main tính đến 30/4 ~06:18 UTC. PR docs audit session 9i refresh này (PR #119) là PR open duy nhất.
 - **Replay gap PR #47**: **Đã đóng** — PR #53 (cherry-pick `32a33a6` từ `devin/1777398483-h5-vitest-playwright`) merge vào main commit `2ae4cc0` (28/4 20:15 UTC). File `apps/web/vitest.config.ts` + `playwright.config.ts` + `e2e/golden.spec.ts` + `apps/web/src/stores/__tests__/{toast,game}.test.ts` đã có trên main.
 - **PR merged gần đây ảnh hưởng lớn**:
   | PR | Chủ đề | Impact |
@@ -93,17 +93,26 @@
 
 ---
 
-## Recent Changes (PR #33→#117 đã merged trên main; PR session 9i task A docs audit refresh in-flight)
+## Recent Changes (PR #33→#118 đã merged trên main; PR session 9i task A docs audit refresh in-flight)
 
-### PR session 9i task A (in-flight, this PR) — `docs(handoff): session 9i audit refresh — bump snapshot 0fc1431 + mark PR #111..#117 Merged + sync baseline web vitest 207/207 + add session 9i roadmap` — **Pending merge**
+### PR #118 — `feat(admin): smart tab badge — pending topup count on Topups tab nav (session 9h task H)` — **Merged into main** @ `27552a8` (30/4 ~06:18 UTC, CI 5/5 ✅) session 9h task H — **Resolved**
 
-- **Branch**: `devin/<ts>-audit-session-9i-refresh-pr117`. **Base**: `main` @ `0fc1431` (post PR #117 merge).
-- **Mục tiêu**: report cũ (snapshot `4c214eb` = PR #110 merge) đã lỗi thời sau khi cả chuỗi PR #111..#117 cascade merged 30/4 ~05:49 UTC. PR #117 ghi `Pending merge` trong Recent Changes nhưng đã merge. Audit này:
-  - Bump snapshot `4c214eb` → `0fc1431`.
-  - Chuyển PR #111..#117 từ "Pending merge / In-flight" → "Merged into main" với commit hash đầy đủ.
-  - Sync baseline web vitest: `187/187` (23 file) → `207/207` (27 file) sau khi PR #112/#114/#115/#116 thêm test (admin audit-ledger 3 + admin economy report 3 + admin list-users-filter 5 + onboarding visits 6 + 3 add to OnboardingChecklist).
-  - Đóng session 9h roadmap A/B/C/D/E/F/G (tất cả task đã merged).
-  - Thêm session 9i roadmap mới: docs/RELEASE_NOTES.md bootstrap → smart admin notification badge cho pending topup + giftcode count → smart UX polish badges/toast → test coverage expand.
+- **Branch**: `devin/1777527557-admin-tab-badges`. **Status**: Merged. Take-over by session 9i: rebase lên `main @ 0fc1431` (resolve conflict trong `refreshStats()` với PR #117's `loadRecentActivity()` block — kept both side-effects), apply Devin Review fix (`pendingTopupCount` stale sau approve/reject) qua helper `refreshPendingTopupCount()` fire-and-forget tại `apps/web/src/views/AdminView.vue:461`, gọi từ `approveTopup()` (line 437) và `rejectTopup()` (line 449). Force-push commit `e8a6e1c`.
+- **Changes**:
+  1. **`apps/web/src/views/AdminView.vue`**: `pendingTopupCount = ref(0)` + load lần đầu trong `refreshStats()` + poll 60s qua `refreshAlertsOnly()` + helper mới `refreshPendingTopupCount()` (fire-and-forget) gọi sau approve/reject để badge update ngay không chờ poll. Badge amber-500 trên nav button "Nạp Tiên Ngọc" khi count > 0.
+  2. **`apps/web/src/i18n/{vi,en}.json`** (+1 key/file): `admin.topups.pendingBadgeTooltip`.
+- **Tests**: web baseline `207/207` không đổi (additive UI, dùng API có sẵn `GET /admin/topups?status=PENDING`).
+- **Risk**: thấp — read-only, dùng API có sẵn, lỗi try/catch im lặng giữ giá trị cũ. Không touch BE/schema/economy. Không thêm timer mới.
+
+### PR session 9i task A (in-flight, this PR) — `docs(handoff): session 9i audit refresh — bump snapshot 27552a8 + mark PR #111..#118 Merged + sync baseline web vitest 207/207 + add session 9i roadmap` — **Pending merge**
+
+- **Branch**: `devin/1777528782-audit-session-9i-refresh-pr117`. **Base**: ban đầu `main` @ `0fc1431` (post PR #117 merge); rebase lên `main` @ `27552a8` (post PR #118 merge) sau khi user merge PR #118.
+- **Mục tiêu**: report cũ (snapshot `4c214eb` = PR #110 merge) đã lỗi thời sau khi cả chuỗi PR #111..#118 cascade merged 30/4 ~06:18 UTC. PR #117 ghi `Pending merge` trong Recent Changes nhưng đã merge; PR #118 (session 9h task H pending topup badge) take-over + Devin Review fix mới merged. Audit này:
+  - Bump snapshot `4c214eb` → `27552a8`.
+  - Chuyển PR #111..#118 từ "Pending merge / In-flight" → "Merged into main" với commit hash đầy đủ.
+  - Sync baseline web vitest: `187/187` (23 file) → `207/207` (27 file) sau khi PR #112/#114/#115/#116 thêm test (admin audit-ledger 3 + admin economy report 3 + admin list-users-filter 5 + onboarding visits 6 + 3 add to OnboardingChecklist). PR #117/#118 additive UI không đổi count.
+  - Đóng session 9h roadmap A/B/C/D/E/F/G/H (tất cả task đã merged).
+  - Thêm session 9i roadmap mới: docs/RELEASE_NOTES.md bootstrap → smart giftcode unredeemed badge (topup đã xong qua PR #118) → smart UX polish toast duration → test coverage expand → admin user export CSV.
 - **Files**: `docs/AI_HANDOFF_REPORT.md` only.
 - **Tests added**: 0 (docs-only).
 - **CI status (local)**: `pnpm typecheck` ✅ (3 project) · `pnpm lint` ✅ (max-warnings 0) · `pnpm --filter @xuantoi/web test` ✅ 207/207 (27 file).
@@ -1834,19 +1843,22 @@ Admin hiện tại có thể vào `/admin` → Users → tìm → **Set role = A
 
 ## 20. Recommended Next Roadmap
 
-### Immediate (session 9i — sau khi PR #111..#117 đã merge cascade vào main 30/4 ~05:49 UTC, cả task A/B/C/D/E/F/G session 9h đóng)
+### Immediate (session 9i — sau khi PR #111..#118 đã merge cascade vào main 30/4 ~06:18 UTC, cả task A/B/C/D/E/F/G/H session 9h đóng)
 
 **Top priority (session 9i sẽ tự làm theo thứ tự, **xanh rồi mới qua**)**:
 
-A. **Docs audit refresh session 9i** — **In-flight PR (này)** — bump snapshot `0fc1431`, chuyển PR #111..#117 sang Merged, đóng session 9h roadmap, mở session 9i roadmap, cập nhật §21 PR Plan, baseline web vitest 207/207 (27 file).
+A. **Docs audit refresh session 9i** — **In-flight PR (này) #119** — bump snapshot `27552a8`, chuyển PR #111..#118 sang Merged, đóng session 9h roadmap, mở session 9i roadmap, cập nhật §21 PR Plan, baseline web vitest 207/207 (27 file).
 
-B. **Smart admin notification badge — pending topup count + giftcode unredeemed count** — wire AdminView nav (Topups/Giftcodes tab):
-  - Hiện tại đã có economy alerts badge ở Stats tab (PR #109). Mở rộng: dot indicator amber-400 trên Topups tab khi `pendingTopupCount > 0` và Giftcodes tab khi `activeUnusedCount > 0`. Auto-poll 60s.
-  - Helper pure `adminNavBadges.ts` + +6 vitest. Reuse `GET /admin/topups?status=PENDING` + `GET /admin/giftcodes?status=ACTIVE` đã có.
+B. **`docs/RELEASE_NOTES.md` bootstrap (closed beta press kit)** — Keep-a-Changelog đã có PR #104, nhưng release-notes phục vụ end-user/playtester (cô đọng, no PR number, focus user-facing changes). Format: version (closed-beta-1) + date + Highlights (Daily login, Leaderboard, Forgot/Reset password, Economy safety, Smart admin tooling, Mobile responsive) + Known limitations (no Pet/Wife/Arena/Event/PvP/Payment) + Known issues (M7/M9/M10) + How to report bugs (placeholder email/Discord).
+  - File mới: `docs/RELEASE_NOTES.md` (~120-180 line). Risk: 0.
+
+C. **Smart admin giftcode unredeemed badge** — topup count đã xong qua PR #118; giờ làm tiếp giftcode badge:
+  - Hiện tại có `pendingTopupCount` badge amber-500 trên Topups tab (PR #118). Mở rộng cùng pattern: badge cho Giftcode tab khi `activeUnusedGiftcodeCount > 0` (count = `code.status === 'ACTIVE' && (code.maxRedeems - code.redeemedCount) > 0`).
+  - Reuse `GET /admin/giftcodes?status=ACTIVE` (filter client-side cho `remaining > 0` để tránh thay BE).
+  - Helper pure `apps/web/src/lib/giftcodeBadge.ts` (`countActiveUnused(codes)`) + 4-6 vitest.
+  - Update `refreshStats()` + `refreshAlertsOnly()` polls. Update `submitGiftcodeForm()` + `revokeGiftcode()` để re-fetch ngay.
+  - i18n vi/en +1 key `admin.giftcodes.unusedBadgeTooltip`.
   - Risk: thấp — read-only, additive, dùng API có sẵn.
-
-C. **`docs/RELEASE_NOTES.md` bootstrap (closed beta press kit)** — Keep-a-Changelog đã có PR #104, nhưng release-notes phục vụ end-user/playtester (cô đọng, no PR number, focus user-facing changes). Format: version (closed-beta-1) + date + Highlights (Daily login, Leaderboard, Forgot/Reset password, Economy safety) + Known limitations + Known issues + How to report bugs.
-  - File mới: `docs/RELEASE_NOTES.md`. Risk: 0.
 
 D. **Smart UX polish — global toast position + duration consistency** + i18n missing keys check:
   - Audit `apps/web/src/stores/toast.ts` default duration (currently 3500ms cho mọi toast). Phân loại: info=3000ms, success=3500ms, warning=5000ms, error=6000ms — phù hợp UX standard.
@@ -1881,6 +1893,7 @@ D. ~~**Smart onboarding expand — Leaderboard + Mail visit tracking (4→6 step
 E. ~~**Smart admin economy report — top 10 whales + circulation**~~ — **Done by PR #115** (Merged into main @ `6f18ce6`, 30/4 ~05:15 UTC, CI 5/5 ✅) — `GET /admin/economy/report` + AdminView Stats panel cyan + 5 stat cards + 2 cột top whales + i18n 13 key/locale + 6 BE vitest + 3 FE vitest.
 F. ~~**Smart admin users filter expand — currency range + realmKey**~~ — **Done by PR #116** (Merged into main @ `7b6f927`, 30/4 ~05:30 UTC, CI 5/5 ✅) — `admin.service.ts listUsers()` +18 line filter + `admin.controller.ts @Get('users')` +30 line parse + +60 UI + i18n +6 key + 5 BE vitest + 5 FE vitest.
 G. ~~**Smart admin recent activity widget — Stats tab inline last 5 audit entries**~~ — **Done by PR #117** (Merged into main @ `0fc1431`, 30/4 ~05:49 UTC, CI 5/5 ✅) — `AdminView.vue` recentActivity panel violet-500 + i18n +9 key/locale.
+H. ~~**Smart admin tab badge — pending topup count**~~ — **Done by PR #118** (Merged into main @ `27552a8`, 30/4 ~06:18 UTC, CI 5/5 ✅) — `AdminView.vue` `pendingTopupCount` ref + load trong `refreshStats()` + 60s poll qua `refreshAlertsOnly()` + helper `refreshPendingTopupCount()` fire-and-forget gọi sau approve/reject (Devin Review fix `BUG_pr-review-job-3a340907d3a248428c84dde15b39402f_0001`) + badge amber-500 nav button "Nạp Tiên Ngọc" + i18n +1 key/locale `admin.topups.pendingBadgeTooltip`.
 
 ---
 
@@ -1976,31 +1989,27 @@ F. ~~**`docs/CHANGELOG.md` bootstrap**~~ — **Done by PR #104** (Merged into ma
 | PR 8 — Item Ledger | — | **Done** — PR #40 merged (model + migration `20260428102849_itemledger` + hook 6 grant flows + 7 test). |
 | (PR ngoài kế hoạch) PR 8b — Profile public API + ProfileView | — | **Done** — PR #38 merged. |
 
-### Pending (session 9i — sau khi PR #111..#117 cascade vào main 30/4 ~05:49 UTC)
+### Pending (session 9i — sau khi PR #111..#118 cascade vào main 30/4 ~06:18 UTC)
 
-#### PR session 9i-A (in-flight, this PR) — `docs(handoff): session 9i audit refresh — bump snapshot 0fc1431 + mark PR #111..#117 Merged + sync baseline web vitest 207/207 + add session 9i roadmap`
-- **Branch**: `devin/<ts>-audit-session-9i-refresh-pr117`. **Base**: `main` @ `0fc1431` (post PR #117 merge). **Status**: docs-only, in-flight.
+#### PR session 9i-A (in-flight, this PR #119) — `docs(handoff): session 9i audit refresh — bump snapshot 27552a8 + mark PR #111..#118 Merged + sync baseline web vitest 207/207 + add session 9i roadmap`
+- **Branch**: `devin/1777528782-audit-session-9i-refresh-pr117`. **Base**: ban đầu `main` @ `0fc1431`; rebase lên `main` @ `27552a8` (post PR #118 merge). **Status**: docs-only, in-flight.
 - **File**: `docs/AI_HANDOFF_REPORT.md` (header §0/§2/Recent Changes/§12 baseline/§20 roadmap session 9i/§21 PR Plan).
 - **Tests added**: 0 (docs-only).
 - **CI status (local)**: typecheck ✅ / lint ✅ / shared 55/55 ✅ / web 207/207 ✅. Build/api skipped (docs-only).
 - **Risk**: 0 (docs-only).
 - **Rollback**: revert single PR.
 
-#### PR session 9i-B (planned, after 9i-A merge) — `feat(web): smart admin nav badges — pending topup count + giftcode unredeemed count + 60s polling`
-- **Branch**: TBD `devin/<ts>-admin-nav-badges-topup-giftcode`. **Base**: `main` post-9i-A.
-- **Plan**: 
-  - Mở rộng pattern PR #109 (economy alerts badge): thêm `pendingTopupCount` từ `GET /admin/topups?status=PENDING` (count) và `activeGiftcodeUnusedCount` từ `GET /admin/giftcodes` filter active+remaining>0. Auto-poll 60s parallel với economy alerts.
-  - File mới: `apps/web/src/lib/adminNavBadges.ts` (helper pure `countPendingTopups(rows)` + `countActiveGiftcodes(codes)`) + `apps/web/src/lib/__tests__/adminNavBadges.test.ts` (+6 vitest).
-  - `apps/web/src/views/AdminView.vue`: thêm 2 ref + auto-poll, dot indicator amber-400 trên nav button "Nạp Tiên Ngọc" và "Giftcode" khi count > 0.
-  - i18n vi/en +2 key mỗi file (aria-label badge text).
-- **Risk**: thấp — read-only, additive, dùng API có sẵn, không touch BE/schema/economy. Polling cùng tần số với economy alerts (60s) tránh stress server.
-- **Rollback**: revert single PR.
-
-#### PR session 9i-C (planned, after 9i-B merge) — `docs: bootstrap docs/RELEASE_NOTES.md (closed-beta-1 press kit)`
-- **Branch**: TBD `devin/<ts>-docs-release-notes-bootstrap`. **Base**: `main` post-9i-B.
+#### PR session 9i-B (planned, after 9i-A merge) — `docs: bootstrap docs/RELEASE_NOTES.md (closed-beta-1 press kit)`
+- **Branch**: TBD `devin/<ts>-docs-release-notes-bootstrap`. **Base**: `main` post-9i-A.
 - **Plan**: tạo `docs/RELEASE_NOTES.md` mới — closed-beta-1 user-facing changelog (no PR number, focus user value). Sections: version, date, Highlights (Daily login claim, Leaderboard Power/Topup/Sect, Forgot/Reset password, Economy safety alerts, Mobile responsive AppShell, Smart admin tooling), Known limitations (no Pet/Wife/Arena/Event/PvP/Payment), Known issues (M7/M9/M10), How to report bugs (email/discord placeholder).
 - **File**: `docs/RELEASE_NOTES.md` (mới, ~120-180 line).
 - **Risk**: 0 (docs-only).
+- **Rollback**: revert single PR.
+
+#### PR session 9i-C (planned, after 9i-B merge) — `feat(web): smart admin giftcode unredeemed badge + helper + tests`
+- **Branch**: TBD `devin/<ts>-admin-giftcode-unused-badge`. **Base**: `main` post-9i-B.
+- **Plan**: mở rộng pattern PR #118 cho Giftcode tab. Helper pure `apps/web/src/lib/giftcodeBadge.ts` `countActiveUnused(codes)` (count `code.status === 'ACTIVE' && (code.maxRedeems - code.redeemedCount) > 0`). +4-6 vitest. AdminView: ref + load trong `refreshStats()` (parallel với pending topup load) + poll 60s qua `refreshAlertsOnly()` + re-fetch sau `submitGiftcodeForm()` và `revokeGiftcode()`. Badge amber-500 trên nav "Giftcode" khi count > 0. i18n +1 key.
+- **Risk**: thấp — read-only, additive, dùng API có sẵn (`GET /admin/giftcodes?status=ACTIVE`), không touch BE/schema.
 - **Rollback**: revert single PR.
 
 #### Past session 9h (đã done):
@@ -2018,6 +2027,8 @@ F. ~~**`docs/CHANGELOG.md` bootstrap**~~ — **Done by PR #104** (Merged into ma
 #### ~~PR #116 (session 9h task F)~~ — `feat(admin): smart users filter expand — currency range (linhThach/tienNgoc) + realmKey via GET /admin/users` — **Done by PR #116 (Merged into main @ `7b6f927`, 30/4 ~05:30 UTC, CI 5/5 ✅)**.
 
 #### ~~PR #117 (session 9h task G)~~ — `feat(admin): smart recent activity widget — inline last 5 audit entries on Stats tab` — **Done by PR #117 (Merged into main @ `0fc1431`, 30/4 ~05:49 UTC, CI 5/5 ✅)**.
+
+#### ~~PR #118 (session 9h task H)~~ — `feat(admin): smart tab badge — pending topup count on Topups tab nav` — **Done by PR #118 (Merged into main @ `27552a8`, 30/4 ~06:18 UTC, CI 5/5 ✅)** — take-over by session 9i: rebase lên `main @ 0fc1431` + Devin Review fix `pendingTopupCount` stale sau approve/reject (helper `refreshPendingTopupCount()` fire-and-forget).
 
 #### Past session 9g (đã done):
 
