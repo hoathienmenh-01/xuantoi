@@ -11,6 +11,7 @@ vi.mock('vue-router', () => ({
 
 import OnboardingChecklist from '@/components/OnboardingChecklist.vue';
 import { useGameStore } from '@/stores/game';
+import { clearAllVisits, markVisited } from '@/lib/onboardingVisits';
 import type { CharacterStatePayload } from '@xuantoi/shared';
 
 const i18n = createI18n({
@@ -28,6 +29,8 @@ const i18n = createI18n({
             sect: 'Bái nhập tông môn',
             cultivate: 'Bắt đầu Nhập Định',
             breakthrough: 'Hoàn thành đột phá đầu tiên',
+            leaderboard: 'Xem bảng xếp hạng',
+            mail: 'Kiểm tra hòm thư',
           },
         },
       },
@@ -75,21 +78,23 @@ describe('OnboardingChecklist', () => {
   beforeEach(() => {
     setActivePinia(createPinia());
     routerPushMock.mockReset();
+    clearAllVisits();
   });
 
-  it('hiện đầy đủ 4 step khi character mới (chưa hoàn thành gì)', () => {
+  it('hiện đầy đủ 6 step khi character mới (chưa hoàn thành gì)', () => {
     const game = useGameStore();
     game.character = makeChar();
     const w = mountChecklist();
     expect(w.find('[data-testid="onboarding-checklist"]').exists()).toBe(true);
     const items = w.findAll('li');
-    expect(items).toHaveLength(4);
-    // 0/4 — counter "0/4" hiển thị (character đã có nhưng các step khác chưa)
-    expect(w.text()).toContain('1/4'); // step character đã done, sect/cultivate/breakthrough chưa
+    expect(items).toHaveLength(6);
+    expect(w.text()).toContain('1/6'); // chỉ character đã done
     expect(items[0].text()).toContain('✓');
     expect(items[1].text()).toContain('○');
     expect(items[2].text()).toContain('○');
     expect(items[3].text()).toContain('○');
+    expect(items[4].text()).toContain('○'); // leaderboard
+    expect(items[5].text()).toContain('○'); // mail
   });
 
   it('panel ẩn khi không có character (không thể render khi parent v-if)', () => {
@@ -100,14 +105,14 @@ describe('OnboardingChecklist', () => {
     // → counter 0/4, panel HIỂN nhưng test parent guard separately.
     // Component này chỉ ẩn khi allDone, nên với null sẽ hiển 0/4.
     expect(w.find('[data-testid="onboarding-checklist"]').exists()).toBe(true);
-    expect(w.text()).toContain('0/4');
+    expect(w.text()).toContain('0/6');
   });
 
   it('counter tăng khi sectKey gán', () => {
     const game = useGameStore();
     game.character = makeChar({ sectKey: 'thanh_van', sectId: 's1' });
     const w = mountChecklist();
-    expect(w.text()).toContain('2/4'); // character + sect
+    expect(w.text()).toContain('2/6'); // character + sect
   });
 
   it('counter tăng khi cultivating=true', () => {
@@ -118,10 +123,10 @@ describe('OnboardingChecklist', () => {
       cultivating: true,
     });
     const w = mountChecklist();
-    expect(w.text()).toContain('3/4'); // character + sect + cultivate
+    expect(w.text()).toContain('3/6'); // character + sect + cultivate
   });
 
-  it('breakthrough: realmKey != phamnhan → done', () => {
+  it('breakthrough: realmKey != phamnhan → done; bảng xếp hạng + thư chưa visit → panel hiển', () => {
     const game = useGameStore();
     game.character = makeChar({
       realmKey: 'luyenkhi',
@@ -131,11 +136,43 @@ describe('OnboardingChecklist', () => {
       cultivating: true,
     });
     const w = mountChecklist();
-    // 4/4 → panel ẩn
+    // 4/6 — panel vẫn hiển vì leaderboard + mail chưa visit
+    expect(w.find('[data-testid="onboarding-checklist"]').exists()).toBe(true);
+    expect(w.text()).toContain('4/6');
+  });
+
+  it('all 4 character step done + leaderboard visited + mail visited → panel ẩn (6/6)', () => {
+    markVisited('leaderboard');
+    markVisited('mail');
+    const game = useGameStore();
+    game.character = makeChar({
+      realmKey: 'luyenkhi',
+      realmStage: 1,
+      sectKey: 'tu_la',
+      sectId: 's3',
+      cultivating: true,
+    });
+    const w = mountChecklist();
     expect(w.find('[data-testid="onboarding-checklist"]').exists()).toBe(false);
   });
 
-  it('breakthrough: realmKey=phamnhan + realmStage>0 → done (edge case)', () => {
+  it('leaderboard visited → step 5 done (counter tăng)', () => {
+    markVisited('leaderboard');
+    const game = useGameStore();
+    game.character = makeChar();
+    const w = mountChecklist();
+    expect(w.text()).toContain('2/6'); // character + leaderboard
+  });
+
+  it('mail visited → step 6 done (counter tăng)', () => {
+    markVisited('mail');
+    const game = useGameStore();
+    game.character = makeChar();
+    const w = mountChecklist();
+    expect(w.text()).toContain('2/6'); // character + mail
+  });
+
+  it('breakthrough: realmKey=phamnhan + realmStage>0 → done (edge case); panel hiển vì leaderboard/mail chưa visit', () => {
     const game = useGameStore();
     game.character = makeChar({
       realmKey: 'phamnhan',
@@ -145,7 +182,8 @@ describe('OnboardingChecklist', () => {
       cultivating: true,
     });
     const w = mountChecklist();
-    expect(w.find('[data-testid="onboarding-checklist"]').exists()).toBe(false);
+    // 4/6 — panel hiển vì leaderboard + mail chưa visit
+    expect(w.find('[data-testid="onboarding-checklist"]').exists()).toBe(true);
   });
 
   it('click button "Đi" trên step chưa done gọi router.push với route đúng', async () => {

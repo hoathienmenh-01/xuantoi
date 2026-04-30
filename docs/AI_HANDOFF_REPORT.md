@@ -93,24 +93,31 @@
 
 ---
 
-## Recent Changes (PR #33→#112 đã merged trên main; PR session 9h-C playwright golden expand in-flight)
+## Recent Changes (PR #33→#113 đã merged trên main; PR session 9h-D smart onboarding visit-steps in-flight)
 
-### PR session 9h-C (in-flight) — `test(web): expand Playwright golden path — daily login claim + leaderboard tabs (gated E2E_FULL=1)` — **Pending merge**
+### PR session 9h-D (in-flight) — `feat(web): smart onboarding expand — track Leaderboard + Mail visits via localStorage (6-step checklist)` — **Pending merge**
 
-- **Branch**: `devin/1777524299-playwright-golden-expand`. **Base**: `main` @ post-PR #112 merge. **Status**: docs + e2e additive, in-flight.
-- **Mục tiêu**: mở rộng `apps/web/e2e/golden.spec.ts` cover Daily Login claim (M9 / G7) + Leaderboard tabs (Power/Topup/Sect, PR #59 + #94 + #99) — các flow chưa có e2e coverage. Giữ gate `E2E_FULL=1` (không ăn CI matrix).
+- **Branch**: `devin/1777525372-onboarding-visit-steps`. **Base**: `main` @ `8cdb93c` (post PR #113 merge). **Status**: FE-only, in-flight.
+- **Mục tiêu**: mở rộng `OnboardingChecklist` từ 4 → 6 step. Step 5 = "Đã xem bảng xếp hạng", step 6 = "Đã kiểm tra thư" — track qua localStorage `onboarding:visited:leaderboard|mail`. Mục tiêu khuyến khích tân thủ khám phá 2 trang quan trọng (leaderboard giúp đối sánh sức mạnh, mail có quà từ admin / giftcode redeem) thay vì lạc đường. Smart onboarding feature theo §20 backlog (post-9h).
 - **Changes**:
-  1. **`apps/web/e2e/golden.spec.ts`** (+95 line): thêm 2 test trong describe `Golden path — full stack required`:
-     - `daily login claim — first claim today (M9 / G7)`: register → onboard → home → click "Nhận thưởng hôm nay" từ DailyLoginCard.
-     - `leaderboard tabs — Power / Topup / Sect render danh sách`: register → onboard → `/leaderboard` → switch 3 tab.
-     - Refactor: mỗi test tự tạo user mới (email `e2e_<scope>_${Date.now()}@local.test`) thay vì share email giữa test → isolation tốt hơn.
-     - Style "best-effort smoke" — `if (await el.isVisible())` gốc, không strict assert, chỉ yeu cầu page không crash.
-  2. **`docs/QA_CHECKLIST.md`** (+25 line): section "Automation" mở rộng how-to chạy full e2e local (`PLAYWRIGHT_BASE_URL=...` + `PLAYWRIGHT_SKIP_WEBSERVER=1` + `E2E_FULL=1`), liệt kê 3 test case hiện có (cho 9h-C trở lên) + ghi rõ CI gate (CI chỉ chạy `AuthView smoke` vì `E2E_FULL` không set).
-- **Tests added**: +2 e2e test trong `golden.spec.ts` (gated `E2E_FULL=1`, không chạy CI). Web vitest 187/187 (không đổi vì chỉ thêm Playwright spec).
-- **CI status (local)**: `pnpm typecheck` ✅ / `pnpm lint` ✅ / `pnpm --filter @xuantoi/web test` ✅ 187/187 / `pnpm build` (skip — không touch app code) — chỉ file e2e + docs. CI matrix `e2e-smoke` vẫn chỉ chạy `AuthView smoke` (1 test) vì `E2E_FULL` không set trên GH Actions.
-- **Risk**: thấp — chỉ thêm test (gated), không touch app code/migration/schema. Test best-effort smoke không strict assert nên không flake CI.
-- **Rollback**: revert single PR.
-- **`AI_HANDOFF_REPORT.md updated`**: ✅ — Recent Changes (this entry); §20 task C (E.b) chuyển sang Resolved sau khi PR này merge.
+  1. **`apps/web/src/lib/onboardingVisits.ts`** (mới, +57 line): module helper `hasVisited(key)` / `markVisited(key)` / `clearAllVisits()` SSR-safe (kiểm `typeof window`) + try/catch quota error (Safari private mode). Key prefix `onboarding:visited:`.
+  2. **`apps/web/src/components/OnboardingChecklist.vue`**: refactor steps 4 → 6 (thêm `leaderboard` route `/leaderboard` + `mail` route `/mail`). Đọc localStorage synchronously trong setup (không onMounted vì test-utils mount returns trước flush) qua `ref(hasVisited(...))`. Component re-mount mỗi lần user về `/home` (RouterView v-if) → flag latest đọc lại tự nhiên.
+  3. **`apps/web/src/views/LeaderboardView.vue`** (+2 line): `onMounted` thêm `void import('@/lib/onboardingVisits').then(m => m.markVisited('leaderboard'))` — dynamic import để giữ chunk nhỏ.
+  4. **`apps/web/src/views/MailView.vue`** (+2 line): tương tự `markVisited('mail')` trong `onMounted` sau auth check.
+  5. **`apps/web/src/i18n/{vi,en}.json`** (+2 key mỗi file): `home.onboarding.steps.leaderboard` + `home.onboarding.steps.mail` ("Xem bảng xếp hạng để đối sánh thiên hạ đạo hữu" / "Kiểm tra hòm thư — có thể có quà chờ nhận").
+  6. **`apps/web/src/lib/__tests__/onboardingVisits.test.ts`** (mới, +56 line, +6 vitest): hasVisited default false, markVisited single key, idempotent, clearAllVisits, raw value khác `'1'` treat false (defensive).
+  7. **`apps/web/src/components/__tests__/OnboardingChecklist.test.ts`** (+update +3 test): refactor expectations 4 → 6 step (`'1/4'` → `'1/6'` etc.), thêm test "leaderboard visited → step 5 done", "mail visited → step 6 done", "all 6/6 → panel ẩn".
+- **Tests added**: +6 vitest mới (`onboardingVisits.test.ts`) + 3 vitest cập nhật trong `OnboardingChecklist.test.ts`. Web `187 → 199` (file `23 → 25`).
+- **CI status (local)**: `pnpm typecheck` ✅ / `pnpm lint` ✅ / `pnpm --filter @xuantoi/web test` ✅ **199/199** (25 file) / `pnpm build` (skip).
+- **Risk**: thấp — FE-only, localStorage best-effort (panel re-hiện nếu mất localStorage cũng không phá flow). Không touch BE / schema / migration / API. Không ảnh hưởng economy / auth / admin. Component re-render đúng nhờ ref synchronous init (test verified).
+- **Rollback**: revert single PR. localStorage key có thể tự xoá qua DevTools nếu cần.
+- **`AI_HANDOFF_REPORT.md updated`**: ✅ — Recent Changes (this entry).
+
+### PR #113 — `test(web): expand Playwright golden path — daily login claim + leaderboard tabs (gated E2E_FULL=1) (session 9h task C)` — **Merged into main** @ `8cdb93c` session 9h task C — **Resolved**
+
+- **Branch**: `devin/1777524299-playwright-golden-expand`. **Status**: Merged. CI 5/5 ✅.
+- **Changes**: `apps/web/e2e/golden.spec.ts` (+95) thêm 2 test gated `E2E_FULL=1` (daily login claim, leaderboard tabs). `docs/QA_CHECKLIST.md` (+25) doc how-to chạy full e2e local + CI gate. Web vitest 187/187 không đổi (chỉ thêm Playwright spec).
+- **Risk**: thấp — gated test, không touch app code.
 
 ### PR #112 — `feat(admin): replay orphan commit 7e27aa9 — GET /admin/economy/audit-ledger endpoint + AdminView panel button + 6 BE vitest + 3 FE vitest + i18n` — **Merged into main** session 9h task B
 

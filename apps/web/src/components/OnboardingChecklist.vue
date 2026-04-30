@@ -2,22 +2,28 @@
 /**
  * Smart onboarding checklist (§1 prompt user).
  *
- * 4 step derived từ `game.character` — KHÔNG cần backend tracking riêng:
+ * 6 step derived từ `game.character` + localStorage exploration flags:
  *   1. Đã tạo nhân vật.
  *   2. Đã chọn tông môn (`sectKey != null`).
  *   3. Đã nhập định (`cultivating === true`).
  *   4. Đã đột phá lần đầu (`realmKey !== 'phamnhan'` hoặc `realmStage > 0`).
+ *   5. Đã xem bảng xếp hạng (`localStorage onboarding:visited:leaderboard`).
+ *   6. Đã kiểm tra thư (`localStorage onboarding:visited:mail`).
  *
- * Tự ẩn khi tất cả 4 step done (declutter cho veteran). Mỗi step có route
+ * Step 5+6 dùng localStorage — set khi user mount `LeaderboardView` / `MailView`
+ * lần đầu — để khuyến khích tân thủ khám phá 2 trang quan trọng cho closed beta.
+ *
+ * Tự ẩn khi tất cả step done (declutter cho veteran). Mỗi step có route
  * dẫn tới chỗ thực hiện — click → `router.push`.
  */
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { useI18n } from 'vue-i18n';
 import { useGameStore } from '@/stores/game';
+import { hasVisited } from '@/lib/onboardingVisits';
 
 interface Step {
-  key: 'character' | 'sect' | 'cultivate' | 'breakthrough';
+  key: 'character' | 'sect' | 'cultivate' | 'breakthrough' | 'leaderboard' | 'mail';
   done: boolean;
   route: string;
 }
@@ -25,6 +31,12 @@ interface Step {
 const game = useGameStore();
 const router = useRouter();
 const { t } = useI18n();
+
+// Snapshot localStorage flag synchronously trong setup() — component được
+// re-mount mỗi lần user về /home (RouterView v-if), nên đọc 1 lần là đủ. Không
+// cần onMounted (sẽ trễ 1 tick gây flicker UI).
+const visitedLeaderboard = ref(hasVisited('leaderboard'));
+const visitedMail = ref(hasVisited('mail'));
 
 const steps = computed<Step[]>(() => {
   const c = game.character;
@@ -50,6 +62,16 @@ const steps = computed<Step[]>(() => {
         c !== null &&
         (c.realmKey !== 'phamnhan' || c.realmStage > 0),
       route: '/',
+    },
+    {
+      key: 'leaderboard',
+      done: visitedLeaderboard.value,
+      route: '/leaderboard',
+    },
+    {
+      key: 'mail',
+      done: visitedMail.value,
+      route: '/mail',
     },
   ];
 });

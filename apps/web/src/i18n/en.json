@@ -165,7 +165,9 @@
         "character": "Create your character — pick a Dao name.",
         "sect": "Join a sect — choose one of three.",
         "cultivate": "Start Cultivating to absorb spirit qi.",
-        "breakthrough": "Complete your first breakthrough — leave Mortal."
+        "breakthrough": "Complete your first breakthrough — leave Mortal.",
+        "leaderboard": "Visit the leaderboard to size up your peers.",
+        "mail": "Check your mailbox — there may be gifts waiting."
       }
     }
   },

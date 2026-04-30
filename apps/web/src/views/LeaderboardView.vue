@@ -76,6 +76,8 @@ function formatBigIntString(s: string): string {
 
 onMounted(() => {
   void load('power');
+  // Smart onboarding: đánh dấu user đã ghé bảng xếp hạng (step 5).
+  void import('@/lib/onboardingVisits').then((m) => m.markVisited('leaderboard'));
 });
 </script>
 

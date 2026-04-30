@@ -33,6 +33,8 @@ onMounted(async () => {
   await game.fetchState().catch(() => null);
   game.bindSocket();
   game.clearMailBadge();
+  // Smart onboarding: đánh dấu user đã kiểm tra thư (step 6).
+  void import('@/lib/onboardingVisits').then((m) => m.markVisited('mail'));
   await refresh();
 });
 
