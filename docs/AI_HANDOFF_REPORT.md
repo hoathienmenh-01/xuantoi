@@ -1,12 +1,14 @@
 # AI Handoff Report — Xuân Tôi
 
-> **Snapshot (session 9n-O, PR #179 — ws/client.ts resolveWsOrigin +15 vitest)**: `main` @ `e20d2fe` (Merge PR #178). Web test baseline 532 → **547**.
+> **Snapshot (session 9o kickoff — audit refresh post-9n close-out)**: `main` @ `e40a4c5` (Merge PR #179, 30 Apr 2026 ~17:15 UTC). **Session 9n fully closed (15 PR merged #165..#179)**: all merged. PR #182 (chat.service WS+history +11 vitest, replaces #180) + PR #183 (mission.processor +8 vitest, replaces #181) open, CI ✅, pending user merge. **Baseline verified local 30/4 ~17:05 UTC**: `pnpm typecheck` ✅ · `pnpm lint` ✅ · shared **220/220** · web **547/547** (post-#179) · `pnpm build` ✅. API test chưa chạy local (cần infra:up). **Session 9o**: audit refresh → chọn task tiếp theo.
 
-> **Snapshot (session 9n-N merged as PR #178)**: unit test AllExceptionsFilter — +21 vitest cover envelope pass-through/wrap, status→code mapping (11 case), security no-leak. API test baseline 565 → **586**.
+> **Snapshot (session 9n-O merged as PR #179)**: ws/client.ts resolveWsOrigin +15 vitest. Web test baseline 532 → **547**.
 
-> **Snapshot (session 9n-M merged as PR #177)**: unit test RealtimeService — +20 vitest pure unit cover attach/detach/emit/broadcast/room/bind idempotent. API test baseline 545 → **565**.
+> **Snapshot (session 9n-N merged as PR #178)**: AllExceptionsFilter +21 vitest. API test baseline 565 → **586**.
 
-> **Snapshot (session 9n-L merged as PR #176)**: test bổ sung cho `apps/api/src/modules/mail/mail.service.ts` — +22 vitest cover WS emit, pruneExpired, validateInput edge cases + **bugfix pruneExpired item-only mail loss**.
+> **Snapshot (session 9n-M merged as PR #177)**: RealtimeService +20 vitest. API test baseline 545 → **565**.
+
+> **Snapshot (session 9n-L merged as PR #176)**: mail.service +22 vitest + bugfix pruneExpired item-only mail loss.
 
 > **Snapshot (session 9n-K merged as PR #175)**: smart catalog integrity tests cho `packages/shared/src/{enums,ws-events,api-contracts}.ts` — +66 vitest cover enum values/order/uniqueness + WS heartbeat/reconnect/cultivation tick constants + zod schema validation + AuthErrorCode enum + AUTH_ERROR_VI i18n map.
 
@@ -72,17 +74,33 @@
 ## 2. Current Branch / CI / PR Status
 
 - **Default branch**: `main`.
-- **Commit audit (session 9n kickoff)**: `d332a18 Merge pull request #164 from hoathienmenh-01/devin/1777549692-economy-race-tests` (HEAD `main`, 30/4 ~11:51 UTC).
-- **CI gần nhất trên main**: xanh — PR #164 ✅; trước đó #160, #161, #162, #163 cũng xanh khi merge.
-- **PR open đáng kể (audit time 30/4 ~12:10 UTC)**: **0 PR open** — toàn bộ session 9m (#160..#164) đã merged.
+- **Commit audit (session 9o kickoff)**: `e40a4c5 Merge pull request #179` (HEAD `main`, 30/4 ~17:15 UTC).
+- **CI gần nhất trên main**: xanh — PR #179 ✅; toàn bộ session 9n (#165..#179) xanh khi merge.
+- **PR open đáng kể (audit time 30/4 ~17:20 UTC)**: **2 PR open** — #182 (chat.service WS+history tests, replaces #180) CI ✅ · #183 (mission.processor tests, replaces #181) CI ✅ — cả hai pending user merge. **PR #180, #181 superseded** (stale merge conflict flag) — close manually.
+- **Commit audit (trước đó, session 9n kickoff)**: `d332a18` (PR #164, 30/4 ~11:51 UTC).
 - **Commit audit (trước đó, session 9m kickoff)**: `f103485 Merge pull request #159 from hoathienmenh-01/devin/1777546019-ui-primitive-tests` (HEAD `main`, 30/4 ~11:00 UTC).
 - **Commit audit (trước đó, session 9i close)**: `27552a8 Merge pull request #118 from hoathienmenh-01/devin/1777527557-admin-tab-badges` (HEAD `main`, 30/4 ~06:18 UTC).
 - **Replay gap PR #47**: **Đã đóng** — PR #53 (cherry-pick `32a33a6` từ `devin/1777398483-h5-vitest-playwright`) merge vào main commit `2ae4cc0` (28/4 20:15 UTC). File `apps/web/vitest.config.ts` + `playwright.config.ts` + `e2e/golden.spec.ts` + `apps/web/src/stores/__tests__/{toast,game}.test.ts` đã có trên main.
 - **PR merged gần đây ảnh hưởng lớn**:
   | PR | Chủ đề | Impact |
   |---|---|---|
-  | #164 | test(api): giftcode-race.test.ts — 5 vitest concurrent economy safety (session 9m) | Reward safety — chống double-grant qua unique index `[giftCodeId,userId]` + `Promise.allSettled` race; cover maxRedeems=1 (3 user concurrent), maxRedeems=2 (5 user), same-user double-redeem, concurrent items grant, revoke-during-redeem — merge `d332a18` |
-  | #163 | test(api): email.service.test.ts — 14 vitest unit (session 9m) | Email infra coverage — mode selection (console/smtp/smtp+auth), sendPasswordResetEmail link generation + URL-encode + expiry minutes copy, SMTP_FROM default + custom — merge `ba17380` |
+  | #179 | test(web): ws/client.ts resolveWsOrigin +15 vitest (session 9n-O) | WS origin strip path regression lock-in — merge `e40a4c5` |
+  | #178 | test(api): AllExceptionsFilter +21 vitest (session 9n-N) | Security no-leak + envelope contract — merge `e20d2fe` |
+  | #177 | test(api): realtime.service +20 vitest (session 9n-M) | Attach/detach/emit/broadcast/room/bind — merge `d531c49` |
+  | #176 | test(api): mail.service WS+prune+bugfix +22 vitest (session 9n-L) | Bugfix item-only mail loss — merge `a8c3c64` |
+  | #175 | test(shared): core-types catalog +66 vitest (session 9n-K) | Enum/ws-events/api-contracts invariant — merge `9648077` |
+  | #174 | test(shared): missions catalog +18 vitest (session 9n-J) | Mission period/quality/goalKind — merge `c1302af` |
+  | #173 | test(shared): combat catalog +40 vitest (session 9n-I) | MONSTERS/DUNGEONS/SKILLS + rollDamage — merge `f68da8f` |
+  | #172 | docs(CHANGELOG): catch-up 9m+9n (session 9n-H) | Backfill CHANGELOG — merge `614cd66` |
+  | #171 | fix(web,i18n): api fallback messages +19 vitest (session 9n-G) | common.apiFallback thay hard-code VN — merge `c02573a` |
+  | #170 | fix(web,i18n): toast Pinia i18n +4 vitest (session 9n-F) | Toast title locale-aware — merge `5d36d85` |
+  | #169 | feat(api,docs): economy-alerts CLI +18 vitest (session 9n-E) | alerts:economy parallel script — merge `767292b` |
+  | #168 | docs(TROUBLESHOOTING): ledger drift + topup alerts (session 9n-D) | Runbook — merge `9dddee6` |
+  | #167 | feat(api,docs): economy alerts thresholds env +22 vitest (session 9n-C) | Env override ECONOMY_ALERTS_* — merge `bcdd235` |
+  | #166 | feat(api,docs): audit-ledger CLI --json +13 vitest (session 9n-B) | --json output + ADMIN_GUIDE — merge `0b1b6da` |
+  | #165 | docs(handoff): audit refresh post-9m (session 9n-A) | Bump snapshot — merge `4b5b799` |
+  | #164 | test(api): giftcode-race.test.ts — 5 vitest (session 9m) | Reward safety race — merge `d332a18` |
+  | #163 | test(api): email.service.test.ts — 14 vitest (session 9m) | Email infra coverage — merge `ba17380` |
   | #162 | test(api): topup.service.test.ts — 17 vitest economy safety (session 9m) | Topup createOrder happy/invalid/limit/isolation/uniqueness, listForUser empty/sorted/cap-50, bankInfo, toView normal/fallback, no-currency-side-effect — merge `0f56438` |
   | #161 | docs(changelog): catch-up sessions 9g/9h/9i/9j/9l (session 9m) | Reconstruct missing sections in `docs/CHANGELOG.md` from AI_HANDOFF_REPORT.md — merge `9c1e63a` |
   | #160 | docs(handoff): session 9m kickoff — audit refresh stale §2/§13/§15/§17/§19 + bump snapshot a1079dc | Docs audit refresh kickoff — merge `873a0a3` |
@@ -1943,11 +1961,11 @@ apps/api/src/modules/character/currency.service.ts:88   data: { tienNgoc: { incr
 | **Shop** | **10 test** (`shop.service.test.ts`) (PR #39) | Daily limit (feature chưa có) | — |
 | Health | 4 test (`health.controller.test.ts`) | — | — |
 | Ops | **7 test** (`ops.processor.test.ts`) | — | — |
-| Realtime | 10 test (`realtime.gateway.test.ts`) | Ban user during connection | Medium |
+| Realtime | **30 test** (`realtime.gateway.test.ts` 10 + `realtime.service.test.ts` 20 session 9n-M) — pure unit cover attach/detach/emit/broadcast/room/bind idempotent | Ban user during connection | Medium |
 | Rate limiter | 8 test (`rate-limiter.test.ts`) | — | — |
 | **All-Exceptions Filter** | **21 test** (`all-exceptions.filter.test.ts` session 9n-N) — HttpException pass-through/wrap (4), status→code mapping (11: 400/401/403/404/409/429/5xx + 4xx fallback), security INTERNAL_ERROR no-leak (3 include Error/TypeError/non-Error), envelope shape strict (1); pure unit (fake ArgumentsHost). | — | — |
-| Shared (realms/catalog/proverbs/shop/topup/boss/combat/missions/core-types) | **162 test** (9 file, post session 9n-K this PR on top of main — **pending: PR #173 +40 combat + PR #174 +18 missions**) — boss 22 (PR #148) + catalog 17 + proverbs 11 (PR #87 +8 invariants) + realms 27 + shop 9 (PR #147) + topup 10 (PR #147) + **enums 17 (9n-K)** + **ws-events 19 (9n-K)** + **api-contracts 30 (9n-K)**. Sau khi 3 PR pending merge (9n-I/9n-J/9n-K) đều merge: tổng shared ≈ **220 test** (12 file) — bao gồm combat 40 + missions 18. | — | — |
-| **Web Vitest** | **484 test** (51 file, post session 9k task C this PR base `5a815b3`) — baseline cũ 187 (23 file) + session 9i +115 (K/K1/K2/F/G tasks: AppShell 15 + HomeView 9 + GiftCodeView 10 + LeaderboardView 10 skeleton + ProfileView 12 + apiError helper 17 + extractApiErrorCode migration) + session 9j +164 (task B Topup 10 + Mail 14 + task D Shop 19 + task E Inventory 15 + task F Auth 14 + task G Onboarding 16 + task H Dungeon 13 + task I Sect 12 + task J NotFound+router 8 + task K Boss 12 + task L Chat+Locale 17 + task M MButton+MToast 14) + **session 9k task C +18 AdminView render-level (this PR)** — onMounted role guard 4 + tab badge 4 + tab switch 2 + Export CSV 3 + Giftcode revoke ConfirmModal 5. | Render-level cho `AppShell` nav badge interaction (`breakthroughReady` vừa wire PR #107); runtime smoke for full claim/buy flow E2E (session 9k task B — Playwright matrix expand). | Low |
+| Shared (realms/catalog/proverbs/shop/topup/boss/combat/missions/core-types) | **220 test** (11 file, verified local 30/4 ~17:05 UTC) — boss 22 + catalog 17 + proverbs 11 + realms 27 + shop 9 + topup 10 + enums 17 (PR #175) + ws-events 19 (PR #175) + api-contracts 30 (PR #175) + combat 40 (PR #173) + missions 18 (PR #174). | — | — |
+| **Web Vitest** | **547 test** (56 file, verified local 30/4 ~17:05 UTC) — baseline 484 (51 file, post 9k) + session 9l +5 (SettingsView) + session 9n-F +4 (toast i18n) + session 9n-G +19 (api fallback i18n) + session 9n-K +20 (UI primitive SettingsView) + **session 9n-O +15 (ws/client.ts resolveWsOrigin PR #179)**. | Render-level cho `AppShell` nav badge interaction; runtime smoke for full claim/buy flow E2E. | Low |
 | **E2E Playwright** | **Wired** (PR #64) — `apps/web/e2e/golden.spec.ts` matrix job `e2e-smoke` với Postgres+Redis services, build api+web, run `E2E_SMOKE=1 pnpm --filter @xuantoi/web e2e:smoke`. | Full happy-path expand (M6 `/activity` browse, daily login claim, mission claim, market post/buy). | Low |
 | **Economy integration** | Rải rác trong từng service + `item-ledger.test.ts` consistency check + `pnpm audit:ledger` script | Cross-module: market post → buy, ngân sách sect | Low |
 | **Logs (G3 cũ/M6)** | **20 test** (`logs.service.test.ts`) (PR #88) — cursor encode/decode 6 + listForUser currency 11 + listForUser item 3 | — | — |
