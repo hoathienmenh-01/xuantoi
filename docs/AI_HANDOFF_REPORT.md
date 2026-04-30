@@ -8,7 +8,9 @@
 >
 > **Baseline session 9h (đã verify local 30/4 ~04:25 UTC trên main @ `4c214eb`)**: `pnpm typecheck` ✅ (3 project, sau khi `prisma generate` + `shared build`) · `pnpm lint` ✅ (max-warnings 0) · `pnpm --filter @xuantoi/shared test` ✅ **55/55** (3 file: catalog 17 + proverbs 11 + realms 27) · `pnpm --filter @xuantoi/web test` ✅ **187/187** (23 file: AdminGiftcodeApi 11 + AdminInventoryRevoke 7 + ConfirmModal 13 + DailyLoginCard 4 + NextActionPanel 6 + OnboardingChecklist 8 + Skeleton 5 + i18nParity 6 + adminAlerts 13 + adminGuards 12 + itemName 11 + missionProgress 7 + auth 7 + badges 9 + game 8 + toast 9 + ActivityView 10 + ForgotPasswordView 5 + LeaderboardView 10 + MarketView 3 + MissionView 9 + ResetPasswordView 7 + SettingsView 7). API test: chưa run trong session 9h (cần `pnpm infra:up` + `prisma migrate deploy`); CI matrix `e2e-smoke` + build job vẫn xanh trên PR #109/#110 (5/5 ✅); api test set ~395/395 (382 + PR #100 +2 + PR #101 +11 + PR #103 +1).
 >
-> **Trạng thái (30/4 session 9h, ~04:25 UTC)**: PR #33..#110 đã merge `main` (PR #105/#106/#107/#108/#109/#110 cascade merged session 9g, cả task A/B/C/D/E.a/F1 đóng). Toàn bộ Critical/High/Medium đã Resolved trừ M7 (CSP CDN — chỉ verify khi prod deploy), M9 (logout-all `passwordVersion` — intentional trade-off, đã document trong `docs/SECURITY.md`), M10 (shop daily limit — post-beta nice-to-have). Low: tất cả Resolved (L1..L7 đầy đủ cả BE lẫn FE). **0 PR open**. Roadmap session 9h top priority: **E.b** Playwright golden path expand (gated `E2E_FULL=1`) + **E.c** Script `pnpm audit:ledger` enforcement (catch double-spend regress / item dupe — economy/inventory safety). Sau đó: smart-features tier (smart admin filters, smart onboarding tiếp theo, smart economy report).
+> **Trạng thái (30/4 session 9h, ~04:25 UTC)**: PR #33..#110 đã merge `main` (PR #105/#106/#107/#108/#109/#110 cascade merged session 9g, cả task A/B/C/D/E.a/F1 đóng). Toàn bộ Critical/High/Medium đã Resolved trừ M7 (CSP CDN — chỉ verify khi prod deploy), M9 (logout-all `passwordVersion` — intentional trade-off, đã document trong `docs/SECURITY.md`), M10 (shop daily limit — post-beta nice-to-have). Low: tất cả Resolved (L1..L7 đầy đủ cả BE lẫn FE). **0 PR open**. **Orphan branch phát hiện trong session 9h audit**: `devin/1777492785-admin-audit-ledger-endpoint` (commit `7e27aa9` — `feat(admin): smart economy safety — GET /admin/economy/audit-ledger + UI button`) đã có code hoàn chỉnh (BE endpoint + service + 6 vitest, FE helper + AdminView panel + 3 vitest, i18n vi/en) nhưng **chưa được mở PR**, chưa vào main — cần replay session 9h. Roadmap session 9h top priority: **B = replay 7e27aa9** (admin audit-ledger endpoint + UI), **C = E.b** Playwright golden path expand (gated `E2E_FULL=1`). Sau đó: smart admin filters, smart onboarding tiếp theo, smart economy report.
+>
+> **Lưu ý**: `pnpm audit:ledger` SCRIPT đã có trong main từ PR #76 (G21, commit `e5ece30` + Devin Review fixes `1fff79a` + `b08c0ad`); 9 vitest test chạy với real Postgres (test helpers `makeUserChar` + `wipeAll`). Endpoint admin `GET /admin/economy/audit-ledger` (commit `7e27aa9`) chưa vào main, là task replay session 9h B.
 >
 > **Session 9d done (29/4 ~13:00 → 14:55 UTC)**: PR #84 (G23 giftcode duplicate `CODE_EXISTS` error) **Merged into main** @ `05b05c0` — `apps/api/src/modules/giftcode/giftcode.service.ts` + admin controller throw `CODE_EXISTS` khi tạo trùng code, FE map qua i18n. PR #86 (docs handoff session 9d audit refresh) **Merged into main** @ `011e930` — bump snapshot `05b05c0` + L6/L6b/G23 Resolved. PR #87 (L3 proverbs corpus expand 7 → 64 + invariants test) **Merged into main** @ `89e3fb6` — `packages/shared/src/proverbs.ts` 64 câu chia 4 chủ đề + 8 vitest. PR #88 (M6 BE `GET /logs/me`) **Merged into main** @ `c6da89a` — `apps/api/src/modules/logs/{logs.service,logs.controller,logs.module}.ts` + 20 vitest API integration (cursor encode/decode 6 + listForUser currency 11 + listForUser item 3). PR #89 (docs API.md refresh) **Merged into main** @ `537a4d6` — sync endpoints + global prefix `/api` note + WS `mission:progress` + auth route `/_auth/*` fix. PR #90 (docs QA_CHECKLIST + ADMIN_GUIDE refresh) **Merged into main** @ `1cbf349` — add Daily Login (M9), Leaderboard, audit log self-view (M6), WS mission progress, logout-all confirm modal, fix `/api/healthz` path. PR #91 (FE M6 `/activity` tab consumer) **Merged into main** @ `3283e42` — `apps/web/src/views/ActivityView.vue` + `apps/web/src/api/logs.ts` + sidebar link + i18n vi/en + 10 vitest cover skeleton/empty/delta sign/tab switch/load more/error map.
 >
@@ -1646,6 +1648,7 @@ _(Không có lỗi làm app không chạy / mất tiền / auth hỏng tại com
 | `POST /api/admin/inventory/revoke` (`ADMIN_REVOKE` ledger) | **Có** (PR #66 — endpoint + 9 vitest) | — |
 | `GET /api/mail/unread-count` (M7 hydrate badge) | **Có** (PR #71) | — |
 | `GET /api/admin/economy/alerts` (smart admin) | **Có** (PR #54) | — |
+| `GET /api/admin/economy/audit-ledger` (smart admin, on-demand audit) | **Có code orphan branch `devin/1777492785-admin-audit-ledger-endpoint` commit `7e27aa9`, chưa vào main** — replay session 9h task B | Trước beta nếu economy safety ưu tiên |
 | `POST /api/_auth/register` rate-limit per-IP | **Có** (PR #60 — 5/15min) | — |
 | `GET /api/me/next-actions` (smart onboarding) | **Có** (PR #49) | — |
 
@@ -1758,12 +1761,12 @@ Admin hiện tại có thể vào `/admin` → Users → tìm → **Set role = A
 
 A. **Docs audit refresh session 9h** — **In-flight PR (này)** — bump snapshot `4c214eb`, chuyển PR #109 + #110 sang Merged, mở §20 roadmap session 9h, cập nhật §21 PR Plan, baseline web vitest 187/187 (23 file).
 
-B. **E.c — Script `pnpm audit:ledger` enforcement (economy/inventory safety)** — ưu tiên cao nhất vì nằm trong `Smart economy safety`/`Economy / inventory / reward safety`:
-  - Thêm `apps/api/scripts/audit-ledger.ts`: SUM `CurrencyLedger.delta` group-by `(characterId, currency)` so với `Character.linhThach + Character.tienNgoc`; SUM `ItemLedger.qtyDelta` group-by `(characterId, itemKey)` so với `InventoryItem.qty`. In bảng discrepancy nếu có, exit code !=0 để wire được vào cron / CI ad-hoc.
-  - Thêm npm script `audit:ledger` trong `apps/api/package.json` → `tsx scripts/audit-ledger.ts`.
-  - Thêm unit test pure logic ưu tiên (nếu access Prisma khó, tách helper `computeCurrencyDiscrepancy(rows, characters)` + `computeItemDiscrepancy(rows, inv)` và test thuần function).
-  - Docs: `docs/SECURITY.md` hoặc `docs/ADMIN_GUIDE.md` tiếp section "Audit ledger của admin".
-  - Risk: thấp — read-only script, không touch BE runtime/migration/schema.
+B. **Replay orphan commit `7e27aa9` — admin audit-ledger endpoint + UI** — ưu tiên cao nhất vì smart admin/economy safety đã có code sẵn nhưng bị bỏ quên trên orphan branch:
+  - Branch gốc: `devin/1777492785-admin-audit-ledger-endpoint`, commit `7e27aa9` — `feat(admin): smart economy safety — GET /admin/economy/audit-ledger + UI button`.
+  - **Nội dung commit (11 file, +594 / -120)**: refactor pure logic ra `apps/api/src/modules/admin/ledger-audit.ts` (re-export từ script giữ test cũ vẫn pass) + `auditResultToJson()` serialize bigint → string cho HTTP, `AdminService.runLedgerAudit()` reuse PrismaService, controller `@Get('economy/audit-ledger')` ADMIN/MOD-readable; FE `adminAuditLedger()` helper + `AdminLedgerAudit/Char/Inv` types, panel violet-500 trong AdminView Stats tab + button "Chạy audit", 9 i18n keys vi+en, +6 vitest BE + 3 vitest FE (web 187 → 190).
+  - **Plan**: cherry-pick `7e27aa9` vào branch mới từ main → resolve conflict `docs/AI_HANDOFF_REPORT.md` (commit gốc reference snapshot cũ) → chạy typecheck/lint/test/build local → mở PR.
+  - **Risk**: thấp–trung — refactor behavior-preserving (script test 9/9 vẫn pass), endpoint read-only, không touch schema/migration.
+  - **Docs**: cập nhật `docs/ADMIN_GUIDE.md` thêm section "Chạy audit ledger từ AdminView Stats tab".
 
 C. **E.b — Playwright golden path expand (gated `E2E_FULL=1`)** — sau B:
   - Mở rộng `apps/web/e2e/golden.spec.ts` cover: register → daily login claim → mission claim → leaderboard tab switch (Power/Topup/Sect) → admin grant currency/revoke item (nếu admin set role available).
@@ -1886,10 +1889,20 @@ F. ~~**`docs/CHANGELOG.md` bootstrap**~~ — **Done by PR #104** (Merged into ma
 - **Risk**: 0 (docs-only).
 - **Rollback**: revert single PR.
 
-#### PR session 9h-B (planned, after 9h-A merge) — `feat(api,docs): add audit:ledger script + helpers + tests — economy/inventory safety enforcement (E.c)`
-- **Branch**: TBD `devin/<ts>-audit-ledger-script`. **Base**: `main` post-9h-A.
-- **File**: `apps/api/scripts/audit-ledger.ts` (mới, entrypoint), `apps/api/src/lib/audit-ledger/{compute.ts,compute.test.ts}` (helpers `computeCurrencyDiscrepancy` + `computeItemDiscrepancy` + unit test), `apps/api/package.json` (+npm script `audit:ledger`), `docs/SECURITY.md` hoặc `docs/ADMIN_GUIDE.md` (section "Audit ledger").
-- **Risk**: thấp — read-only script, không touch runtime / schema / migration.
+#### PR session 9h-B (planned, after 9h-A merge) — `feat(admin): replay orphan commit 7e27aa9 — GET /admin/economy/audit-ledger endpoint + AdminView panel button + 6 BE vitest + 3 FE vitest + i18n`
+- **Branch**: TBD `devin/<ts>-replay-admin-audit-ledger-endpoint`. **Base**: `main` post-9h-A.
+- **Plan**: cherry-pick `7e27aa9` từ orphan branch `devin/1777492785-admin-audit-ledger-endpoint` (`feat(admin): smart economy safety — GET /admin/economy/audit-ledger + UI button`) vào branch mới base main. Resolve conflict `docs/AI_HANDOFF_REPORT.md` (commit gốc reference snapshot cũ trước session 9h refresh). Chạy `pnpm typecheck/lint/test/build` local; verify api test 395 → 401 + web test 187 → 190 sau replay.
+- **File (theo `git show 7e27aa9 --stat`, 11 file +594/-120)**:
+  - `apps/api/scripts/audit-ledger.ts` (refactor: re-export pure logic từ `ledger-audit.ts` mới, giữ test cũ pass).
+  - `apps/api/src/modules/admin/ledger-audit.ts` (mới, +167 line): pure `auditLedger(prisma)` + `auditResultToJson()` serialize bigint → string.
+  - `apps/api/src/modules/admin/admin.service.ts` (+16 line): `runLedgerAudit()` reuse `PrismaService`.
+  - `apps/api/src/modules/admin/admin.controller.ts` (+17 line): `@Get('economy/audit-ledger')` ADMIN/MOD-readable.
+  - `apps/api/src/modules/admin/admin-audit-ledger.test.ts` (mới, +141 line, +6 vitest BE): empty DB, ledger khớp, linhThach mismatch, tienNgoc mismatch, inventory mismatch, multi-entry sum.
+  - `apps/web/src/api/admin.ts` (+35 line): `adminAuditLedger()` helper + `AdminLedgerAudit/Char/Inv` types.
+  - `apps/web/src/views/AdminView.vue` (+83 line): panel violet-500 trong Stats tab + button "Chạy audit".
+  - `apps/web/src/i18n/{vi,en}.json` (+11 key mỗi file): `admin.ledgerAudit.*`.
+  - `apps/web/src/api/__tests__/admin.audit-ledger.test.ts` (mới, +78 line, +3 vitest FE): clean response, discrepancies bigint string, throw on `ok=false`.
+- **Risk**: thấp–trung — refactor behavior-preserving (script test 9/9 vẫn pass), endpoint read-only, không touch schema/migration.
 - **Rollback**: revert single PR.
 
 #### Past session 9g (đã done):
