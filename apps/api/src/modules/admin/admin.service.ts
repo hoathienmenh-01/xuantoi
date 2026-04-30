@@ -142,6 +142,111 @@ export class AdminService {
     };
   }
 
+  /**
+   * Smart admin user export CSV (session 9i task E): trả về toàn bộ user khớp
+   * filter (không pagination) để admin export ra CSV. Cap ở `MAX_EXPORT_ROWS`
+   * để tránh hết RAM khi user-base lớn — admin nhận thông báo trong response
+   * header `X-Export-Truncated` (set bởi controller).
+   *
+   * Reuse cùng filter logic với `listUsers` (single source of truth) — bất kỳ
+   * filter nào hợp lệ ở `listUsers` đều hợp lệ ở đây.
+   */
+  async exportUsers(
+    actorId: string,
+    q: string | undefined,
+    filters: {
+      role?: Role;
+      banned?: boolean;
+      linhThachMin?: bigint;
+      linhThachMax?: bigint;
+      tienNgocMin?: number;
+      tienNgocMax?: number;
+      realmKey?: string;
+    } = {},
+  ): Promise<{ rows: AdminUserRow[]; truncated: boolean; total: number }> {
+    const conditions: Prisma.UserWhereInput[] = [];
+    if (q) {
+      conditions.push({
+        OR: [
+          { email: { contains: q, mode: 'insensitive' } },
+          { character: { is: { name: { contains: q, mode: 'insensitive' } } } },
+        ],
+      });
+    }
+    if (filters.role !== undefined) conditions.push({ role: filters.role });
+    if (filters.banned !== undefined) conditions.push({ banned: filters.banned });
+
+    const charConditions: Prisma.CharacterWhereInput = {};
+    const linhThachFilter: { gte?: bigint; lte?: bigint } = {};
+    if (filters.linhThachMin !== undefined) linhThachFilter.gte = filters.linhThachMin;
+    if (filters.linhThachMax !== undefined) linhThachFilter.lte = filters.linhThachMax;
+    if (linhThachFilter.gte !== undefined || linhThachFilter.lte !== undefined) {
+      charConditions.linhThach = linhThachFilter;
+    }
+    const tienNgocFilter: { gte?: number; lte?: number } = {};
+    if (filters.tienNgocMin !== undefined) tienNgocFilter.gte = filters.tienNgocMin;
+    if (filters.tienNgocMax !== undefined) tienNgocFilter.lte = filters.tienNgocMax;
+    if (tienNgocFilter.gte !== undefined || tienNgocFilter.lte !== undefined) {
+      charConditions.tienNgoc = tienNgocFilter;
+    }
+    if (filters.realmKey) charConditions.realmKey = filters.realmKey;
+    if (Object.keys(charConditions).length > 0) {
+      conditions.push({ character: { is: charConditions } });
+    }
+
+    const where: Prisma.UserWhereInput = conditions.length > 0 ? { AND: conditions } : {};
+    const MAX_EXPORT_ROWS = 5000;
+    const [rows, total] = await Promise.all([
+      this.prisma.user.findMany({
+        where,
+        include: { character: true },
+        orderBy: { createdAt: 'desc' },
+        take: MAX_EXPORT_ROWS,
+      }),
+      this.prisma.user.count({ where }),
+    ]);
+    const truncated = total > MAX_EXPORT_ROWS;
+    // Stringify bigint filters cho audit JSON (Prisma JSON không serialize bigint).
+    const filtersJson: Record<string, string | number | boolean | null> = {
+      q: q ?? null,
+      role: filters.role ?? null,
+      banned: filters.banned ?? null,
+      linhThachMin: filters.linhThachMin !== undefined ? filters.linhThachMin.toString() : null,
+      linhThachMax: filters.linhThachMax !== undefined ? filters.linhThachMax.toString() : null,
+      tienNgocMin: filters.tienNgocMin ?? null,
+      tienNgocMax: filters.tienNgocMax ?? null,
+      realmKey: filters.realmKey ?? null,
+    };
+    await this.audit(actorId, 'user.exportCsv', {
+      total,
+      exported: rows.length,
+      truncated,
+      filters: filtersJson,
+    });
+    return {
+      rows: rows.map((u) => ({
+        id: u.id,
+        email: u.email,
+        role: u.role,
+        banned: u.banned,
+        createdAt: u.createdAt.toISOString(),
+        lastLoginAt: u.lastLoginAt ? u.lastLoginAt.toISOString() : null,
+        character: u.character
+          ? {
+              id: u.character.id,
+              name: u.character.name,
+              realmKey: u.character.realmKey,
+              realmStage: u.character.realmStage,
+              linhThach: u.character.linhThach.toString(),
+              tienNgoc: u.character.tienNgoc,
+            }
+          : null,
+      })),
+      truncated,
+      total,
+    };
+  }
+
   async setBanned(
     actorId: string,
     actorRole: Role,

@@ -9,9 +9,10 @@ import {
   Post,
   Query,
   Req,
+  Res,
   UseGuards,
 } from '@nestjs/common';
-import type { Request } from 'express';
+import type { Request, Response } from 'express';
 import { Role, TopupStatus } from '@prisma/client';
 import { z } from 'zod';
 import { AdminGuard } from './admin.guard';
@@ -19,6 +20,7 @@ import { RequireAdmin } from './require-admin.decorator';
 import { AdminError, AdminService } from './admin.service';
 import { GiftCodeError, GiftCodeService } from '../giftcode/giftcode.service';
 import { MailError, MailService } from '../mail/mail.service';
+import { formatUsersCsv } from './user-csv';
 
 function fail(code: string, status = HttpStatus.BAD_REQUEST): never {
   throw new HttpException({ ok: false, error: { code, message: code } }, status);
@@ -137,6 +139,74 @@ export class AdminController {
     if (realmKey && /^[a-z0-9_-]{1,32}$/.test(realmKey)) filters.realmKey = realmKey;
     const r = await this.admin.listUsers(q, p, filters);
     return { ok: true, data: r };
+  }
+
+  /**
+   * Smart admin user export CSV (session 9i task E). Reuse cùng filter logic
+   * với GET /admin/users (single source of truth). Trả về `text/csv` raw để
+   * trình duyệt download trực tiếp. Cap 5000 row trong service; nếu truncated
+   * thì set header `X-Export-Truncated: true` để FE hiện cảnh báo.
+   *
+   * Audit log entry `user.exportCsv` được ghi trong service (không lộ data PII
+   * trong query string admin).
+   */
+  @Get('users.csv')
+  @RequireAdmin()
+  async usersCsv(
+    @Req() req: AdminReq,
+    @Res({ passthrough: true }) res: Response,
+    @Query('q') q: string | undefined,
+    @Query('role') role: string | undefined,
+    @Query('banned') banned: string | undefined,
+    @Query('linhThachMin') linhThachMin: string | undefined,
+    @Query('linhThachMax') linhThachMax: string | undefined,
+    @Query('tienNgocMin') tienNgocMin: string | undefined,
+    @Query('tienNgocMax') tienNgocMax: string | undefined,
+    @Query('realmKey') realmKey: string | undefined,
+  ): Promise<string> {
+    const filters: {
+      role?: Role;
+      banned?: boolean;
+      linhThachMin?: bigint;
+      linhThachMax?: bigint;
+      tienNgocMin?: number;
+      tienNgocMax?: number;
+      realmKey?: string;
+    } = {};
+    if (role === 'PLAYER' || role === 'MOD' || role === 'ADMIN') filters.role = role;
+    if (banned === 'true') filters.banned = true;
+    else if (banned === 'false') filters.banned = false;
+    const parseBig = (s: string | undefined): bigint | undefined => {
+      if (!s) return undefined;
+      try {
+        const n = BigInt(s);
+        return n >= 0n ? n : undefined;
+      } catch {
+        return undefined;
+      }
+    };
+    const parseInt32 = (s: string | undefined): number | undefined => {
+      if (!s) return undefined;
+      const n = Number.parseInt(s, 10);
+      return Number.isFinite(n) && n >= 0 ? n : undefined;
+    };
+    filters.linhThachMin = parseBig(linhThachMin);
+    filters.linhThachMax = parseBig(linhThachMax);
+    filters.tienNgocMin = parseInt32(tienNgocMin);
+    filters.tienNgocMax = parseInt32(tienNgocMax);
+    if (realmKey && /^[a-z0-9_-]{1,32}$/.test(realmKey)) filters.realmKey = realmKey;
+    const r = await this.admin.exportUsers(req.userId, q, filters);
+    const csv = formatUsersCsv(r.rows);
+    const ts = new Date().toISOString().replace(/[:.]/g, '-');
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader(
+      'Content-Disposition',
+      `attachment; filename="xuantoi-users-${ts}.csv"`,
+    );
+    res.setHeader('X-Export-Total', String(r.total));
+    res.setHeader('X-Export-Rows', String(r.rows.length));
+    if (r.truncated) res.setHeader('X-Export-Truncated', 'true');
+    return csv;
   }
 
   @Post('users/:id/ban')

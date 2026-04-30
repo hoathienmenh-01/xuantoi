@@ -861,6 +861,10 @@
     "noPermission": "Bạn không có quyền vào khu này.",
     "users": {
       "searchPlaceholder": "Tìm email hoặc đạo hiệu…",
+      "exportCsvBtn": "Xuất CSV",
+      "exportingLabel": "Đang xuất…",
+      "exportedToast": "Đã xuất {rows} dòng CSV.",
+      "exportTruncatedToast": "Đã xuất {exported}/{total} dòng (giới hạn 5000). Hãy lọc thêm để export đầy đủ.",
       "filter": {
         "allRoles": "Tất cả vai trò",
         "allStatus": "Tất cả trạng thái",
