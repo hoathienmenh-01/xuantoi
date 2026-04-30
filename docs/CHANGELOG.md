@@ -10,7 +10,47 @@ Tóm tắt **người chơi / vận hành / dev** dễ đọc, theo PR đã merg
 
 ## [Unreleased]
 
-> Chưa có thay đổi pending sau session 9l close-out @ `f103485`. Khi mở PR mới, ghi vào đây.
+> Pending merge: PR #172 (docs CHANGELOG catch-up 9m+9n — this PR) · PR #173 (test shared combat 40 vitest) · PR #174 (test shared missions 18 vitest).
+
+---
+
+## [session 9n — PR #165 → #171, merged 30/4 12:13→13:15 UTC]
+
+### Added
+
+- **Smart audit-ledger CLI** mở rộng `--json` flag (PR #166): `pnpm --filter @xuantoi/api audit:ledger -- --json` cho cron / pipeline parse machine-readable. +13 vitest unit (parseArgs 4 + formatResult 5 + formatResultJson 4) cho pure logic. Doc ở `ADMIN_GUIDE §11`.
+- **Smart admin economy alerts thresholds env-tunable** (PR #167): `ECONOMY_ALERTS_DEFAULT_STALE_HOURS` / `_MIN_STALE_HOURS` / `_MAX_STALE_HOURS` env override (mặc định 24h, range 1h..720h). Endpoint `GET /admin/economy/alerts` + UI `apps/web/src/api/admin.ts` adminEconomyAlerts(staleHours?). +22 vitest. Doc `ADMIN_GUIDE §11.3` + `apps/api/.env.example`.
+- **Smart economy-alerts CLI** parallel với `audit:ledger` (PR #169): `pnpm --filter @xuantoi/api alerts:economy` + `--json` flag + `--stale-hours=N` flag (override 24h default). Read-only, exit 0/1/2. Extract pure `queryEconomyAlerts()` từ AdminService cho reusability. +18 vitest unit. Doc `ADMIN_GUIDE §11.3`.
+
+### Fixed
+
+- **i18n parity — toast titles** (PR #170): `apps/web/src/stores/toast.ts` Pinia store trước hard-code VN titles (`'Tin tức' / 'Cảnh báo' / 'Lỗi' / 'Thành công' / 'Thiên Đạo Sứ Giả'`) → giờ dùng `i18n.global.t('toast.title.<type>')` (key đã có sẵn ở `vi.json` + `en.json`). User switch sang en thì toast title cũng dịch. +4 vitest cho locale switch (vi/en).
+- **i18n parity — api fallback errors** (PR #171): `apps/web/src/api/{auth,shop,character}.ts` trước hard-code VN `new Error('Đăng ký thất bại' / 'Đăng nhập thất bại' / ...)` fallback (9 chỗ) khi BE envelope thiếu `data.error` → giờ dùng helper `fallbackError(op)` wrap `i18n.global.t('common.apiFallback.<op>')`. Added i18n keys `common.apiFallback.{register,login,changePassword,forgotPassword,resetPassword,logoutAll,shopLoad,shopBuy,onboard}` ở vi.json + en.json. +19 vitest cho cả 2 locale + BE error precedence. Web vitest baseline 513 → 532.
+
+### Docs
+
+- **Audit refresh session 9n kickoff** (PR #165): bump snapshot `f103485 → d332a18` post session 9m close-out (PR #160..#164 merged).
+- **TROUBLESHOOTING runbook** (PR #168): §15 ledger drift (audit-ledger CLI exit code 1 → diagnose currency vs character balance, item ledger vs InventoryItem.qty); §16 topup stale alerts flood (ECONOMY_ALERTS_*_STALE_HOURS tuning + payment provider integration audit).
+
+### Internal
+
+- Loop autonomous session 9n hoàn tất 7/7 PR merge cascade vào main mà không cần user confirmation cho mỗi task (task A→G). Snapshot `d332a18 → c02573a` (post PR #171).
+
+---
+
+## [session 9m — PR #160 → #164, merged 30/4 11:30→11:51 UTC]
+
+### Docs
+
+- **Audit refresh session 9m kickoff** (PR #160): bump snapshot post session 9l close-out.
+- **CHANGELOG catch-up sessions 9g/9h/9i/9j/9l** (PR #161): backfill changelog cho các session đã merge nhưng thiếu trong file này.
+
+### Internal
+
+- **API service test coverage push** (PR #162/#163/#164): +36 vitest economy/auth safety:
+  - `topup.service.test.ts` +17 vitest (PR #162): payment confirm idempotency, ledger atomicity, currency conversion.
+  - `email.service.test.ts` +14 vitest unit (PR #163): no-DB pure transformer tests cho mail formatting.
+  - `giftcode-race.test.ts` +5 vitest concurrent (PR #164): double-grant prevention via DB unique constraint + Promise.allSettled stress test.
 
 ---
 
