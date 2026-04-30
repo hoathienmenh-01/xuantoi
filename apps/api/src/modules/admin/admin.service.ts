@@ -724,6 +724,106 @@ export class AdminService {
     return auditResultToJson(result);
   }
 
+  /**
+   * Smart economy report: top whales theo linhThach + tienNgoc + tổng circulation.
+   *
+   * Mục đích cho closed beta:
+   *   - Admin thấy ai đang giàu nhất → xác định reward target / rebalance.
+   *   - Tổng circulation = sanity check kinh tế (tăng đột biến = bot/exploit).
+   *   - Số character đang cultivate / tổng character giúp đánh giá retention.
+   *
+   * Read-only, MOD đọc được. Top N = 10 (đủ overview, không quá nhiều rows trên UI).
+   * BigInt linhThach serialize thành string để FE format an toàn.
+   */
+  async getEconomyReport(): Promise<{
+    generatedAt: string;
+    circulation: {
+      linhThachTotal: string;
+      tienNgocTotal: number;
+      tienNgocKhoaTotal: number;
+      characterCount: number;
+      cultivatingCount: number;
+    };
+    topByLinhThach: {
+      characterId: string;
+      name: string;
+      realmKey: string;
+      realmStage: number;
+      userEmail: string;
+      linhThach: string;
+    }[];
+    topByTienNgoc: {
+      characterId: string;
+      name: string;
+      realmKey: string;
+      realmStage: number;
+      userEmail: string;
+      tienNgoc: number;
+    }[];
+  }> {
+    const TOP_N = 10;
+
+    const [sumsRaw, characterCount, cultivatingCount, topLinhRaw, topTienRaw] =
+      await Promise.all([
+        this.prisma.character.aggregate({
+          _sum: { linhThach: true, tienNgoc: true, tienNgocKhoa: true },
+        }),
+        this.prisma.character.count(),
+        this.prisma.character.count({ where: { cultivating: true } }),
+        this.prisma.character.findMany({
+          select: {
+            id: true,
+            name: true,
+            realmKey: true,
+            realmStage: true,
+            linhThach: true,
+            user: { select: { email: true } },
+          },
+          orderBy: { linhThach: 'desc' },
+          take: TOP_N,
+        }),
+        this.prisma.character.findMany({
+          select: {
+            id: true,
+            name: true,
+            realmKey: true,
+            realmStage: true,
+            tienNgoc: true,
+            user: { select: { email: true } },
+          },
+          orderBy: { tienNgoc: 'desc' },
+          take: TOP_N,
+        }),
+      ]);
+
+    return {
+      generatedAt: new Date().toISOString(),
+      circulation: {
+        linhThachTotal: (sumsRaw._sum.linhThach ?? 0n).toString(),
+        tienNgocTotal: sumsRaw._sum.tienNgoc ?? 0,
+        tienNgocKhoaTotal: sumsRaw._sum.tienNgocKhoa ?? 0,
+        characterCount,
+        cultivatingCount,
+      },
+      topByLinhThach: topLinhRaw.map((c) => ({
+        characterId: c.id,
+        name: c.name,
+        realmKey: c.realmKey,
+        realmStage: c.realmStage,
+        userEmail: c.user.email,
+        linhThach: c.linhThach.toString(),
+      })),
+      topByTienNgoc: topTienRaw.map((c) => ({
+        characterId: c.id,
+        name: c.name,
+        realmKey: c.realmKey,
+        realmStage: c.realmStage,
+        userEmail: c.user.email,
+        tienNgoc: c.tienNgoc,
+      })),
+    };
+  }
+
   private async audit(actorId: string, action: string, meta: Prisma.InputJsonValue): Promise<void> {
     await this.prisma.adminAuditLog.create({
       data: { actorUserId: actorId, action, meta },

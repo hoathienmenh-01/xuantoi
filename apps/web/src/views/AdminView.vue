@@ -13,6 +13,7 @@ import {
   adminBanUser,
   adminCreateGiftcode,
   adminEconomyAlerts,
+  adminEconomyReport,
   adminGrant,
   adminListAudit,
   adminListGiftcodes,
@@ -27,6 +28,7 @@ import {
   giftCodeStatusOf,
   type AdminAuditRow,
   type AdminEconomyAlerts,
+  type AdminEconomyReport,
   type AdminGiftCodeRow,
   type AdminLedgerAudit,
   type AdminStats,
@@ -69,6 +71,10 @@ const ledgerAuditTotal = computed(() => {
     ledgerAudit.value.inventoryDiscrepancies.length
   );
 });
+
+// Smart economy report: top whales + circulation snapshot
+const economyReport = ref<AdminEconomyReport | null>(null);
+const economyReportRunning = ref(false);
 
 // Users tab
 const userQuery = ref('');
@@ -202,6 +208,20 @@ async function runLedgerAudit(): Promise<void> {
     handleErr(e);
   } finally {
     ledgerAuditRunning.value = false;
+  }
+}
+
+/**
+ * Smart economy report: top whales + circulation. Read-only, gọi on-demand.
+ */
+async function runEconomyReport(): Promise<void> {
+  economyReportRunning.value = true;
+  try {
+    economyReport.value = await adminEconomyReport();
+  } catch (e) {
+    handleErr(e);
+  } finally {
+    economyReportRunning.value = false;
   }
 }
 
@@ -668,6 +688,70 @@ const isAdmin = () => game.character?.role === 'ADMIN';
                 </ul>
               </div>
             </div>
+          </div>
+        </div>
+
+        <!-- ECONOMY REPORT (smart whales + circulation) -->
+        <div class="bg-ink-700/30 border border-cyan-500/30 rounded p-3" data-testid="admin-economy-report">
+          <div class="flex items-center justify-between gap-2">
+            <div>
+              <h3 class="text-sm text-cyan-200 font-semibold">{{ t('admin.economyReport.title') }}</h3>
+              <p class="text-xs text-ink-300 mt-1">{{ t('admin.economyReport.subtitle') }}</p>
+            </div>
+            <MButton :disabled="economyReportRunning" @click="runEconomyReport()">
+              {{ economyReportRunning ? t('admin.economyReport.running') : t('admin.economyReport.run') }}
+            </MButton>
+          </div>
+
+          <div v-if="economyReport" class="mt-3 text-xs space-y-3">
+            <div class="grid grid-cols-2 md:grid-cols-5 gap-2 text-ink-200">
+              <div class="bg-ink-700/50 rounded p-2">
+                <div class="text-ink-300 uppercase tracking-wide text-[10px]">{{ t('admin.economyReport.linhThachTotal') }}</div>
+                <div class="font-mono text-amber-200">{{ economyReport.circulation.linhThachTotal }}</div>
+              </div>
+              <div class="bg-ink-700/50 rounded p-2">
+                <div class="text-ink-300 uppercase tracking-wide text-[10px]">{{ t('admin.economyReport.tienNgocTotal') }}</div>
+                <div class="font-mono text-emerald-200">{{ economyReport.circulation.tienNgocTotal }}</div>
+              </div>
+              <div class="bg-ink-700/50 rounded p-2">
+                <div class="text-ink-300 uppercase tracking-wide text-[10px]">{{ t('admin.economyReport.tienNgocKhoaTotal') }}</div>
+                <div class="font-mono text-emerald-200/70">{{ economyReport.circulation.tienNgocKhoaTotal }}</div>
+              </div>
+              <div class="bg-ink-700/50 rounded p-2">
+                <div class="text-ink-300 uppercase tracking-wide text-[10px]">{{ t('admin.economyReport.characterCount') }}</div>
+                <div class="font-mono">{{ economyReport.circulation.characterCount }}</div>
+              </div>
+              <div class="bg-ink-700/50 rounded p-2">
+                <div class="text-ink-300 uppercase tracking-wide text-[10px]">{{ t('admin.economyReport.cultivatingCount') }}</div>
+                <div class="font-mono">{{ economyReport.circulation.cultivatingCount }}</div>
+              </div>
+            </div>
+
+            <div class="grid md:grid-cols-2 gap-3">
+              <div>
+                <h4 class="text-cyan-300 uppercase tracking-wide">{{ t('admin.economyReport.topLinhThach') }}</h4>
+                <ul class="space-y-0.5 mt-1" data-testid="admin-economy-report-top-linh">
+                  <li v-for="(row, idx) in economyReport.topByLinhThach" :key="row.characterId" class="flex justify-between gap-2">
+                    <span class="truncate"><span class="text-ink-300">#{{ idx + 1 }}</span> {{ row.name }} <span class="text-ink-400">({{ row.userEmail }})</span></span>
+                    <span class="font-mono text-amber-200">{{ row.linhThach }}</span>
+                  </li>
+                  <li v-if="economyReport.topByLinhThach.length === 0" class="text-ink-400 italic">{{ t('admin.economyReport.empty') }}</li>
+                </ul>
+              </div>
+
+              <div>
+                <h4 class="text-cyan-300 uppercase tracking-wide">{{ t('admin.economyReport.topTienNgoc') }}</h4>
+                <ul class="space-y-0.5 mt-1" data-testid="admin-economy-report-top-tien">
+                  <li v-for="(row, idx) in economyReport.topByTienNgoc" :key="row.characterId" class="flex justify-between gap-2">
+                    <span class="truncate"><span class="text-ink-300">#{{ idx + 1 }}</span> {{ row.name }} <span class="text-ink-400">({{ row.userEmail }})</span></span>
+                    <span class="font-mono text-emerald-200">{{ row.tienNgoc }}</span>
+                  </li>
+                  <li v-if="economyReport.topByTienNgoc.length === 0" class="text-ink-400 italic">{{ t('admin.economyReport.empty') }}</li>
+                </ul>
+              </div>
+            </div>
+
+            <div class="text-ink-400 text-[10px]">{{ t('admin.economyReport.generatedAt') }}: {{ economyReport.generatedAt }}</div>
           </div>
         </div>
 

@@ -832,6 +832,21 @@
       "currencyHeading": "Currency mismatch",
       "inventoryHeading": "Inventory mismatch"
     },
+    "economyReport": {
+      "title": "Economy report",
+      "subtitle": "Top 10 richest characters + total linhThach / tienNgoc circulation.",
+      "run": "Generate report",
+      "running": "Loading…",
+      "linhThachTotal": "Total linhThach",
+      "tienNgocTotal": "Total tienNgoc",
+      "tienNgocKhoaTotal": "TienNgoc locked",
+      "characterCount": "Total characters",
+      "cultivatingCount": "Cultivating now",
+      "topLinhThach": "Top linhThach",
+      "topTienNgoc": "Top tienNgoc",
+      "empty": "No data yet.",
+      "generatedAt": "Generated at"
+    },
     "noPermission": "You do not have access to this area.",
     "users": {
       "searchPlaceholder": "Search email or dao name…",

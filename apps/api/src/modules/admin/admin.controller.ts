@@ -277,6 +277,19 @@ export class AdminController {
     return { ok: true, data: r };
   }
 
+  /**
+   * Smart economy report: top 10 whales theo linhThach + tienNgoc + tổng circulation.
+   *
+   * Read-only, MOD đọc được (cùng tier với `economy/alerts` + `economy/audit-ledger`).
+   * Closed-beta vài trăm character chạy < 50ms. Production sau này nên cache 60s nếu
+   * traffic admin tăng.
+   */
+  @Get('economy/report')
+  async economyReport() {
+    const r = await this.admin.getEconomyReport();
+    return { ok: true, data: r };
+  }
+
   @Get('giftcodes')
   async giftList(
     @Query('limit') limit: string | undefined,
