@@ -72,8 +72,11 @@ Mức độ Critical/High đã giải quyết hết. Còn lại Medium/Low đã 
 | Mã | Mức độ | Mô tả ngắn | Workaround |
 |---|---|---|---|
 | M7 | Medium | CSP cho CDN tài nguyên ảnh chỉ verify khi prod deploy | Tạm thời dev/closed-beta cho phép `img-src 'self' data:`. |
-| M9 | Medium | Logout-all không bump `passwordVersion` (intentional trade-off) | Đã document trong [`docs/SECURITY.md`](./SECURITY.md) — refresh token revoke thay thế. |
 | M10 | Medium | Shop daily limit chưa có (post-beta nice-to-have) | Tạm thời shop unlimited. Sẽ thêm `dailyLimit` per item key sau closed beta. |
+
+**Đã giải quyết** (update session 9k, 30/4/2026):
+
+- **M9** Logout-all intentional behavior — đã document đầy đủ trong [`docs/SECURITY.md §1`](./SECURITY.md) (logout-all revoke refresh tokens nhưng không bump `passwordVersion`; access tokens 15-phút TTL còn lại tự hết hạn). Có regression test integration guard trong `apps/api/src/modules/auth/auth.service.test.ts` để lock behavior.
 
 Không có vấn đề Critical/High còn mở.
 
@@ -98,13 +101,21 @@ Khi báo lỗi, hãy kèm:
 
 ## 🔮 Lộ trình closed-beta-2 (dự kiến)
 
+**Đã hoàn thành trong session 9k** (30/4/2026):
+
+- ✓ Smart admin user export CSV — đã có trong AdminView (PR cũ + render-level tests PR #150).
+- ✓ `pnpm smoke:beta` script — `scripts/smoke-beta.mjs` zero-dep ESM 16-step HTTP smoke (PR #152).
+- ✓ `docs/PRIVACY.md` + `docs/TOS.md` closed-beta tester agreement (PR #151).
+- ✓ Playwright golden E2E_FULL expand — shop buy / mail read / profile view (PR #153).
+- ✓ AdminView render-level smoke — 18 vitest role guard + tab badge + export CSV + giftcode revoke (PR #150).
+
+**Còn lại cho closed-beta-2**:
+
 - **Achievement nhỏ** với idempotent claim.
 - **Smart admin bulk actions** (multi-select ban / multi-select grant currency).
-- **Smart admin user export CSV**.
 - **Smart UX polish toast duration** (info=3000ms, success=3500ms, warning=5000ms, error=6000ms).
 - **Test coverage expand**: GameHomeView + AppShell skeleton tests.
-- **`pnpm smoke:beta` script**: chạy 5-phút smoke (register → tu luyện → claim mission → buy shop → mail → boss).
-- **Docs**: `docs/PRIVACY.md` (closed beta data retention) + `docs/TOS.md` (closed beta tester agreement).
 - **In-game báo lỗi form**: tab Settings → form gửi log + screenshot.
+- **Shop daily limit per item** (M10).
 
 Mọi thay đổi trên `main` đã merge sẽ được liệt kê trong [`docs/CHANGELOG.md`](./CHANGELOG.md) theo session.
