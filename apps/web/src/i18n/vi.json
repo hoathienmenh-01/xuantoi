@@ -165,7 +165,9 @@
         "character": "Khai lập đạo hiệu — chọn tên cho nhân vật.",
         "sect": "Bái nhập tông môn — chọn 1 trong 3 tông.",
         "cultivate": "Bắt đầu Nhập Định để hấp thụ linh khí.",
-        "breakthrough": "Hoàn thành đột phá đầu tiên — vượt qua Phàm Nhân."
+        "breakthrough": "Hoàn thành đột phá đầu tiên — vượt qua Phàm Nhân.",
+        "leaderboard": "Xem bảng xếp hạng để đối sánh thiên hạ đạo hữu.",
+        "mail": "Kiểm tra hòm thư — có thể có quà chờ nhận."
       }
     }
   },
