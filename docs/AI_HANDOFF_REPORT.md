@@ -1802,7 +1802,7 @@ apps/api/src/modules/character/currency.service.ts:88   data: { tienNgoc: { incr
 | Sect | 7 test (`sect.service.test.ts`) | Leader transfer (feature chưa có) | Low |
 | Chat | 9 test (`chat.service.test.ts`) | Redis failover test | Low |
 | Boss | **16 test** (`boss.service.test.ts`) — +7 cho `adminSpawn` (PR #36) | Spawn cron auto (feature chưa có) | Medium |
-| Admin/Topup | **13 test** (`admin-stats` 3 + `topup-admin` 10) | User list filter edge | Low |
+| Admin/Topup | **13 test** (`admin-stats` 3 + `topup-admin` 10) + **17 test** (`topup.service.test.ts` session 9m) — createOrder happy/invalid/limit/isolation/uniqueness/persistence/slot-free, listForUser empty/sorted/isolation/cap-50, bankInfo, toView normal/fallback, economy safety (no currency change/no ledger entry) | — | — |
 | GiftCode | 12 test (`giftcode.service.test.ts`) | Expire during redeem race | Low |
 | Mail | 14 test (`mail.service.test.ts`) | WS `mail:new` tích hợp end-to-end | Low |
 | Mission | **26 test** (`mission.service.test.ts`) — +7 cho timezone (PR #42) | — | — |
@@ -1817,7 +1817,7 @@ apps/api/src/modules/character/currency.service.ts:88   data: { tienNgoc: { incr
 | **Economy integration** | Rải rác trong từng service + `item-ledger.test.ts` consistency check + `pnpm audit:ledger` script | Cross-module: market post → buy, ngân sách sect | Low |
 | **Logs (G3 cũ/M6)** | **20 test** (`logs.service.test.ts`) (PR #88) — cursor encode/decode 6 + listForUser currency 11 + listForUser item 3 | — | — |
 
-**Tổng (`vitest run` thực tế, baseline session 9k task C trên main @ `5a815b3` + this PR branch)**: **~395 test API (chưa chạy local session 9k, cần infra:up) + 96 test shared + 484 test web = ~975 test pass expected**. CI xanh trên main `5a815b3` (PR #149 ✅ 5/5). Real Postgres + real Redis service trên CI; local dùng `infra/docker-compose.dev.yml` (`docker compose up -d pg redis`). Web count tăng 187 → 484 qua session 9i (+115) + session 9j (+164) + session 9k task C (+18 AdminView render-level). Shared count tăng 55 → 96 qua session 9j task N+O (+19 shop/topup + +22 boss = +41).
+**Tổng (`vitest run` thực tế, baseline session 9m trên main @ `9c1e63a` + this PR branch)**: **~412 test API (cần infra:up — +17 topup.service.test.ts session 9m) + 96 test shared + 509 test web = ~1017 test pass expected**. CI xanh. Real Postgres + real Redis service trên CI; local dùng `infra/docker-compose.dev.yml` (`docker compose up -d pg redis`). Web count 509 (54 file, session 9l PR #159 +25). Shared count 96 (6 file). API count ~412 (+17 topup service tests session 9m).
 
 **Chạy**:
 ```bash
@@ -2292,13 +2292,19 @@ F. ~~**`docs/CHANGELOG.md` bootstrap**~~ — **Done by PR #104** (Merged into ma
 | #158 | task 3 — handoff M9 Resolved in §16 | **Merged into main** @ `a1079dc` |
 | #159 | task 4 — UI primitive tests ConfirmModal + Skeleton | **Merged into main** @ `f103485` |
 
-### Session 9m (current — this PR is task A, audit refresh)
+### Session 9m (current)
 
-#### PR session 9m-A (this PR) — `docs(handoff): session 9m kickoff — audit refresh fix stale §2/§13/§15/§17/§19 + bump snapshot a1079dc`
-- **Branch**: `devin/1777547236-audit-refresh-session-9m`. **Base**: `main` @ `a1079dc`.
-- **File**: `docs/AI_HANDOFF_REPORT.md` (§0/§2/§13/§15/§17/§19/§20/§21).
-- **Tests added**: 0 (docs-only).
-- **Risk**: 🟢 thấp — docs-only.
+#### PR session 9m-A — `docs(handoff): audit refresh` — **Merged** PR #160 @ `873a0a3`
+- Fix stale §2/§13/§15/§17/§19/§20/§21 + bump snapshot `f103485`. Docs-only.
+
+#### PR session 9m-B — `docs(changelog): catch-up sessions 9g/9h/9i/9j/9l` — **Merged** PR #161 @ `9c1e63a`
+- +98 lines, 5 new session sections covering PR #105→#159. Docs-only.
+
+#### PR session 9m-C (this PR) — `test(api): topup.service.test.ts — 17 vitest economy safety`
+- **Branch**: `devin/1777548417-topup-service-tests`. **Base**: `main` @ `9c1e63a`.
+- **File**: `apps/api/src/modules/topup/topup.service.test.ts` (new) + `docs/AI_HANDOFF_REPORT.md`.
+- **Tests added**: 17 — createOrder (8: happy/invalid/limit/isolation/uniqueness/persistence/slot-free/all-packages) + listForUser (4: empty/sorted/isolation/cap-50) + bankInfo (1) + toView (2: normal/fallback) + economy safety (2: no-currency-change/no-ledger).
+- **Risk**: 🟢 thấp — test-only, no code change to production code.
 - **Rollback**: revert single PR.
 
 ### Done (chuỗi #33→#45 đã merge trên `main` tại `e99a35f`)
