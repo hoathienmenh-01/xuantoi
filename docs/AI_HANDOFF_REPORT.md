@@ -2,7 +2,45 @@
 
 > 👉 **AI/dev mới: ĐỌC [`docs/START_HERE.md`](./START_HERE.md) TRƯỚC.** File đó định tuyến bạn tới đúng doc theo mục đích (trạng thái / vision / roadmap / economy / content / balance / live ops).
 
-> **Snapshot (session 9q-3, this PR — README docs grouping)**: docs-only — restructure `README.md` "Tài liệu developer" thành 4 nhóm rõ ràng: **Start Here for AI / Developers** (START_HERE + AI_HANDOFF) → **Long-Term Game Design** (6 file: BIBLE/ROADMAP/ECONOMY/CONTENT/BALANCE/LIVE_OPS) → **Operational / Runtime** (RUN_LOCAL/DEPLOY/ADMIN_GUIDE/API/SEEDING/SECURITY/BACKUP_RESTORE/TROUBLESHOOTING) → **QA & History** (BETA/QA checklist + BALANCE cũ + CHANGELOG/RELEASE_NOTES + 04/05 historical). Không sửa runtime code. Risk: low.
+## Current Executive Summary
+
+> **30 dòng đầu = đủ context.** Các dòng dưới `## Snapshots` là chi tiết theo session.
+> **Cập nhật mỗi PR.** Nếu bạn vừa merge PR mới, sửa block này TRƯỚC, sau đó mới thêm snapshot bên dưới.
+
+- **Current `main` commit**: `ec2bf69` (Merge PR #206 README docs grouping, 30/4 ~21:20 UTC).
+- **Latest merged PR**: [#206 docs(readme): group docs links into 4 sections](https://github.com/hoathienmenh-01/xuantoi/pull/206) (docs-only).
+- **Current phase**: **Phase 9 — Closed beta stabilization** (audit refresh, smoke:beta, Playwright golden path, bug triage, mobile/i18n polish, release checklist). Xem [`LONG_TERM_ROADMAP.md`](./LONG_TERM_ROADMAP.md) §Phase 9.
+- **Current test baseline**: **1926 vitest** = api **1133** + shared **238** + web **555**. CI ✅ trên `main`.
+- **Open PRs**: none known at time of writing (xem [PR list](https://github.com/hoathienmenh-01/xuantoi/pulls) để check live).
+- **Immediate next task** (theo thứ tự khuyến nghị):
+  1. **Phase 9 finish** — `pnpm smoke:economy` end-to-end (cultivate → boss → mail → market → claim → audit), Playwright golden path mở rộng (login → cultivate → breakthrough → mission → market), bug triage P0/P1.
+  2. **Phase 10 PR-1..5** — content scale: items pack 1 (+50 item), skills pack 1 (+15 skill), monsters & dungeons pack 1 (+20 monster, +6 dungeon), missions pack 1 (+50 mission), boss catalog (+10 named boss). Theo [`CONTENT_PIPELINE.md`](./CONTENT_PIPELINE.md).
+  3. **Phase 11 PR-1** — `CultivationMethod` model + migration + service skeleton. Theo [`LONG_TERM_ROADMAP.md`](./LONG_TERM_ROADMAP.md) §Phase 11.
+- **Do NOT build yet** (anti-feature-creep, full list trong [`LONG_TERM_ROADMAP.md`](./LONG_TERM_ROADMAP.md) cuối file):
+  - Real-time PvP (cần async PvP — Phase 14 — đi trước, validate 1 season).
+  - Party / co-op dungeon (cần async PvE Phase 12 + user demand).
+  - Pet / Wife / Companion gacha (cần monetization policy + drop table DB Phase 16).
+  - Voice chat (out of scope).
+  - NFT / blockchain (KHÔNG bao giờ).
+  - Real-money market / real-money trade item (legal pháp lý VN — KHÔNG bao giờ).
+  - Multi-region sharding (sau v1.0 + DAU > 10k).
+  - Mobile native app (sau v1.0 PWA stable).
+- **Required docs to read** trước khi viết PR:
+  1. [`docs/START_HERE.md`](./START_HERE.md) — cổng vào, định tuyến tới đúng doc theo mục đích.
+  2. **Snapshot trên cùng** trong file này — biết PR vừa rồi đụng cái gì.
+  3. [`LONG_TERM_ROADMAP.md`](./LONG_TERM_ROADMAP.md) §0 (dependency rule) + phase tương ứng.
+  4. Doc chuyên biệt theo nội dung PR: economy → [`ECONOMY_MODEL.md`](./ECONOMY_MODEL.md), content → [`CONTENT_PIPELINE.md`](./CONTENT_PIPELINE.md), balance → [`BALANCE_MODEL.md`](./BALANCE_MODEL.md), live ops → [`LIVE_OPS_MODEL.md`](./LIVE_OPS_MODEL.md), vision/system → [`GAME_DESIGN_BIBLE.md`](./GAME_DESIGN_BIBLE.md).
+  5. `apps/api/prisma/schema.prisma` (schema thật) + `packages/shared/src/*.ts` (catalog) nếu touch.
+
+---
+
+## Snapshots
+
+> Snapshot mới nhất ở trên cùng. Mỗi PR thêm 1 snapshot mô tả: PR đụng cái gì, baseline thay đổi thế nào, risk.
+
+> **Snapshot (session 9q-4, this PR — exec summary block)**: docs-only — thêm `## Current Executive Summary` block 30 dòng đầu file để AI sau đọc nhanh hiểu ngay (current commit / latest PR / current phase / test baseline / open PRs / next task / do-not-build / required docs). Tách các snapshot cũ ra dưới `## Snapshots`. Không sửa runtime code. Risk: low.
+>
+> **Snapshot (session 9q-3, merged)**: docs-only — restructure `README.md` "Tài liệu developer" thành 4 nhóm rõ ràng: **Start Here for AI / Developers** (START_HERE + AI_HANDOFF) → **Long-Term Game Design** (6 file: BIBLE/ROADMAP/ECONOMY/CONTENT/BALANCE/LIVE_OPS) → **Operational / Runtime** (RUN_LOCAL/DEPLOY/ADMIN_GUIDE/API/SEEDING/SECURITY/BACKUP_RESTORE/TROUBLESHOOTING) → **QA & History** (BETA/QA checklist + BALANCE cũ + CHANGELOG/RELEASE_NOTES + 04/05 historical). Không sửa runtime code. Risk: low.
 >
 > **Snapshot (session 9q-2, merged)**: docs-only — thêm [`docs/START_HERE.md`](./START_HERE.md) làm cổng vào cho AI/dev mới (decision table theo mục đích + reading order theo role + DO/DON'T + map 25 file docs). Cập nhật `README.md` add pointer tới START_HERE. Không sửa runtime code. Risk: low.
 >
