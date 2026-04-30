@@ -43,6 +43,12 @@ import { getCurrentBoss, type BossView } from '@/api/boss';
 import type { TopupOrderView } from '@/api/topup';
 import AppShell from '@/components/shell/AppShell.vue';
 import MButton from '@/components/ui/MButton.vue';
+import ConfirmModal from '@/components/ui/ConfirmModal.vue';
+import {
+  computeGiftcodeRevokeImpact,
+  mapGiftcodeRevokeErrorKey,
+  type GiftcodeRevokeImpact,
+} from '@/lib/giftcodeRevoke';
 
 const auth = useAuthStore();
 const game = useGameStore();
@@ -119,6 +125,19 @@ const revokeOpen = ref<string | null>(null);
 const revokeItemKey = ref('');
 const revokeQty = ref(1);
 const revokeReason = ref('');
+
+const giftcodeRevokeTarget = ref<AdminGiftCodeRow | null>(null);
+const giftcodeRevokeBusy = ref(false);
+const giftcodeRevokeImpact = computed<GiftcodeRevokeImpact | null>(() => {
+  const target = giftcodeRevokeTarget.value;
+  if (!target) return null;
+  return computeGiftcodeRevokeImpact({
+    code: target.code,
+    redeemCount: target.redeemCount,
+    maxRedeems: target.maxRedeems,
+    expiresAt: target.expiresAt,
+  });
+});
 
 // Topups tab
 const topupStatus = ref<'PENDING' | 'APPROVED' | 'REJECTED' | ''>('PENDING');
@@ -623,15 +642,31 @@ async function submitGiftCreate(): Promise<void> {
   }
 }
 
-async function revokeGiftcode(row: AdminGiftCodeRow): Promise<void> {
-  if (!confirm(t('admin.giftcodes.revokeConfirm', { code: row.code }))) return;
+function openGiftcodeRevoke(row: AdminGiftCodeRow): void {
+  giftcodeRevokeTarget.value = row;
+}
+
+function cancelGiftcodeRevoke(): void {
+  if (giftcodeRevokeBusy.value) return;
+  giftcodeRevokeTarget.value = null;
+}
+
+async function confirmGiftcodeRevoke(): Promise<void> {
+  const target = giftcodeRevokeTarget.value;
+  if (!target || giftcodeRevokeBusy.value) return;
+  giftcodeRevokeBusy.value = true;
   try {
-    await adminRevokeGiftcode(row.code);
+    await adminRevokeGiftcode(target.code);
     toast.push({ type: 'success', text: t('admin.giftcodes.revokedToast') });
+    giftcodeRevokeTarget.value = null;
     await refreshGiftcodes();
     refreshActiveGiftcodeCount();
   } catch (e) {
-    handleErr(e);
+    const code = (e as { code?: string }).code;
+    const key = mapGiftcodeRevokeErrorKey(code);
+    toast.push({ type: 'error', text: t(key) });
+  } finally {
+    giftcodeRevokeBusy.value = false;
   }
 }
 
@@ -1575,7 +1610,7 @@ const isAdmin = () => game.character?.role === 'ADMIN';
                     v-if="isAdmin() && giftCodeStatusOf(g) === 'ACTIVE'"
                     :data-testid="`admin-giftcode-revoke-${g.code}`"
                     class="text-xs text-red-200 underline"
-                    @click="revokeGiftcode(g)"
+                    @click="openGiftcodeRevoke(g)"
                   >
                     {{ t('admin.giftcodes.revokeBtn') }}
                   </button>
@@ -1584,6 +1619,31 @@ const isAdmin = () => game.character?.role === 'ADMIN';
             </tbody>
           </table>
         </div>
+
+        <ConfirmModal
+          test-id="admin-giftcode-revoke-modal"
+          :open="giftcodeRevokeTarget !== null"
+          :title="giftcodeRevokeImpact ? t('admin.giftcodes.revokeModalTitle', { code: giftcodeRevokeImpact.code }) : ''"
+          :message="
+            giftcodeRevokeImpact
+              ? [
+                t('admin.giftcodes.revokeModalUsage', { usage: giftcodeRevokeImpact.redeemUsage }),
+                giftcodeRevokeImpact.expiryStatus === 'expired'
+                  ? t('admin.giftcodes.revokeModalExpired')
+                  : giftcodeRevokeImpact.expiryStatus === 'expires-soon'
+                    ? t('admin.giftcodes.revokeModalExpiresSoon')
+                    : '',
+                t('admin.giftcodes.revokeModalWarning'),
+              ].filter(Boolean).join('\n\n')
+              : ''
+          "
+          :confirm-text="t('admin.giftcodes.revokeBtn')"
+          :cancel-text="t('common.cancel')"
+          :loading="giftcodeRevokeBusy"
+          danger
+          @confirm="confirmGiftcodeRevoke"
+          @cancel="cancelGiftcodeRevoke"
+        />
       </section>
 
       <!-- BOSS TAB -->
