@@ -258,9 +258,14 @@ describe('GiftCodeView — onRedeem flow', () => {
   });
 
   it('busy lock: trong khi pending, button disabled', async () => {
-    let resolveFn: ((v: unknown) => void) | null = null;
+    const resolveHolder: { current: ((v: unknown) => void) | null } = {
+      current: null,
+    };
     redeemGiftCodeMock.mockImplementation(
-      () => new Promise((resolve) => { resolveFn = resolve; }),
+      () =>
+        new Promise((resolve) => {
+          resolveHolder.current = resolve;
+        }),
     );
     const w = mountView();
     await flushPromises();
@@ -270,7 +275,7 @@ describe('GiftCodeView — onRedeem flow', () => {
     await flushPromises();
     const btn = w.find('button');
     expect(btn.attributes('disabled')).toBeDefined();
-    resolveFn?.({
+    resolveHolder.current?.({
       code: 'LOCK',
       grantedLinhThach: '0',
       grantedTienNgoc: 0,
