@@ -1,6 +1,8 @@
 # AI Handoff Report — Xuân Tôi
 
-> **Snapshot (session 9n-B in-flight)**: `main` @ `4b5b799` (Merge PR #165 `docs(handoff): session 9n kickoff — audit refresh post-9m close-out`, 30 Apr 2026 ~12:13 UTC). **Session 9n-A close-out**: PR #165 (docs audit refresh @ `4b5b799`). **Session 9n-B in-flight (this PR branch `devin/1777551718-audit-ledger-cli-json`)**: smart audit-ledger CLI `--json` flag + 13 vitest unit (parseArgs 4 + formatResult 5 + formatResultJson 4) + ADMIN_GUIDE §11 docs.
+> **Snapshot (session 9n-C in-flight)**: `main` @ `0b1b6da` (Merge PR #166 `feat(api,docs): smart audit-ledger CLI — --json flag + formatResult/parseArgs unit tests + ADMIN_GUIDE §11`, 30 Apr 2026 ~12:32 UTC). **Session 9n progress**: PR #165 audit refresh @ `4b5b799`, PR #166 audit-ledger CLI --json @ `0b1b6da` (CI ✅). **Session 9n-C in-flight (this PR branch `devin/1777552393-economy-alerts-env-thresholds`)**: smart admin economy alerts thresholds env-driven — `ECONOMY_ALERTS_DEFAULT_STALE_HOURS` / `_MIN_` / `_MAX_` + 22 vitest unit + ADMIN_GUIDE §11.3 + `apps/api/.env.example` doc.
+
+> **Snapshot (session 9n-B merged as PR #166)**: `main` @ `4b5b799` (Merge PR #165 `docs(handoff): session 9n kickoff — audit refresh post-9m close-out`, 30 Apr 2026 ~12:13 UTC). Audit-ledger CLI `--json` flag + 13 vitest unit (parseArgs 4 + formatResult 5 + formatResultJson 4) + ADMIN_GUIDE §11 docs.
 
 > **Snapshot (session 9n kickoff — audit refresh post-9m close-out, merged as PR #165)**: `main` @ `d332a18` (Merge PR #164 `test(api): giftcode-race.test.ts — 5 vitest concurrent economy safety (double-grant prevention)`, 30 Apr 2026 ~11:51 UTC). **Session 9m close-out (5/5 PR merged)**: PR #160 (docs audit refresh kickoff @ `873a0a3`), #161 (docs CHANGELOG catch-up sessions 9g/9h/9i/9j/9l @ `9c1e63a`), #162 (test API topup.service +17 vitest @ `0f56438`), #163 (test API email.service +14 vitest @ `ba17380`), #164 (test API giftcode-race +5 vitest @ `d332a18`). **Zero open PRs** at audit time 30/4 ~12:10 UTC. **Baseline verified local 30/4 ~12:10 UTC trên branch audit refresh**: `pnpm typecheck` ✅ (3 project) · `pnpm lint` ✅ · `pnpm --filter @xuantoi/shared test` ✅ **96/96** (6 file) · `pnpm --filter @xuantoi/web test` ✅ **509/509** (54 file) · `pnpm build` ✅ (PWA precache 47 entries / 763.79 KiB). API test chưa chạy local (cần `pnpm infra:up` — Postgres+Redis); CI matrix verify trên PR — session 9m PR #162/#163/#164 đã merge xanh, baseline API tăng từ ~259 lên **+36 test** (topup 17 + email 14 + giftcode-race 5). **Lưu ý**: cần `pnpm --filter @xuantoi/api exec prisma generate` trước khi chạy `pnpm typecheck` local vì `@prisma/client` types sinh ra từ `prisma generate`; thiếu sẽ fail TS2305 ở `apps/api/src/modules/topup/topup.service.ts` + `test-helpers.ts`. CI auto-run vì `prebuild` hook. Cần `pnpm build` (hoặc `pnpm --filter @xuantoi/shared build`) trước khi chạy web test local vì `@xuantoi/shared` export từ `dist/`. **Roadmap session 9n**: tiếp tục backlog post-9m — chọn task an toàn có giá trị cao nhất theo §20.
 
@@ -125,9 +127,33 @@
 
 ---
 
-## Recent Changes (PR #33→#165 đã merged trên main; session 9n kickoff #165 audit refresh merged @ `4b5b799`; session 9n-B **this PR** smart audit-ledger CLI `--json` flag + formatResult unit tests + ADMIN_GUIDE)
+## Recent Changes (PR #33→#166 đã merged trên main; session 9n-C **this PR** smart admin economy alerts thresholds env-tunable)
 
-### PR session 9n-B (in-flight, this PR) — `feat(api,docs): smart audit-ledger CLI — --json flag + formatResult/parseArgs unit tests + ADMIN_GUIDE §11` — **Pending merge**
+### PR session 9n-C (in-flight, this PR) — `feat(api,docs): smart admin economy alerts thresholds — ECONOMY_ALERTS_DEFAULT_STALE_HOURS / _MIN_ / _MAX_ env override + 22 vitest unit + ADMIN_GUIDE §11.3 + .env.example` — **Pending merge**
+
+- **Branch**: `devin/1777552393-economy-alerts-env-thresholds`. **Base**: `main` @ `0b1b6da` (post PR #166 merge).
+- **Vì sao**: `GET /admin/economy/alerts?staleHours=N` trước đây hard-code default `24` giờ + range `[1..720]` trong controller. Ops soft-launch closed beta có thể muốn 48h default (topup pending tolerance longer) hoặc audit dài 90 ngày (2160h max) mà không cần patch code. PR này tách parsing sang pure helper + inject qua ConfigService để đọc env override.
+- **Files**:
+  - `apps/api/src/modules/admin/economy-alerts-config.ts` — **new** pure helper module: `parseEnvHours`, `resolveEconomyAlertsBounds`, `clampStaleHours`, `EconomyAlertsBounds` type, `DEFAULT_ECONOMY_ALERTS_BOUNDS`. Invariant-safe clamp (`max >= min`, `default ∈ [min, max]`). Invalid env log warn thay vì brick.
+  - `apps/api/src/modules/admin/economy-alerts-config.test.ts` — **new** 22 vitest unit (parseEnvHours 6 + resolveEconomyAlertsBounds 9 + clampStaleHours 7). No DB.
+  - `apps/api/src/modules/admin/admin.controller.ts` — inject `ConfigService` + `Logger`; `economyAlertsBounds` resolved once trong constructor; `@Get('economy/alerts')` dùng `clampStaleHours()`; response thêm `data.bounds` (additive field).
+  - `apps/web/src/api/admin.ts` — `AdminEconomyAlerts` thêm `bounds?: { defaultHours, minHours, maxHours }` optional (backward compat với BE cũ).
+  - `apps/api/.env.example` — thêm 3 env var commented-out.
+  - `docs/ADMIN_GUIDE.md` — thêm §11.3 Economy alerts — ops-tunable thresholds (bảng env + ví dụ soft-launch 48h/90d).
+  - `docs/AI_HANDOFF_REPORT.md` — Recent Changes (this entry) + §20 Roadmap + §21 PR Plan.
+- **Tests added**: 22 vitest unit (`economy-alerts-config.test.ts`).
+- **CI status (local 30/4 ~12:40 UTC)**: `pnpm typecheck` ✅ (3 project) · `pnpm lint` ✅ · `pnpm --filter @xuantoi/api exec vitest run src/modules/admin/economy-alerts-config.test.ts` ✅ **22/22** (no DB) · `pnpm --filter @xuantoi/shared test` ✅ 96/96 · `pnpm --filter @xuantoi/web test` ✅ 509/509.
+- **Risk**: 🟢 thấp — controller behavior preserved cho query `staleHours` nằm trong range; default behavior không thay đổi khi env absent; new field `data.bounds` là additive (FE types đã optional).
+- **Rollback**: revert single PR — restore old controller parsing inline + xoá `economy-alerts-config.ts` / `.test.ts` + revert ADMIN_GUIDE §11.3 + revert `.env.example`.
+- **`AI_HANDOFF_REPORT.md updated`**: Recent Changes + §20 Roadmap + §21 Exact PR Plan.
+
+### PR #166 — `feat(api,docs): smart audit-ledger CLI — --json flag + formatResult/parseArgs unit tests + ADMIN_GUIDE §11` — **Merged into main** @ `0b1b6da` (30/4 ~12:32 UTC, CI ✅ 5/5) — **Resolved**
+
+- **Branch**: `devin/1777551718-audit-ledger-cli-json`. **Base**: `main` @ `4b5b799` (post PR #165 merge).
+- **Files**: `apps/api/scripts/audit-ledger.ts` (refactor + `--json` + exports); `apps/api/scripts/audit-ledger-format.test.ts` (new, 13 vitest); `docs/ADMIN_GUIDE.md` (+§11); `docs/AI_HANDOFF_REPORT.md`. +380/-26 LOC.
+- **Risk**: 🟢 (additive). CI ✅ 5/5.
+
+### PR session 9n-B (legacy in-flight pointer — see PR #166 above) — **Merged**
 
 - **Branch**: `devin/1777551718-audit-ledger-cli-json`. **Base**: `main` @ `4b5b799` (post PR #165 merge).
 - **Vì sao**: `pnpm --filter @xuantoi/api audit:ledger` (PR #76 + PR #112 endpoint) đã có nhưng chỉ in human-readable text → khó parse cho cron/CI/monitoring pipeline. PR này thêm `--json` flag để emit machine-parseable output (giữ exit code semantics: 0 clean / 1 discrepancy / 2 error). Đồng thời export `parseArgs`/`formatResult`/`formatResultJson` để có thể unit test pure functions không cần Postgres (fast feedback). Bonus: docs `ADMIN_GUIDE §11` ghi cách dùng CLI cho devops + ví dụ cron job + caveat về BigInt → string serialize.
@@ -2189,11 +2215,13 @@ Admin hiện tại có thể vào `/admin` → Users → tìm → **Set role = A
 - 4. **test(api): email.service +14 vitest unit (no DB needed)** — Merged PR #163 @ `ba17380`.
 - 5. **test(api): giftcode-race +5 vitest concurrent (double-grant prevention)** — Merged PR #164 @ `d332a18`.
 
-**Session 9n-A done**: PR #165 audit refresh merged @ `4b5b799` (30/4 ~12:13 UTC, CI ✅ 5/5). **Session 9n-B (this PR)**: smart audit-ledger CLI `--json` flag + 13 vitest unit + ADMIN_GUIDE §11 docs. Then continue with highest-priority code task.
+**Session 9n-A done**: PR #165 audit refresh merged @ `4b5b799`. **Session 9n-B done**: PR #166 audit-ledger CLI `--json` merged @ `0b1b6da`. **Session 9n-C (this PR)**: smart admin economy alerts thresholds env-tunable + 22 vitest unit + ADMIN_GUIDE §11.3 + `.env.example` docs. Then continue with highest-priority code task.
 
-**Backlog còn lại (post-9n-B, an toàn nếu credit còn)** — ưu tiên theo §22 priority order (Critical/High > runtime smoke > missing API/page > economy safety > E2E > admin/security > docs > i18n/UX > smart beta > post-beta):
+**Backlog còn lại (post-9n-C, an toàn nếu credit còn)** — ưu tiên theo §22 priority order (Critical/High > runtime smoke > missing API/page > economy safety > E2E > admin/security > docs > i18n/UX > smart beta > post-beta):
 
-1. ~~**Smart audit helper script `audit:ledger`**~~ — **Already done (PR #76 BE + PR #112 endpoint)**. **Enhanced this session**: PR session 9n-B (this PR) thêm `--json` flag + unit test coverage cho `formatResult`/`formatResultJson`/`parseArgs` (13 vitest no-DB). Pure logic ở `apps/api/src/modules/admin/ledger-audit.ts`; CLI wrapper ở `apps/api/scripts/audit-ledger.ts`; admin endpoint `GET /admin/economy/audit-ledger`. Cron monitoring example documented in `docs/ADMIN_GUIDE.md §11`.
+1. ~~**Smart audit helper script `audit:ledger`**~~ — **Done PR #76 BE + PR #112 endpoint + PR #166 `--json` + unit tests**. Pure logic ở `apps/api/src/modules/admin/ledger-audit.ts`; CLI wrapper ở `apps/api/scripts/audit-ledger.ts`; admin endpoint `GET /admin/economy/audit-ledger`. Cron example in `docs/ADMIN_GUIDE.md §11`.
+
+1b. ~~**Smart admin economy alerts thresholds env-tunable**~~ — **Done this session PR #167 (in-flight)**. `ECONOMY_ALERTS_DEFAULT_STALE_HOURS` / `_MIN_` / `_MAX_` override. Doc ở `ADMIN_GUIDE §11.3`, `.env.example`.
 
 2. **API service tests còn thiếu (sau 9m)** — kiểm tra coverage gap:
    - `mail.service.test.ts` mở rộng WS `mail:new` integration end-to-end.
@@ -2412,21 +2440,22 @@ F. ~~**`docs/CHANGELOG.md` bootstrap**~~ — **Done by PR #104** (Merged into ma
 | PR | Task | Status |
 |---|---|---|
 | #165 | session 9n-A — docs(handoff): audit refresh post-9m close-out | **Merged into main** @ `4b5b799` |
+| #166 | session 9n-B — feat(api,docs): audit-ledger CLI --json + unit tests + ADMIN_GUIDE §11 | **Merged into main** @ `0b1b6da` |
 
-#### PR session 9n-B (in-flight, this PR) — `feat(api,docs): smart audit-ledger CLI — --json flag + formatResult/parseArgs unit tests + ADMIN_GUIDE §11`
-- **Branch**: `devin/1777551718-audit-ledger-cli-json`. **Base**: `main` @ `4b5b799` (post PR #165 merge). **Status**: in-flight.
-- **Files**: `apps/api/scripts/audit-ledger.ts` (refactor + add `--json` + export pure helpers); `apps/api/scripts/audit-ledger-format.test.ts` (new, 13 vitest unit); `docs/ADMIN_GUIDE.md` (+§11); `docs/AI_HANDOFF_REPORT.md`.
-- **Tests added**: 13 vitest unit (parseArgs 4 + formatResult 5 + formatResultJson 4) — fast, no DB needed.
-- **CI status (local 30/4 ~12:25 UTC)**: typecheck ✅ / lint ✅ / new vitest 13/13 ✅ / shared 96/96 ✅. API integration `audit-ledger.test.ts` (10 vitest) cần Postgres → CI verify.
-- **Risk**: 🟢 thấp — `formatResult()` behavior preserved exactly; new `formatResultJson()` + `parseArgs()` additive; CLI default behavior unchanged (default = human-readable, exit code 0/1/2).
+#### PR session 9n-C (in-flight, this PR) — `feat(api,docs): smart admin economy alerts thresholds — ECONOMY_ALERTS_DEFAULT_STALE_HOURS / _MIN_ / _MAX_ env override + 22 vitest unit + ADMIN_GUIDE §11.3 + .env.example`
+- **Branch**: `devin/1777552393-economy-alerts-env-thresholds`. **Base**: `main` @ `0b1b6da` (post PR #166 merge). **Status**: in-flight.
+- **Files**: `apps/api/src/modules/admin/economy-alerts-config.ts` (new pure helper); `apps/api/src/modules/admin/economy-alerts-config.test.ts` (new 22 vitest); `apps/api/src/modules/admin/admin.controller.ts` (inject ConfigService + resolve bounds + clampStaleHours); `apps/web/src/api/admin.ts` (bounds optional field); `apps/api/.env.example`; `docs/ADMIN_GUIDE.md` (+§11.3); `docs/AI_HANDOFF_REPORT.md`.
+- **Tests added**: 22 vitest unit (no DB).
+- **CI status (local 30/4 ~12:40 UTC)**: typecheck ✅ / lint ✅ / new vitest 22/22 ✅ / shared 96/96 ✅ / web 509/509 ✅.
+- **Risk**: 🟢 thấp — controller behavior preserved cho query in-range; default behavior unchanged khi env absent; response field `data.bounds` additive.
 - **Rollback**: revert single PR.
 
-#### Sẽ làm tiếp (session 9n) — sau khi PR session 9n-B merge
+#### Sẽ làm tiếp (session 9n) — sau khi PR session 9n-C merge
 
-- **session 9n-C (priority #1)**: API test gap — `mail.service.test.ts` mở rộng WS `mail:new` integration; `chat.service.test.ts` Redis failover; `cultivation.processor.test.ts` multi-instance lock.
-- **session 9n-D**: i18n parity audit cho keys mới session 9j (mission/mail/giftcode/admin) — grep VN hard-code còn sót.
-- **session 9n-E**: Mobile responsive smoke — viewport <375px audit cho AppShell + AdminView + InventoryView qua Playwright config.
-- **session 9n-F**: Smart admin economy alerts thresholds — env override `ECONOMY_ALERTS_DEFAULT_STALE_HOURS` cho `getEconomyAlerts(staleHours)` (currently hard-code 24h default + 1..720h range).
+- **session 9n-D (priority #1)**: API test gap — `mail.service.test.ts` mở rộng WS `mail:new` integration; `chat.service.test.ts` Redis failover; `cultivation.processor.test.ts` multi-instance lock.
+- **session 9n-E**: i18n parity audit cho keys mới session 9j (mission/mail/giftcode/admin) — grep VN hard-code còn sót.
+- **session 9n-F**: Mobile responsive smoke — viewport <375px audit cho AppShell + AdminView + InventoryView qua Playwright config.
+- **session 9n-G**: Admin quick-action filter polish — bulk CSV export UX, topup approve batch confirm.
 
 ### Done (chuỗi #33→#45 đã merge trên `main` tại `e99a35f`)
 

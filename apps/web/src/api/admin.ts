@@ -262,6 +262,15 @@ export interface AdminEconomyAlerts {
   }[];
   staleHours: number;
   generatedAt: string;
+  /**
+   * Bounds áp dụng cho `staleHours` query param (do BE resolve từ env).
+   * Optional — BE pre-PR #167 không trả field này, FE vẫn work.
+   */
+  bounds?: {
+    defaultHours: number;
+    minHours: number;
+    maxHours: number;
+  };
 }
 
 export async function adminEconomyAlerts(staleHours = 24): Promise<AdminEconomyAlerts> {
