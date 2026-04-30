@@ -264,6 +264,25 @@ describe('AuthService', () => {
     expect(refreshed.user.id).toBe(b.user.id);
   });
 
+  it('logoutAll: KHÔNG bump passwordVersion (documented behavior, SECURITY.md §1)', async () => {
+    // Regression guard — nếu future code thêm passwordVersion++ trong logoutAll,
+    // test này fail và docs/SECURITY.md §1 cần cập nhật theo.
+    const out = await auth.register({ email: 'la4@xt.local', password: PASSWORD }, ctx);
+    const before = await prisma.user.findUnique({
+      where: { id: out.user.id },
+      select: { passwordVersion: true },
+    });
+    expect(before?.passwordVersion).toBe(1);
+
+    await auth.logoutAll(out.user.id);
+
+    const after = await prisma.user.findUnique({
+      where: { id: out.user.id },
+      select: { passwordVersion: true },
+    });
+    expect(after?.passwordVersion).toBe(before?.passwordVersion);
+  });
+
   it('AuthError exposes code property', () => {
     const e = new AuthError('RATE_LIMITED');
     expect(e.code).toBe('RATE_LIMITED');
