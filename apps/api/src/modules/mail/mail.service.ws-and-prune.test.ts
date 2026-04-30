@@ -216,6 +216,39 @@ describe('MailService.pruneExpired', () => {
     // Có thể xoá thư khác (nếu có) nhưng không được xoá cái này.
     expect(removed).toBeGreaterThanOrEqual(0);
   });
+
+  it('GIỮ thư expired có item reward chưa claim (zero currency, item-only) — regression Devin Review', async () => {
+    // Bug cũ: pruneExpired OR branch 2 chỉ check
+    // rewardLinhThach/rewardTienNgoc/rewardExp = 0 nên expired mail với
+    // item-only rewards bị xoá nhầm → mất item của người chơi.
+    const u = await makeUserChar(prisma);
+    const past = new Date(Date.now() - 1000);
+    const sent = await mail.sendToCharacter({
+      recipientCharacterId: u.characterId,
+      subject: 'quên claim item',
+      body: 'hết hạn rồi nhưng có huyết chi đan',
+      rewardItems: [{ itemKey: 'huyet_chi_dan', qty: 3 }],
+      expiresAt: past,
+    });
+    await mail.pruneExpired(new Date(Date.now() + 60_000));
+    const exists = await prisma.mail.findUnique({ where: { id: sent.id } });
+    expect(exists).not.toBeNull();
+  });
+
+  it('XOÁ thư expired không có bất kỳ reward nào (rewardItems = [])', async () => {
+    const u = await makeUserChar(prisma);
+    const past = new Date(Date.now() - 1000);
+    const sent = await mail.sendToCharacter({
+      recipientCharacterId: u.characterId,
+      subject: 'tin tức hết hạn',
+      body: 'không có thưởng',
+      expiresAt: past,
+    });
+    const removed = await mail.pruneExpired(new Date(Date.now() + 60_000));
+    expect(removed).toBeGreaterThanOrEqual(1);
+    const exists = await prisma.mail.findUnique({ where: { id: sent.id } });
+    expect(exists).toBeNull();
+  });
 });
 
 describe('MailService.validateInput — edge cases bổ sung', () => {

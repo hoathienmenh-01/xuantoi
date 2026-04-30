@@ -284,13 +284,26 @@ export class MailService {
     return chars.length;
   }
 
-  /** Xoá thư đã claim + quá hạn. Cron có thể gọi. */
+  /**
+   * Xoá thư đã claim + quá hạn. Cron có thể gọi.
+   *
+   * Rule: (a) thư đã claim cũ hơn `olderThan` → rác lịch sử, xoá.
+   * (b) thư expired mà KHÔNG còn reward nào chưa claim → rác tin tức, xoá.
+   * GIỮ lại thư expired nhưng có reward (LT/TN/EXP hoặc item) chưa claim —
+   * người chơi vẫn có thể mở ra xem lại / khiếu nại GM.
+   */
   async pruneExpired(olderThan: Date): Promise<number> {
     const res = await this.prisma.mail.deleteMany({
       where: {
         OR: [
           { claimedAt: { lt: olderThan } },
-          { expiresAt: { lt: new Date() }, rewardLinhThach: 0n, rewardTienNgoc: 0, rewardExp: 0n },
+          {
+            expiresAt: { lt: new Date() },
+            rewardLinhThach: 0n,
+            rewardTienNgoc: 0,
+            rewardExp: 0n,
+            rewardItems: { equals: [] },
+          },
         ],
       },
     });
