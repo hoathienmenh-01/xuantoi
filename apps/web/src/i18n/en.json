@@ -847,6 +847,17 @@
       "empty": "No data yet.",
       "generatedAt": "Generated at"
     },
+    "recentActivity": {
+      "title": "Recent admin activity",
+      "subtitle": "Last 5 admin/MOD actions from the audit log — handy for live tracking when multiple admins are working.",
+      "loading": "Loading…",
+      "empty": "No activity yet.",
+      "col": {
+        "time": "Time",
+        "actor": "Actor",
+        "action": "Action"
+      }
+    },
     "noPermission": "You do not have access to this area.",
     "users": {
       "searchPlaceholder": "Search email or dao name…",
