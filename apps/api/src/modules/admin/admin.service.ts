@@ -59,7 +59,15 @@ export class AdminService {
   async listUsers(
     q: string | undefined,
     page: number,
-    filters: { role?: Role; banned?: boolean } = {},
+    filters: {
+      role?: Role;
+      banned?: boolean;
+      linhThachMin?: bigint;
+      linhThachMax?: bigint;
+      tienNgocMin?: number;
+      tienNgocMax?: number;
+      realmKey?: string;
+    } = {},
   ): Promise<{
     rows: AdminUserRow[];
     total: number;
@@ -77,6 +85,27 @@ export class AdminService {
     }
     if (filters.role !== undefined) conditions.push({ role: filters.role });
     if (filters.banned !== undefined) conditions.push({ banned: filters.banned });
+
+    // Smart admin filter: range/realm trên character. User không có character (chưa
+    // tạo) sẽ tự động bị loại khỏi kết quả khi bất kỳ filter character nào set.
+    const charConditions: Prisma.CharacterWhereInput = {};
+    const linhThachFilter: { gte?: bigint; lte?: bigint } = {};
+    if (filters.linhThachMin !== undefined) linhThachFilter.gte = filters.linhThachMin;
+    if (filters.linhThachMax !== undefined) linhThachFilter.lte = filters.linhThachMax;
+    if (linhThachFilter.gte !== undefined || linhThachFilter.lte !== undefined) {
+      charConditions.linhThach = linhThachFilter;
+    }
+    const tienNgocFilter: { gte?: number; lte?: number } = {};
+    if (filters.tienNgocMin !== undefined) tienNgocFilter.gte = filters.tienNgocMin;
+    if (filters.tienNgocMax !== undefined) tienNgocFilter.lte = filters.tienNgocMax;
+    if (tienNgocFilter.gte !== undefined || tienNgocFilter.lte !== undefined) {
+      charConditions.tienNgoc = tienNgocFilter;
+    }
+    if (filters.realmKey) charConditions.realmKey = filters.realmKey;
+    if (Object.keys(charConditions).length > 0) {
+      conditions.push({ character: { is: charConditions } });
+    }
+
     const where: Prisma.UserWhereInput = conditions.length > 0 ? { AND: conditions } : {};
     const [rows, total] = await Promise.all([
       this.prisma.user.findMany({

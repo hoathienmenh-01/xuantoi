@@ -50,14 +50,33 @@ interface Page<T> {
   pageSize: number;
 }
 
+export interface AdminListUsersFilters {
+  role?: Role;
+  banned?: boolean;
+  /** Lọc character.linhThach (bigint) >= ngưỡng. Truyền dạng string số nguyên dương. */
+  linhThachMin?: string;
+  /** Lọc character.linhThach <= ngưỡng. */
+  linhThachMax?: string;
+  /** Lọc character.tienNgoc (int) trong khoảng. */
+  tienNgocMin?: number;
+  tienNgocMax?: number;
+  /** Lọc character.realmKey chính xác (vd: `luyenkhi`, `truclo`, `kimdan`...). */
+  realmKey?: string;
+}
+
 export async function adminListUsers(
   q: string,
   page: number,
-  filters: { role?: Role; banned?: boolean } = {},
+  filters: AdminListUsersFilters = {},
 ): Promise<Page<AdminUserRow>> {
   const params: Record<string, string | number> = { q, page };
   if (filters.role) params.role = filters.role;
   if (filters.banned !== undefined) params.banned = filters.banned ? 'true' : 'false';
+  if (filters.linhThachMin) params.linhThachMin = filters.linhThachMin;
+  if (filters.linhThachMax) params.linhThachMax = filters.linhThachMax;
+  if (filters.tienNgocMin !== undefined) params.tienNgocMin = filters.tienNgocMin;
+  if (filters.tienNgocMax !== undefined) params.tienNgocMax = filters.tienNgocMax;
+  if (filters.realmKey) params.realmKey = filters.realmKey;
   const { data } = await apiClient.get<Envelope<Page<AdminUserRow>>>('/admin/users', {
     params,
   });
