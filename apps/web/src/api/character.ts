@@ -1,4 +1,9 @@
+import { i18n } from '@/i18n';
 import { apiClient } from './client';
+
+function fallbackError(op: string): Error {
+  return new Error(i18n.global.t(`common.apiFallback.${op}`));
+}
 
 export interface Character {
   id: string;
@@ -42,7 +47,7 @@ export async function onboard(input: OnboardInput): Promise<Character> {
     '/character/onboard',
     input,
   );
-  if (!data.ok || !data.data) throw data.error ?? new Error('Onboard thất bại');
+  if (!data.ok || !data.data) throw data.error ?? fallbackError('onboard');
   return data.data.character;
 }
 

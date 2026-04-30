@@ -1,4 +1,9 @@
+import { i18n } from '@/i18n';
 import { apiClient } from './client';
+
+function fallbackError(op: string): Error {
+  return new Error(i18n.global.t(`common.apiFallback.${op}`));
+}
 
 export interface ShopEntry {
   itemKey: string;
@@ -19,7 +24,7 @@ interface Envelope<T> {
 
 export async function listNpcShop(): Promise<ShopEntry[]> {
   const { data } = await apiClient.get<Envelope<{ entries: ShopEntry[] }>>('/shop/npc');
-  if (!data.ok || !data.data) throw data.error ?? new Error('Lấy shop thất bại');
+  if (!data.ok || !data.data) throw data.error ?? fallbackError('shopLoad');
   return data.data.entries;
 }
 
@@ -38,6 +43,6 @@ export async function buyFromShop(
     itemKey,
     qty,
   });
-  if (!data.ok || !data.data) throw data.error ?? new Error('Mua thất bại');
+  if (!data.ok || !data.data) throw data.error ?? fallbackError('shopBuy');
   return data.data;
 }

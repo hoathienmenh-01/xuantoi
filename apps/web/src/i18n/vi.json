@@ -24,7 +24,18 @@
     "pageNext": "Sau ›",
     "pagePrev": "‹ Trước",
     "all": "Tất cả",
-    "loadingData": "Đang tải dữ liệu…"
+    "loadingData": "Đang tải dữ liệu…",
+    "apiFallback": {
+      "register": "Đăng ký thất bại",
+      "login": "Đăng nhập thất bại",
+      "changePassword": "Đổi mật khẩu thất bại",
+      "forgotPassword": "Gửi yêu cầu thất bại",
+      "resetPassword": "Đặt lại mật khẩu thất bại",
+      "logoutAll": "Đăng xuất tất cả thất bại",
+      "shopLoad": "Lấy shop thất bại",
+      "shopBuy": "Mua thất bại",
+      "onboard": "Khai đạo thất bại"
+    }
   },
   "locale": {
     "label": "Ngôn ngữ",
