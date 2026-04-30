@@ -7,6 +7,7 @@ import { useGameStore } from '@/stores/game';
 import { useToastStore } from '@/stores/toast';
 import { isSelfTarget, canChangeRole, canTargetUser } from '@/lib/adminGuards';
 import { countEconomyAlerts } from '@/lib/adminAlerts';
+import { countActiveUnused } from '@/lib/giftcodeBadge';
 import {
   adminApproveTopup,
   adminAuditLedger,
@@ -66,6 +67,13 @@ const alertsCount = computed(() => countEconomyAlerts(alerts.value));
  * Re-fetch song song với alerts mỗi 60s.
  */
 const pendingTopupCount = ref(0);
+
+/**
+ * Smart admin tab badge (9i-C): active-unused giftcode count trên tab Giftcode.
+ * Đồng pattern với pendingTopupCount, dùng helper `countActiveUnused` để mirror
+ * logic `giftCodeStatusOf` BE — chỉ count ACTIVE (chưa revoke/expire/exhaust).
+ */
+const activeGiftcodeCount = ref(0);
 
 let alertsPollTimer: ReturnType<typeof setInterval> | null = null;
 
@@ -204,6 +212,8 @@ async function refreshStats(): Promise<void> {
         pendingTopupCount.value = r.total;
       })
       .catch(() => null);
+    // Smart giftcode badge (9i-C): load active-unused count song song.
+    refreshActiveGiftcodeCount();
   } catch (e) {
     handleErr(e);
   } finally {
@@ -229,6 +239,8 @@ async function refreshAlertsOnly(): Promise<void> {
   } catch {
     // ignore
   }
+  // Smart giftcode badge (9i-C): poll song song.
+  refreshActiveGiftcodeCount();
 }
 
 /**
@@ -495,6 +507,17 @@ function refreshPendingTopupCount(): void {
     .catch(() => null);
 }
 
+function refreshActiveGiftcodeCount(): void {
+  // Fire-and-forget refresh để badge cập nhật ngay sau create/revoke. Dùng
+  // status filter ACTIVE giảm payload, sau đó count client-side qua helper
+  // (mirror `giftCodeStatusOf` BE). Lỗi im lặng giữ giá trị cũ.
+  adminListGiftcodes({ status: 'ACTIVE' })
+    .then((rows) => {
+      activeGiftcodeCount.value = countActiveUnused(rows);
+    })
+    .catch(() => null);
+}
+
 async function refreshGiftcodes(): Promise<void> {
   loading.value = true;
   try {
@@ -541,6 +564,7 @@ async function submitGiftCreate(): Promise<void> {
     toast.push({ type: 'success', text: t('admin.giftcodes.createdToast') });
     giftCreateOpen.value = false;
     await refreshGiftcodes();
+    refreshActiveGiftcodeCount();
   } catch (e) {
     handleErr(e);
   } finally {
@@ -554,6 +578,7 @@ async function revokeGiftcode(row: AdminGiftCodeRow): Promise<void> {
     await adminRevokeGiftcode(row.code);
     toast.push({ type: 'success', text: t('admin.giftcodes.revokedToast') });
     await refreshGiftcodes();
+    refreshActiveGiftcodeCount();
   } catch (e) {
     handleErr(e);
   }
@@ -629,6 +654,12 @@ const isAdmin = () => game.character?.role === 'ADMIN';
             class="ml-1 inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-amber-500 text-ink-900 text-[10px] font-bold align-middle"
             :title="t('admin.topups.pendingBadgeTooltip', { count: pendingTopupCount })"
           >{{ pendingTopupCount }}</span>
+          <span
+            v-if="tk === 'giftcodes' && activeGiftcodeCount > 0"
+            data-testid="admin-tab-giftcodes-active-badge"
+            class="ml-1 inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-amber-500 text-ink-900 text-[10px] font-bold align-middle"
+            :title="t('admin.giftcodes.activeBadgeTooltip', { count: activeGiftcodeCount })"
+          >{{ activeGiftcodeCount }}</span>
         </button>
       </nav>
 

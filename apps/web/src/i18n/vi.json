@@ -952,6 +952,7 @@
       }
     },
     "giftcodes": {
+      "activeBadgeTooltip": "{count} giftcode đang hoạt động",
       "filter": {
         "qPlaceholder": "Tìm theo mã giftcode…"
       },
