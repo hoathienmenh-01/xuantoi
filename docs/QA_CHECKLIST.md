@@ -154,11 +154,17 @@ PLAYWRIGHT_BASE_URL=http://localhost:5173 PLAYWRIGHT_SKIP_WEBSERVER=1 \
   E2E_FULL=1 pnpm --filter @xuantoi/web e2e
 ```
 
-### Test cases hiện có (PR session 9h-C)
+### Test cases hiện có
 
+**Session 9h-C baseline** (3 test):
 - `register → onboard → home → cultivate → mission claim` — flow gốc.
 - `daily login claim — first claim today (M9 / G7)` — verify DailyLoginCard render + click "Nhận thưởng hôm nay" không crash.
 - `leaderboard tabs — Power / Topup / Sect render danh sách` — verify 3 tab `/leaderboard` switch không crash.
+
+**Session 9k task B expand** (+3 test):
+- `shop buy → inventory reflect new item` — /shop render, click nút "Mua" đầu tiên (best-effort, skip nếu INSUFFICIENT_FUNDS), rồi /inventory verify render.
+- `mail inbox open → read → claim nếu có reward` — /mail render, nếu có mail row thì click để đọc, nếu có nút "Nhận thưởng" thì click claim.
+- `profile /profile/:id public view` — thử click link profile từ leaderboard; fallback direct navigate `/profile/<fake_id>` verify không crash (NotFound/empty state OK).
 
 Tất cả test mới dùng style "best-effort smoke" — `if (await el.isVisible()) await el.click()` thay vì strict assert, để không fail khi state DB khác (ví dụ admin chưa có topup data → tab Topup empty list vẫn ok). Final assertion luôn là `expect(page).toHaveURL(...)` để chắc page không crash.
 
