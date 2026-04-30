@@ -1,6 +1,8 @@
 # AI Handoff Report — Xuân Tôi
 
-> **Snapshot (session 9p kickoff, this PR)**: `main` @ `bb9f571` (Merge PR #189 docs(handoff) session 9o progress, 30 Apr 2026 ~17:52 UTC). **Session 9p task A (this PR)**: pure-unit failure-path tests cho `HealthController.readyz` — DB fail/Redis fail/Redis non-PONG/both fail/non-Error throw stringify + healthz ts ISO + version env override/fallback (+10 vitest, mocked Prisma+Redis, không cần infra:up). API baseline **619 → 629** (verified local 30/4 18:09 UTC với real Postgres + Redis: 55 file / 629 pass). Web/shared/typecheck/lint/build vẫn xanh.
+> **Snapshot (session 9p task B, this PR)**: `main` @ `24597f0` (Merge PR #190 health.controller.unit.test.ts +10 vitest, 30 Apr 2026 ~18:13 UTC). **Session 9p task B (this PR)**: pure-unit tests cho `auditResultToJson` — bigint→string preserve precision (>MAX_SAFE_INTEGER), negative diff, zero, multi-row order independence, inventoryDiscrepancies number passthrough, JSON.stringify roundtrip safety, no input mutation (+12 vitest, no DB). API baseline **629 → 641** (verified local 30/4 18:21 UTC với real Postgres + Redis: 56 file / 641 pass).
+>
+> **Snapshot (session 9p task A, merged)**: `main` @ `24597f0` (Merge PR #190, 30/4 ~18:13 UTC). **PR #190**: `apps/api/src/modules/health/health.controller.unit.test.ts` (+10 pure-unit vitest). API baseline **619 → 629**. CI 5/5 ✅ · Devin Review ✅.
 >
 > **Snapshot (session 9o progress)**: `main` @ `59e0901` (Merge PR #188, 30 Apr 2026 ~17:48 UTC). **Session 9o merged**: PR #184 (audit refresh) @ `b283cb9`, PR #186 (chat.service WS+history +11 vitest) @ `1b587bc`, PR #187 (mission.processor +8 vitest) @ `295ae6b`, PR #188 (cultivation processor+service +14 vitest) @ `59e0901`. **i18n parity audit**: no VN hard-code in production templates — project i18n clean. **Baseline**: `pnpm typecheck` ✅ · `pnpm lint` ✅ · shared **220/220** · web **547/547** · `pnpm build` ✅. API test verified local 30/4 18:09 UTC: **619/619** (pre-9p) → **629/629** (post-9p task A). PR #189 (audit refresh session 9o progress) merged into main @ `bb9f571` (30/4 ~17:52 UTC).
 
@@ -173,9 +175,25 @@
 
 ---
 
-## Recent Changes (PR #33→#189 đã merged trên main; session 9p task A **this PR** pure-unit failure tests cho HealthController.readyz)
+## Recent Changes (PR #33→#190 đã merged trên main; session 9p task B **this PR** pure-unit tests cho ledger-audit auditResultToJson)
 
-### PR session 9p task A (in-flight, this PR) — `test(api): HealthController.readyz failure paths +10 pure unit (DB fail/Redis fail/non-PONG/both fail/non-Error stringify + healthz ts ISO + version env override/fallback)` — **Pending merge**
+### PR session 9p task B (in-flight, this PR) — `test(api): admin/ledger-audit auditResultToJson +12 pure unit (bigint→string preserve precision/sign/zero, inventory passthrough, JSON.stringify safety, no input mutation)` — **Pending merge**
+
+- **Branch**: `devin/1777573112-ledger-audit-json-tests`. **Base**: `main` @ `24597f0` (post PR #190 merge).
+- **Vì sao**: `auditResultToJson` (165 line trong `apps/api/src/modules/admin/ledger-audit.ts`) là pure helper biến `AuditResult` (bigint cho ledgerSum/characterValue/diff) sang `AuditResultJson` (string) cho admin HTTP endpoint `GET /admin/economy/audit-ledger` — KHÔNG có test riêng. CLI script đã có `audit-ledger-format.test.ts` test `formatResultJson` nhưng đó là function khác (CLI output format). Thiếu lock-in cho contract: BigInt → string preserve precision khi vượt `Number.MAX_SAFE_INTEGER` (chính lý do tồn tại serializer thay vì gửi number); negative diff giữ dấu "-N"; zero giữ "0"; inventoryDiscrepancies (number) passthrough không bị string-ify nhầm; JSON.stringify không throw "Do not know how to serialize a BigInt"; input không bị mutate. Bug regression nếu ai đó "tối ưu" sau này thành `Number(d.ledgerSum)` sẽ làm tròn sai cho character giàu — silent corruption ledger view. Pure-unit no DB.
+- **Files**:
+  - `apps/api/src/modules/admin/ledger-audit-json.test.ts` — **new** 12 vitest pure-unit:
+    - empty result: arrays empty + scalars 0; non-zero scalars passthrough.
+    - currency: positive bigint `100n` → `"100"`; negative diff `-150n` → `"-150"`; zero `0n` → `"0"`; bigint `9_007_199_254_740_993n` (MAX_SAFE_INTEGER+2) preserve precision (round-trip `BigInt(str) === big`); bigint `99_999_999_999_999_999n` 18-digit preserve; multi-row giữ thứ tự per-row independence.
+    - inventory: number passthrough giữ kiểu (typeof === 'number'); negative diff `-2` preserved; itemKey 2 separator `EQUIP:WEAPON:T1` passthrough nguyên (defensive).
+    - JSON envelope: `JSON.stringify(auditResultToJson(r))` không throw + parse roundtrip equal; `auditResultToJson(orig)` không mutate input bigint fields (verify `typeof orig.[...].ledgerSum === 'bigint'`).
+- **Tests**: 12 vitest mới (verified local 30/4 18:19 UTC, 329ms). API baseline **629 → 641** (verified local 30/4 18:21 UTC với real Postgres + Redis: 56 file / 641 pass).
+- **Risk / rollback**: 🟢 thấp — pure test additions, không thay đổi runtime logic, không schema change. Rollback = revert PR.
+- **Audit update**: §0 snapshot bump `24597f0` → kickoff session 9p task B, Recent Changes block, §21 thêm task B entry.
+
+### PR #190 — `test(api): HealthController.readyz failure paths +10 pure unit (session 9p task A)` — **Merged into main** @ `24597f0` (30/4 ~18:13 UTC). CI 5/5 ✅.
+
+### PR session 9p task A (closed, merged) — `test(api): HealthController.readyz failure paths +10 pure unit (DB fail/Redis fail/non-PONG/both fail/non-Error stringify + healthz ts ISO + version env override/fallback)` — **Merged into main** @ `24597f0`
 
 - **Branch**: `devin/1777572345-health-readyz-failure-unit-tests`. **Base**: `main` @ `bb9f571` (post PR #189 merge).
 - **Vì sao**: `health.controller.test.ts` cũ chỉ cover happy path (DB+Redis live) — yêu cầu real Postgres/Redis qua `TEST_DATABASE_URL`. Production readiness cần lock-in luôn 503 envelope khi dependency down (DB fail / Redis fail / Redis non-PONG / cả hai fail) để khỏi sai khi rotate connection / restart cluster / blue-green cutover. Bug regression nếu future code throw lệch error field hoặc không bump status 503 sẽ gây kubernetes/load-balancer route traffic vào instance sick mà không biết. Pure-unit + mock Prisma `$queryRaw` + Redis `ping` → có thể chạy không cần `infra:up` (CI service vẫn run cùng dataset để cover happy path), bổ sung branch coverage 100% cho `ready()` failure modes + version env precedence + healthz ts ISO contract.
@@ -2518,11 +2536,32 @@ F. ~~**`docs/CHANGELOG.md` bootstrap**~~ — **Done by PR #104** (Merged into ma
 
 | PR | Task | Status |
 |---|---|---|
-| this PR | session 9p task A — test(api): HealthController.readyz failure paths +10 pure unit | **Pending merge** (in-flight) |
+| #190 | session 9p task A — test(api): HealthController.readyz failure paths +10 pure unit | **Merged into main** @ `24597f0` (30/4 ~18:13 UTC, CI 5/5 ✅) |
+| this PR | session 9p task B — test(api): admin/ledger-audit auditResultToJson +12 pure unit | **Pending merge** (in-flight) |
 
-#### PR session 9p task A (in-flight, this PR) — `test(api): HealthController.readyz failure paths +10 pure unit`
+#### PR session 9p task B (in-flight, this PR) — `test(api): admin/ledger-audit auditResultToJson +12 pure unit`
 
-- **Branch**: `devin/1777572345-health-readyz-failure-unit-tests`. **Base**: `main` @ `bb9f571` (post PR #189 merge). **Status**: in-flight.
+- **Branch**: `devin/1777573112-ledger-audit-json-tests`. **Base**: `main` @ `24597f0` (post PR #190 merge). **Status**: in-flight.
+- **Files**: `apps/api/src/modules/admin/ledger-audit-json.test.ts` (new 12 vitest pure-unit) · `docs/AI_HANDOFF_REPORT.md`.
+- **Why**: lock-in JSON serializer contract cho admin endpoint `GET /admin/economy/audit-ledger`. Bigint→string preserve precision khi vượt MAX_SAFE_INTEGER là chính lý do tồn tại serializer; chưa có test tương ứng.
+- **Tests added**: 12 vitest unit (no DB).
+- **Branches locked**:
+  - empty (arrays + scalars 0) → empty output identity.
+  - non-zero scalars `charactersScanned/itemKeysScanned` → passthrough.
+  - currency `100n` → `"100"`; `-150n` → `"-150"`; `0n` → `"0"`.
+  - bigint `9_007_199_254_740_993n` (MAX_SAFE_INTEGER+2) → `"9007199254740993"` round-trip.
+  - bigint `99_999_999_999_999_999n` (18-digit) → preserve.
+  - multi-row order + per-row independence preserved.
+  - inventory: `typeof === 'number'` giữ kiểu; negative `-2` preserved; itemKey 2 separator passthrough.
+  - JSON envelope: `JSON.stringify(out)` không throw + parse roundtrip equal.
+  - input không bị mutate: `typeof orig.[].ledgerSum === 'bigint'` sau call.
+- **CI status (local)**: typecheck ✅ · lint ✅ · new vitest 12/12 ✅ · API 56 file / **641/641** ✅ (verified với real Postgres + Redis 30/4 18:21 UTC) · shared 220/220 ✅ · web 547/547 ✅.
+- **Risk**: 🟢 thấp — test-only, lock-in serialization invariants. No runtime change.
+- **Rollback**: revert single PR (xóa 1 file test).
+
+#### PR session 9p task A (closed, merged) — `test(api): HealthController.readyz failure paths +10 pure unit`
+
+- **Branch**: `devin/1777572345-health-readyz-failure-unit-tests`. **Base**: `main` @ `bb9f571` (post PR #189 merge). **Status**: Merged @ `24597f0` (30/4 ~18:13 UTC).
 - **Files**: `apps/api/src/modules/health/health.controller.unit.test.ts` (new 10 vitest pure-unit) · `docs/AI_HANDOFF_REPORT.md`.
 - **Why**: production readiness — lock-in 503 + error envelope khi DB hoặc Redis down để khỏi sai khi rotate / restart cluster. Pure-unit (mock Prisma `$queryRaw` + Redis `ping`) → chạy không cần `infra:up`; integration test cũ giữ nguyên cho happy path real DB+Redis.
 - **Tests added**: 10 vitest unit (no DB).
