@@ -1,6 +1,8 @@
 # AI Handoff Report — Xuân Tôi
 
-> **Snapshot (session 9p task L, this PR)**: `main` @ `21c06ba` (Merge PR #200 controller trio3 tests, 30/4 ~20:08 UTC). **Session 9p task L (this PR)**: controller-level pure-unit vitest cho 3 controller gameplay-related (boss/combat/inventory) — `boss.controller` (30 vitest 3 endpoint incl AdminGuard-bypassed `adminSpawn` + public-after-auth `current()` getViewer pattern + zod skillKey max 64 / level 1..10 / bossKey 1..64 + BossError 11-code mapping {NO_CHARACTER/NO_ACTIVE_BOSS→404, COOLDOWN→429, SKILL_NOT_USABLE/INVALID_BOSS_KEY/INVALID_LEVEL→400, BOSS_DEFEATED/STAMINA_LOW/MP_LOW/HP_LOW/BOSS_ALREADY_ACTIVE→409}), `combat.controller` (29 vitest 5 endpoint incl PUBLIC `dungeons()` no-auth + `getActive` characterId-not-userId + `action` body-nullable fallback `body ?? {}` + duck-typed handleErr 8-code {NO_CHARACTER/DUNGEON_NOT_FOUND/ENCOUNTER_NOT_FOUND→404, STAMINA_LOW/MP_LOW/SKILL_NOT_USABLE/ALREADY_IN_FIGHT/ENCOUNTER_ENDED→409}), `inventory.controller` (36 vitest 4 endpoint incl shared `requireCharacter` 401/404 fail-fast + EquipSlot enum 9-value full coverage (WEAPON/ARMOR/BELT/BOOTS/HAT/TRAM/ARTIFACT_1..3) + duck-typed handleErr 7-code {NO_CHARACTER/INVENTORY_ITEM_NOT_FOUND/ITEM_NOT_FOUND→404, NOT_EQUIPPABLE/NOT_USABLE/WRONG_SLOT/ALREADY_USED→409}). +95 vitest. API baseline **815 → 910** (71 file).
+> **Snapshot (session 9p task M, this PR)**: `main` @ `<merge of PR #201>` (Merge PR #201 controller trio4 tests cho boss/combat/inventory). **Session 9p task M (this PR)**: controller-level pure-unit vitest cho 3 controller social/security (market/sect/auth) — `market.controller` (44 vitest 5 endpoint incl shared `requireCharacter` 5-endpoint guard + KindEnum 7-value soft-parse silent-undefined + PostInput.pricePerUnit string-or-int → BigInt + qty positive-integer + duck-typed handleErr 11-code), `sect.controller` (39 vitest 6 endpoint incl PUBLIC list() + getViewer pattern PUBLIC-after-auth `/sect/:id` + `/sect/me` returns `{sect:null}` no-throw + CreateInput name 2..16 / desc max 200 default '' + ContributeInput amount string-or-int → BigInt + SectError instanceof 8-code mapping), `auth.controller` (43 vitest 8 endpoint incl forgot-password silent-ok anti-enumeration + login catch-all → 401 INVALID_CREDENTIALS + refresh AuthError → clearAuthCookies-then-fail + logout idempotent no-auth + clientIp 4-fallback xff[0]→req.ip→'unknown' + cookie shape httpOnly+sameSite='lax'+maxAge=ttl*1000 + AuthError statusForCode 9-value mapping). +126 vitest. API baseline **910 → 1036** (74 file).
+>
+> **Snapshot (session 9p task L, merged)**: `main` @ `21c06ba` (Merge PR #200 controller trio3 tests, 30/4 ~20:08 UTC). **Session 9p task L**: controller-level pure-unit vitest cho 3 controller gameplay-related (boss/combat/inventory) — 95 vitest. API baseline **815 → 910**. PR #201 merged.
 >
 > **Snapshot (session 9p task K, merged)**: `main` @ `21c06ba` (Merge PR #200, 30/4 ~20:08 UTC). **PR #200**: `apps/api/src/modules/{mission,mail,chat}/*.controller.test.ts` (+66 vitest). API baseline **749 → 815**. CI ✅
 >
@@ -193,9 +195,47 @@
 
 ---
 
-## Recent Changes (PR #33→#200 đã merged trên main; session 9p task L **this PR** controller-level tests cho 3 controller gameplay-related: boss + combat + inventory)
+## Recent Changes (PR #33→#201 đã merged trên main; session 9p task M **this PR** controller-level tests cho 3 controller social/security: market + sect + auth)
 
-### PR session 9p task L (in-flight, this PR) — `test(api): boss + combat + inventory controller +95 vitest` — **Pending merge**
+### PR session 9p task M (in-flight, this PR) — `test(api): market + sect + auth controller +126 vitest` — **Pending merge**
+
+- **Branch**: `devin/1777580598-controller-trio5-tests`. **Base**: `main` @ `<post PR #201 merge>`.
+- **Vì sao**: 3 controller "social/security" còn lại ở `apps/api/src/modules/{market,sect,auth}/*.controller.ts` chưa có vitest trực tiếp. Đây là 3 controller mang nhiều risk regression nhất ở app:
+  - **`MarketController`**: economy-critical — 5 endpoint, share `requireCharacter` 5-endpoint guard. PostInput zod transform `pricePerUnit` string-or-int → **BigInt** (security ngăn precision loss với linhThach lớn). KindEnum soft-parse `?kind=` invalid không 400 — silent fallback undefined (UX-friendly tránh URL rách).
+  - **`SectController`**: 6 endpoint, mix PUBLIC/auth + getViewer (NOT requireCharacter — chỉ resolve nullable). `/sect/me` đặc biệt: trả `{ sect: null }` no-throw khi character không trong sect, KHÁC `/sect/:id` throw SECT_NOT_FOUND. ContributeInput.amount string-or-int → BigInt (parity với market).
+  - **`AuthController`**: 8 endpoint, security-critical. forgot-password silent-ok pattern (chống user enumeration). login catch-all → 401 INVALID_CREDENTIALS (không leak). refresh AuthError → clearAuthCookies TRƯỚC khi fail. logout idempotent no-auth-required. logout-all auth-required. clientIp 4-fallback: xff string[0] trim → xff array[0] → req.ip → 'unknown'. setAuthCookies shape: httpOnly + sameSite='lax' + path='/' + maxAge=ttl_seconds*1000 + secure=NODE_ENV==='production'.
+- **Files** (3 file new):
+  - `apps/api/src/modules/market/market.controller.test.ts` (44 vitest): requireCharacter shared × 5 + listings × 11 (kind soft-parse 7-value full + invalid + lowercase + null) + mine × 1 + post zod × 8 (body null + inventoryItemId/qty/price boundaries) + post happy × 2 (string→BigInt + number→BigInt) + buy × 1 + cancel × 1 + handleErr duck-typed 11-code × 11 + 4 cross-endpoint/rethrow.
+  - `apps/api/src/modules/sect/sect.controller.test.ts` (39 vitest): PUBLIC list × 2 + me × 4 (auth + 404 + null sect + sect detail) + get × 3 (PUBLIC-after-auth + 404) + create zod × 7 (auth + zod 5 case + happy + default desc) + join × 2 + leave × 2 + contribute zod × 7 (auth + zod 4 case + happy 2) + handleErr SectError instanceof 8-code × 8 + 4 cross-endpoint/rethrow.
+  - `apps/api/src/modules/auth/auth.controller.test.ts` (43 vitest): register × 8 (zod WEAK_PASSWORD 4 case + happy + AuthError 2 + rethrow) + login × 4 (zod fail → 401 + happy + AuthError 2 + catch-all anti-leak) + forgot-password × 5 (silent-ok 3 paths + RATE_LIMITED throw + dev token) + reset-password × 4 + change-password × 4 + session × 3 + refresh × 3 (clearCookies-then-fail) + logout × 2 (idempotent) + logout-all × 2 + clientIp + cookie shape × 7 (xff parsing + maxAge + cookie opts).
+- **Lock-in invariants critical to security/economy**:
+  - **`MarketController.listings()`**: `kind=invalid` silent fallback undefined (UX-friendly), không 400.
+  - **`MarketController.post()`**: pricePerUnit zod transform → BigInt; service nhận BigInt KHÔNG string/number (precision safety).
+  - **`MarketController`**: `requireCharacter` shared trên 5 endpoint → identical 401/404 paths. Failed auth không bao giờ chạy đến service.
+  - **`SectController.list()`**: PUBLIC (no 401), không yêu cầu cookie.
+  - **`SectController.me()`**: trả `{ sect: null }` no-throw khi character.sectId=null (KHÁC /sect/:id throw SECT_NOT_FOUND).
+  - **`SectController.get(:id)`**: PUBLIC-after-auth — characterId nullable truyền vào service detail.
+  - **`SectController.create()`**: description zod default '' khi không truyền (service nhận '' không undefined).
+  - **`AuthController.forgotPassword`**: silent-ok cho zod fail + service AuthError ≠ RATE_LIMITED + plain Error → chống user enumeration. Chỉ AuthError(RATE_LIMITED) mới throw 429.
+  - **`AuthController.login`**: AuthError-known (INVALID_CREDENTIALS/RATE_LIMITED/ACCOUNT_BANNED) → fail với code đó. Non-AuthError → fail INVALID_CREDENTIALS 401 (catch-all anti-leak).
+  - **`AuthController.refresh`**: AuthError → `clearAuthCookies(res)` TRƯỚC khi fail. Session invalidated, không thể replay refresh token.
+  - **`AuthController.logout`**: KHÔNG cần auth — luôn 200, clearCookies (idempotent).
+  - **`AuthController.logoutAll`**: cần auth — 401 nếu không cookie. Xóa hết refresh token, force logout mọi device.
+  - **clientIp ordering**: `x-forwarded-for` first → `x-forwarded-for[0]` if array → `req.ip` → 'unknown'. Empty string fallback to req.ip.
+  - **setAuthCookies shape**: httpOnly + sameSite='lax' + path='/' (cố định) + maxAge=ttl_seconds*1000 (đọc env, default 15min/30day) + secure=production-only.
+- **Tests**: 126/126 vitest mới ✅ (3 file). API baseline 910 → **1036** (74 file). typecheck ✅ · lint ✅(max-warnings 0).
+- **Risk**: 🟢 thấp — test-only, pure unit, mock toàn bộ service+prisma+auth+response. Không thay đổi runtime code. Không cần migration / seed / Postgres / Redis.
+- **Rollback**: revert single PR (xóa 3 file test + revert docs).
+- **Next planned**: `admin.controller.ts` (562 lines) — controller lớn nhất còn lại; cần PR riêng. Sau đó session 9p chuyển sang task khác trong roadmap (E2E gaps / runtime smoke / smart features).
+
+### PR #201 — `test(api): boss + combat + inventory controller +95 vitest (session 9p task L)` — **Merged into main** (CI ✅)
+
+- 3 file test: boss (30) + combat (29) + inventory (36) controller. Lock-in BossError 11-code, CombatController duck-typed handleErr, InventoryController shared `requireCharacter` + EquipSlot 9-value enum.
+- API baseline 815 → 910.
+
+### PR #200 — `test(api): mission + mail + chat controller +66 vitest (session 9p task K)` — **Merged into main** @ `21c06ba` (30/4 ~20:08 UTC). CI ✅
+
+### PR session 9p task L (closed, merged via PR #201) — `test(api): boss + combat + inventory controller +95 vitest` — **Merged into main**
 
 - **Branch**: `devin/1777580025-controller-trio4-tests`. **Base**: `main` @ `21c06ba` (post PR #200 merge).
 - **Vì sao**: 3 controller gameplay-related ở `apps/api/src/modules/{boss,combat,inventory}/*.controller.ts` chưa có vitest trực tiếp. Service-level test đã cover business logic (boss combat math + dungeon RNG + equip bonus); controller layer chứa các risk silent regression đặc biệt:
@@ -2753,7 +2793,8 @@ F. ~~**`docs/CHANGELOG.md` bootstrap**~~ — **Done by PR #104** (Merged into ma
 | #198 | session 9p task I — test(api): daily-login + next-action + giftcode controller +36 vitest | **Merged into main** @ `cbefe05` (30/4 ~19:46 UTC, CI ✅) |
 | #199 | session 9p task J — test(api): logs + shop + topup controller +46 vitest | **Merged into main** @ `ecd08d6` (30/4 ~19:52 UTC, CI ✅) |
 | #200 | session 9p task K — test(api): mission + mail + chat controller +66 vitest | **Merged into main** @ `21c06ba` (30/4 ~20:08 UTC, CI ✅) |
-| this PR | session 9p task L — test(api): boss + combat + inventory controller +95 vitest | **Pending merge** (in-flight) |
+| #201 | session 9p task L — test(api): boss + combat + inventory controller +95 vitest | **Merged into main** (CI ✅) |
+| this PR | session 9p task M — test(api): market + sect + auth controller +126 vitest | **Pending merge** (in-flight) |
 
 #### PR session 9p task C (in-flight, this PR) — `test(api): ops.service + mission.scheduler ghost-cleanup +12 pure unit`
 
