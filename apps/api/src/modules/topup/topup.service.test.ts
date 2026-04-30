@@ -48,8 +48,9 @@ describe('TopupService.createOrder', () => {
   });
 
   it('mỗi gói trong TOPUP_PACKAGES đều tạo order thành công', async () => {
-    const u = await makeUserChar(prisma);
+    // Fresh user per package to avoid MAX_PENDING_PER_USER=5 limit (6 packages)
     for (const pkg of TOPUP_PACKAGES) {
+      const u = await makeUserChar(prisma);
       const view = await topup.createOrder(u.userId, pkg.key);
       expect(view.packageKey).toBe(pkg.key);
       expect(view.tienNgocAmount).toBe(pkg.tienNgoc + pkg.bonus);
