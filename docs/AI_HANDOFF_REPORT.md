@@ -2093,16 +2093,16 @@ Admin hiện tại có thể vào `/admin` → Users → tìm → **Set role = A
 
 ## 20. Recommended Next Roadmap
 
-### Immediate (session 9m — sau khi session 9l đóng PR #156/#157/#158 merged vào main @ `a1079dc`, 30/4 ~10:50 UTC)
+### Immediate (session 9m — sau khi session 9l đóng PR #156/#157/#158/#159 merged vào main @ `f103485`, 30/4 ~11:00 UTC)
 
-**Session 9l close-out (3 PR Merged + 1 PR Open)**:
+**Session 9l close-out (4/4 PR Merged)**:
 
 - 1. **Docs audit refresh session 9l kickoff** — Merged PR #156 @ `739b10a`.
 - 2. **Docs RELEASE_NOTES + CHANGELOG session 9k close-out** — Merged PR #157 @ `64d02fd`.
 - 3. **Docs(handoff) M9 Resolved in §16** — Merged PR #158 @ `a1079dc`.
-- 4. **test(web): UI primitive ConfirmModal 17 + SkeletonBlock 4 + SkeletonTable 4** — **Open PR #159** (CI 4/5 pending).
+- 4. **test(web): UI primitive ConfirmModal 17 + SkeletonBlock 4 + SkeletonTable 4** — Merged PR #159 @ `f103485`.
 
-**This PR (session 9m kickoff, docs audit + code task)**: audit refresh — fix stale §2/§13/§15/§17/§19, bump snapshot `2e54a1e → a1079dc`, mark #156-#158 merged, note #159 open. Then continue with highest-priority code task.
+**This PR (session 9m kickoff, docs audit)**: audit refresh — fix stale §2/§13/§15/§17/§19, bump snapshot `2e54a1e → f103485`, mark #156-#159 merged. Then continue with highest-priority code task.
 
 **Backlog còn lại (post-9l, an toàn nếu credit còn)**:
 - `M7` CSP CDN prod verify — **chỉ khi deploy staging/prod, cần env thật**. Scope out nếu không deploy.
@@ -2283,7 +2283,7 @@ F. ~~**`docs/CHANGELOG.md` bootstrap**~~ — **Done by PR #104** (Merged into ma
 | #154 | task F — docs SECURITY.md §1 logout-all | **Merged into main** @ `16b8739` |
 | #155 | task G — test logoutAll passwordVersion guard (M9 lock) | **Merged into main** @ `2e54a1e` |
 
-### Session 9l (đã đóng, 3/3 PR merged + 1 PR open)
+### Session 9l (đã đóng, 4/4 PR merged vào main `739b10a → f103485`)
 
 | PR | Task | Status |
 |---|---|---|
