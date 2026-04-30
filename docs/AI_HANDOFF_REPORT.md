@@ -1,8 +1,6 @@
 # AI Handoff Report — Xuân Tôi
 
-> **Snapshot (session 9l task 3 — this PR, UI primitive tests)**: **In-flight** `test(web): UI primitive render tests — ConfirmModal 17 + SkeletonBlock 4 + SkeletonTable 4 (session 9l UI coverage)` trên branch `devin/1777546019-ui-primitive-tests` base main @ `3afea43` (post-merge PR #158 `docs(handoff): mark M9 Resolved in §16 Known Issues`, 30 Apr 2026 ~10:45 UTC). **Files**: `apps/web/src/components/ui/__tests__/{ConfirmModal,SkeletonBlock,SkeletonTable}.test.ts` (+25 test). **Mục tiêu**: fill 3 missing-test gap ở UI primitive shared across app (ConfirmModal dùng cho giftcode revoke / user ban / item grant / topup reject; SkeletonBlock+SkeletonTable dùng cho mọi loading state LeaderboardView/ShopView/AdminView). **Local verify**: `pnpm lint` ✅ · `pnpm typecheck` ✅ (3 project) · `pnpm --filter @xuantoi/web test` ✅ **509/509** (54 file — baseline 484 → 509 +25 test). Risk 🟢 thấp — test-only, không touch code. Chờ CI xanh → merge → close gap.
->
-> **Snapshot (session 9l kickoff + 9k close-out)**: `main` @ `2e54a1e` (Merge PR #155 `test(auth): regression guard — logoutAll KHÔNG bump passwordVersion`, 30 Apr 2026 ~09:35 UTC). **Session 9k full close-out — TẤT CẢ 7/7 PR đã merge cascade vào main**: PR #149 (task A — audit refresh session 9k kickoff @ `5a815b3`), **#150** (task C — AdminView render-level 18 vitest @ `f1214a3`), **#151** (task D — docs PRIVACY.md + TOS.md @ `50a9884`), **#152** (task E — `pnpm smoke:beta` zero-dep CLI @ `d19e8d1`), **#153** (task B — Playwright E2E_FULL +3 best-effort test @ `cfebbb2`), **#154** (task F / M9 — docs SECURITY.md logout-all behavior @ `16b8739`), **#155** (task G / M9 lock — regression test guard passwordVersion @ `2e54a1e`). **Zero open PRs tại thời điểm audit** (30/4 ~09:35 UTC). **Baseline**: web 484/484 (51 file, task C merged) + shared 96/96 (6 file) + api `logoutAll passwordVersion guard` thêm (ref integration test, CI verify). **Roadmap session 9l**: đọc backlog post-9k (M7 chỉ deploy, M10 shop daily limit schema change, smart admin bulk actions, performance benchmark); chọn task an toàn tiếp theo hoặc đóng nếu hết credit.
+> **Snapshot (session 9m kickoff — audit refresh)**: `main` @ `f103485` (Merge PR #159 `test(web): UI primitive render tests — ConfirmModal 17 + SkeletonBlock 4 + SkeletonTable 4`, 30 Apr 2026 ~11:00 UTC). **Session 9l close-out (4/4 PR merged)**: PR #156 (audit refresh @ `739b10a`), #157 (docs RELEASE_NOTES + CHANGELOG @ `64d02fd`), #158 (handoff M9 Resolved @ `a1079dc`), #159 (UI primitive tests +25 vitest @ `f103485`). **Zero open PRs**. **Baseline verified local 30/4 ~11:05 UTC**: `pnpm typecheck` ✅ (3 project) · `pnpm lint` ✅ · `pnpm --filter @xuantoi/shared test` ✅ **96/96** (6 file) · `pnpm --filter @xuantoi/web test` ✅ **509/509** (54 file — includes PR #159 +25 test) · `pnpm build` ✅ (PWA precache 47 entries / 763.79 KiB). **Lưu ý**: cần `pnpm build` (hoặc `pnpm --filter @xuantoi/shared build`) trước khi chạy web test local vì `@xuantoi/shared` export từ `dist/` — thiếu build sẽ fail 15 test file với "Failed to resolve entry for package @xuantoi/shared". CI không gặp vì CI build trước test. **Roadmap session 9m**: tiếp tục backlog post-9k — chọn task an toàn có giá trị cao nhất.
 >
 > **Snapshot (session 9k task F — M9 doc merged)**: `main` @ `f1214a3` (Merge PR #150, 30 Apr 2026 ~09:10 UTC).
 >
@@ -46,9 +44,9 @@
 ## 2. Current Branch / CI / PR Status
 
 - **Default branch**: `main`.
-- **Commit audit (session 9k, this PR)**: `e342513 Merge pull request #148 from hoathienmenh-01/devin/1777538719-shared-boss-catalog-tests` (HEAD `main`, 30/4 ~08:55 UTC).
-- **CI gần nhất trên main**: xanh — PR #148 ✅; trước đó toàn bộ #134..#147 cũng xanh khi merge (cascade session 9j).
-- **PR open đáng kể (audit time 30/4 ~09:00 UTC)**: **0 PR open** — toàn bộ chuỗi session 9i (#119..#133) + session 9j (#134..#148) đã merged hết vào main. PR docs audit session 9k refresh này là PR open đầu tiên của session 9k.
+- **Commit audit (session 9m kickoff)**: `f103485 Merge pull request #159 from hoathienmenh-01/devin/1777546019-ui-primitive-tests` (HEAD `main`, 30/4 ~11:00 UTC).
+- **CI gần nhất trên main**: xanh — PR #159 ✅ (5/5); trước đó #156, #157, #158 cũng xanh khi merge.
+- **PR open đáng kể (audit time 30/4 ~11:15 UTC)**: **0 PR open** — toàn bộ session 9l (#156..#159) đã merged.
 - **Commit audit (trước đó, session 9i close)**: `27552a8 Merge pull request #118 from hoathienmenh-01/devin/1777527557-admin-tab-badges` (HEAD `main`, 30/4 ~06:18 UTC).
 - **Replay gap PR #47**: **Đã đóng** — PR #53 (cherry-pick `32a33a6` từ `devin/1777398483-h5-vitest-playwright`) merge vào main commit `2ae4cc0` (28/4 20:15 UTC). File `apps/web/vitest.config.ts` + `playwright.config.ts` + `e2e/golden.spec.ts` + `apps/web/src/stores/__tests__/{toast,game}.test.ts` đã có trên main.
 - **PR merged gần đây ảnh hưởng lớn**:
@@ -1843,7 +1841,7 @@ pnpm test                              # toàn bộ — gộp shared + api + web
   - `realms.ts` — 28 cảnh giới balanced `1.45^order` (PR #20).
   - `boss.ts` — boss pool.
   - `topup.ts` — packages.
-- **Sect seed**: **chưa có script seed sect**. `Sect` model không có auto-create; cần admin tạo thủ công hoặc boot script (missing).
+- **Sect seed**: **Resolved by PR #33** — `pnpm --filter @xuantoi/api bootstrap` creates 3 default sects (Thanh Vân Môn, Huyền Thuỷ Cung, Tu La Điện) idempotently.
 
 **Idempotent?** Static catalog → type-safe, tree-shakable, reload no migrate. DB chỉ lưu reference key → import mới sẽ sync ngay khi code deploy.
 
@@ -1854,8 +1852,8 @@ pnpm test                              # toàn bộ — gộp shared + api + web
 
 ### Thiếu
 
-- Seed sect (Thanh Vân Môn, Huyền Thuỷ Cung, Tu La Điện) — cần script boot hoặc migration data.
-- Seed admin user đầu tiên — **hiện phải promote bằng SQL thủ công** (xem §19).
+- ~~Seed sect~~ — **Resolved by PR #33** (`pnpm --filter @xuantoi/api bootstrap` creates 3 sects).
+- ~~Seed admin user đầu tiên~~ — **Resolved by PR #33** (`bootstrap` creates admin from `INITIAL_ADMIN_EMAIL` + `INITIAL_ADMIN_PASSWORD` env vars).
 - Chưa có content scale: chỉ 3 dungeon + 9 monster cho 28 cảnh giới → late-game sẽ trống.
 - Chưa có seed quest chain (cốt truyện NPC) — chỉ có mission daily/weekly/once tĩnh.
 
@@ -1885,12 +1883,18 @@ pnpm test                              # toàn bộ — gộp shared + api + web
 | `docs/SEEDING.md` | OK | Static catalog strategy, helper functions list. PR #21. |
 | `docs/BALANCE.md` | OK | Cultivation formula, market fee, boss tiering. PR #21. |
 | `docs/BETA_CHECKLIST.md` | OK | Cut-line beta + ✅/⏳ items. PR #21. |
-| `docs/ADMIN_GUIDE.md` | **Thiếu** | Cần: promote admin, grant currency, ban user, topup approve, giftcode create, mail broadcast. |
-| `docs/DEPLOY.md` | **Thiếu** | Cần: prod env, migration deploy, helmet CSP, CORS origins, JWT secrets rotate. |
-| `docs/SECURITY.md` | **Thiếu** | Cần: threat model, secret rotation, rate limit, audit. |
-| `docs/RUN_LOCAL.md` | Phần trong README | Nên tách riêng. |
-| `docs/TROUBLESHOOTING.md` | **Thiếu** | Cần: WS không connect, migration fail, Redis down, typecheck loop. |
-| `docs/CHANGELOG.md` | **Có** (PR #104) | Bootstrap session 9f — Keep-a-Changelog format adapted closed-beta, gom highlight PR #33→#103 thành section session 9d/9e/9f + Unreleased. Format guideline cho future PR. |
+| `docs/ADMIN_GUIDE.md` | **Có** (PR #35) | Promote admin, grant currency, ban user, topup approve, giftcode, mail broadcast. 7.6 KB. |
+| `docs/DEPLOY.md` | **Có** (PR #35) | Prod env, migration deploy, CSP, CORS, JWT secrets. 7.9 KB. |
+| `docs/SECURITY.md` | **Có** (PR #35 + PR #154 session 9k) | Threat model, secret rotation, rate limit, audit, logout-all behavior. 8.5 KB. |
+| `docs/RUN_LOCAL.md` | **Có** (PR #35) | Tách riêng từ README — full step-by-step. 4.7 KB. |
+| `docs/TROUBLESHOOTING.md` | **Có** (PR #35) | WS không connect, migration fail, Redis down, typecheck loop. 6.7 KB. |
+| `docs/CHANGELOG.md` | **Có** (PR #104 + PR #157) | Keep-a-Changelog format, session 9d→9k entries. 9.7 KB. |
+| `docs/RELEASE_NOTES.md` | **Có** (PR #120 + PR #157) | Closed beta press kit, roadmap, known issues. 9.8 KB. |
+| `docs/PRIVACY.md` | **Có** (PR #151 session 9k) | Closed-beta data retention policy. 9.3 KB. |
+| `docs/TOS.md` | **Có** (PR #151 session 9k) | Closed-beta tester agreement. 10.3 KB. |
+| `docs/BACKUP_RESTORE.md` | **Có** (PR #95) | Postgres backup/restore scripts + ops guide. 7.4 KB. |
+| `docs/QA_CHECKLIST.md` | **Có** (PR #50 + PR #113 + PR #152) | Smoke checklist 15 phút + Playwright how-to + pnpm smoke:beta. 13.8 KB. |
+| `docs/RUNTIME_SMOKE_9G.md` | **Có** (session 9g) | Runtime smoke test report. 9.2 KB. |
 | `docs/AI_HANDOFF_REPORT.md` | **Đang viết (file này)** | — |
 
 ---
@@ -1972,7 +1976,7 @@ _(Trước commit `0e9c438`: Không có lỗi làm app không chạy / mất ti�
 | `POST /api/boss/admin/spawn` | **Có** (PR #36) | — |
 | `GET /api/shop/npc` + `POST /api/shop/buy` | **Có** (PR #39) | — |
 | `POST /api/_auth/logout-all` | **Có** (PR #37) | — |
-| `POST /api/_auth/forgot-password` + `POST /api/_auth/reset-password` | Thiếu | Nice-to-have beta closed |
+| `POST /api/_auth/forgot-password` + `POST /api/_auth/reset-password` | **Có** (PR #101 BE + #102 FE + #103 timing fix, Merged @ `3c1aa39`) — `auth.service.ts` + `ForgotPasswordView.vue` + `ResetPasswordView.vue` + 23 vitest + Mailhog scaffold. | — |
 | `POST /api/_auth/verify-email` | Thiếu | Closed beta không cần |
 | `GET /api/leaderboard/{power,topup,sect}` | **Power**: đã có (PR #59 — `GET /leaderboard?limit=50` top by realm+power, clamp 1≤limit≤50). Topup/sect chưa có. | Power done; topup/sect Nice-to-have post-beta. |
 | `WS mission:progress` (server-push tracker) | **Có** (PR #63 BE emitter throttle 500ms + PR #65 FE handler `MissionView`) | — |
@@ -1980,7 +1984,7 @@ _(Trước commit `0e9c438`: Không có lỗi làm app không chạy / mất ti�
 | `POST /api/admin/inventory/revoke` (`ADMIN_REVOKE` ledger) | **Có** (PR #66 — endpoint + 9 vitest) | — |
 | `GET /api/mail/unread-count` (M7 hydrate badge) | **Có** (PR #71) | — |
 | `GET /api/admin/economy/alerts` (smart admin) | **Có** (PR #54) | — |
-| `GET /api/admin/economy/audit-ledger` (smart admin, on-demand audit) | **Có code orphan branch `devin/1777492785-admin-audit-ledger-endpoint` commit `7e27aa9`, chưa vào main** — replay session 9h task B | Trước beta nếu economy safety ưu tiên |
+| `GET /api/admin/economy/audit-ledger` (smart admin, on-demand audit) | **Có** (PR #112, Merged into main @ `f4e67f4`) — `apps/api/src/modules/admin/ledger-audit.ts` + endpoint + AdminView panel violet-500 + 6 BE vitest + 3 FE vitest. | — |
 | `POST /api/_auth/register` rate-limit per-IP | **Có** (PR #60 — 5/15min) | — |
 | `GET /api/me/next-actions` (smart onboarding) | **Có** (PR #49) | — |
 
@@ -2042,7 +2046,9 @@ pnpm build
 
 ## 19. How To Promote Admin / Test Admin
 
-**Hiện tại không có script tạo admin sẵn**. 2 cách:
+**Đã có bootstrap script (PR #33)**: `pnpm --filter @xuantoi/api bootstrap` — tạo admin đầu tiên từ `INITIAL_ADMIN_EMAIL` + `INITIAL_ADMIN_PASSWORD` trong `apps/api/.env` + 3 sect mặc định. Idempotent — chạy lại không lỗi.
+
+Nếu cần promote user khác hoặc chưa chạy bootstrap, có 2 cách thủ công:
 
 ### Option A — SQL thủ công (dev)
 
@@ -2081,33 +2087,31 @@ Admin hiện tại có thể vào `/admin` → Users → tìm → **Set role = A
 
 - **Grant currency** không có limit — admin có thể cộng 10^18 linhThach. Ghi audit nhưng không rollback.
 - **Broadcast mail với reward lớn** → mọi character đều nhận. Không thể unsend.
-- **Set role** — mất quyền ADMIN nếu tự demote chính mình (**rule 9** không được vi phạm, FE hiện **không chặn** self-demote — cần fix).
+- **Set role** — ~~mất quyền ADMIN nếu tự demote chính mình~~ **Resolved**: FE chặn self-demote (tooltip `selfDemoteBlocked` + disabled) + BE guard `CANNOT_TARGET_SELF` (test `topup-admin.service.test.ts`).
 
 ---
 
 ## 20. Recommended Next Roadmap
 
-### Immediate (session 9l — sau khi session 9k đóng toàn bộ 7 PR A→G cascade vào main @ `2e54a1e`, 30/4 ~09:35 UTC)
+### Immediate (session 9m — sau khi session 9l đóng PR #156/#157/#158/#159 merged vào main @ `f103485`, 30/4 ~11:00 UTC)
 
-**Session 9k close-out (7/7 Merged)**:
+**Session 9l close-out (4/4 PR Merged)**:
 
-- A. **Docs audit refresh session 9k** — Merged PR #149 @ `5a815b3`.
-- B. **Beta runtime smoke matrix Playwright E2E_FULL** +3 best-effort test (shop buy, mail, profile) — Merged PR #153 @ `cfebbb2`.
-- C. **AdminView render-level 18 vitest** — Merged PR #150 @ `f1214a3`, web baseline `466 → 484` (50 → 51 file).
-- D. **Docs PRIVACY.md + TOS.md closed-beta tester agreement** — Merged PR #151 @ `50a9884`.
-- E. **Smart QA helper — `pnpm smoke:beta` zero-dep ESM CLI** (16 step HTTP smoke) — Merged PR #152 @ `d19e8d1`.
-- F. **Docs SECURITY.md §1 logout-all behavior (backlog M9)** — Merged PR #154 @ `16b8739`.
-- G. **Test integration guard — logoutAll NOT bump passwordVersion (M9 lock)** — Merged PR #155 @ `2e54a1e`.
+- 1. **Docs audit refresh session 9l kickoff** — Merged PR #156 @ `739b10a`.
+- 2. **Docs RELEASE_NOTES + CHANGELOG session 9k close-out** — Merged PR #157 @ `64d02fd`.
+- 3. **Docs(handoff) M9 Resolved in §16** — Merged PR #158 @ `a1079dc`.
+- 4. **test(web): UI primitive ConfirmModal 17 + SkeletonBlock 4 + SkeletonTable 4** — Merged PR #159 @ `f103485`.
 
-**This PR (session 9l kickoff, docs-only)**: audit refresh header snapshot + §20 roadmap close-out 9k + cập nhật baseline post-merge + đánh giá backlog còn lại cho session 9l.
+**This PR (session 9m kickoff, docs audit)**: audit refresh — fix stale §2/§13/§15/§17/§19, bump snapshot `2e54a1e → f103485`, mark #156-#159 merged. Then continue with highest-priority code task.
 
-**Backlog còn lại (post-9k, an toàn nếu credit còn)**:
-- `M7` CSP CDN prod verify — **chỉ khi deploy staging/prod, cần env thật**. Scope out cho session 9l nếu không deploy.
-- `M9` doc + regression test logoutAll passwordVersion — **Resolved** (PR #154 doc + PR #155 integration guard).
+**Backlog còn lại (post-9l, an toàn nếu credit còn)**:
+- `M7` CSP CDN prod verify — **chỉ khi deploy staging/prod, cần env thật**. Scope out nếu không deploy.
 - `M10` shop daily limit (post-beta) — model `ShopBuyDailyCounter` + reset cron → mỗi item key có `dailyLimit`, mặc định null = unlimited. **Risk 🟡** — schema change, cần migration + seed logic update + test coverage mới.
 - Smart admin: bulk actions cho user list (multi-select ban, multi-select grant currency với confirm). **Risk 🟡** — admin UI mới + API mới; cần admin seed test.
-- Performance: page-load benchmark `/leaderboard` + `/admin` users tab khi >100 user. **Risk 🟢 thấp** — ops-only, có thể viết script benchmark + ghi kết quả trong `docs/PERF_NOTES.md`.
-- Smart audit helper: script `scripts/audit-ledger.mjs` verify CurrencyLedger sum per user = actual `linhThach`/`tienNgoc`. **Risk 🟢 thấp** — script-only, read-only, giúp phát hiện ledger drift trước beta.
+- Performance: page-load benchmark `/leaderboard` + `/admin` users tab khi >100 user. **Risk 🟢 thấp** — ops-only.
+- ~~Forgot-password + reset-password API~~ — **Resolved** (PR #101 BE + #102 FE + #103 timing fix, Merged @ `3c1aa39`). Đã có `ForgotPasswordView.vue` + `ResetPasswordView.vue` + 23 vitest + Mailhog scaffold.
+- CHANGELOG catch-up sessions 9g-9j — **Risk 🟢 thấp** docs-only, reconstruct từ AI_HANDOFF_REPORT.md.
+- Smart audit helper: script `scripts/audit-ledger.mjs` verify CurrencyLedger sum per user = actual `linhThach`/`tienNgoc`. **Risk 🟢 thấp** — script-only, read-only, nhưng endpoint `GET /admin/economy/audit-ledger` đã có trên main (PR #112).
 
 ---
 
@@ -2267,41 +2271,34 @@ F. ~~**`docs/CHANGELOG.md` bootstrap**~~ — **Done by PR #104** (Merged into ma
 | #147 | task N — shared shop + topup catalog 19 vitest | **Merged into main** @ `d14ae2c` |
 | #148 | task O — shared BOSSES catalog 22 vitest | **Merged into main** @ `e342513` |
 
-### Pending (session 9k — sau khi session 9j đóng cascade merge @ `e342513`, 30/4 ~08:55 UTC)
+### Session 9k (đã đóng, 7/7 PR merged vào main `5a815b3 → 2e54a1e`)
 
-#### PR session 9k-A — **Merged into main** PR #149 @ `5a815b3` — `docs(handoff): session 9k kickoff — bump snapshot e342513 + mark PR #134..#148 Merged + sync baseline web 466/466 (50 file) + shared 96/96 (6 file) + session 9k roadmap`
-- **Branch**: `devin/1777540074-audit-session-9j-refresh-e342513`. **Base**: `main` @ `e342513`. **Status**: docs-only, merged 30/4 ~09:00 UTC CI ✅ 5/5.
-- **File**: `docs/AI_HANDOFF_REPORT.md` (header §0/§2/Recent Changes/§12 baseline/§20 roadmap session 9k/§21 PR Plan).
+| PR | Task | Status |
+|---|---|---|
+| #149 | task A — audit refresh session 9k kickoff | **Merged into main** @ `5a815b3` |
+| #150 | task C — AdminView 18 vitest | **Merged into main** @ `f1214a3` |
+| #151 | task D — docs PRIVACY.md + TOS.md | **Merged into main** @ `50a9884` |
+| #152 | task E — pnpm smoke:beta CLI | **Merged into main** @ `d19e8d1` |
+| #153 | task B — Playwright E2E_FULL +3 test | **Merged into main** @ `cfebbb2` |
+| #154 | task F — docs SECURITY.md §1 logout-all | **Merged into main** @ `16b8739` |
+| #155 | task G — test logoutAll passwordVersion guard (M9 lock) | **Merged into main** @ `2e54a1e` |
+
+### Session 9l (đã đóng, 4/4 PR merged vào main `739b10a → f103485`)
+
+| PR | Task | Status |
+|---|---|---|
+| #156 | task 1 — audit refresh session 9l kickoff | **Merged into main** @ `739b10a` |
+| #157 | task 2 — docs RELEASE_NOTES + CHANGELOG 9k close-out | **Merged into main** @ `64d02fd` |
+| #158 | task 3 — handoff M9 Resolved in §16 | **Merged into main** @ `a1079dc` |
+| #159 | task 4 — UI primitive tests ConfirmModal + Skeleton | **Merged into main** @ `f103485` |
+
+### Session 9m (current — this PR is task A, audit refresh)
+
+#### PR session 9m-A (this PR) — `docs(handoff): session 9m kickoff — audit refresh fix stale §2/§13/§15/§17/§19 + bump snapshot a1079dc`
+- **Branch**: `devin/1777547236-audit-refresh-session-9m`. **Base**: `main` @ `a1079dc`.
+- **File**: `docs/AI_HANDOFF_REPORT.md` (§0/§2/§13/§15/§17/§19/§20/§21).
 - **Tests added**: 0 (docs-only).
-- **CI status**: all 5/5 passed (build-job × 2 + e2e-smoke + Devin Review).
-- **Risk**: 0 (docs-only).
-- **Rollback**: revert single PR.
-
-#### PR session 9k-C (in-flight, **this PR**) — `test(web): smart AdminView render-level smoke tests — 18 vitest (session 9k task C / admin ops safety)`
-- **Branch**: `devin/1777541055-adminview-render-tests`. **Base**: `main` @ `5a815b3` (post PR #149 merge).
-- **File**: `apps/web/src/views/__tests__/AdminView.test.ts` (new, 18 vitest).
-- **Plan**: render-level smoke test cho AdminView — mock `@/api/admin` (18 function) + `@/api/boss` + stores (auth/game/toast) + vue-router + AppShell. Cover: onMounted role guard 4 test (unauth/PLAYER/ADMIN/MOD), tab badge 4 test (stats alerts / topups pending / giftcodes active), tab switch 2 test (Users/Audit), Export CSV 3 test (success/truncated/UNAUTHENTICATED), Giftcode revoke ConfirmModal 5 test (open/cancel/confirm/CODE_REVOKED error/REVOKED+EXPIRED filter).
-- **Tests added**: 18 vitest (pass local 750ms). Baseline web `466 → 484` (50 → 51 file).
-- **CI status (local audit 30/4 ~09:30 UTC, base `5a815b3`)**: typecheck ✅ / lint ✅ / shared 96/96 ✅ / web 484/484 ✅ / build ✅. API skipped (cần infra:up).
-- **Risk**: 🟢 thấp — test-only, mock-heavy.
-- **Rollback**: revert single PR (xóa file test duy nhất).
-
-#### PR session 9k-B (planned, after 9k-C merge) — `test(web,e2e): expand Playwright golden path — E2E_FULL=1 matrix register→cultivate→claim→buy→inventory→mail→leaderboard + optional admin export CSV + admin revoke inventory`
-- **Branch**: TBD `devin/<ts>-e2e-full-golden-expand`. **Base**: `main` post-9k-C.
-- **Plan**: mở rộng `apps/web/e2e/golden.spec.ts`; có thể tách fixtures sang `apps/web/e2e/fixtures/*`. Gate `E2E_FULL=1` (không chạy default CI, opt-in qua workflow_dispatch). Update `docs/QA_CHECKLIST.md` cách chạy local matrix.
-- **Risk**: 🟡 vừa — flaky infra; cần Postgres + Redis; timer-based cultivation tick có thể flaky.
-- **Rollback**: revert single PR (test-only).
-
-#### PR session 9k-D (planned, after 9k-B merge) — `docs: bootstrap PRIVACY.md + TOS.md (closed-beta tester agreement)`
-- **Branch**: TBD `devin/<ts>-docs-privacy-tos`. **Base**: `main` post-9k-B.
-- **Plan**: `docs/PRIVACY.md` + `docs/TOS.md` + link từ `README.md`.
 - **Risk**: 🟢 thấp — docs-only.
-- **Rollback**: revert single PR.
-
-#### PR session 9k-E (planned, after 9k-D merge) — `feat(ops): smart QA helper — pnpm smoke:beta 5-phút CLI (register→cultivate→claim→buy→mail→leaderboard)`
-- **Branch**: TBD `devin/<ts>-smoke-beta-script`. **Base**: `main` post-9k-D.
-- **Plan**: `scripts/smoke-beta.ts` (Node + fetch) + root `package.json` script `smoke:beta`. Exit 0 all pass / exit 1 any fail. Update `docs/QA_CHECKLIST.md`.
-- **Risk**: 🟢 thấp — script-only, không touch production.
 - **Rollback**: revert single PR.
 
 ### Done (chuỗi #33→#45 đã merge trên `main` tại `e99a35f`)
