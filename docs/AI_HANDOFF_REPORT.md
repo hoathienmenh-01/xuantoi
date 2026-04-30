@@ -1,6 +1,28 @@
 # AI Handoff Report — Xuân Tôi
 
-> **Snapshot (session 9p task K, this PR)**: `main` @ `ecd08d6` (Merge PR #199 controller trio2 tests, 30/4 ~19:52 UTC). **Session 9p task K (this PR)**: controller-level pure-unit vitest cho 3 controller tiếp (mission/mail/chat) — `mission.controller` (17 vitest 2 endpoint, auth + zod missionKey 1..80 + MissionError 4-code {NO_CHARACTER/MISSION_UNKNOWN→404, NOT_READY/ALREADY_CLAIMED→409}), `mail.controller` (24 vitest 4 endpoint incl `unread-count` rethrow no-try/catch + IdParam 1..80 + MailError 7-code {NO_CHARACTER/MAIL_NOT_FOUND/RECIPIENT_NOT_FOUND→404, ALREADY_CLAIMED/MAIL_EXPIRED/NO_REWARD→409, INVALID_INPUT→400}), `chat.controller` (25 vitest 3 endpoint, ChannelEnum WORLD|SECT case-sensitive + WORLD historyWorld() KHÔNG truyền userId vs SECT historySect(userId) + text 1..200 + ChatError 5-code {NO_CHARACTER/NO_SECT→404, EMPTY_TEXT/TEXT_TOO_LONG→400, RATE_LIMITED→429}). +66 vitest. API baseline **749 → 815** (68 file).
+> **Snapshot (session 9q, this PR — docs blueprint refresh)**: `main` @ `21c06ba` (PR #200 controller trio2 tests merged 30/4 ~19:52 UTC). **Session 9q (this PR)**: docs-only — refresh `04` + `05` thành long-term blueprint, tạo 6 docs mới: [`GAME_DESIGN_BIBLE.md`](./GAME_DESIGN_BIBLE.md), [`LONG_TERM_ROADMAP.md`](./LONG_TERM_ROADMAP.md), [`ECONOMY_MODEL.md`](./ECONOMY_MODEL.md), [`CONTENT_PIPELINE.md`](./CONTENT_PIPELINE.md), [`BALANCE_MODEL.md`](./BALANCE_MODEL.md), [`LIVE_OPS_MODEL.md`](./LIVE_OPS_MODEL.md). KHÔNG sửa runtime code, KHÔNG migration, KHÔNG refactor. Risk: low (docs-only). Baseline tests **815 vitest** (369 api + 238 shared + 547 web — verify pre-PR), KHÔNG thay đổi vì không đụng test.
+> 
+> **Mục đích PR docs này** (cho AI/dev đọc handoff sau):
+> 1. **`GAME_DESIGN_BIBLE.md`** — vision, core loop, gameplay system, product principles. Cảm xúc + invariants + dependency overview.
+> 2. **`LONG_TERM_ROADMAP.md`** — Phase 9 → Phase 17 với entry/exit criteria + module dependency rule + DO-NOT-BUILD-YET list.
+> 3. **`ECONOMY_MODEL.md`** — currency invariants, source/sink map, ledger contract, anti-abuse playbook, recovery procedure.
+> 4. **`CONTENT_PIPELINE.md`** — process thêm content per type (item/skill/monster/dungeon/mission/boss/quest/event/title/achievement) + naming convention + balance gate.
+> 5. **`BALANCE_MODEL.md`** — curve (cultivation/EXP/power/drop/boss), dial registry, test pattern, historical decision log.
+> 6. **`LIVE_OPS_MODEL.md`** — event scheduler model, announcement, maintenance window, feature flag, config version, season cadence.
+> 7. **`04_TECH_STACK_VA_DATA_MODEL.md`** §P9 — long-term Prisma model proposal (~60 model cuối phase 16), API/WS roadmap, BullMQ job roadmap, migration safety rules, decision log.
+> 8. **`05_KICH_BAN_BUILD_VA_PROMPT_AI.md`** §P9 — pointer tới `LONG_TERM_ROADMAP.md`, dependency rule tóm tắt.
+>
+> **Roadmap tiếp theo (thứ tự khuyến nghị)**:
+> 1. **Phase 9 finish** — Playwright golden path mở rộng + smoke:economy + bug triage P0/P1.
+> 2. **Phase 10** — content scale (item 30→80+, skill 10→25, dungeon 3→8, mission 12→65+).
+> 3. **Phase 11** — progression depth (CultivationMethod + linh căn + thiên kiếp + alchemy + refinery).
+> 4. Sau đó theo `LONG_TERM_ROADMAP.md`. KHÔNG nhảy phase. KHÔNG build module trong DO-NOT-BUILD-YET list.
+>
+> **04/05 STATUS**: cả 2 file đã được refresh — phần Phase 0..8 + schema gốc giữ lại làm "historical blueprint" (đã có disclaimer ở đầu file), phần long-term được append ở cuối file (P9 sections). KHI conflict giữa long-term docs và Phase 0..8 cũ → tin long-term docs + code @ main.
+>
+> ---
+> 
+> **Snapshot (session 9p task K, merged)**: `main` @ `ecd08d6` (Merge PR #199 controller trio2 tests, 30/4 ~19:52 UTC). **Session 9p task K (this PR)**: controller-level pure-unit vitest cho 3 controller tiếp (mission/mail/chat) — `mission.controller` (17 vitest 2 endpoint, auth + zod missionKey 1..80 + MissionError 4-code {NO_CHARACTER/MISSION_UNKNOWN→404, NOT_READY/ALREADY_CLAIMED→409}), `mail.controller` (24 vitest 4 endpoint incl `unread-count` rethrow no-try/catch + IdParam 1..80 + MailError 7-code {NO_CHARACTER/MAIL_NOT_FOUND/RECIPIENT_NOT_FOUND→404, ALREADY_CLAIMED/MAIL_EXPIRED/NO_REWARD→409, INVALID_INPUT→400}), `chat.controller` (25 vitest 3 endpoint, ChannelEnum WORLD|SECT case-sensitive + WORLD historyWorld() KHÔNG truyền userId vs SECT historySect(userId) + text 1..200 + ChatError 5-code {NO_CHARACTER/NO_SECT→404, EMPTY_TEXT/TEXT_TOO_LONG→400, RATE_LIMITED→429}). +66 vitest. API baseline **749 → 815** (68 file).
 >
 > **Snapshot (session 9p task J, merged)**: `main` @ `ecd08d6` (Merge PR #199, 30/4 ~19:52 UTC). **PR #199**: `apps/api/src/modules/{logs,shop,topup}/*.controller.test.ts` (+46 vitest). API baseline **703 → 749**. CI ✅
 >
