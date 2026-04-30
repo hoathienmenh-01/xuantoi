@@ -1,6 +1,8 @@
 # AI Handoff Report — Xuân Tôi
 
-> **Snapshot (session 9p task D, this PR)**: `main` @ `08b9f1f` (Merge PR #192 ops + mission scheduler ghost-cleanup +12 vitest, 30 Apr 2026 ~18:58 UTC). **Session 9p task D (this PR)**: docs catch-up `docs/CHANGELOG.md` thêm 3 section (session 9n+ tail PR #172→#179, session 9o PR #184→#189, session 9p PR #190→#192) — đồng bộ với `AI_HANDOFF_REPORT.md`. Docs-only, no code change. API baseline giữ **653** (no test added).
+> **Snapshot (session 9p task E, this PR)**: `main` @ `4c94944` (Merge PR #193 CHANGELOG catch-up 9n+/9o/9p, 30 Apr 2026 ~19:05 UTC). **Session 9p task E (this PR)**: pure-unit tests cho `rollDungeonLoot` (Math.random stub deterministic + 50×3 fuzz qty range + itemKey leak check), `DUNGEON_LOOT` integrity (weight>0, qtyMin∈[1,qtyMax], itemByKey resolve no orphan), `QUALITY_COLOR` + `QUALITY_LABEL_VI` parity với `QUALITIES` enum. +18 vitest, no DB/Redis. Shared baseline **220 → 238** (12 file).
+>
+> **Snapshot (session 9p task D, merged)**: `main` @ `4c94944` (Merge PR #193, 30/4 ~19:05 UTC). **PR #193**: `docs/CHANGELOG.md` catch-up 3 sessions. Docs-only.
 >
 > **Snapshot (session 9p task C, merged)**: `main` @ `08b9f1f` (Merge PR #192, 30/4 ~18:58 UTC). **PR #192**: `apps/api/src/modules/ops/ops.service.test.ts` + `apps/api/src/modules/mission/mission.scheduler.test.ts` (+12 pure-unit vitest, lock-in BullMQ ghost-cleanup invariant). API baseline **641 → 653**. CI ✅.
 >
@@ -179,9 +181,25 @@
 
 ---
 
-## Recent Changes (PR #33→#192 đã merged trên main; session 9p task D **this PR** docs CHANGELOG catch-up sessions 9n+ tail / 9o / 9p)
+## Recent Changes (PR #33→#193 đã merged trên main; session 9p task E **this PR** pure-unit tests cho rollDungeonLoot + DUNGEON_LOOT + QUALITY maps)
 
-### PR session 9p task D (in-flight, this PR) — `docs(changelog): catch-up sessions 9n+ tail / 9o / 9p (PR #172→#192)` — **Pending merge**
+### PR session 9p task E (in-flight, this PR) — `test(shared): rollDungeonLoot + DUNGEON_LOOT + QUALITY maps +18 vitest` — **Pending merge**
+
+- **Branch**: `devin/1777576174-items-dungeon-loot-tests`. **Base**: `main` @ `4c94944` (post PR #193 merge).
+- **Vì sao**: 4 export public ở `packages/shared/src/items.ts` chưa có test riêng — `rollDungeonLoot` (Math.random RNG cho weighted drop), `DUNGEON_LOOT` (drop table data), `QUALITY_COLOR` + `QUALITY_LABEL_VI` (Tailwind class + i18n label maps). `rollDungeonLoot` đặc biệt cần lock-in vì RNG-driven; nếu sau này refactor weight algo/qty range → silent regression nếu không có test. Drop table data integrity (orphan itemKey, weight=0, qtyMin>qtyMax) cần catch sớm trước khi đụng prod loot. Quality maps phải đồng bộ với enum `QUALITIES` (5 level: PHAM/LINH/HUYEN/TIEN/THAN); nếu sau này thêm Quality mới mà quên update map → UI render undefined / crash.
+- **Files**: `packages/shared/src/items-dungeon-loot.test.ts` — **new** 18 vitest pure-unit (5 dungeon integrity + 8 rollDungeonLoot + 5 quality parity).
+- **Tests**: 18 vitest mới, no DB/Redis (verified local 30/4 19:10 UTC, 530ms). Shared baseline **220 → 238** (12 file).
+- **Branches locked**:
+  - DUNGEON_LOOT: ≥1 dungeon, ≥1 entry/dungeon, weight>0, qtyMin∈[1,qtyMax], `itemByKey(itemKey)` resolved.
+  - rollDungeonLoot: unknown dungeon → []; default count=2; count=N→N entries; count=0→[]; Math.random=0 → entry đầu+qtyMin; Math.random=0.999 → entry cuối; 50×3 fuzz qty range; itemKey thuộc table (no leak).
+  - QUALITY_COLOR/QUALITY_LABEL_VI: phủ đủ 5 quality, không key thừa, `text-*` Tailwind prefix.
+- **CI status (local)**: typecheck ✅ · 18/18 vitest mới ✅ · shared 12 file / **238/238** ✅.
+- **Risk**: 🟢 thấp — test-only, lock-in pure helpers / data integrity. No runtime change.
+- **Rollback**: revert single PR (xóa 1 file test).
+
+### PR #193 — `docs(changelog): catch-up sessions 9n+ tail / 9o / 9p (PR #172→#192)` — **Merged into main** @ `4c94944` (30/4 ~19:05 UTC). CI ✅.
+
+### PR session 9p task D (closed, merged) — `docs(changelog): catch-up sessions 9n+ tail / 9o / 9p (PR #172→#192)` — **Merged into main** @ `4c94944`
 
 - **Branch**: `devin/1777575721-changelog-catchup-9o-9p`. **Base**: `main` @ `08b9f1f` (post PR #192 merge).
 - **Vì sao**: `docs/CHANGELOG.md` chưa cập nhật từ session 9n (last entry PR #165→#171). Sessions 9n tail (PR #172→#179), 9o (PR #184→#189), 9p (PR #190→#192) toàn bộ chỉ ghi trong `AI_HANDOFF_REPORT.md` mà không có summary trong CHANGELOG → người đọc nhanh / release notes thiếu thông tin. CHANGELOG là tóm tắt nhân-văn cho người chơi/admin/dev, AI_HANDOFF_REPORT là deep audit log cho AI/dev — 2 file phải đồng bộ.
@@ -2574,7 +2592,8 @@ F. ~~**`docs/CHANGELOG.md` bootstrap**~~ — **Done by PR #104** (Merged into ma
 | #190 | session 9p task A — test(api): HealthController.readyz failure paths +10 pure unit | **Merged into main** @ `24597f0` (30/4 ~18:13 UTC, CI 5/5 ✅) |
 | #191 | session 9p task B — test(api): admin/ledger-audit auditResultToJson +12 pure unit | **Merged into main** @ `4b1d5b6` (30/4 ~18:35 UTC, CI ✅) |
 | #192 | session 9p task C — test(api): ops.service + mission.scheduler ghost-cleanup +12 pure unit | **Merged into main** @ `08b9f1f` (30/4 ~18:58 UTC, CI ✅) |
-| this PR | session 9p task D — docs(changelog): catch-up sessions 9n+ tail / 9o / 9p (PR #172→#192) | **Pending merge** (in-flight) |
+| #193 | session 9p task D — docs(changelog): catch-up sessions 9n+ tail / 9o / 9p (PR #172→#192) | **Merged into main** @ `4c94944` (30/4 ~19:05 UTC, CI ✅) |
+| this PR | session 9p task E — test(shared): rollDungeonLoot + DUNGEON_LOOT + QUALITY maps +18 vitest | **Pending merge** (in-flight) |
 
 #### PR session 9p task C (in-flight, this PR) — `test(api): ops.service + mission.scheduler ghost-cleanup +12 pure unit`
 
