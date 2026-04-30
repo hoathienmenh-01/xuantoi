@@ -1,6 +1,8 @@
 # AI Handoff Report — Xuân Tôi
 
-> **Snapshot (session 9p task J, this PR)**: `main` @ `cbefe05` (Merge PR #198 controller trio tests, 30/4 ~19:46 UTC). **Session 9p task J (this PR)**: controller-level tests cho 3 controller tiếp — `logs.controller` (15 vitest auth + zod query 9 case incl coerce/boundaries + LogsError NO_CHARACTER→404/INVALID_CURSOR→400), `shop.controller` (17 vitest 2 endpoint, GET /shop/npc public-after-auth synchronous + POST /shop/buy zod boundaries + ShopError 5-code mapping {404/409/400}), `topup.controller` (14 vitest 3 endpoint, GET /topup/packages public no-auth + zod→INVALID_PACKAGE special + TopupError 5-code mapping {400/429/409}). +46 vitest. API baseline **703 → 749** (65 file).
+> **Snapshot (session 9p task K, this PR)**: `main` @ `ecd08d6` (Merge PR #199 controller trio2 tests, 30/4 ~19:52 UTC). **Session 9p task K (this PR)**: controller-level pure-unit vitest cho 3 controller tiếp (mission/mail/chat) — `mission.controller` (17 vitest 2 endpoint, auth + zod missionKey 1..80 + MissionError 4-code {NO_CHARACTER/MISSION_UNKNOWN→404, NOT_READY/ALREADY_CLAIMED→409}), `mail.controller` (24 vitest 4 endpoint incl `unread-count` rethrow no-try/catch + IdParam 1..80 + MailError 7-code {NO_CHARACTER/MAIL_NOT_FOUND/RECIPIENT_NOT_FOUND→404, ALREADY_CLAIMED/MAIL_EXPIRED/NO_REWARD→409, INVALID_INPUT→400}), `chat.controller` (25 vitest 3 endpoint, ChannelEnum WORLD|SECT case-sensitive + WORLD historyWorld() KHÔNG truyền userId vs SECT historySect(userId) + text 1..200 + ChatError 5-code {NO_CHARACTER/NO_SECT→404, EMPTY_TEXT/TEXT_TOO_LONG→400, RATE_LIMITED→429}). +66 vitest. API baseline **749 → 815** (68 file).
+>
+> **Snapshot (session 9p task J, merged)**: `main` @ `ecd08d6` (Merge PR #199, 30/4 ~19:52 UTC). **PR #199**: `apps/api/src/modules/{logs,shop,topup}/*.controller.test.ts` (+46 vitest). API baseline **703 → 749**. CI ✅
 >
 > **Snapshot (session 9p task I, merged)**: `main` @ `cbefe05` (Merge PR #198, 30/4 ~19:46 UTC). **PR #198**: `apps/api/src/modules/{daily-login,next-action,giftcode}/*.controller.test.ts` (+36 vitest). API baseline **667 → 703**. CI ✅.
 >
@@ -189,9 +191,32 @@
 
 ---
 
-## Recent Changes (PR #33→#198 đã merged trên main; session 9p task J **this PR** controller-level tests cho 3 controller: logs + shop + topup)
+## Recent Changes (PR #33→#199 đã merged trên main; session 9p task K **this PR** controller-level tests cho 3 controller: mission + mail + chat)
 
-### PR session 9p task J (in-flight, this PR) — `test(api): logs + shop + topup controller +46 vitest` — **Pending merge**
+### PR session 9p task K (in-flight, this PR) — `test(api): mission + mail + chat controller +66 vitest` — **Pending merge**
+
+- **Branch**: `devin/1777579375-controller-trio3-tests`. **Base**: `main` @ `ecd08d6` (post PR #199 merge).
+- **Vì sao**: 3 controller ở `apps/api/src/modules/{mission,mail,chat}/*.controller.ts` chưa có vitest trực tiếp. Service-level test đã cover business logic; controller layer chứa các risk silent regression đặc biệt:
+  - **`MissionController`**: 2 endpoint, zod `missionKey` 1..80, MissionError 4-code → {NO_CHARACTER/MISSION_UNKNOWN→404, NOT_READY/ALREADY_CLAIMED→409}. Lock-in claim() trả lại `listForUser()` envelope sau khi claim ok.
+  - **`MailController`**: 4 endpoint (incl `unread-count` đặc biệt KHÔNG có try/catch → MailError sẽ leak 500), IdParam zod 1..80, MailError 7-code → {NO_CHARACTER/MAIL_NOT_FOUND/RECIPIENT_NOT_FOUND→404, ALREADY_CLAIMED/MAIL_EXPIRED/NO_REWARD→409, INVALID_INPUT→400}. Test lock-in current `unread-count` no-try/catch behavior để future change phải update test (alert via test fail).
+  - **`ChatController`**: 3 endpoint, ChannelEnum case-sensitive (`world` lowercase fail), WORLD branch gọi `historyWorld()` KHÔNG truyền userId vs SECT branch gọi `historySect(userId)` — khác arg shape, test cross-call để bắt nếu refactor swap nhầm. Text 1..200 zod, ChatError 5-code → {NO_CHARACTER/NO_SECT→404, EMPTY_TEXT/TEXT_TOO_LONG→400, RATE_LIMITED→429}.
+- **Files** (3 file new):
+  - `apps/api/src/modules/mission/mission.controller.test.ts` (17 vitest): auth × 4 + zod missionKey 6 case (null body / missing / empty / >80 / =80 boundary / non-string) + delegation envelope + MissionError 4-code mapping + unknown rethrow.
+  - `apps/api/src/modules/mail/mail.controller.test.ts` (24 vitest): auth × 4 + inbox happy + unread-count rethrow no-try/catch + IdParam zod 4 case (read empty / read >80 / read =80 / claim empty) + delegation × 2 + MailError 7-code mapping + cross-endpoint markRead error mapping + unknown rethrow.
+  - `apps/api/src/modules/chat/chat.controller.test.ts` (25 vitest): auth × 3 + ChannelEnum 4 case (invalid / empty / undefined / lowercase) + WORLD-no-userId vs SECT-userId cross-check + text 1..200 zod 4 case (null / empty / >200 / non-string) + delegation × 2 + ChatError 5-code mapping × 5 + sect-only NO_SECT mapping + history sect error path + unknown rethrow.
+- **Lock-in invariants**:
+  - `MissionController`: claim returns `{ ok, data: { missions: list } }` after delegate; missionKey min 1 max 80.
+  - `MailController`: unread-count rethrows error nguyên (no MailError mapping); IdParam min 1 max 80; markRead/claim đều đi qua `handleErr`.
+  - `ChatController`: WORLD `historyWorld()` arity = 0 (no userId), SECT `historySect(userId)` arity = 1; text min 1 max 200; ChannelEnum strict uppercase.
+  - All 3: cookie missing/invalid → 401 UNAUTHENTICATED; envelope `{ ok: true, data }` strict; unknown error rethrow nguyên (không nuốt 500).
+- **Tests**: 66/66 vitest mới ✅ (1.05s, 3 file). API baseline 749 → **815** (68 file). typecheck ✅ · lint ✅ (1 fix `MissionReward.linhThachDelta` → `linhThach` per shared interface).
+- **Risk**: 🟢 thấp — test-only, pure unit. No runtime change. Không cần migration / seed / Postgres.
+- **Rollback**: revert single PR (xóa 3 file test).
+- **Next planned**: tiếp tục controller trio cho `boss/combat/inventory` hoặc `market/sect/admin` — chọn theo size + complexity.
+
+### PR #199 — `test(api): logs + shop + topup controller +46 vitest (session 9p task J)` — **Merged into main** @ `ecd08d6` (30/4 ~19:52 UTC). CI ✅
+
+### PR session 9p task J (closed, merged) — `test(api): logs + shop + topup controller +46 vitest` — **Merged into main** @ `ecd08d6`
 
 - **Branch**: `devin/1777578271-controller-trio2-tests`. **Base**: `main` @ `cbefe05` (post PR #198 merge).
 - **Vì sao**: 3 controller ở `apps/api/src/modules/{logs,shop,topup}/*.controller.ts` chưa có vitest trực tiếp. Service-level test đã cover business logic; controller layer chứa các risk silent regression đặc biệt ở:
@@ -2697,7 +2722,8 @@ F. ~~**`docs/CHANGELOG.md` bootstrap**~~ — **Done by PR #104** (Merged into ma
 | #196 | session 9p task G — test(web): UI atoms MButton + MToast + SkeletonBlock + SkeletonTable +33 vitest | **Merged into main** @ `0eccccc` (30/4 ~19:30 UTC, CI ✅) |
 | #197 | session 9p task H — test(api): leaderboard.controller auth + delegation + limit parsing +14 vitest | **Merged into main** @ `643d8b8` (30/4 ~19:38 UTC, CI ✅) |
 | #198 | session 9p task I — test(api): daily-login + next-action + giftcode controller +36 vitest | **Merged into main** @ `cbefe05` (30/4 ~19:46 UTC, CI ✅) |
-| this PR | session 9p task J — test(api): logs + shop + topup controller +46 vitest | **Pending merge** (in-flight) |
+| #199 | session 9p task J — test(api): logs + shop + topup controller +46 vitest | **Merged into main** @ `ecd08d6` (30/4 ~19:52 UTC, CI ✅) |
+| this PR | session 9p task K — test(api): mission + mail + chat controller +66 vitest | **Pending merge** (in-flight) |
 
 #### PR session 9p task C (in-flight, this PR) — `test(api): ops.service + mission.scheduler ghost-cleanup +12 pure unit`
 
