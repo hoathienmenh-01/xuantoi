@@ -1,8 +1,8 @@
 # AI Handoff Report — Xuân Tôi
 
-> **Snapshot (session 9p task H, this PR)**: `main` @ `0eccccc` (Merge PR #196 UI atoms tests, 30/4 ~19:30 UTC). **Session 9p task H (this PR)**: controller-level tests cho `apps/api/src/modules/leaderboard/leaderboard.controller.ts` (+14 vitest) — auth guard 3 endpoint (power/topup/sect), delegation pattern + envelope shape, `?limit=` parsing edge cases (undefined / number / NaN / 0 / 999 / empty string), cookie passthrough. API baseline **653 → 667** (59 file).
+> **Snapshot (session 9p task I, this PR)**: `main` @ `643d8b8` (Merge PR #197 leaderboard.controller tests, 30/4 ~19:38 UTC). **Session 9p task I (this PR)**: controller-level tests cho 3 controller — `daily-login.controller` (11 vitest auth + envelope + DailyLoginError NO_CHARACTER → 404 + idempotent reclaim + unknown rethrow), `next-action.controller` (6 vitest auth + envelope + empty actions + service no-call when auth fail + propagate), `giftcode.controller` (19 vitest auth + zod input boundaries + delegation + 8 GiftCodeError → status mapping {404/409/400} + unknown rethrow). +36 vitest. API baseline **667 → 703** (62 file).
 >
-> **Snapshot (session 9p task G, merged)**: `main` @ `0eccccc` (Merge PR #196, 30/4 ~19:30 UTC). **PR #196**: `apps/web/src/components/__tests__/{MButton,MToast,SkeletonBlock,SkeletonTable}.test.ts` (+33 vitest, render + Pinia store smoke). Web baseline **555 → 588**. CI ✅.
+> **Snapshot (session 9p task H, merged)**: `main` @ `643d8b8` (Merge PR #197, 30/4 ~19:38 UTC). **PR #197**: `apps/api/src/modules/leaderboard/leaderboard.controller.test.ts` (+14 vitest, lock-in auth + delegation + limit parsing). API baseline **653 → 667**. CI ✅.
 >
 > **Snapshot (session 9p task F, merged)**: `main` @ `3109497` (Merge PR #195, 30/4 ~19:21 UTC). **PR #195**: `apps/web/src/components/__tests__/LocaleSwitcher.test.ts` (+8 vitest, lock-in render label + click toggle). Web baseline **547 → 555**. CI ✅.
 >
@@ -187,9 +187,28 @@
 
 ---
 
-## Recent Changes (PR #33→#196 đã merged trên main; session 9p task H **this PR** controller-level tests cho LeaderboardController)
+## Recent Changes (PR #33→#197 đã merged trên main; session 9p task I **this PR** controller-level tests cho 3 controller: daily-login + next-action + giftcode)
 
-### PR session 9p task H (in-flight, this PR) — `test(api): leaderboard.controller auth + delegation + limit parsing +14 vitest` — **Pending merge**
+### PR session 9p task I (in-flight, this PR) — `test(api): daily-login + next-action + giftcode controller +36 vitest` — **Pending merge**
+
+- **Branch**: `devin/1777577849-controller-trio-tests`. **Base**: `main` @ `643d8b8` (post PR #197 merge).
+- **Vì sao**: 3 controller ở `apps/api/src/modules/{daily-login,next-action,giftcode}/*.controller.ts` chưa có vitest trực tiếp. Service-level test đã cover business logic; controller layer chứa 4 risk silent regression: auth guard, zod input validation, error → HTTP status mapping, envelope shape `{ok:true,data}`. Đặc biệt **`GiftCodeController` map 8 error code vào 3 status lớp** (404/409/400) — sai một case = FE i18n key sai/UX confusing.
+- **Files** (3 file new):
+  - `apps/api/src/modules/daily-login/daily-login.controller.test.ts` (11 vitest): 2 endpoint × (auth fail + happy path + DailyLoginError NO_CHARACTER → 404 + unknown rethrow) + idempotent reclaim + cookie passthrough.
+  - `apps/api/src/modules/next-action/next-action.controller.test.ts` (6 vitest): auth fail × 2, happy path + empty actions, service no-call khi auth fail (cross-check), propagate unknown error.
+  - `apps/api/src/modules/giftcode/giftcode.controller.test.ts` (19 vitest): auth × 2; zod boundaries (null body, missing code, empty code, code>64, code=64 boundary, code=1 boundary, non-string code) × 7; delegation arg passthrough; **error mapping table** × 8 (CODE_NOT_FOUND/NO_CHARACTER → 404, ALREADY_REDEEMED/CODE_EXPIRED/CODE_REVOKED/CODE_EXHAUSTED → 409, INVALID_INPUT/CODE_EXISTS → 400); unknown rethrow.
+- **Lock-in invariants**:
+  - All 3 controller: cookie missing/invalid → 401 `UNAUTHENTICATED`; service KHÔNG được gọi khi auth fail.
+  - All 3 controller: envelope `{ ok: true, data }` strict.
+  - DailyLogin: NO_CHARACTER → 404; unknown error rethrow nguyên (không nuốt 500).
+  - GiftCode: 8 error code map đúng 3 status lớp (404/409/400). Zod parse fail → 400 INVALID_INPUT.
+- **Tests**: 36/36 vitest mới ✅ (1.15s). API baseline 667 → **703** (62 file). typecheck ✅ · lint ✅.
+- **Risk**: 🟢 thấp — test-only, pure unit. No runtime change.
+- **Rollback**: revert single PR (xóa 3 file test).
+
+### PR #197 — `test(api): leaderboard.controller auth + delegation + limit parsing +14 vitest (session 9p task H)` — **Merged into main** @ `643d8b8` (30/4 ~19:38 UTC). CI ✅.
+
+### PR session 9p task H (closed, merged) — `test(api): leaderboard.controller auth + delegation + limit parsing +14 vitest` — **Merged into main** @ `643d8b8`
 
 - **Branch**: `devin/1777577483-leaderboard-controller-tests`. **Base**: `main` @ `0eccccc` (post PR #196 merge).
 - **Vì sao**: `LeaderboardController` (52 line, 3 endpoint `/leaderboard/{power,topup,sect}`) chưa có vitest trực tiếp — chỉ có service-level test ở `leaderboard.service.test.ts` (27 vitest cho `topByPower`/`topByTopup`/`topBySect`). Controller layer chứa 3 rủi ro silent regression: auth guard bỏ qua, `?limit=` query parse sai (vd ai đó bỏ `Number(limit)` đi sẽ bỏ type coercion), envelope shape sai (`{ok:true,data:{rows}}`). Note: §17 từng ghi "topup/sect chưa có" nhưng thực tế cả 3 đều đã implement — cập nhật §17 trong PR này luon.
@@ -2651,7 +2670,8 @@ F. ~~**`docs/CHANGELOG.md` bootstrap**~~ — **Done by PR #104** (Merged into ma
 | #194 | session 9p task E — test(shared): rollDungeonLoot + DUNGEON_LOOT + QUALITY maps +18 vitest | **Merged into main** @ `2bfa0e8` (30/4 ~19:13 UTC, CI ✅) |
 | #195 | session 9p task F — test(web): LocaleSwitcher render + click toggle +8 vitest | **Merged into main** @ `3109497` (30/4 ~19:21 UTC, CI ✅) |
 | #196 | session 9p task G — test(web): UI atoms MButton + MToast + SkeletonBlock + SkeletonTable +33 vitest | **Merged into main** @ `0eccccc` (30/4 ~19:30 UTC, CI ✅) |
-| this PR | session 9p task H — test(api): leaderboard.controller auth + delegation + limit parsing +14 vitest | **Pending merge** (in-flight) |
+| #197 | session 9p task H — test(api): leaderboard.controller auth + delegation + limit parsing +14 vitest | **Merged into main** @ `643d8b8` (30/4 ~19:38 UTC, CI ✅) |
+| this PR | session 9p task I — test(api): daily-login + next-action + giftcode controller +36 vitest | **Pending merge** (in-flight) |
 
 #### PR session 9p task C (in-flight, this PR) — `test(api): ops.service + mission.scheduler ghost-cleanup +12 pure unit`
 
