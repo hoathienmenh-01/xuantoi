@@ -77,6 +77,10 @@ const ledgerAuditTotal = computed(() => {
 const economyReport = ref<AdminEconomyReport | null>(null);
 const economyReportRunning = ref(false);
 
+// Smart admin recent activity widget (9h-G): inline trên Stats tab.
+const recentActivity = ref<AdminAuditRow[]>([]);
+const recentActivityRunning = ref(false);
+
 // Users tab
 const userQuery = ref('');
 const userPage = ref(0);
@@ -183,6 +187,9 @@ async function refreshStats(): Promise<void> {
     const [s, a] = await Promise.all([adminStats(), adminEconomyAlerts()]);
     stats.value = s;
     alerts.value = a;
+    // Load recent activity widget song song khi vào Stats tab. Lỗi widget
+    // không ảnh hưởng main stats — try/catch riêng tránh fail toàn bộ.
+    loadRecentActivity().catch(() => null);
   } catch (e) {
     handleErr(e);
   } finally {
@@ -229,6 +236,25 @@ async function runEconomyReport(): Promise<void> {
     handleErr(e);
   } finally {
     economyReportRunning.value = false;
+  }
+}
+
+/**
+ * Smart admin recent activity widget: 5 dòng audit log gần nhất, hiển inline
+ * trên Stats tab. Admin không phải switch tab Audit để biết "vừa có gì xảy ra"
+ * — đặc biệt hữu ích trong session debug live khi nhiều admin/MOD cùng làm.
+ *
+ * Read-only, dùng lại endpoint `/admin/audit?page=0`. Limit 5 lấy slice client.
+ */
+async function loadRecentActivity(): Promise<void> {
+  recentActivityRunning.value = true;
+  try {
+    const r = await adminListAudit(0);
+    recentActivity.value = r.rows.slice(0, 5);
+  } catch (e) {
+    handleErr(e);
+  } finally {
+    recentActivityRunning.value = false;
   }
 }
 
@@ -771,6 +797,53 @@ const isAdmin = () => game.character?.role === 'ADMIN';
 
             <div class="text-ink-400 text-[10px]">{{ t('admin.economyReport.generatedAt') }}: {{ economyReport.generatedAt }}</div>
           </div>
+        </div>
+
+        <!-- Smart admin recent activity widget (9h-G): inline 5 dòng audit gần nhất -->
+        <div
+          class="bg-ink-700/30 border border-violet-500/30 rounded p-3"
+          data-testid="admin-recent-activity"
+        >
+          <div class="flex items-center justify-between gap-2">
+            <div>
+              <h3 class="text-sm text-violet-200 font-semibold">
+                {{ t('admin.recentActivity.title') }}
+              </h3>
+              <p class="text-xs text-ink-300 mt-1">{{ t('admin.recentActivity.subtitle') }}</p>
+            </div>
+            <MButton :disabled="recentActivityRunning" @click="loadRecentActivity()">
+              {{ recentActivityRunning ? t('admin.recentActivity.loading') : t('common.refresh') }}
+            </MButton>
+          </div>
+
+          <div v-if="recentActivity.length > 0" class="mt-2 overflow-x-auto">
+            <table class="w-full text-xs min-w-[480px]">
+              <thead class="text-ink-300">
+                <tr class="text-left">
+                  <th class="py-1 pr-2">{{ t('admin.recentActivity.col.time') }}</th>
+                  <th class="pr-2">{{ t('admin.recentActivity.col.actor') }}</th>
+                  <th class="pr-2">{{ t('admin.recentActivity.col.action') }}</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr
+                  v-for="row in recentActivity"
+                  :key="row.id"
+                  class="border-t border-ink-300/20"
+                  data-testid="admin-recent-activity-row"
+                >
+                  <td class="py-1 pr-2 text-ink-300 whitespace-nowrap">
+                    {{ new Date(row.createdAt).toLocaleTimeString() }}
+                  </td>
+                  <td class="pr-2 truncate max-w-[180px]">{{ row.actorEmail ?? row.actorUserId }}</td>
+                  <td class="pr-2 font-mono text-violet-200">{{ row.action }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <p v-else class="mt-2 text-xs text-ink-400 italic">
+            {{ t('admin.recentActivity.empty') }}
+          </p>
         </div>
 
         <MButton @click="refreshStats()">{{ t('common.refresh') }}</MButton>

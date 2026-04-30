@@ -847,6 +847,17 @@
       "empty": "Chưa có dữ liệu.",
       "generatedAt": "Tạo lúc"
     },
+    "recentActivity": {
+      "title": "Hoạt động admin gần nhất",
+      "subtitle": "5 thao tác admin/MOD gần nhất từ audit log — tiện theo dõi live khi nhiều admin cùng làm.",
+      "loading": "Đang tải…",
+      "empty": "Chưa có hoạt động nào.",
+      "col": {
+        "time": "Thời gian",
+        "actor": "Người làm",
+        "action": "Hành động"
+      }
+    },
     "noPermission": "Bạn không có quyền vào khu này.",
     "users": {
       "searchPlaceholder": "Tìm email hoặc đạo hiệu…",

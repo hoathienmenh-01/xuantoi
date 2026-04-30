@@ -93,31 +93,33 @@
 
 ---
 
-## Recent Changes (PR #33→#115 đã merged trên main; PR session 9h-F smart users filter expand in-flight)
+## Recent Changes (PR #33→#116 đã merged trên main; PR session 9h-G recent activity widget in-flight)
 
-### PR session 9h-F (in-flight) — `feat(admin): smart users filter expand — currency range (linhThach/tienNgoc) + realmKey` — **Pending merge**
+### PR session 9h-G (in-flight, this PR) — `feat(admin): smart recent activity widget — inline last 5 audit entries on Stats tab` — **Pending merge**
 
-- **Branch**: `devin/1777526486-admin-users-filter-expand`. **Base**: `main` @ `6f18ce6` (post PR #115 merge). **Status**: in-flight.
-- **Mục tiêu**: mở rộng `GET /admin/users` với 5 query param mới (`linhThachMin/Max`, `tienNgocMin/Max`, `realmKey`) + AdminView Users tab `<details>` "Bộ lọc nâng cao" — smart admin tìm whale (linhThach > 50000), tìm tài khoản đáng nghi (tienNgoc cao bất thường nhưng mới đăng ký), filter theo realm để xem nhóm character ở giai đoạn nào. Bổ sung cho task 9h-E (smart economy report top 10) — admin nhìn top trước, sau đó dùng filter này deep dive.
+- **Branch**: `devin/1777527139-admin-recent-activity-widget`. **Base**: `main` @ post-PR #116 merge. **Status**: in-flight.
+- **Mục tiêu**: admin/MOD trên Stats tab nhìn ngay 5 thao tác audit gần nhất (admin nào vừa làm gì) mà không phải switch sang tab Audit. Đặc biệt hữu ích khi nhiều admin cùng vận hành live, hoặc khi đang debug mà không muốn rời Stats tab.
 - **Changes**:
-  1. **`apps/api/src/modules/admin/admin.service.ts`** (+18 line): `listUsers()` thêm filter param `linhThachMin/Max` (bigint), `tienNgocMin/Max` (number), `realmKey` (string). Build nested `{ character: { is: charConditions } }` chỉ khi có ít nhất 1 condition. User không có character tự bị loại khỏi kết quả khi filter character set (intentional — admin filter character cụ thể không quan tâm user trống).
-  2. **`apps/api/src/modules/admin/admin.controller.ts`** (+30 line): `@Get('users')` thêm 5 `@Query` decorator + parse helpers `parseBig` / `parseInt32` (drop string không hợp lệ thay vì 400 → admin gõ tay không bị block). `realmKey` validate regex `[a-z0-9_-]{1,32}` (không cho injection).
-  3. **`apps/api/src/modules/admin/admin-list-users-filter.test.ts`** (+59 line, +6 BE vitest): linhThachMin DESC, linhThachMax ASC, range min+max, tienNgoc range, realmKey exact, combine 3 filter (linhThach + realm + role).
-  4. **`apps/web/src/api/admin.ts`** (+12 line + interface): export `AdminListUsersFilters` interface + `adminListUsers()` truyền params nếu có.
-  5. **`apps/web/src/views/AdminView.vue`** (+5 ref + +60 line UI): 5 ref state mới (`userLinhThachMin/Max`, `userTienNgocMin/Max`, `userRealmFilter`). UI `<details>` collapse mặc định, mở ra hiện 5 input grid 5 cột. Enter trên input chạy `refreshUsers()` (giống cũ).
-  6. **`apps/web/src/i18n/{vi,en}.json`** (+6 key mỗi file): `admin.users.filter.{advanced,linhThachMin,linhThachMax,tienNgocMin,tienNgocMax,realmKey}`.
-  7. **`apps/web/src/api/__tests__/admin.list-users-filter.test.ts`** (mới, +5 FE vitest): empty filters, full filters, single linhThachMin, combine role+banned+range, tienNgocMin=0 boundary.
-- **Tests added**: +6 vitest BE + 5 vitest FE (web `199 → 204`, file `25 → 26`). Sau merge cả 9h-E + 9h-F: dự kiến web `202 + 5 = 207/207` (`27 file`).
-- **CI status (local)**: `pnpm typecheck` ✅ / `pnpm lint` ✅ / `pnpm --filter @xuantoi/web test` ✅ 204/204 / BE vitest CI verify.
-- **Risk**: thấp — additive query param, default behavior khi không truyền filter giữ nguyên. Nested where trên `character.is` dùng index có sẵn (`Character.realmKey`). UI `<details>` collapse mặc định không phá layout cũ.
+  1. **`apps/web/src/views/AdminView.vue`**: thêm `recentActivity = ref<AdminAuditRow[]>([])` + `recentActivityRunning` state, `loadRecentActivity()` handler (gọi `adminListAudit(0)` rồi slice 5). `refreshStats()` auto-trigger `loadRecentActivity().catch(() => null)` (lỗi widget không phá main stats). Panel violet-500 dưới economy report → bảng 3 cột (time/actor/action) + button refresh manual.
+  2. **`apps/web/src/i18n/{vi,en}.json`** (+9 key mỗi file): `admin.recentActivity.{title,subtitle,loading,empty,col.{time,actor,action}}`.
+- **Tests**: web baseline `204/204` (post-#116 merge) không đổi (additive UI, dùng API có sẵn `/admin/audit`).
+- **CI status (local)**: `pnpm typecheck` ✅ / `pnpm lint` ✅ / `pnpm --filter @xuantoi/web test` ✅.
+- **Risk**: thấp — read-only, dùng API có sẵn, panel độc lập (try/catch riêng). Không touch BE/schema/economy.
 - **Rollback**: revert single PR.
 - **`AI_HANDOFF_REPORT.md updated`**: ✅ — Recent Changes (this entry).
+
+### PR #116 — `feat(admin): smart users filter expand — currency range (linhThach/tienNgoc) + realmKey via GET /admin/users (session 9h task F)` — **Merged into main** session 9h task F — **Resolved**
+
+- **Branch**: `devin/1777526486-admin-users-filter-expand`. **Status**: Merged. CI 5/5 ✅.
+- **Changes**: `admin.service.ts` listUsers() +18 line filter param. `admin.controller.ts` @Get('users') +30 line parse helper. `admin-list-users-filter.test.ts` +6 BE vitest. `admin.ts` AdminListUsersFilters interface. `AdminView.vue` +5 ref + +60 UI. `i18n/{vi,en}.json` +6 key. `admin.list-users-filter.test.ts` +5 FE vitest. Web `199 → 204`, BE vitest +6.
+- **Risk**: thấp — additive query param, default unchanged. Index Character.realmKey có sẵn.
 
 ### PR #115 — `feat(admin): smart economy report — top 10 whales (linhThach + tienNgoc) + circulation snapshot via GET /admin/economy/report (session 9h task E)` — **Merged into main** @ `6f18ce6` session 9h task E — **Resolved**
 
 - **Branch**: `devin/1777525664-economy-report-tab`. **Status**: Merged. CI 5/5 ✅.
-- **Changes**: `admin.service.ts` `getEconomyReport()` 5 query parallel + bigint serialize. `admin.controller.ts` `@Get('economy/report')`. AdminView Stats panel cyan + 5 stat cards + 2 cột top whales. i18n 13 key mỗi locale. +6 BE vitest + 3 FE vitest (web 199 → 202, file 25 → 26).
+- **Changes**: `admin.service.ts` getEconomyReport() 5 query parallel + bigint serialize. `admin.controller.ts` @Get('economy/report'). AdminView Stats panel cyan + 5 stat cards + 2 cột top whales. i18n 13 key/locale. +6 BE vitest + 3 FE vitest (web 199 → 202, file 25 → 26).
 - **Risk**: thấp — read-only.
+
 
 ### PR #114 — `feat(web): smart onboarding expand — track Leaderboard + Mail visits via localStorage (6-step checklist) (session 9h task D)` — **Merged into main** session 9h task D — **Resolved**
 
