@@ -15,6 +15,7 @@ import {
   adminCreateGiftcode,
   adminEconomyAlerts,
   adminEconomyReport,
+  adminExportUsersCsv,
   adminGrant,
   adminListAudit,
   adminListGiftcodes,
@@ -292,24 +293,74 @@ async function loadRecentActivity(): Promise<void> {
   }
 }
 
+/**
+ * Build filters chung từ form ref — dùng cho cả `adminListUsers` và
+ * `adminExportUsersCsv` để đảm bảo export ra CSV đúng tập filter đang xem.
+ */
+function buildUserFilters(): AdminListUsersFilters {
+  const filters: AdminListUsersFilters = {};
+  if (userRoleFilter.value) filters.role = userRoleFilter.value;
+  if (userBannedFilter.value === 'true') filters.banned = true;
+  else if (userBannedFilter.value === 'false') filters.banned = false;
+  if (userLinhThachMin.value.trim()) filters.linhThachMin = userLinhThachMin.value.trim();
+  if (userLinhThachMax.value.trim()) filters.linhThachMax = userLinhThachMax.value.trim();
+  if (userTienNgocMin.value.trim()) {
+    const n = Number.parseInt(userTienNgocMin.value, 10);
+    if (Number.isFinite(n) && n >= 0) filters.tienNgocMin = n;
+  }
+  if (userTienNgocMax.value.trim()) {
+    const n = Number.parseInt(userTienNgocMax.value, 10);
+    if (Number.isFinite(n) && n >= 0) filters.tienNgocMax = n;
+  }
+  if (userRealmFilter.value) filters.realmKey = userRealmFilter.value;
+  return filters;
+}
+
+const usersExporting = ref(false);
+
+/**
+ * Smart admin user export CSV (9i-E): tải CSV qua endpoint backend, kèm
+ * filter hiện tại. Trigger blob download client-side. Cảnh báo nếu BE
+ * truncate ở 5000 row.
+ */
+async function exportUsersCsv(): Promise<void> {
+  if (usersExporting.value) return;
+  usersExporting.value = true;
+  try {
+    const r = await adminExportUsersCsv(userQuery.value, buildUserFilters());
+    // BOM để Excel mở UTF-8 đúng (tên tiếng Việt khonái).
+    const blob = new Blob(['\ufeff', r.csv], { type: 'text/csv;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    const ts = new Date().toISOString().replace(/[:.]/g, '-');
+    a.download = `xuantoi-users-${ts}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    if (r.truncated) {
+      toast.push({
+        type: 'warning',
+        text: t('admin.users.exportTruncatedToast', { exported: r.rows, total: r.total }),
+      });
+    } else {
+      toast.push({
+        type: 'success',
+        text: t('admin.users.exportedToast', { rows: r.rows }),
+      });
+    }
+  } catch (e) {
+    handleErr(e);
+  } finally {
+    usersExporting.value = false;
+  }
+}
+
 async function refreshUsers(): Promise<void> {
   loading.value = true;
   try {
-    const filters: AdminListUsersFilters = {};
-    if (userRoleFilter.value) filters.role = userRoleFilter.value;
-    if (userBannedFilter.value === 'true') filters.banned = true;
-    else if (userBannedFilter.value === 'false') filters.banned = false;
-    if (userLinhThachMin.value.trim()) filters.linhThachMin = userLinhThachMin.value.trim();
-    if (userLinhThachMax.value.trim()) filters.linhThachMax = userLinhThachMax.value.trim();
-    if (userTienNgocMin.value.trim()) {
-      const n = Number.parseInt(userTienNgocMin.value, 10);
-      if (Number.isFinite(n) && n >= 0) filters.tienNgocMin = n;
-    }
-    if (userTienNgocMax.value.trim()) {
-      const n = Number.parseInt(userTienNgocMax.value, 10);
-      if (Number.isFinite(n) && n >= 0) filters.tienNgocMax = n;
-    }
-    if (userRealmFilter.value) filters.realmKey = userRealmFilter.value;
+    const filters = buildUserFilters();
     const r = await adminListUsers(userQuery.value, userPage.value, filters);
     users.value = r.rows;
     userTotal.value = r.total;
@@ -952,6 +1003,11 @@ const isAdmin = () => game.character?.role === 'ADMIN';
             <option value="true">{{ t('admin.users.filter.banned') }}</option>
           </select>
           <MButton @click="userPage = 0; refreshUsers()">{{ t('common.search') }}</MButton>
+          <MButton
+            data-testid="admin-users-export-csv-btn"
+            :disabled="usersExporting"
+            @click="exportUsersCsv()"
+          >{{ usersExporting ? t('admin.users.exportingLabel') : t('admin.users.exportCsvBtn') }}</MButton>
         </div>
 
         <!-- Smart admin filter expand (9h-F): currency range + realmKey -->

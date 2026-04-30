@@ -83,6 +83,38 @@ export async function adminListUsers(
   return unwrap(data);
 }
 
+/**
+ * Smart admin user export CSV (session 9i task E). Trả về `text/csv` raw
+ * + metadata header. ADMIN-only (BE `@RequireAdmin()`).
+ *
+ * BE: `GET /admin/users.csv?q=...&role=...&banned=...&{linhThach,tienNgoc}{Min,Max}=...&realmKey=...`.
+ * Cap 5000 row trong service; nếu truncated thì response header
+ * `X-Export-Truncated: true`.
+ */
+export async function adminExportUsersCsv(
+  q: string,
+  filters: AdminListUsersFilters = {},
+): Promise<{ csv: string; total: number; rows: number; truncated: boolean }> {
+  const params: Record<string, string | number> = {};
+  if (q) params.q = q;
+  if (filters.role) params.role = filters.role;
+  if (filters.banned !== undefined) params.banned = filters.banned ? 'true' : 'false';
+  if (filters.linhThachMin) params.linhThachMin = filters.linhThachMin;
+  if (filters.linhThachMax) params.linhThachMax = filters.linhThachMax;
+  if (filters.tienNgocMin !== undefined) params.tienNgocMin = filters.tienNgocMin;
+  if (filters.tienNgocMax !== undefined) params.tienNgocMax = filters.tienNgocMax;
+  if (filters.realmKey) params.realmKey = filters.realmKey;
+  const res = await apiClient.get<string>('/admin/users.csv', {
+    params,
+    responseType: 'text',
+    transformResponse: (raw: string) => raw,
+  });
+  const total = Number.parseInt((res.headers['x-export-total'] as string) ?? '0', 10) || 0;
+  const rows = Number.parseInt((res.headers['x-export-rows'] as string) ?? '0', 10) || 0;
+  const truncated = (res.headers['x-export-truncated'] as string | undefined) === 'true';
+  return { csv: res.data, total, rows, truncated };
+}
+
 export async function adminBanUser(id: string, banned: boolean): Promise<void> {
   const { data } = await apiClient.post<Envelope<{ ok: true }>>(
     `/admin/users/${encodeURIComponent(id)}/ban`,
