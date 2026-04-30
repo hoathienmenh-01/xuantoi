@@ -1,6 +1,8 @@
 # AI Handoff Report — Xuân Tôi
 
-> **Snapshot (session 9p task M, this PR)**: `main` @ `<merge of PR #201>` (Merge PR #201 controller trio4 tests cho boss/combat/inventory). **Session 9p task M (this PR)**: controller-level pure-unit vitest cho 3 controller social/security (market/sect/auth) — `market.controller` (44 vitest 5 endpoint incl shared `requireCharacter` 5-endpoint guard + KindEnum 7-value soft-parse silent-undefined + PostInput.pricePerUnit string-or-int → BigInt + qty positive-integer + duck-typed handleErr 11-code), `sect.controller` (39 vitest 6 endpoint incl PUBLIC list() + getViewer pattern PUBLIC-after-auth `/sect/:id` + `/sect/me` returns `{sect:null}` no-throw + CreateInput name 2..16 / desc max 200 default '' + ContributeInput amount string-or-int → BigInt + SectError instanceof 8-code mapping), `auth.controller` (43 vitest 8 endpoint incl forgot-password silent-ok anti-enumeration + login catch-all → 401 INVALID_CREDENTIALS + refresh AuthError → clearAuthCookies-then-fail + logout idempotent no-auth + clientIp 4-fallback xff[0]→req.ip→'unknown' + cookie shape httpOnly+sameSite='lax'+maxAge=ttl*1000 + AuthError statusForCode 9-value mapping). +126 vitest. API baseline **910 → 1036** (74 file).
+> **Snapshot (session 9p task N, this PR)**: `main` @ `a359875` (Merge PR #202 controller trio5 tests cho market/sect/auth). **Session 9p task N (this PR)**: controller-level pure-unit vitest cho controller LỚN NHẤT trong codebase — `admin.controller` (562 lines, 19 endpoint, 97 vitest) bao quát: smart filter parsing (page clamp/role enum strict-case/banned 'true'-'false' string match/linhThach BigInt soft-parse silent-undefined/tienNgoc int soft-parse/realmKey regex `[a-z0-9_-]{1,32}`/from-to Date NaN-guard/email length 1..120/actionPrefix length 1..64/limit 1..500 clamp/q trim+slice 64/staleHours bounds clamp), `users.csv` export (Content-Type + Content-Disposition UTC timestamp + X-Export-Total + X-Export-Rows headers, X-Export-Truncated chỉ khi truncated=true), `grant.linhThach` signed BigInt (admin trừ tiền), `revokeInventory.qty` 1..999 chống admin gõ nhầm, `giftCreate` BigInt convert + maxRedeems null + expiresAt Date, `mailSend.recipientCharacterId` REQUIRED vs broadcast no recipient + createdByAdminId từ req.userId, handleErr 3-error-class instanceof mapping (AdminError 5-code/GiftCodeError 8-code/MailError 7-code) + rethrow non-known (giữ stack trace cho 500), `economyAlertsBounds` config env override (ECONOMY_ALERTS_DEFAULT_STALE_HOURS), CommandService delegation đúng signature mỗi endpoint. +97 vitest. API baseline **1036 → 1133** (75 file).
+>
+> **Snapshot (session 9p task M, merged)**: `main` @ `a359875` (Merge PR #202 controller trio5 tests cho market/sect/auth). PR #202 merged. **Session 9p task M**: controller-level pure-unit vitest cho 3 controller social/security (market/sect/auth) — `market.controller` (44 vitest 5 endpoint incl shared `requireCharacter` 5-endpoint guard + KindEnum 7-value soft-parse silent-undefined + PostInput.pricePerUnit string-or-int → BigInt + qty positive-integer + duck-typed handleErr 11-code), `sect.controller` (39 vitest 6 endpoint incl PUBLIC list() + getViewer pattern PUBLIC-after-auth `/sect/:id` + `/sect/me` returns `{sect:null}` no-throw + CreateInput name 2..16 / desc max 200 default '' + ContributeInput amount string-or-int → BigInt + SectError instanceof 8-code mapping), `auth.controller` (43 vitest 8 endpoint incl forgot-password silent-ok anti-enumeration + login catch-all → 401 INVALID_CREDENTIALS + refresh AuthError → clearAuthCookies-then-fail + logout idempotent no-auth + clientIp 4-fallback xff[0]→req.ip→'unknown' + cookie shape httpOnly+sameSite='lax'+maxAge=ttl*1000 + AuthError statusForCode 9-value mapping). +126 vitest. API baseline **910 → 1036** (74 file).
 >
 > **Snapshot (session 9p task L, merged)**: `main` @ `21c06ba` (Merge PR #200 controller trio3 tests, 30/4 ~20:08 UTC). **Session 9p task L**: controller-level pure-unit vitest cho 3 controller gameplay-related (boss/combat/inventory) — 95 vitest. API baseline **815 → 910**. PR #201 merged.
 >
@@ -195,9 +197,52 @@
 
 ---
 
-## Recent Changes (PR #33→#201 đã merged trên main; session 9p task M **this PR** controller-level tests cho 3 controller social/security: market + sect + auth)
+## Recent Changes (PR #33→#202 đã merged trên main; session 9p task N **this PR** controller-level tests cho admin.controller — controller LỚN NHẤT)
 
-### PR session 9p task M (in-flight, this PR) — `test(api): market + sect + auth controller +126 vitest` — **Pending merge**
+### PR session 9p task N (in-flight, this PR) — `test(api): admin.controller +97 vitest` — **Pending merge**
+
+- **Branch**: `devin/1777581229-admin-controller-tests`. **Base**: `main` @ `a359875` (Merge PR #202).
+- **Vì sao**: `admin.controller.ts` là controller LỚN NHẤT trong codebase (562 lines, 19 endpoint, 3 service deps + ConfigService) chưa có pure-unit vitest trực tiếp. Đây là controller mang nhiều risk regression nhất vì:
+  - **Filter parsing nhánh nhiều** (page clamp, role enum, banned 'true'-'false', BigInt soft-parse, int soft-parse, regex `[a-z0-9_-]{1,32}`, Date.parse NaN-guard, length 1..120/1..64, limit 1..500 clamp, q trim+slice 64) — 1 lỗi off-by-one có thể làm filter bypass hoặc DoS.
+  - **CSV export headers** (`Content-Type` + `Content-Disposition` UTC timestamp + `X-Export-Total/Rows/Truncated`) — 1 typo có thể browser không download attachment hoặc FE polling sai.
+  - **Economy-sensitive zod** (linhThach signed BigInt cho admin trừ tiền, qty 1..999 chống admin gõ nhầm 999999) — 1 lỗi có thể duplicate-grant hoặc revoke nhiều hơn dự định.
+  - **3 error class instanceof + cross-endpoint** (AdminError 5-code → 404/403/409/400, GiftCodeError 8-code → 404/409/400, MailError 7-code → 404/409/400) — 1 typo trong code-string có thể leak 500 error hoặc map sai HTTP status.
+- **Files** (1 file new):
+  - `apps/api/src/modules/admin/admin.controller.test.ts` (97 vitest, ~1253 lines, JSDoc đầu file ghi rõ "endpoint coverage" + "filter parsing patterns to lock in" + "critical lock-in invariants" + "error mapping" 3-error-class).
+- **Lock-in invariants critical to admin security/economy**:
+  - **`users` filter parsing**: page clamp ≥ 0; non-numeric → 0; role/banned strict-case (case-sensitive); linhThach/tienNgoc negative/invalid → undefined (NO 400, soft-parse cho UX); realmKey regex `^[a-z0-9_-]{1,32}$` (uppercase/long → undefined).
+  - **`users.csv`**: SAME filter logic với `users` (DRY, 1 file change auto-cover cả 2 endpoint). Headers: `Content-Type=text/csv; charset=utf-8`, `Content-Disposition` filename UTC timestamp pattern, `X-Export-Total` (total trước truncate), `X-Export-Rows` (sau truncate). `X-Export-Truncated="true"` CHỈ set khi `r.truncated === true` (FE detect download incomplete).
+  - **`grant.linhThach`**: signed string → BigInt — ÂM được phép (admin trừ tiền). Default linhThach='0', tienNgoc=0, reason=''. BigInt very large (`999999999999999999`) preserve precision.
+  - **`revokeInventory.qty`**: 1..999 (zod range strict). qty=0 → 400, qty=1000 → 400, qty âm → 400, qty=999 boundary OK.
+  - **`giftCreate`**: code regex 4..32 ký tự `[A-Za-z0-9_-]` (whitespace → 400, 3 ký tự → 400). rewardItems max 10 items. expiresAt phải ISO datetime full (`YYYY-MM-DDTHH:mm:ssZ` không phải `YYYY-MM-DD` only). BigInt convert reward + maxRedeems null khi missing + expiresAt Date instance khi truyền.
+  - **`mailSend.recipientCharacterId`**: REQUIRED (vs `mailBroadcast` không có). Subject empty → 400. Body > 2000 → 400. createdByAdminId từ `req.userId` (gán bởi AdminGuard).
+  - **`mailBroadcast`**: gọi `service.broadcast` KHÔNG `service.sendToCharacter` (đảm bảo không nhầm endpoint). Trả `count` từ service.
+  - **`handleErr`**: 3-error-class instanceof + cross-endpoint identical mapping. Plain Error / fake error class với `code` field nhưng KHÔNG instanceof → rethrow nguyên (giữ stack trace cho 500 logging).
+  - **`AdminError`**: NOT_FOUND→404, FORBIDDEN→403, ALREADY_PROCESSED→409, INVALID_INPUT/CANNOT_TARGET_SELF→400.
+  - **`GiftCodeError`**: CODE_NOT_FOUND/NO_CHARACTER→404, ALREADY_REDEEMED/CODE_EXPIRED/CODE_REVOKED/CODE_EXHAUSTED/CODE_EXISTS→409, INVALID_INPUT→400.
+  - **`MailError`**: RECIPIENT_NOT_FOUND/MAIL_NOT_FOUND→404, ALREADY_CLAIMED/MAIL_EXPIRED/NO_REWARD→409, NO_CHARACTER/INVALID_INPUT→400.
+  - **`economyAlertsBounds`**: tính trong constructor 1 lần (resolve env qua `resolveEconomyAlertsBounds`), trả trong response data (`{ ..., bounds: { defaultHours, minHours, maxHours } }`). `staleHours` undefined → defaultHours; '0' → minHours (1); '999999' → maxHours (720). Config env `ECONOMY_ALERTS_DEFAULT_STALE_HOURS=48` override defaultHours.
+  - **`giftcodes` filter parsing**: limit `'0'` → fallback default 100 (NOT clamped to 1) vì `parseInt('0',10) || 100 = 100` (operator precedence quirk). `-5` → 1. q trim + slice 64 (empty after trim drop). status enum strict 4-value.
+  - **`topups` filter parsing**: status enum 3-value strict-case ('PENDING'/'APPROVED'/'REJECTED'); 'pending' lowercase → null. from/to Date.parse — invalid (`'not-a-date'`) drop. email length 1..120 (empty/long drop).
+  - **`audit` filter parsing**: action 1..64 length, email 1..120 length (empty/long drop).
+- **Tests**: 97 vitest (`apps/api/src/modules/admin/admin.controller.test.ts`). Chia theo group:
+  - GET /admin/users — filter parsing (12 tests): happy-path 9-filter, page default/negative/non-numeric, role invalid/lowercase, banned 'false'/'yes', linhThach negative/invalid, tienNgoc negative, realmKey uppercase/long.
+  - GET /admin/users.csv — CSV export (3 tests): full headers no-truncate, X-Export-Truncated only when truncated, userId+filter delegation.
+  - POST /admin/users/:id/{ban, role, grant, inventory/revoke} (3+5+5+7 = 20 tests): zod failures + service delegation + signed BigInt + qty bounds.
+  - GET /admin/topups + POST /admin/topups/:id/{approve,reject} (4+3 = 7 tests): status enum + from/to Date NaN + email length + note bounds + service delegation.
+  - GET /admin/audit + GET /admin/stats + GET /admin/economy/* (2+1+2+4 = 9 tests): action/email length + envelope + bounds + clamp min/max + env override.
+  - GET /admin/giftcodes + POST /admin/giftcodes + revoke (3+5+1 = 9 tests): limit clamp/q trim/status enum + GiftCreateZ + delegation.
+  - POST /admin/mail/{send, broadcast} (4+2 = 6 tests): recipient required + subject/body bounds + BigInt convert + broadcast vs send.
+  - handleErr 3-error-class (5+8+7+1+2 + 1 cross + 1 cross + 1 cross + 2 rethrow = 28 tests): Mỗi code map đúng status + cross-endpoint identical + rethrow plain Error / fake-class.
+  - **Total**: 97 vitest. **API baseline**: **1036 → 1133** (75 file).
+- **Coverage gain (qualitative)**:
+  - **Trước session 9p task N**: admin.controller có 0 vitest trực tiếp. 562 lines + 19 endpoint + 3 service deps + 11 zod schemas chỉ được test gián tiếp qua e2e Playwright (admin smoke).
+  - **Sau session 9p task N**: 97 vitest tại controller layer. Mọi refactor admin.controller (rename method, đổi error class import, đổi filter logic, đổi handleErr mapping) sẽ trigger fail tức thì.
+- **Risk**: minimal. Test-only PR, không thay đổi runtime behavior. Mocks toàn bộ AdminService, GiftCodeService, MailService, ConfigService — không cần Postgres/Redis nên CI luôn deterministic.
+- **Rollback**: revert PR. Không có schema/seed/runtime change.
+- **CI status**: pending — typecheck ✅ local, lint ✅ local, vitest ✅ 97/97 admin pass + 384/384 với 9 controller test files khác đồng thời pass.
+
+### PR #202 (session 9p task M, **Merged**) — `test(api): market + sect + auth controller +126 vitest`
 
 - **Branch**: `devin/1777580598-controller-trio5-tests`. **Base**: `main` @ `<post PR #201 merge>`.
 - **Vì sao**: 3 controller "social/security" còn lại ở `apps/api/src/modules/{market,sect,auth}/*.controller.ts` chưa có vitest trực tiếp. Đây là 3 controller mang nhiều risk regression nhất ở app:
@@ -2794,7 +2839,8 @@ F. ~~**`docs/CHANGELOG.md` bootstrap**~~ — **Done by PR #104** (Merged into ma
 | #199 | session 9p task J — test(api): logs + shop + topup controller +46 vitest | **Merged into main** @ `ecd08d6` (30/4 ~19:52 UTC, CI ✅) |
 | #200 | session 9p task K — test(api): mission + mail + chat controller +66 vitest | **Merged into main** @ `21c06ba` (30/4 ~20:08 UTC, CI ✅) |
 | #201 | session 9p task L — test(api): boss + combat + inventory controller +95 vitest | **Merged into main** (CI ✅) |
-| this PR | session 9p task M — test(api): market + sect + auth controller +126 vitest | **Pending merge** (in-flight) |
+| #202 | session 9p task M — test(api): market + sect + auth controller +126 vitest | **Merged into main** @ `a359875` (CI ✅) |
+| this PR | session 9p task N — test(api): admin.controller +97 vitest | **Pending merge** (in-flight) |
 
 #### PR session 9p task C (in-flight, this PR) — `test(api): ops.service + mission.scheduler ghost-cleanup +12 pure unit`
 
