@@ -10,7 +10,21 @@ Tóm tắt **người chơi / vận hành / dev** dễ đọc, theo PR đã merg
 
 ## [Unreleased]
 
-> Chưa có thay đổi pending sau session 9k close-out @ `2e54a1e`. Khi mở PR mới, ghi vào đây.
+> Chưa có thay đổi pending sau session 9l close-out @ `f103485`. Khi mở PR mới, ghi vào đây.
+
+---
+
+## [session 9l — PR #156 → #159, merged 30/4 10:30→11:00 UTC]
+
+### Docs
+
+- **Audit refresh session 9l kickoff** (PR #156): bump snapshot `2e54a1e → 739b10a`, session 9k 7/7 PR close-out, session 9l backlog + roadmap.
+- **RELEASE_NOTES + CHANGELOG session 9k close-out** (PR #157): mark "Đã hoàn thành trong session 9k" 5 item, chuyển M9 sang "Đã giải quyết", thêm CHANGELOG section session 9k.
+- **Handoff M9 Resolved** (PR #158): mark M9 (logout-all passwordVersion) Resolved trong §16 Known Issues.
+
+### Internal
+
+- **UI primitive render tests** (PR #159): ConfirmModal 17 + SkeletonBlock 4 + SkeletonTable 4 vitest. Web baseline `484 → 509` (51 → 54 file).
 
 ---
 
@@ -33,6 +47,89 @@ Tóm tắt **người chơi / vận hành / dev** dễ đọc, theo PR đã merg
 ### Internal
 
 - Loop autonomous session 9k hoàn tất 7/7 PR merge cascade vào main mà không cần user confirmation cho mỗi task (task A→G).
+
+---
+
+## [session 9j — PR #134 → #148, merged 30/4 07:20→08:55 UTC]
+
+### Fixed
+
+- **Critical typecheck fix C-TSNARROW-RESOLVEFN** (PR #134): vue-tsc 2.0+ (TS 5.x) narrow `let` variable capture-by-closure thành `never` trong Promise executor. Fix: đổi `resolveHolder: { current }` object-property pattern. Unblock toàn bộ typecheck pipeline.
+
+### Internal
+
+- **Massive view test coverage push** (PR #135 → #148): 15 PR autonomous loop thêm vitest cho mọi view + shared catalog integrity. Web baseline `207 → 466` (30 → 50 file). Chi tiết:
+  - TopupView 10 + MailView 14 vitest (PR #135)
+  - ShopView 19 vitest (PR #137)
+  - InventoryView 15 vitest (PR #138, replay from stale-base PR #136)
+  - AuthView 14 vitest (PR #139)
+  - OnboardingView 16 vitest (PR #140)
+  - DungeonView 13 vitest (PR #141)
+  - SectView 12 vitest (PR #142)
+  - NotFoundView + router manifest lockdown 8 vitest (PR #143)
+  - BossView 12 vitest (PR #144)
+  - ChatPanel + LocaleSwitcher 17 vitest (PR #145)
+  - MButton + MToast UI primitive 14 vitest (PR #146)
+  - Shared shop + topup catalog integrity 19 vitest (PR #147)
+  - Shared BOSSES catalog integrity 22 vitest (PR #148)
+
+---
+
+## [session 9i — PR #119 → #133, merged 30/4 06:21→07:50 UTC]
+
+### Added
+
+- **`docs/RELEASE_NOTES.md` bootstrap** (PR #120): closed beta press kit — feature list, known issues, roadmap lộ trình.
+- **Smart admin giftcode active badge** (PR #121): `countActiveUnused()` helper + AdminView nav badge cyan-500 cho active giftcodes. +7 vitest.
+- **Smart UX — toast duration policy by severity** (PR #122): `resolveToastDuration()` + `TOAST_DURATION_MS` policy (info 3s / success 3.5s / warning 5s / error 6s). +9 vitest.
+- **Admin user export CSV** (PR #123): `GET /admin/users.csv` RFC 4180 format + audit `user.exportCsv` + FE download button. +15 vitest.
+- **Smart admin giftcode revoke UI flow** (PR #127 + #129): `computeGiftcodeRevokeImpact()` + ConfirmModal danger style (impact preview: usage/expiry/warning) + error mapping. +12 vitest + 5 i18n key.
+- **`extractApiErrorCode` pure error extractor** (PR #128): centralized error code extraction từ mọi error shape (direct/axios/ES2022 cause/legacy). +17 vitest. Adopted trong AdminView + AuthView (PR #133 migration 14 view còn lại).
+
+### Internal
+
+- **HomeView smoke tests** (PR #124): 9 vitest cover onMounted routing branches + render + cultivate/breakthrough. Web baseline `207 → 236`.
+- **AppShell skeleton tests** (PR #126): 15 vitest cover mobile nav toggle + sidebar badges + staff-only/cultivating/WS/logout.
+- **GiftCodeView tests** (PR #131): render + redeem flow + error mapping vitest.
+- **ProfileView tests** (PR #132): render + fetch + error + badges vitest.
+- **Adopt `extractApiErrorCode`** (PR #133): migration refactor 14 view để dùng centralized error extractor.
+
+---
+
+## [session 9h — PR #111 → #118, merged 30/4 04:25→06:18 UTC]
+
+### Added
+
+- **Admin audit-ledger endpoint + UI** (PR #112): `GET /admin/economy/audit-ledger` on-demand verify CurrencyLedger consistency. `ledger-audit.ts` pure logic + AdminView panel violet-500. +6 BE vitest + 3 FE vitest.
+- **Playwright golden expand** (PR #113): +95 line daily login + leaderboard tabs gated `E2E_FULL=1`. `docs/QA_CHECKLIST.md` how-to thêm.
+- **Smart onboarding expand 4→6 step** (PR #114): Leaderboard + Mail visit tracking localStorage helper + `OnboardingChecklist.vue` 6 step. +6 vitest.
+- **Smart admin economy report — top 10 whales + circulation** (PR #115): `GET /admin/economy/report` 5 stat cards + top whales table. +6 BE + 3 FE vitest + 13 i18n key.
+- **Smart admin users filter expand** (PR #116): currency range + realmKey filter cho `GET /admin/users`. +5 BE + 5 FE vitest + 6 i18n key.
+- **Smart admin recent activity widget** (PR #117): Stats tab inline last 5 audit entries panel violet-500. +9 i18n key.
+- **Smart admin pending topup badge** (PR #118): `pendingTopupCount` ref + 60s poll + badge amber-500 nav "Nạp Tiên Ngọc". +1 i18n key.
+
+### Docs
+
+- Audit refresh session 9h (PR #111).
+
+---
+
+## [session 9g — PR #105 → #110, merged 29/4 19:00→19:55 UTC]
+
+### Added
+
+- **FE Admin Inventory Revoke UI** (PR #106): nút "Thu hồi item" + modal AdminView Users tab + `adminRevokeInventory()` helper. +7 vitest + i18n vi/en.
+- **Smart UX — sidebar breakthrough indicator + i18n parity guard** (PR #107): violet-400 dot khi sắp đột phá + 6 vitest enforce vi/en symmetric + ICU placeholder parity. Web vitest `168 → 174`.
+- **Smart admin economy alerts badge** (PR #109): `countEconomyAlerts` helper + red dot badge nav Stats + auto-poll 60s. +13 vitest. Web vitest `174 → 187`.
+
+### Fixed
+
+- **`.env.example` SMTP_FROM quote fix** (PR #110): sửa syntax quote trong file env mẫu.
+
+### Docs
+
+- **Runtime smoke report session 9d→9g** (PR #108): 41 endpoint flow verified, 0 Critical/High bugs. Evidence in `docs/RUNTIME_SMOKE_9G.md`.
+- Audit refresh session 9g (PR #105).
 
 ---
 
