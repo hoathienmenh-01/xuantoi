@@ -220,6 +220,41 @@ export async function adminEconomyAlerts(staleHours = 24): Promise<AdminEconomyA
   return unwrap(data);
 }
 
+/**
+ * Smart economy safety: kết quả từ `GET /admin/economy/audit-ledger`.
+ *
+ * Verify SUM(CurrencyLedger.delta) khớp Character.linhThach/tienNgoc và
+ * SUM(ItemLedger.qtyDelta) khớp InventoryItem.qty per (char, item). bigint
+ * được serialize sang string từ BE để tránh overflow Number.
+ */
+export interface AdminLedgerAuditCharDiscrepancy {
+  characterId: string;
+  field: 'linhThach' | 'tienNgoc';
+  ledgerSum: string;
+  characterValue: string;
+  diff: string;
+}
+
+export interface AdminLedgerAuditInvDiscrepancy {
+  characterId: string;
+  itemKey: string;
+  ledgerSum: number;
+  inventorySum: number;
+  diff: number;
+}
+
+export interface AdminLedgerAudit {
+  charactersScanned: number;
+  itemKeysScanned: number;
+  currencyDiscrepancies: AdminLedgerAuditCharDiscrepancy[];
+  inventoryDiscrepancies: AdminLedgerAuditInvDiscrepancy[];
+}
+
+export async function adminAuditLedger(): Promise<AdminLedgerAudit> {
+  const { data } = await apiClient.get<Envelope<AdminLedgerAudit>>('/admin/economy/audit-ledger');
+  return unwrap(data);
+}
+
 export interface AdminBossSpawnInput {
   bossKey?: string;
   level?: number;
