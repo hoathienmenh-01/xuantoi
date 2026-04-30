@@ -2,7 +2,9 @@
 
 > 👉 **AI/dev mới: ĐỌC [`docs/START_HERE.md`](./START_HERE.md) TRƯỚC.** File đó định tuyến bạn tới đúng doc theo mục đích (trạng thái / vision / roadmap / economy / content / balance / live ops).
 
-> **Snapshot (session 9q-2, this PR — START_HERE entry doc)**: docs-only — thêm [`docs/START_HERE.md`](./START_HERE.md) làm cổng vào cho AI/dev mới (decision table theo mục đích + reading order theo role + DO/DON'T + map 25 file docs). Cập nhật `README.md` add pointer tới START_HERE. Không sửa runtime code. Risk: low.
+> **Snapshot (session 9q-3, this PR — README docs grouping)**: docs-only — restructure `README.md` "Tài liệu developer" thành 4 nhóm rõ ràng: **Start Here for AI / Developers** (START_HERE + AI_HANDOFF) → **Long-Term Game Design** (6 file: BIBLE/ROADMAP/ECONOMY/CONTENT/BALANCE/LIVE_OPS) → **Operational / Runtime** (RUN_LOCAL/DEPLOY/ADMIN_GUIDE/API/SEEDING/SECURITY/BACKUP_RESTORE/TROUBLESHOOTING) → **QA & History** (BETA/QA checklist + BALANCE cũ + CHANGELOG/RELEASE_NOTES + 04/05 historical). Không sửa runtime code. Risk: low.
+>
+> **Snapshot (session 9q-2, merged)**: docs-only — thêm [`docs/START_HERE.md`](./START_HERE.md) làm cổng vào cho AI/dev mới (decision table theo mục đích + reading order theo role + DO/DON'T + map 25 file docs). Cập nhật `README.md` add pointer tới START_HERE. Không sửa runtime code. Risk: low.
 >
 > **Snapshot (session 9q, merged)**: `main` @ `bd55e5b` (PR #204 admin.controller +97 vitest merged). **Session 9q (this PR)**: docs-only — refresh `04` + `05` thành long-term blueprint, tạo 6 docs mới: [`GAME_DESIGN_BIBLE.md`](./GAME_DESIGN_BIBLE.md), [`LONG_TERM_ROADMAP.md`](./LONG_TERM_ROADMAP.md), [`ECONOMY_MODEL.md`](./ECONOMY_MODEL.md), [`CONTENT_PIPELINE.md`](./CONTENT_PIPELINE.md), [`BALANCE_MODEL.md`](./BALANCE_MODEL.md), [`LIVE_OPS_MODEL.md`](./LIVE_OPS_MODEL.md). KHÔNG sửa runtime code, KHÔNG migration, KHÔNG refactor. Risk: low (docs-only). Baseline tests **1133 vitest** (api 1133, +shared 238 +web 555 sau merge của session 9p task L/M/N qua PR #201/#202/#204), KHÔNG thay đổi vì không đụng test.
 > 
