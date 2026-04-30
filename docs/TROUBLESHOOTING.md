@@ -196,7 +196,49 @@ Cron tick mặc định 30 giây. Nếu Redis chết → worker không chạy.
 
 **Xử lý**: hard refresh (`Ctrl+Shift+R`) hoặc DevTools → Application → Service Workers → Unregister, rồi reload. Build production tự bump precache hash.
 
-## 15. Liên kết khác
+## 15. Ledger drift — `audit:ledger` báo discrepancy
+
+**Triệu chứng**: `pnpm --filter @xuantoi/api audit:ledger` exit code 1 hoặc `GET /admin/economy/audit-ledger` trả `currencyDiscrepancies.length > 0` hoặc `inventoryDiscrepancies.length > 0`.
+
+**Nguyên nhân (thường gặp)**:
+1. **Manual DB edit** — admin/dev sửa `Character.linhThach` / `tienNgoc` hoặc `InventoryItem.qty` trực tiếp qua psql, không đi qua `CurrencyService.mutate()` → ledger không có row tương ứng.
+2. **Migration race** — restore backup DB nhưng quên restore `CurrencyLedger` / `ItemLedger`.
+3. **Bug service thiếu ghi ledger** — một code path mới mutate balance nhưng quên gọi ledger write (regression). Hiếm nhưng nghiêm trọng.
+4. **Double-spend / double-grant bug** — service ghi ledger 2 lần cho 1 action (hoặc ngược lại ghi balance 2 lần nhưng ledger 1 lần).
+
+**Xử lý**:
+
+```bash
+# 1) Chạy audit với JSON output để grep/filter cụ thể
+pnpm --filter @xuantoi/api audit:ledger -- --json > /tmp/audit.json
+cat /tmp/audit.json | jq '.summary'
+
+# 2) Xem character cụ thể bị drift
+cat /tmp/audit.json | jq '.currencyDiscrepancies[] | select(.characterId == "<id>")'
+
+# 3) Cross-check với admin activity log
+curl -H "Authorization: Bearer <admin>" "http://<api>/api/admin/audit?email=<owner>"
+```
+
+Nếu root cause là (1) manual edit — **không** vá bằng cách sửa ngược ledger. Thay vào đó: dùng admin `POST /admin/users/:id/grant` với `reason="ledger-repair: <detail>"` để tạo ledger row chính thức bù/trừ. Tạo audit trail rõ ràng cho sau này.
+
+Nếu root cause là (3) bug service — mở issue ngay, PR fix service + viết test reproduce. Không được deploy tới khi fix.
+
+**Runbook**: xem `docs/ADMIN_GUIDE.md §11`.
+
+## 16. `GET /admin/economy/alerts` trả quá nhiều topup stale
+
+**Triệu chứng**: AdminView Stats red dot báo 50+ cảnh báo; list `stalePendingTopups` toàn item > 24h.
+
+**Nguyên nhân**: soft-launch / weekend thiếu admin duyệt topup thủ công → queue pending nhiều.
+
+**Xử lý**:
+1. **Tạm thời**: set env `ECONOMY_ALERTS_DEFAULT_STALE_HOURS=48` restart API để alert threshold lên 48h (nghỉ cuối tuần), đợi admin vào duyệt. Xem `docs/ADMIN_GUIDE.md §11.3`.
+2. **Lâu dài**: thêm thêm MOD role có quyền `approveTopup`, rotate ca trực. Hoặc bật auto-approve (chưa có, cần dev).
+
+Không nên **tắt alerts** — thresholds là guard rail phát hiện deadlock payment.
+
+## 17. Liên kết khác
 
 - Setup local: `docs/RUN_LOCAL.md`.
 - Deploy: `docs/DEPLOY.md`.

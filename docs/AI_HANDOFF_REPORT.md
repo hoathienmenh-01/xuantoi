@@ -1,6 +1,8 @@
 # AI Handoff Report — Xuân Tôi
 
-> **Snapshot (session 9n-C in-flight)**: `main` @ `0b1b6da` (Merge PR #166 `feat(api,docs): smart audit-ledger CLI — --json flag + formatResult/parseArgs unit tests + ADMIN_GUIDE §11`, 30 Apr 2026 ~12:32 UTC). **Session 9n progress**: PR #165 audit refresh @ `4b5b799`, PR #166 audit-ledger CLI --json @ `0b1b6da` (CI ✅). **Session 9n-C in-flight (this PR branch `devin/1777552393-economy-alerts-env-thresholds`)**: smart admin economy alerts thresholds env-driven — `ECONOMY_ALERTS_DEFAULT_STALE_HOURS` / `_MIN_` / `_MAX_` + 22 vitest unit + ADMIN_GUIDE §11.3 + `apps/api/.env.example` doc.
+> **Snapshot (session 9n-D in-flight, docs-only TROUBLESHOOTING runbook)**: `main` @ `bcdd235` (Merge PR #167 `feat(api,docs): smart admin economy alerts thresholds — ECONOMY_ALERTS_{DEFAULT,MIN,MAX}_STALE_HOURS env override + 22 vitest + ADMIN_GUIDE §11.3`, 30 Apr 2026 ~12:50 UTC). **Session 9n progress (3/4 merged)**: PR #165 audit refresh @ `4b5b799` · PR #166 audit-ledger CLI `--json` @ `0b1b6da` · PR #167 economy alerts env thresholds @ `bcdd235`. **This PR** session 9n-D docs(TROUBLESHOOTING §15/§16) — runbook ledger drift + topup stale alerts flood (stand-alone docs PR, no code change).
+
+> **Snapshot (session 9n-C merged as PR #167)**: `main` @ `0b1b6da` (Merge PR #166 `feat(api,docs): smart audit-ledger CLI — --json flag + formatResult/parseArgs unit tests + ADMIN_GUIDE §11`, 30 Apr 2026 ~12:32 UTC). PR #167 economy alerts thresholds env-driven — `ECONOMY_ALERTS_DEFAULT_STALE_HOURS` / `_MIN_` / `_MAX_` + 22 vitest unit + ADMIN_GUIDE §11.3 + `apps/api/.env.example` doc.
 
 > **Snapshot (session 9n-B merged as PR #166)**: `main` @ `4b5b799` (Merge PR #165 `docs(handoff): session 9n kickoff — audit refresh post-9m close-out`, 30 Apr 2026 ~12:13 UTC). Audit-ledger CLI `--json` flag + 13 vitest unit (parseArgs 4 + formatResult 5 + formatResultJson 4) + ADMIN_GUIDE §11 docs.
 
