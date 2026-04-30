@@ -992,6 +992,11 @@
       "createdToast": "Đã tạo giftcode.",
       "revokeBtn": "Thu hồi",
       "revokeConfirm": "Thu hồi mã {code}? Người chơi sẽ không thể nhập mã này nữa.",
+      "revokeModalTitle": "Thu hồi mã {code}?",
+      "revokeModalUsage": "Đã sử dụng: {usage}",
+      "revokeModalExpired": "Mã đã hết hạn — thu hồi để dọn lịch sử.",
+      "revokeModalExpiresSoon": "Mã sắp hết hạn (<24h) — cân nhắc trước khi thu hồi.",
+      "revokeModalWarning": "Hành động này không thể hoàn tác. Người chơi sẽ thấy mã không hợp lệ ngay sau khi thu hồi.",
       "revokedToast": "Đã thu hồi giftcode.",
       "itemsLabel": "vật phẩm"
     },

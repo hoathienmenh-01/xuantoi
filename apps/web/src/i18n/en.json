@@ -992,6 +992,11 @@
       "createdToast": "Giftcode created.",
       "revokeBtn": "Revoke",
       "revokeConfirm": "Revoke {code}? Players can no longer redeem this code.",
+      "revokeModalTitle": "Revoke giftcode {code}?",
+      "revokeModalUsage": "Already redeemed: {usage}",
+      "revokeModalExpired": "Code already expired — revoke to clean up history.",
+      "revokeModalExpiresSoon": "Code expires soon (<24h) — consider before revoking.",
+      "revokeModalWarning": "This action cannot be undone. Players will see this code as invalid immediately after revoke.",
       "revokedToast": "Giftcode revoked.",
       "itemsLabel": "items"
     },
