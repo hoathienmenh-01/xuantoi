@@ -1,14 +1,14 @@
 # AI Handoff Report — Xuân Tôi
 
-> **Snapshot**: `main` @ `27552a8` (Merge PR #118 `feat(admin): smart tab badge — pending topup count on Topups tab nav (session 9h task H)`, 30 Apr 2026 ~06:18 UTC). **Merged into main since session 9d** (toàn bộ chuỗi 9d→9g task A/B/C/D/E.a/F1 đã vào main): PR #84/#86/#87/#88/#89/#90/#91 (session 9d), **#92** (docs BETA_CHECKLIST refresh — Merged @ `a5821ee`), **#93** (docs handoff session 9e audit refresh — Merged @ `d37b6d4`), **#94** (BE leaderboard topup + sect — Merged @ `fed47a6`), **#95** (ops backup/restore Postgres script + docs — Merged @ session 9e), **#96** (scripts backup/restore reliability — SIGPIPE-safe + pg_terminate_backend — Merged @ `253c4b1`), **#97** (FE mobile responsive AppShell drawer + AdminView tables — Merged @ `ee933ad`), **#98** (docs handoff session 9f audit refresh — Merged @ `4072a3d`), **#99** (FE LeaderboardView tabs Power/Topup/Sect — Merged @ `5a93d22`), **#100** (admin self-demote/self-target prevention — Merged @ `47d34b5`), **#101** (auth forgot/reset-password BE + EmailService — Merged @ `6f3faf4`), **#102** (auth forgot/reset-password FE views stacked — Merged @ `5ca225e` rồi vào main qua PR #101 merge), **#103** (auth forgotPassword timing-fix Devin Review — Merged @ `3c1aa39`), **#104** (docs/CHANGELOG.md bootstrap — Merged @ `c026f37`), **#105** (docs handoff session 9g audit refresh — Merged @ `a907eb1`), **#106** (FE admin inventory revoke UI — Merged @ `7d1965e`), **#107** (FE i18n parity test + breakthroughReady badge — Merged @ `82f2020`), **#108** (docs handoff session 9g task D runtime smoke 9d→9g — Merged @ `0a6c664`), **#109** (FE smart admin economy alerts badge + 60s polling — Merged @ `58fa69d`), **#110** (env fix `SMTP_FROM` quote — Merged @ `4c214eb`), **#111** (docs handoff session 9h audit refresh — Merged @ `43f626e`), **#112** (replay orphan commit `7e27aa9` admin audit-ledger endpoint + UI — Merged @ `f4e67f4`), **#113** (Playwright golden expand daily login + leaderboard tabs gated `E2E_FULL=1` — Merged @ `8cdb93c`), **#114** (smart onboarding expand Leaderboard/Mail visits → 6-step — Merged @ `885e56c`), **#115** (smart admin economy report top 10 whales + circulation — Merged @ `6f18ce6`), **#116** (smart admin users filter expand currency range + realmKey — Merged @ `7b6f927`), **#117** (smart admin recent activity widget Stats tab — Merged @ `0fc1431`), **#118** (smart admin tab badge — pending topup count on Topups tab nav + Devin Review fix re-fetch sau approve/reject — Merged @ `27552a8` session 9h task H).
-> **Người viết**: AI engineer session 9i (audit refresh 30/4 ~06:20 UTC sau khi toàn bộ chuỗi PR #111–#118 đã merge cascade vào main — header cũ snapshot `4c214eb` (PR #110) không còn đúng; PR #117 ghi `In-flight (Pending merge)` trong report cũ, PR #118 (session 9h task H pending topup badge) mới merged @ `27552a8` → audit này bump snapshot + chuyển PR #111..#118 sang Merged + close session 9h task A/B/C/D/E/F/G/H + thêm session 9i roadmap mới với top priority docs/RELEASE_NOTES.md bootstrap + smart giftcode unredeemed badge (topup đã xong qua #118) + UX polish).
+> **Snapshot**: `main` @ `e8c85df` (Merge PR #122 `feat(web): smart UX toast duration policy — extract resolveToastDuration helper + scale by severity (session 9i task D)`, 30 Apr 2026 ~06:32 UTC). Session 9i task A/B/C/D đã merge cascade (#119/#120/#121/#122). Session 9i task E (admin user export CSV — PR #123) + task F (HomeView smoke tests — PR #124) đang **Pending merge** với CI in-flight. **Merged into main since session 9d** (toàn bộ chuỗi 9d→9g task A/B/C/D/E.a/F1 đã vào main): PR #84/#86/#87/#88/#89/#90/#91 (session 9d), **#92** (docs BETA_CHECKLIST refresh — Merged @ `a5821ee`), **#93** (docs handoff session 9e audit refresh — Merged @ `d37b6d4`), **#94** (BE leaderboard topup + sect — Merged @ `fed47a6`), **#95** (ops backup/restore Postgres script + docs — Merged @ session 9e), **#96** (scripts backup/restore reliability — SIGPIPE-safe + pg_terminate_backend — Merged @ `253c4b1`), **#97** (FE mobile responsive AppShell drawer + AdminView tables — Merged @ `ee933ad`), **#98** (docs handoff session 9f audit refresh — Merged @ `4072a3d`), **#99** (FE LeaderboardView tabs Power/Topup/Sect — Merged @ `5a93d22`), **#100** (admin self-demote/self-target prevention — Merged @ `47d34b5`), **#101** (auth forgot/reset-password BE + EmailService — Merged @ `6f3faf4`), **#102** (auth forgot/reset-password FE views stacked — Merged @ `5ca225e` rồi vào main qua PR #101 merge), **#103** (auth forgotPassword timing-fix Devin Review — Merged @ `3c1aa39`), **#104** (docs/CHANGELOG.md bootstrap — Merged @ `c026f37`), **#105** (docs handoff session 9g audit refresh — Merged @ `a907eb1`), **#106** (FE admin inventory revoke UI — Merged @ `7d1965e`), **#107** (FE i18n parity test + breakthroughReady badge — Merged @ `82f2020`), **#108** (docs handoff session 9g task D runtime smoke 9d→9g — Merged @ `0a6c664`), **#109** (FE smart admin economy alerts badge + 60s polling — Merged @ `58fa69d`), **#110** (env fix `SMTP_FROM` quote — Merged @ `4c214eb`), **#111** (docs handoff session 9h audit refresh — Merged @ `43f626e`), **#112** (replay orphan commit `7e27aa9` admin audit-ledger endpoint + UI — Merged @ `f4e67f4`), **#113** (Playwright golden expand daily login + leaderboard tabs gated `E2E_FULL=1` — Merged @ `8cdb93c`), **#114** (smart onboarding expand Leaderboard/Mail visits → 6-step — Merged @ `885e56c`), **#115** (smart admin economy report top 10 whales + circulation — Merged @ `6f18ce6`), **#116** (smart admin users filter expand currency range + realmKey — Merged @ `7b6f927`), **#117** (smart admin recent activity widget Stats tab — Merged @ `0fc1431`), **#118** (smart admin tab badge — pending topup count on Topups tab nav + Devin Review fix re-fetch sau approve/reject — Merged @ `27552a8` session 9h task H).
+> **Người viết**: AI engineer session 9i (audit refresh 30/4 ~06:35 UTC sau khi PR #119/#120/#121/#122 đã merge cascade vào main — header cũ snapshot `27552a8` (PR #118) không còn đúng; session 9i task A/B/C/D đã đóng → audit này bump snapshot + chuyển PR #119..#122 sang Merged + ghi PR #123 (task E user export CSV) + PR #124 (task F HomeView smoke tests) là Pending merge + cập nhật baseline web vitest 207 → 236 + cập nhật roadmap với task G AppShell skeleton tests + task H giftcode revoke UI flow + task I beta runtime smoke matrix).
 > **Đối tượng đọc**: AI kế nhiệm sẽ tiếp tục đưa dự án tới beta / production.
 >
 > Báo cáo trung thực. Mọi tuyên bố "đã xong" đều có PR + file + test chứng minh. Khi chưa verify runtime, ghi rõ **"Needs runtime smoke"**.
 >
-> **Baseline session 9i (đã verify local 30/4 ~05:55 UTC trên main @ `0fc1431`)**: `pnpm typecheck` ✅ (3 project, sau khi `prisma generate` + `shared build`) · `pnpm lint` ✅ (max-warnings 0) · `pnpm --filter @xuantoi/shared test` ✅ **55/55** (3 file: catalog 17 + proverbs 11 + realms 27) · `pnpm --filter @xuantoi/web test` ✅ **207/207** (27 file: AdminAuditLedger (FE) 3 + AdminGiftcodeApi 11 + AdminInventoryRevoke 7 + AdminEconomyReport 3 + AdminListUsersFilter 5 + ConfirmModal 13 + DailyLoginCard 4 + NextActionPanel 6 + OnboardingChecklist 11 + Skeleton 5 + i18nParity 6 + adminAlerts 13 + adminGuards 12 + itemName 11 + missionProgress 7 + onboardingVisits 6 + auth 7 + badges 9 + game 8 + toast 9 + ActivityView 10 + ForgotPasswordView 5 + LeaderboardView 10 + MarketView 3 + MissionView 9 + ResetPasswordView 7 + SettingsView 7). API test: chưa run trong session 9i (cần `pnpm infra:up` + `prisma migrate deploy`); CI matrix `e2e-smoke` + build job vẫn xanh trên PR #111..#117 (5/5 ✅); api test set ~401/401 (395 + PR #112 +6 admin audit-ledger + PR #115 +6 economy report + PR #116 +6 list-users-filter ⇒ ~413/413 — số chính xác sẽ verify khi infra-up).
+> **Baseline session 9i (đã verify local 30/4 ~06:35 UTC trên main @ `e8c85df`)**: `pnpm typecheck` ✅ (3 project, sau khi `prisma generate` + `shared build`) · `pnpm lint` ✅ (max-warnings 0) · `pnpm --filter @xuantoi/shared test` ✅ **55/55** (3 file) · `pnpm --filter @xuantoi/web test` ✅ **236/236** (30 file — baseline 207 + PR #121 giftcodeBadge 7 + PR #122 toastDuration 9 + toast.test 4 + PR #124 HomeView 9 = +29 vs session 9i open). Số file: 27 base + giftcodeBadge.test + toastDuration.test + HomeView.test = 30. API test: chưa run trong session 9i (cần `pnpm infra:up` + `prisma migrate deploy`); CI matrix `e2e-smoke` + build job vẫn xanh trên PR #119..#122 (5/5 ✅); api test set ~413/413 + PR #123 user-csv +15 ⇒ ~428/428 khi #123 merge — số chính xác sẽ verify khi infra-up.
 >
-> **Trạng thái (30/4 session 9i, ~06:20 UTC)**: PR #33..#118 đã merge `main` (PR #111/#112/#113/#114/#115/#116/#117/#118 cascade merged session 9h, cả task A/B/C/D/E/F/G/H đóng — orphan branch `devin/1777492785-admin-audit-ledger-endpoint` (commit `7e27aa9`) đã được replay vào main qua PR #112; admin audit-ledger endpoint + UI + recent activity widget + pending topup badge giờ đã sống trên main). Toàn bộ Critical/High/Medium đã Resolved trừ M7 (CSP CDN — chỉ verify khi prod deploy), M9 (logout-all `passwordVersion` — intentional trade-off, đã document trong `docs/SECURITY.md`), M10 (shop daily limit — post-beta nice-to-have). Low: tất cả Resolved (L1..L7 đầy đủ cả BE lẫn FE). **0 PR open** (PR docs audit refresh session 9i này là PR open duy nhất). Roadmap session 9i top priority: docs audit refresh (this PR) → docs/RELEASE_NOTES.md bootstrap → smart giftcode unredeemed badge (topup đã xong qua PR #118) → smart UX polish toast duration → test coverage expand.
+> **Trạng thái (30/4 session 9i, ~06:35 UTC)**: PR #33..#122 đã merge `main`; session 9i task A (#119 docs audit refresh) + task B (#120 docs/RELEASE_NOTES.md bootstrap) + task C (#121 smart giftcode active badge) + task D (#122 smart UX toast duration policy) đều cascade merged. **Đang Pending merge**: PR #123 (task E admin user export CSV — endpoint + helper + 15 vitest + Export CSV button) và PR #124 (task F HomeView smoke tests — 9 vitest). Toàn bộ Critical/High/Medium đã Resolved trừ M7 (CSP CDN — chỉ verify khi prod deploy), M9 (logout-all `passwordVersion` — intentional trade-off), M10 (shop daily limit — post-beta nice-to-have). Low: tất cả Resolved. Roadmap session 9i tiếp theo: task G (AppShell skeleton tests — RouterLink + 4 store mock pattern) → task H (admin giftcode revoke UI consume PR #61 BE) → task I (beta runtime smoke matrix end-to-end via Playwright).
 >
 > **Lưu ý**: `pnpm audit:ledger` SCRIPT đã có trong main từ PR #76 (G21, commit `e5ece30` + Devin Review fixes `1fff79a` + `b08c0ad`); 9 vitest test chạy với real Postgres (test helpers `makeUserChar` + `wipeAll`). Endpoint admin `GET /admin/economy/audit-ledger` (commit `7e27aa9`) chưa vào main, là task replay session 9h B.
 >
@@ -93,7 +93,70 @@
 
 ---
 
-## Recent Changes (PR #33→#118 đã merged trên main; PR session 9i task A docs audit refresh in-flight)
+## Recent Changes (PR #33→#122 đã merged trên main; session 9i task E (PR #123) + task F (PR #124) Pending merge; PR session 9i task A2 docs audit refresh in-flight)
+
+### PR session 9i task A2 (in-flight, this PR) — `docs(handoff): session 9i task A2 audit refresh — bump snapshot e8c85df + mark PR #119..#122 Merged + ghi PR #123/#124 Pending merge + bump baseline web vitest 207 → 236` — **Pending merge**
+
+- **Branch**: `devin/1777531129-audit-session-9i-progress`. **Base**: `main` @ `e8c85df` (post PR #122 merge).
+- **Mục tiêu**: report cũ (snapshot `27552a8` = PR #118 merge) đã lỗi thời sau khi PR #119/#120/#121/#122 cascade merged 30/4 ~06:30 UTC. Chuyển PR #119..#122 sang Merged + ghi PR #123 (admin user export CSV) và PR #124 (HomeView smoke tests) là Pending merge + bump baseline web vitest 207 → 236 + cập nhật roadmap session 9i task G/H/I.
+- **Risk**: 🟢 thấp — docs-only, không touch code/test/economy/BE.
+
+### PR #124 — `test(web): smart HomeView smoke tests — 9 vitest covering onMounted routing + cultivate/breakthrough actions (session 9i task F)` — **Pending merge**
+
+- **Branch**: `devin/1777530911-test-coverage-skeleton`. **Base**: `main` @ `e8c85df`.
+- **Changes**:
+  1. **`apps/web/src/views/__tests__/HomeView.test.ts`** (+288 line, **9 vitest**): mock `@/api/character`, `vue-router`, `@/stores/{auth,toast,game,badges}`, stub child component (`AppShell`, `NextActionPanel`, `OnboardingChecklist`, `DailyLoginCard`). 4 test cho onMounted routing branches (chưa auth → `/auth`, no character → `/onboarding`, có character → `fetchState + bindSocket + badges.refresh`, getCharacter throw → `/onboarding`) + 5 test cho render với character (tên/realm/exp text/HP/MP, toggleCultivate gọi setCultivating + toast started, breakthrough disabled khi `realmStage 1`, enabled khi `realmStage 9 && exp >= expNext`, error code `NOT_AT_PEAK` → toast warning notAtPeak).
+- **Tests**: typecheck ✅, lint ✅, web vitest **236/236** (30 file), runner cho 9 test mới passed trong 1.3s.
+- **Risk**: 🟢 thấp — test-only, không touch source code/i18n/BE. Mock pattern theo `SettingsView.test.ts` đã ổn định.
+
+### PR #123 — `feat(admin): smart user export CSV — endpoint + helper + 15 vitest + Export CSV button (session 9i task E)` — **Pending merge**
+
+- **Branch**: `devin/1777530374-admin-user-export-csv`. **Base**: `main` @ `e8c85df`.
+- **Changes**:
+  1. **`apps/api/src/modules/admin/user-csv.ts`** (+88 line, NEW): pure helper `escapeCsvField`, `formatUserCsvRow`, `formatUsersCsv` + const `USER_CSV_HEADER` (12 cột) + interface `UserCsvRow`. RFC 4180-compliant escape (comma/quote/CRLF/leading/trailing whitespace).
+  2. **`apps/api/src/modules/admin/user-csv.test.ts`** (+136 line, NEW, **15 vitest**): escape edge case (comma/quote/CRLF/whitespace/null), format row (with character / null character / special char), format full CSV (empty/multiple rows/CRLF/header order).
+  3. **`apps/api/src/modules/admin/admin.service.ts`** (+93 line): `exportUsers(actorId, q, filters)` reuse cùng filter logic với `listUsers()`, take 5000 row, audit `user.exportCsv` với `{total, exported, truncated, filters}` (bigint stringified).
+  4. **`apps/api/src/modules/admin/admin.controller.ts`** (+72 line): `@Get('users.csv')` `@RequireAdmin()` `@Res({ passthrough: true })` set headers `Content-Type: text/csv; charset=utf-8`, `Content-Disposition: attachment; filename="xuantoi-users-{ISO}.csv"`, `X-Export-Total`, `X-Export-Rows`, `X-Export-Truncated`.
+  5. **`apps/web/src/api/admin.ts`** (+30 line): `adminExportUsersCsv(q, filters)` → `{ csv, total, rows, truncated }`.
+  6. **`apps/web/src/views/AdminView.vue`**: extract `buildUserFilters()` (DRY cho `refreshUsers` + export), thêm ref `usersExporting` + `exportUsersCsv()` (Blob + BOM + `<a>.click()` download + toast theo `truncated`), template `<MButton>` Export CSV bên cạnh Search button.
+  7. **`apps/web/src/i18n/{vi,en}.json`** (+4 key/file): `admin.users.exportCsvBtn`, `exportingLabel`, `exportedToast`, `exportTruncatedToast`.
+- **Tests**: typecheck ✅, lint ✅, `pnpm --filter @xuantoi/api exec vitest run user-csv` ✅ **15/15**; web vitest **227/227** (29 file post-#122 baseline), không regression.
+- **Runtime smoke**: pending sau merge — cần kiểm tra tải file CSV thật, mở Excel với BOM (UTF-8 tiếng Việt), header `X-Export-Truncated: true` khi >5000 row, audit log entry `user.exportCsv`.
+- **Risk**: 🟢 thấp — additive, ADMIN-only (`@RequireAdmin()` chỉ ADMIN, MOD bị 403), audit logged, cap 5000 row, không sửa BE schema/migration/economy.
+
+### PR #122 — `feat(web): smart UX toast duration policy — extract resolveToastDuration helper + scale by severity (session 9i task D)` — **Merged into main** @ `e8c85df` (30/4 ~06:32 UTC, CI 5/5 ✅) — **Resolved**
+
+- **Branch**: `devin/1777530219-toast-duration-policy`.
+- **Changes**:
+  1. **`apps/web/src/lib/toastDuration.ts`** (+38 line, NEW): pure helper `resolveToastDuration(type, override?)` + record `TOAST_DURATION_MS` (info: 3000, success: 3500, warning: 5000, error: 6000). Override precedence: caller-provided `>= 0` ưu tiên hơn policy.
+  2. **`apps/web/src/lib/__tests__/toastDuration.test.ts`** (+58 line, NEW, **9 vitest**): policy ordering (error >= warning >= success >= info), positive integers per-type, override precedence, edge case (0/negative/undefined).
+  3. **`apps/web/src/stores/toast.ts`**: thay inline `(type === 'warning' || type === 'error' ? 3600 : 2600)` bằng `resolveToastDuration(type, raw.duration)`.
+  4. **`apps/web/src/stores/__tests__/toast.test.ts`**: cập nhật baseline (info 2600 → 3000, warning 3600 → 5000) + thêm 4 test mới (error 6000ms, success 3500ms, override precedence, caller 100ms flash).
+- **Tests**: typecheck ✅, lint ✅, web vitest 220/220 (28 file).
+- **Risk**: 🟢 thấp — pure refactor + additive policy, không touch BE.
+
+### PR #121 — `feat(admin): smart tab badge — active giftcode count on Giftcode tab nav (session 9i task C)` — **Merged into main** (30/4 ~06:25 UTC, CI 5/5 ✅) — **Resolved**
+
+- **Branch**: `devin/1777529974-admin-giftcode-unused-badge`.
+- **Changes**:
+  1. **`apps/web/src/lib/giftcodeBadge.ts`** (NEW): pure helper `countActiveUnused(rows, now?)` đếm giftcode chưa expired + còn slot.
+  2. **`apps/web/src/lib/__tests__/giftcodeBadge.test.ts`** (NEW, **7 vitest**): expired/exhausted/active edge case + `now` injection.
+  3. **`apps/web/src/views/AdminView.vue`**: import + ref `activeGiftcodeCount` + helper `refreshActiveGiftcodeCount()` + badge cyan-500 trên nav button "Quà Tặng" khi count > 0.
+  4. **`apps/web/src/i18n/{vi,en}.json`** (+1 key/file): `admin.giftcodes.activeBadgeTooltip`.
+- **Tests**: web vitest 214/214 (28 file).
+- **Risk**: 🟢 thấp — read-only consume API có sẵn `GET /admin/giftcodes`.
+
+### PR #120 — `docs: bootstrap docs/RELEASE_NOTES.md (closed-beta-1 user-facing press kit) (session 9i task B)` — **Merged into main** (30/4 ~06:23 UTC, CI 4/4 ✅) — **Resolved**
+
+- **Branch**: `devin/1777529785-docs-release-notes-bootstrap`. **Type**: docs-only.
+- **Changes**: tạo `docs/RELEASE_NOTES.md` (~165 line) với highlight closed-beta-1 (12 feature gameplay/admin/onboarding + 6 safety/economy + 4 newbie UX + i18n parity), known issue table, feedback channel, roadmap preview post-beta.
+- **Risk**: 🟢 zero — docs-only, không update `AI_HANDOFF_REPORT.md` (tránh conflict với PR #119 in-flight).
+
+### PR #119 — `docs(handoff): session 9i audit refresh — bump snapshot 0fc1431 + mark PR #111..#117 Merged + sync baseline web vitest 207/207 + add session 9i roadmap` — **Merged into main** @ `8ecfa72` (30/4 ~06:21 UTC, CI 5/5 ✅) — **Resolved**
+
+- **Branch**: `devin/1777528782-audit-session-9i-refresh-pr117`. **Type**: docs-only.
+- **Mục tiêu**: gom toàn bộ session 9h cascade (PR #111..#118) sang Merged + bump baseline web vitest 207/207 + mở session 9i roadmap.
+- **Risk**: 🟢 zero — docs-only.
 
 ### PR #118 — `feat(admin): smart tab badge — pending topup count on Topups tab nav (session 9h task H)` — **Merged into main** @ `27552a8` (30/4 ~06:18 UTC, CI 5/5 ✅) session 9h task H — **Resolved**
 
@@ -1843,36 +1906,39 @@ Admin hiện tại có thể vào `/admin` → Users → tìm → **Set role = A
 
 ## 20. Recommended Next Roadmap
 
-### Immediate (session 9i — sau khi PR #111..#118 đã merge cascade vào main 30/4 ~06:18 UTC, cả task A/B/C/D/E/F/G/H session 9h đóng)
+### Immediate (session 9i — sau khi PR #119/#120/#121/#122 đã merge cascade vào main 30/4 ~06:32 UTC, cả task A/B/C/D session 9i đóng)
 
 **Top priority (session 9i sẽ tự làm theo thứ tự, **xanh rồi mới qua**)**:
 
-A. **Docs audit refresh session 9i** — **In-flight PR (này) #119** — bump snapshot `27552a8`, chuyển PR #111..#118 sang Merged, đóng session 9h roadmap, mở session 9i roadmap, cập nhật §21 PR Plan, baseline web vitest 207/207 (27 file).
+A. ~~**Docs audit refresh session 9i**~~ — **Done by PR #119** (Merged into main @ `8ecfa72`, 30/4 ~06:21 UTC, CI 5/5 ✅).
 
-B. **`docs/RELEASE_NOTES.md` bootstrap (closed beta press kit)** — Keep-a-Changelog đã có PR #104, nhưng release-notes phục vụ end-user/playtester (cô đọng, no PR number, focus user-facing changes). Format: version (closed-beta-1) + date + Highlights (Daily login, Leaderboard, Forgot/Reset password, Economy safety, Smart admin tooling, Mobile responsive) + Known limitations (no Pet/Wife/Arena/Event/PvP/Payment) + Known issues (M7/M9/M10) + How to report bugs (placeholder email/Discord).
-  - File mới: `docs/RELEASE_NOTES.md` (~120-180 line). Risk: 0.
+A2. **Docs audit refresh session 9i progress** — **In-flight PR (này)** — bump snapshot `e8c85df`, chuyển PR #119..#122 sang Merged, ghi PR #123/#124 Pending merge, bump baseline web vitest 207 → 236 (30 file), mở task G/H/I.
 
-C. **Smart admin giftcode unredeemed badge** — topup count đã xong qua PR #118; giờ làm tiếp giftcode badge:
-  - Hiện tại có `pendingTopupCount` badge amber-500 trên Topups tab (PR #118). Mở rộng cùng pattern: badge cho Giftcode tab khi `activeUnusedGiftcodeCount > 0` (count = `code.status === 'ACTIVE' && (code.maxRedeems - code.redeemedCount) > 0`).
-  - Reuse `GET /admin/giftcodes?status=ACTIVE` (filter client-side cho `remaining > 0` để tránh thay BE).
-  - Helper pure `apps/web/src/lib/giftcodeBadge.ts` (`countActiveUnused(codes)`) + 4-6 vitest.
-  - Update `refreshStats()` + `refreshAlertsOnly()` polls. Update `submitGiftcodeForm()` + `revokeGiftcode()` để re-fetch ngay.
-  - i18n vi/en +1 key `admin.giftcodes.unusedBadgeTooltip`.
-  - Risk: thấp — read-only, additive, dùng API có sẵn.
+B. ~~**`docs/RELEASE_NOTES.md` bootstrap (closed beta press kit)**~~ — **Done by PR #120** (Merged into main 30/4 ~06:23 UTC, CI 4/4 ✅).
 
-D. **Smart UX polish — global toast position + duration consistency** + i18n missing keys check:
-  - Audit `apps/web/src/stores/toast.ts` default duration (currently 3500ms cho mọi toast). Phân loại: info=3000ms, success=3500ms, warning=5000ms, error=6000ms — phù hợp UX standard.
-  - +3-5 vitest cover duration mapping.
-  - Risk: thấp — additive, default behavior unchanged nếu không pass type.
+C. ~~**Smart admin giftcode active badge**~~ — **Done by PR #121** (Merged into main 30/4 ~06:25 UTC, CI 5/5 ✅) — `apps/web/src/lib/giftcodeBadge.ts` `countActiveUnused()` helper + 7 vitest + AdminView badge cyan-500 trên nav.
 
-E. **Test coverage expansion — GameHomeView + AppShell skeleton tests**:
-  - GameHomeView (270+ line) chưa có vitest riêng. Cover: cultivation tick, breakthrough banner, mission summary, daily login card mount.
-  - AppShell drawer toggle on mobile (PR #97 BE done, FE chưa test).
+D. ~~**Smart UX polish — toast duration policy by severity**~~ — **Done by PR #122** (Merged into main @ `e8c85df`, 30/4 ~06:32 UTC, CI 5/5 ✅) — `apps/web/src/lib/toastDuration.ts` `resolveToastDuration()` + `TOAST_DURATION_MS` policy (info 3000 / success 3500 / warning 5000 / error 6000) + 9 vitest.
+
+E. **Smart admin — admin user export CSV** — **Pending merge PR #123** (CI in-flight) — `apps/api/src/modules/admin/user-csv.ts` pure helper RFC 4180 + `exportUsers()` service + `GET /admin/users.csv` `@RequireAdmin()` endpoint + audit `user.exportCsv` + `adminExportUsersCsv()` FE wrapper + AdminView Export CSV button + 15 vitest.
+
+F. **Test coverage — HomeView smoke tests** — **Pending merge PR #124** (CI in-flight) — `apps/web/src/views/__tests__/HomeView.test.ts` 9 vitest cover onMounted routing branches (chưa auth/no character/có character/throw) + render + cultivate/breakthrough actions.
+
+G. **Test coverage — AppShell skeleton tests** (next):
+  - `apps/web/src/components/shell/AppShell.vue` (285 line) chưa có vitest riêng. Cover: mobile nav toggle (`shell-mobile-toggle` button + `shell-mobile-backdrop` click closes), badge rendering theo `useBadgesStore` (breakthroughReady purple dot, bossActive rose dot, missionClaimable amber count badge), `cultivating` color flip (emerald khi đang tu, ink khi nghỉ), staff-only sect/admin link visibility.
+  - Mock `vue-router` `RouterLink` (stub `<a>`) + `@/stores/{auth,game,badges}` + `@/i18n`. Pattern theo `HomeView.test.ts` (PR #124).
   - +6-10 vitest.
+  - Risk: 🟢 thấp, test-only.
 
-F. **Smart admin — admin user export CSV** (closed beta admin tooling): button "Xuất CSV" trên AdminView Users tab → encode 50 user/page filtered → `download` blob. FE-only, no BE cost.
-  - +3 vitest helper `usersToCsv(users)`.
-  - Risk: thấp.
+H. **Smart admin — giftcode revoke UI flow** (consume existing PR #61 BE):
+  - PR #61 đã merged BE `POST /admin/giftcodes/:id/revoke` từ session 9b. Hiện AdminView có button "Thu hồi" cho giftcode nhưng chưa có ConfirmModal hay toast feedback chi tiết. Bổ sung: ConfirmModal + audit log preview + toast success/error theo error code (`ALREADY_REVOKED`, `NOT_FOUND`, `UNKNOWN`).
+  - +3-5 vitest cho `revokeGiftcode()` flow.
+  - Risk: 🟢 thấp — consume existing BE, additive UI.
+
+I. **Beta runtime smoke matrix end-to-end** (Playwright `E2E_FULL=1`):
+  - Mở rộng `apps/web/e2e/golden.spec.ts` cover: register → onboarding → cultivate 60s tick → claim daily login → claim 1 mission → buy 1 shop item → check inventory → đọc 1 mail → mở leaderboard → admin login mock (skip nếu chưa có admin auth) → admin user export CSV download (smoke PR #123).
+  - Document trong `docs/QA_CHECKLIST.md` cách chạy local matrix.
+  - Risk: 🟡 vừa — phụ thuộc infra docker compose; có thể flaky.
 
 **Backlog (post-9i, an toàn nếu cần lấy thêm)**:
 - `M9` document SECURITY.md trường hợp logout-all không bump `passwordVersion` (đã verify SECURITY.md hiện có mục đó nếu nổi bật; nếu không → bổ sung).
