@@ -49,6 +49,7 @@ import {
   mapGiftcodeRevokeErrorKey,
   type GiftcodeRevokeImpact,
 } from '@/lib/giftcodeRevoke';
+import { extractApiErrorCode } from '@/lib/apiError';
 
 const auth = useAuthStore();
 const game = useGameStore();
@@ -708,7 +709,7 @@ async function spawnBoss(): Promise<void> {
 }
 
 function handleErr(e: unknown): void {
-  const code = (e as { code?: string }).code ?? 'ERR';
+  const code = extractApiErrorCode(e) ?? 'ERR';
   const text = t(`admin.errors.${code}`, '__missing__');
   toast.push({
     type: 'error',

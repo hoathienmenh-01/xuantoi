@@ -7,6 +7,7 @@ import { useAuthStore } from '@/stores/auth';
 import { useToastStore } from '@/stores/toast';
 import MButton from '@/components/ui/MButton.vue';
 import * as authApi from '@/api/auth';
+import { extractApiErrorCodeOrDefault } from '@/lib/apiError';
 
 type Tab = 'login' | 'register' | 'change';
 const tab = ref<Tab>('login');
@@ -53,7 +54,7 @@ async function onLogin(): Promise<void> {
     toast.push({ type: 'success', text: t('auth.login.success') });
     router.push('/home');
   } catch (e) {
-    showServerError((e as { code?: string })?.code ?? 'INVALID_CREDENTIALS');
+    showServerError(extractApiErrorCodeOrDefault(e, 'INVALID_CREDENTIALS'));
   }
 }
 
@@ -64,7 +65,7 @@ async function onRegister(): Promise<void> {
     // Sau khi đăng ký, đẩy thẳng vào onboarding A Linh.
     router.push('/onboarding');
   } catch (e) {
-    showServerError((e as { code?: string })?.code ?? 'EMAIL_TAKEN');
+    showServerError(extractApiErrorCodeOrDefault(e, 'EMAIL_TAKEN'));
   }
 }
 
@@ -75,7 +76,7 @@ async function onChange(): Promise<void> {
     cOld.value = '';
     cNew.value = '';
   } catch (e) {
-    showServerError((e as { code?: string })?.code ?? 'OLD_PASSWORD_WRONG');
+    showServerError(extractApiErrorCodeOrDefault(e, 'OLD_PASSWORD_WRONG'));
   }
 }
 </script>
