@@ -1,14 +1,16 @@
 # AI Handoff Report — Xuân Tôi
 
-> **Snapshot**: `main` @ `0a6c664` (Merge PR #108 `docs(handoff): session 9g task D — runtime smoke 9d→9g integration + report bump 82f2020`, 29 Apr 2026 ~19:45 UTC). **Merged into main since session 9d** (toàn bộ chuỗi 9d→9g task A/B/C đã vào main): PR #84/#86/#87/#88/#89/#90/#91 (session 9d), **#92** (docs BETA_CHECKLIST refresh — Merged @ `a5821ee`), **#93** (docs handoff session 9e audit refresh — Merged @ `d37b6d4`), **#94** (BE leaderboard topup + sect — Merged @ `fed47a6`), **#95** (ops backup/restore Postgres script + docs — Merged @ session 9e), **#96** (scripts backup/restore reliability — SIGPIPE-safe + pg_terminate_backend — Merged @ `253c4b1`), **#97** (FE mobile responsive AppShell drawer + AdminView tables — Merged @ `ee933ad`), **#98** (docs handoff session 9f audit refresh — Merged @ `4072a3d`), **#99** (FE LeaderboardView tabs Power/Topup/Sect — Merged @ `5a93d22`), **#100** (admin self-demote/self-target prevention — Merged @ `47d34b5`), **#101** (auth forgot/reset-password BE + EmailService — Merged @ `6f3faf4`), **#102** (auth forgot/reset-password FE views stacked — Merged @ `5ca225e` rồi vào main qua PR #101 merge), **#103** (auth forgotPassword timing-fix Devin Review — Merged @ `3c1aa39`), **#104** (docs/CHANGELOG.md bootstrap — Merged @ `c026f37`), **#105** (docs handoff session 9g audit refresh — Merged @ `a907eb1`), **#106** (FE admin inventory revoke UI — Merged @ `7d1965e`), **#107** (FE i18n parity test + breakthroughReady badge — Merged @ `82f2020`).
-> **Người viết**: AI engineer session 9g (audit refresh 29/4 ~18:50 UTC sau khi PR #104 đã merge vào main — header cũ snapshot `ee933ad` (PR #97) không còn đúng; PR #104 vẫn ghi "Pending merge" trong report cũ nhưng đã merged @ `c026f37`; web vitest count 133/133 (17 file) trong report cũ là sai vì PR #99 (+10), #100 (+12), #102 (+12) đã merge sau đó → audit này bump snapshot + chuyển PR #104 sang Merged + cập nhật baseline web vitest 161/161 (20 file) + close §20 task F + thêm session 9g roadmap).
+> **Snapshot**: `main` @ `4c214eb` (Merge PR #110 `fix(env): quote SMTP_FROM trong .env.example để bash source .env không fail (session 9g task F1)`, 29 Apr 2026 ~19:55 UTC). **Merged into main since session 9d** (toàn bộ chuỗi 9d→9g task A/B/C/D/E.a/F1 đã vào main): PR #84/#86/#87/#88/#89/#90/#91 (session 9d), **#92** (docs BETA_CHECKLIST refresh — Merged @ `a5821ee`), **#93** (docs handoff session 9e audit refresh — Merged @ `d37b6d4`), **#94** (BE leaderboard topup + sect — Merged @ `fed47a6`), **#95** (ops backup/restore Postgres script + docs — Merged @ session 9e), **#96** (scripts backup/restore reliability — SIGPIPE-safe + pg_terminate_backend — Merged @ `253c4b1`), **#97** (FE mobile responsive AppShell drawer + AdminView tables — Merged @ `ee933ad`), **#98** (docs handoff session 9f audit refresh — Merged @ `4072a3d`), **#99** (FE LeaderboardView tabs Power/Topup/Sect — Merged @ `5a93d22`), **#100** (admin self-demote/self-target prevention — Merged @ `47d34b5`), **#101** (auth forgot/reset-password BE + EmailService — Merged @ `6f3faf4`), **#102** (auth forgot/reset-password FE views stacked — Merged @ `5ca225e` rồi vào main qua PR #101 merge), **#103** (auth forgotPassword timing-fix Devin Review — Merged @ `3c1aa39`), **#104** (docs/CHANGELOG.md bootstrap — Merged @ `c026f37`), **#105** (docs handoff session 9g audit refresh — Merged @ `a907eb1`), **#106** (FE admin inventory revoke UI — Merged @ `7d1965e`), **#107** (FE i18n parity test + breakthroughReady badge — Merged @ `82f2020`), **#108** (docs handoff session 9g task D runtime smoke 9d→9g — Merged @ `0a6c664`), **#109** (FE smart admin economy alerts badge + 60s polling — Merged @ `58fa69d`), **#110** (env fix `SMTP_FROM` quote — Merged @ `4c214eb`).
+> **Người viết**: AI engineer session 9h (audit refresh 30/4 ~04:25 UTC sau khi PR #109 + #110 đã merge cascade vào main — header cũ snapshot `0a6c664` (PR #108) không còn đúng; PR #109/#110 ghi `In-flight (Pending merge)`/`IN PROGRESS` trong report cũ nhưng đã merged @ `58fa69d` / `4c214eb` → audit này bump snapshot + chuyển PR #109/#110 sang Merged + close §20 task E.a + F1 + thêm session 9h roadmap mới với top priority E.b Playwright golden expand, E.c `pnpm audit:ledger` enforcement).
 > **Đối tượng đọc**: AI kế nhiệm sẽ tiếp tục đưa dự án tới beta / production.
 >
 > Báo cáo trung thực. Mọi tuyên bố "đã xong" đều có PR + file + test chứng minh. Khi chưa verify runtime, ghi rõ **"Needs runtime smoke"**.
 >
-> **Baseline session 9g (đã verify local 29/4 ~18:50 UTC trên main @ `c026f37`)**: `pnpm typecheck` ✅ (3 project, sau khi `prisma generate` + `shared build`) · `pnpm lint` ✅ (max-warnings 0) · `pnpm --filter @xuantoi/shared test` ✅ **55/55** (3 file: catalog 17 + proverbs 11 + realms 27) · `pnpm --filter @xuantoi/web test` ✅ **161/161** (20 file: AdminGiftcodeApi 11 + ConfirmModal 13 + DailyLoginCard 4 + NextActionPanel 6 + OnboardingChecklist 8 + Skeleton 5 + adminGuards 12 + itemName 11 + missionProgress 7 + auth 7 + badges 9 + game 8 + toast 9 + ActivityView 10 + ForgotPasswordView 5 + LeaderboardView 10 + MarketView 3 + MissionView 9 + ResetPasswordView 7 + SettingsView 7). API test: chưa run trong session 9g (cần `pnpm infra:up` + `prisma migrate deploy`); CI matrix `e2e-smoke` + build job vẫn xanh trên PR #104 (5/5 ✅); api test set ~395/395 sau khi PR #100 (+2 setRole/setBanned lock-in) + PR #101 (+11 forgot/reset) + PR #103 (+1 timing parity) merged (382 → ~395). · `pnpm build` ✅ (shared tsup + api nest + web vite+pwa, web precache 45 entries / 732.88 KiB).
+> **Baseline session 9h (đã verify local 30/4 ~04:25 UTC trên main @ `4c214eb`)**: `pnpm typecheck` ✅ (3 project, sau khi `prisma generate` + `shared build`) · `pnpm lint` ✅ (max-warnings 0) · `pnpm --filter @xuantoi/shared test` ✅ **55/55** (3 file: catalog 17 + proverbs 11 + realms 27) · `pnpm --filter @xuantoi/web test` ✅ **187/187** (23 file: AdminGiftcodeApi 11 + AdminInventoryRevoke 7 + ConfirmModal 13 + DailyLoginCard 4 + NextActionPanel 6 + OnboardingChecklist 8 + Skeleton 5 + i18nParity 6 + adminAlerts 13 + adminGuards 12 + itemName 11 + missionProgress 7 + auth 7 + badges 9 + game 8 + toast 9 + ActivityView 10 + ForgotPasswordView 5 + LeaderboardView 10 + MarketView 3 + MissionView 9 + ResetPasswordView 7 + SettingsView 7). API test: chưa run trong session 9h (cần `pnpm infra:up` + `prisma migrate deploy`); CI matrix `e2e-smoke` + build job vẫn xanh trên PR #109/#110 (5/5 ✅); api test set ~395/395 (382 + PR #100 +2 + PR #101 +11 + PR #103 +1).
 >
-> **Trạng thái (29/4 session 9g, ~19:50 UTC)**: PR #33..#108 đã merge `main` (PR #105/#106/#107/#108 cascade merged trong session 9g, cả task A/B/C/D đóng). Toàn bộ Critical/High/Medium đã Resolved trừ M7 (CSP CDN — chỉ verify khi prod deploy), M9 (logout-all `passwordVersion` — intentional trade-off, document trong `docs/SECURITY.md`), M10 (shop daily limit — post-beta nice-to-have). Low: tất cả Resolved (L1..L7 đầy đủ cả BE lẫn FE). **PR #109 in-flight** (smart admin economy alerts badge + 60s polling — session 9g task E.a). Roadmap session 9g task E (smart features) tiếp theo có E.b (Playwright golden path expand) + E.c (script `pnpm audit:ledger` enforcement).
+> **Trạng thái (30/4 session 9h, ~04:25 UTC)**: PR #33..#110 đã merge `main` (PR #105/#106/#107/#108/#109/#110 cascade merged session 9g, cả task A/B/C/D/E.a/F1 đóng). Toàn bộ Critical/High/Medium đã Resolved trừ M7 (CSP CDN — chỉ verify khi prod deploy), M9 (logout-all `passwordVersion` — intentional trade-off, đã document trong `docs/SECURITY.md`), M10 (shop daily limit — post-beta nice-to-have). Low: tất cả Resolved (L1..L7 đầy đủ cả BE lẫn FE). **0 PR open**. **Orphan branch phát hiện trong session 9h audit**: `devin/1777492785-admin-audit-ledger-endpoint` (commit `7e27aa9` — `feat(admin): smart economy safety — GET /admin/economy/audit-ledger + UI button`) đã có code hoàn chỉnh (BE endpoint + service + 6 vitest, FE helper + AdminView panel + 3 vitest, i18n vi/en) nhưng **chưa được mở PR**, chưa vào main — cần replay session 9h. Roadmap session 9h top priority: **B = replay 7e27aa9** (admin audit-ledger endpoint + UI), **C = E.b** Playwright golden path expand (gated `E2E_FULL=1`). Sau đó: smart admin filters, smart onboarding tiếp theo, smart economy report.
+>
+> **Lưu ý**: `pnpm audit:ledger` SCRIPT đã có trong main từ PR #76 (G21, commit `e5ece30` + Devin Review fixes `1fff79a` + `b08c0ad`); 9 vitest test chạy với real Postgres (test helpers `makeUserChar` + `wipeAll`). Endpoint admin `GET /admin/economy/audit-ledger` (commit `7e27aa9`) chưa vào main, là task replay session 9h B.
 >
 > **Session 9d done (29/4 ~13:00 → 14:55 UTC)**: PR #84 (G23 giftcode duplicate `CODE_EXISTS` error) **Merged into main** @ `05b05c0` — `apps/api/src/modules/giftcode/giftcode.service.ts` + admin controller throw `CODE_EXISTS` khi tạo trùng code, FE map qua i18n. PR #86 (docs handoff session 9d audit refresh) **Merged into main** @ `011e930` — bump snapshot `05b05c0` + L6/L6b/G23 Resolved. PR #87 (L3 proverbs corpus expand 7 → 64 + invariants test) **Merged into main** @ `89e3fb6` — `packages/shared/src/proverbs.ts` 64 câu chia 4 chủ đề + 8 vitest. PR #88 (M6 BE `GET /logs/me`) **Merged into main** @ `c6da89a` — `apps/api/src/modules/logs/{logs.service,logs.controller,logs.module}.ts` + 20 vitest API integration (cursor encode/decode 6 + listForUser currency 11 + listForUser item 3). PR #89 (docs API.md refresh) **Merged into main** @ `537a4d6` — sync endpoints + global prefix `/api` note + WS `mission:progress` + auth route `/_auth/*` fix. PR #90 (docs QA_CHECKLIST + ADMIN_GUIDE refresh) **Merged into main** @ `1cbf349` — add Daily Login (M9), Leaderboard, audit log self-view (M6), WS mission progress, logout-all confirm modal, fix `/api/healthz` path. PR #91 (FE M6 `/activity` tab consumer) **Merged into main** @ `3283e42` — `apps/web/src/views/ActivityView.vue` + `apps/web/src/api/logs.ts` + sidebar link + i18n vi/en + 10 vitest cover skeleton/empty/delta sign/tab switch/load more/error map.
 >
@@ -36,9 +38,9 @@
 ## 2. Current Branch / CI / PR Status
 
 - **Default branch**: `main`.
-- **Commit audit**: `c026f37 Merge pull request #104 from hoathienmenh-01/devin/1777487587-docs-changelog-bootstrap` (HEAD `main`, 29/4 ~18:40 UTC).
-- **CI gần nhất trên main**: xanh — PR #104 5/5; trước đó PR #98/#99/#100/#101/#102/#103 cũng 4..5/5 xanh khi merge (cascade session 9f).
-- **PR open đáng kể**: **0 PR open** — toàn bộ chuỗi session 9d→9f (#84, #86→#104, trừ #85 đã đóng) đã merged hết vào main tính đến 29/4 ~18:40 UTC. PR docs `audit-session-9g-refresh` này là PR open duy nhất sẽ mở trong session 9g.
+- **Commit audit**: `4c214eb Merge pull request #110 from hoathienmenh-01/devin/1777492223-env-example-smtp-from-quote` (HEAD `main`, 29/4 ~19:55 UTC).
+- **CI gần nhất trên main**: xanh — PR #110 5/5; trước đó PR #105/#106/#107/#108/#109 cũng 4..5/5 xanh khi merge (cascade session 9g).
+- **PR open đáng kể**: **0 PR open** — toàn bộ chuỗi session 9d→9g (#84..#110, trừ #85 đã đóng) đã merged hết vào main tính đến 29/4 ~19:55 UTC. PR docs audit session 9h refresh này là PR open duy nhất sẽ mở trong session 9h.
 - **Replay gap PR #47**: **Đã đóng** — PR #53 (cherry-pick `32a33a6` từ `devin/1777398483-h5-vitest-playwright`) merge vào main commit `2ae4cc0` (28/4 20:15 UTC). File `apps/web/vitest.config.ts` + `playwright.config.ts` + `e2e/golden.spec.ts` + `apps/web/src/stores/__tests__/{toast,game}.test.ts` đã có trên main.
 - **PR merged gần đây ảnh hưởng lớn**:
   | PR | Chủ đề | Impact |
@@ -91,11 +93,11 @@
 
 ---
 
-## Recent Changes (PR #33→#109 đã merged trên main; PR #110 fix env SMTP_FROM in-flight session 9g task F1)
+## Recent Changes (PR #33→#110 đã merged trên main; 0 PR open tại đầu session 9h)
 
-### PR #110 — `fix(env): quote SMTP_FROM trong .env.example để bash source .env không fail (session 9g task F1)` — **In-flight (Pending merge)** session 9g task F1
+### PR #110 — `fix(env): quote SMTP_FROM trong .env.example để bash source .env không fail (session 9g task F1)` — **Merged into main** @ `4c214eb` (29/4 ~19:55 UTC, CI 5/5 ✅) session 9g task F1
 
-- **Branch**: `devin/1777492223-env-example-smtp-from-quote`. **Base**: `main` @ post-PR #109 (`58fa69d`). **Status**: docs/config-only.
+- **Branch**: `devin/1777492223-env-example-smtp-from-quote`. **Base**: `main` @ post-PR #109 (`58fa69d`). **Status**: docs/config-only — Merged.
 - **Mục tiêu**: smoke runtime 9g phát hiện F1 (Low): `apps/api/.env.example` line 31 `SMTP_FROM=Xuân Tôi <noreply@xuantoi.local>` chứa ký tự `<`/`>` + space không quote → admin/dev nào dùng `set -a && source .env && set +a` để load shell sẽ fail (`bash: <noreply@xuantoi.local>: No such file or directory`). Tuy NestJS dùng dotenv parse fine (không bị ảnh hưởng), `.env.example` là tài liệu tham khảo cho dev → quote lại để tương thích cả `bash source` lẫn dotenv.
 - **Changes**:
   1. **`apps/api/.env.example`** line 31: `SMTP_FROM=Xuân Tôi <noreply@xuantoi.local>` → `SMTP_FROM="Xuân Tôi <noreply@xuantoi.local>"` + comment giải thích vì sao quote.
@@ -106,7 +108,7 @@
 - **Rollback**: revert single PR.
 - **`AI_HANDOFF_REPORT.md updated`**: Recent Changes (this entry), PR #108 line 101 mark F1 Resolved.
 
-### PR #109 — `feat(web): smart admin economy alerts badge + 60s polling — wire AdminView nav (session 9g task E.a)` — **Merged into main** @ `58fa69d` (29/4 ~20:00 UTC, CI 5/5 ✅) session 9g task E.a
+### PR #109 — `feat(web): smart admin economy alerts badge + 60s polling — wire AdminView nav (session 9g task E.a)` — **Merged into main** @ `58fa69d` (29/4 ~19:50 UTC, CI 5/5 ✅) session 9g task E.a — **Resolved**
 
 - **Branch**: `devin/1777491606-admin-economy-alerts-widget`. **Base**: `main` @ `0a6c664` (post PR #108 merge).
 - **Mục tiêu**: BE `GET /admin/economy/alerts` đã tồn tại từ PR #54/#76 (báo cáo characters có currency âm, inventory qty < 1, topup PENDING quá staleHours). FE AdminView Stats tab đã render danh sách alerts khi user click vào tab Stats. Trước PR này, admin đang ở tab Users/Topups/Audit không biết hiện có alerts → phải nhớ click sang Stats → click "Refresh" định kỳ. PR này đóng gap UX: (1) red dot count badge trên nav button **Stats** khi `alertsCount > 0`, (2) auto-poll `/admin/economy/alerts` mỗi 60s (silent retry on error) để badge luôn fresh dù admin đang ở tab khác.
@@ -1490,13 +1492,13 @@ apps/api/src/modules/character/currency.service.ts:88   data: { tienNgoc: { incr
 | **Economy integration** | Rải rác trong từng service + `item-ledger.test.ts` consistency check + `pnpm audit:ledger` script | Cross-module: market post → buy, ngân sách sect | Low |
 | **Logs (G3 cũ/M6)** | **20 test** (`logs.service.test.ts`) (PR #88) — cursor encode/decode 6 + listForUser currency 11 + listForUser item 3 | — | — |
 
-**Tổng (`vitest run` thực tế, sau PR #107 in-flight session 9g task C)**: **~395 test API + 55 test shared + 174 test web = ~624 test pass**. CI xanh trên main `7d1965e` (PR #105 4/4 ✅ + PR #106 5/5 ✅); PR #107 ETA 5/5 ✅. Real Postgres + real Redis service trên CI; local dùng `infra/docker-compose.dev.yml` (`docker compose up -d pg redis`). Web count tăng 168 → 174 do PR #107 (+6 vitest i18n parity, file mới `i18n/__tests__/parity.test.ts`).
+**Tổng (`vitest run` thực tế, baseline session 9h trên main @ `4c214eb`)**: **~395 test API + 55 test shared + 187 test web = ~637 test pass**. CI xanh trên main `4c214eb` (PR #109 5/5 ✅ + PR #110 5/5 ✅). Real Postgres + real Redis service trên CI; local dùng `infra/docker-compose.dev.yml` (`docker compose up -d pg redis`). Web count tăng 174 → 187 do PR #109 (+13 vitest `adminAlerts`, file mới `lib/__tests__/adminAlerts.test.ts`).
 
 **Chạy**:
 ```bash
 pnpm --filter @xuantoi/api test        # ~395 test (api modules + bootstrap + leaderboard + economy-alerts + next-action + logs + auth forgot/reset + admin self-demote + admin revoke inventory)
 pnpm --filter @xuantoi/shared test     # 55 test (3 file: catalog 17 + proverbs 11 + realms 27)
-pnpm --filter @xuantoi/web test        # 174 test (22 file, vitest 2.1.9 happy-dom)
+pnpm --filter @xuantoi/web test        # 187 test (23 file, vitest 2.1.9 happy-dom)
 pnpm test                              # toàn bộ — gộp shared + api + web
 ```
 
@@ -1646,6 +1648,7 @@ _(Không có lỗi làm app không chạy / mất tiền / auth hỏng tại com
 | `POST /api/admin/inventory/revoke` (`ADMIN_REVOKE` ledger) | **Có** (PR #66 — endpoint + 9 vitest) | — |
 | `GET /api/mail/unread-count` (M7 hydrate badge) | **Có** (PR #71) | — |
 | `GET /api/admin/economy/alerts` (smart admin) | **Có** (PR #54) | — |
+| `GET /api/admin/economy/audit-ledger` (smart admin, on-demand audit) | **Có code orphan branch `devin/1777492785-admin-audit-ledger-endpoint` commit `7e27aa9`, chưa vào main** — replay session 9h task B | Trước beta nếu economy safety ưu tiên |
 | `POST /api/_auth/register` rate-limit per-IP | **Có** (PR #60 — 5/15min) | — |
 | `GET /api/me/next-actions` (smart onboarding) | **Có** (PR #49) | — |
 
@@ -1752,21 +1755,46 @@ Admin hiện tại có thể vào `/admin` → Users → tìm → **Set role = A
 
 ## 20. Recommended Next Roadmap
 
-### Immediate (session 9g — sau khi chuỗi #98/#99/#100/#101/#102/#103/#104 đã merge cascade vào main 29/4 ~18:40 UTC)
+### Immediate (session 9h — sau khi PR #109 + #110 đã merge cascade vào main 29/4 ~19:55 UTC, cả task E.a + F1 đóng)
 
-**Top priority (session 9g sẽ tự làm theo thứ tự)**:
+**Top priority (session 9h sẽ tự làm theo thứ tự, **xanh rồi mới qua**)**:
 
-A. ~~**Docs audit refresh session 9g**~~ — **Done by PR #105** (Merged into main @ `a907eb1`, 29/4 ~19:00 UTC, CI 4/4 ✅) — bump snapshot `c026f37`, mark PR #104 Merged, sync baseline web vitest 161/161 (20 file), close §20 task F session 9f, thêm Roadmap session 9g task A→D.
-B. ~~**FE Admin Inventory Revoke UI**~~ — **Done by PR #106** (Merged into main @ `7d1965e`, 29/4 ~19:09 UTC, CI 5/5 ✅) — helper `adminRevokeInventory(...)` + nút "Thu hồi item" + modal trong AdminView Users tab + 7 vitest + i18n vi/en. L7 FE đóng.
+A. **Docs audit refresh session 9h** — **In-flight PR (này)** — bump snapshot `4c214eb`, chuyển PR #109 + #110 sang Merged, mở §20 roadmap session 9h, cập nhật §21 PR Plan, baseline web vitest 187/187 (23 file).
+
+B. **Replay orphan commit `7e27aa9` — admin audit-ledger endpoint + UI** — ưu tiên cao nhất vì smart admin/economy safety đã có code sẵn nhưng bị bỏ quên trên orphan branch:
+  - Branch gốc: `devin/1777492785-admin-audit-ledger-endpoint`, commit `7e27aa9` — `feat(admin): smart economy safety — GET /admin/economy/audit-ledger + UI button`.
+  - **Nội dung commit (11 file, +594 / -120)**: refactor pure logic ra `apps/api/src/modules/admin/ledger-audit.ts` (re-export từ script giữ test cũ vẫn pass) + `auditResultToJson()` serialize bigint → string cho HTTP, `AdminService.runLedgerAudit()` reuse PrismaService, controller `@Get('economy/audit-ledger')` ADMIN/MOD-readable; FE `adminAuditLedger()` helper + `AdminLedgerAudit/Char/Inv` types, panel violet-500 trong AdminView Stats tab + button "Chạy audit", 9 i18n keys vi+en, +6 vitest BE + 3 vitest FE (web 187 → 190).
+  - **Plan**: cherry-pick `7e27aa9` vào branch mới từ main → resolve conflict `docs/AI_HANDOFF_REPORT.md` (commit gốc reference snapshot cũ) → chạy typecheck/lint/test/build local → mở PR.
+  - **Risk**: thấp–trung — refactor behavior-preserving (script test 9/9 vẫn pass), endpoint read-only, không touch schema/migration.
+  - **Docs**: cập nhật `docs/ADMIN_GUIDE.md` thêm section "Chạy audit ledger từ AdminView Stats tab".
+
+C. **E.b — Playwright golden path expand (gated `E2E_FULL=1`)** — sau B:
+  - Mở rộng `apps/web/e2e/golden.spec.ts` cover: register → daily login claim → mission claim → leaderboard tab switch (Power/Topup/Sect) → admin grant currency/revoke item (nếu admin set role available).
+  - Giữ gate `E2E_FULL=1` (không chen vào CI matrix).
+  - Ghi `docs/QA_CHECKLIST.md` how-to chạy full e2e local.
+
+D. **Smart admin filters / search** (smart admin tier) — sau C:
+  - AdminView Users tab thêm filter `role` (PLAYER/MOD/ADMIN), `banned` (Y/N), search by `email/handle` (FE-only client-side filter trên dữ liệu 50 user/page hiện có, chi phí BE = 0).
+  - +5–7 vitest pure helper `filterUsers(users, query)`.
+
+E. **Smart economy report — minimal page** — sau D:
+  - Trang `/admin` → tab "Economy" mới (nest cạnh Stats), hiển thị top 10 character theo `linhThach` và `tienNgoc`, total currency in circulation, ledger discrepancy lấy từ script B (nhỏ, optional).
+
+**Backlog (post-9h, an toàn nếu cần lấy thêm)**:
+- `M9` document SECURITY.md trường hợp logout-all không bump `passwordVersion` (đã verify SECURITY.md hiện có mục đó nếu nổi bật; nếu không → bổ sung).
+- `Smart onboarding`: mở rộng `OnboardingChecklist` thêm step "Đã chuẩn bị tham gia leaderboard" / "Đã kiểm tra thư".
+- Docs: `docs/RELEASE_NOTES.md` bootstrap (Keep-a-Changelog đã có PR #104; release-notes mặc dù có chồng chéo nhưng ít thường được dùng cho beta press kit).
+
+---
+
+**Session 9g items (đã merged trên main, giữ lại để reference; không cần action)**:
+
+A. ~~**Docs audit refresh session 9g**~~ — **Done by PR #105** (Merged into main @ `a907eb1`, 29/4 ~19:00 UTC, CI 4/4 ✅).
+B. ~~**FE Admin Inventory Revoke UI**~~ — **Done by PR #106** (Merged into main @ `7d1965e`, 29/4 ~19:09 UTC, CI 5/5 ✅) — helper `adminRevokeInventory(...)` + nút "Thu hồi item" + modal AdminView Users tab + 7 vitest + i18n vi/en. L7 FE đóng.
 C. ~~**Smart UX polish + i18n parity guard**~~ — **Done by PR #107** (Merged into main @ `82f2020`, 29/4 ~19:30 UTC, CI 5/5 ✅) — wire `badges.breakthroughReady` thành sidebar dot indicator violet-400 + i18n parity test (6 vitest enforce vi/en symmetric + ICU placeholder parity). Web vitest 168 → 174 (file 21 → 22).
 D. ~~**Runtime smoke tích hợp full session 9d→9g**~~ — **Done by PR #108** (Merged into main @ `0a6c664`, 29/4 ~19:45 UTC, CI 5/5 ✅) — 41 endpoint flow verified, 0 Critical/High bugs, evidence in `docs/RUNTIME_SMOKE_9G.md`. F1 (Low) + F2 (info) findings recorded.
-
-E. **Smart features tiếp theo** — broken down:
-  - **E.a (IN PROGRESS — PR #109 in-flight)** **Smart admin economy alerts badge + 60s polling** — wire `/admin/economy/alerts` (BE PR #54/#76 đã có) thành red dot count badge trên nav button Stats trong AdminView, +13 vitest pure helper `countEconomyAlerts` + `alertSeverity`, auto-poll 60s giữ badge fresh dù ở tab khác.
-  - **E.b** **Playwright golden path expand** — mở rộng `apps/web/e2e/golden.spec.ts` cover daily login claim + leaderboard tabs + admin grant/revoke. Chỉ chạy khi `E2E_FULL=1`.
-  - **E.c** **Script `pnpm audit:ledger` enforcement** — verify `CurrencyLedger.delta` SUM bằng `Character.linhThach + tienNgoc` (catch double-spend regress); + `ItemLedger.qtyDelta` SUM bằng `InventoryItem.qty`.
-
-F. **F1 fix**: `apps/api/.env.example` line 31 SMTP_FROM thiếu dấu nháy — PR riêng nhỏ, 1 line.
+E.a. ~~**Smart admin economy alerts badge + 60s polling**~~ — **Done by PR #109** (Merged into main @ `58fa69d`, 29/4 ~19:50 UTC, CI 5/5 ✅) — helper `countEconomyAlerts` + `alertSeverity`, badge red dot trên nav Stats, auto-poll 60s, +13 vitest. Web vitest 174 → 187 (file 22 → 23).
+F1. ~~**`apps/api/.env.example` SMTP_FROM quote fix**~~ — **Done by PR #110** (Merged into main @ `4c214eb`, 29/4 ~19:55 UTC, CI 5/5 ✅).
 
 ---
 
@@ -1851,7 +1879,33 @@ F. ~~**`docs/CHANGELOG.md` bootstrap**~~ — **Done by PR #104** (Merged into ma
 | PR 8 — Item Ledger | — | **Done** — PR #40 merged (model + migration `20260428102849_itemledger` + hook 6 grant flows + 7 test). |
 | (PR ngoài kế hoạch) PR 8b — Profile public API + ProfileView | — | **Done** — PR #38 merged. |
 
-### Pending (session 9g — sau khi cascade #98→#104 vào main)
+### Pending (session 9h — sau khi PR #109 + #110 cascade vào main 29/4 ~19:55 UTC)
+
+#### PR session 9h-A (in-flight) — `docs(handoff): session 9h audit refresh — bump snapshot 4c214eb + mark PR #109/#110 Merged + sync baseline web vitest 187/187 + add session 9h roadmap`
+- **Branch**: `devin/1777523096-audit-session-9g-refresh-pr110`. **Base**: `main` @ `4c214eb` (post PR #110 merge). **Status**: docs-only, in-flight.
+- **File**: `docs/AI_HANDOFF_REPORT.md` (header §0/§2/Recent Changes PR #109+#110/§12 baseline/§20 roadmap session 9h/§21 PR Plan).
+- **Tests added**: 0 (docs-only).
+- **CI status (local)**: typecheck ✅ / lint ✅ / shared 55/55 ✅ / web 187/187 ✅. Build/api skipped (docs-only).
+- **Risk**: 0 (docs-only).
+- **Rollback**: revert single PR.
+
+#### PR session 9h-B (planned, after 9h-A merge) — `feat(admin): replay orphan commit 7e27aa9 — GET /admin/economy/audit-ledger endpoint + AdminView panel button + 6 BE vitest + 3 FE vitest + i18n`
+- **Branch**: TBD `devin/<ts>-replay-admin-audit-ledger-endpoint`. **Base**: `main` post-9h-A.
+- **Plan**: cherry-pick `7e27aa9` từ orphan branch `devin/1777492785-admin-audit-ledger-endpoint` (`feat(admin): smart economy safety — GET /admin/economy/audit-ledger + UI button`) vào branch mới base main. Resolve conflict `docs/AI_HANDOFF_REPORT.md` (commit gốc reference snapshot cũ trước session 9h refresh). Chạy `pnpm typecheck/lint/test/build` local; verify api test 395 → 401 + web test 187 → 190 sau replay.
+- **File (theo `git show 7e27aa9 --stat`, 11 file +594/-120)**:
+  - `apps/api/scripts/audit-ledger.ts` (refactor: re-export pure logic từ `ledger-audit.ts` mới, giữ test cũ pass).
+  - `apps/api/src/modules/admin/ledger-audit.ts` (mới, +167 line): pure `auditLedger(prisma)` + `auditResultToJson()` serialize bigint → string.
+  - `apps/api/src/modules/admin/admin.service.ts` (+16 line): `runLedgerAudit()` reuse `PrismaService`.
+  - `apps/api/src/modules/admin/admin.controller.ts` (+17 line): `@Get('economy/audit-ledger')` ADMIN/MOD-readable.
+  - `apps/api/src/modules/admin/admin-audit-ledger.test.ts` (mới, +141 line, +6 vitest BE): empty DB, ledger khớp, linhThach mismatch, tienNgoc mismatch, inventory mismatch, multi-entry sum.
+  - `apps/web/src/api/admin.ts` (+35 line): `adminAuditLedger()` helper + `AdminLedgerAudit/Char/Inv` types.
+  - `apps/web/src/views/AdminView.vue` (+83 line): panel violet-500 trong Stats tab + button "Chạy audit".
+  - `apps/web/src/i18n/{vi,en}.json` (+11 key mỗi file): `admin.ledgerAudit.*`.
+  - `apps/web/src/api/__tests__/admin.audit-ledger.test.ts` (mới, +78 line, +3 vitest FE): clean response, discrepancies bigint string, throw on `ok=false`.
+- **Risk**: thấp–trung — refactor behavior-preserving (script test 9/9 vẫn pass), endpoint read-only, không touch schema/migration.
+- **Rollback**: revert single PR.
+
+#### Past session 9g (đã done):
 
 #### ~~PR #105 (session 9g task A)~~ — `docs(handoff): session 9g audit refresh` — **Done by PR #105 (Merged into main @ `a907eb1`, 29/4 ~19:00 UTC, CI 4/4 ✅)**.
 - **File**: `docs/AI_HANDOFF_REPORT.md` (header §0/§2/Recent Changes/§12/§20/§21).
@@ -1862,11 +1916,11 @@ F. ~~**`docs/CHANGELOG.md` bootstrap**~~ — **Done by PR #104** (Merged into ma
 
 #### ~~PR #108 (session 9g task D)~~ — `docs(handoff): session 9g task D — runtime smoke 9d→9g integration + report bump 82f2020` — **Done by PR #108 (Merged into main @ `0a6c664`, 29/4 ~19:45 UTC, CI 5/5 ✅)**.
 
-#### PR #109 (session 9g task E.a, in-flight) — `feat(web): smart admin economy alerts badge + 60s polling — wire AdminView nav`
-- **Branch**: `devin/1777491606-admin-economy-alerts-widget`. **Base**: `main` @ `0a6c664` (sau PR #108 merge). **Status**: in-flight, local typecheck/lint/web test 187/187/build all xanh.
-- **File**: `apps/web/src/lib/adminAlerts.ts` (mới, helper `countEconomyAlerts` + `alertSeverity`), `apps/web/src/views/AdminView.vue` (badge + 60s polling timer + onBeforeUnmount cleanup), `apps/web/src/i18n/{vi,en}.json` (+1 key `admin.alerts.badgeTooltip`), `apps/web/src/lib/__tests__/adminAlerts.test.ts` (mới, +13 vitest).
-- **Risk**: thấp — helper pure additive + badge wiring pure additive + polling 60s nhẹ.
-- **Rollback**: revert single PR. Không touch BE/schema/migration.
+#### ~~PR #109 (session 9g task E.a)~~ — `feat(web): smart admin economy alerts badge + 60s polling — wire AdminView nav` — **Done by PR #109 (Merged into main @ `58fa69d`, 29/4 ~19:50 UTC, CI 5/5 ✅)**.
+- **File**: `apps/web/src/lib/adminAlerts.ts` (helper `countEconomyAlerts` + `alertSeverity`), `apps/web/src/views/AdminView.vue` (badge + 60s polling timer + onBeforeUnmount cleanup), `apps/web/src/i18n/{vi,en}.json` (+1 key `admin.alerts.badgeTooltip`), `apps/web/src/lib/__tests__/adminAlerts.test.ts` (+13 vitest).
+
+#### ~~PR #110 (session 9g task F1)~~ — `fix(env): quote SMTP_FROM trong .env.example để bash source .env không fail` — **Done by PR #110 (Merged into main @ `4c214eb`, 29/4 ~19:55 UTC, CI 5/5 ✅)**.
+- **File**: `apps/api/.env.example` line 31 quote `SMTP_FROM`.
 
 #### PR A — Smoke E2E + Runtime sanity (Immediate §20.1, historical session 4)
 - **Mục tiêu**: xác nhận `main @ ce6da28` chạy đúng sau khi #33→#40 merge.
