@@ -1,6 +1,8 @@
 # AI Handoff Report — Xuân Tôi
 
-> **Snapshot (session 9p task E, this PR)**: `main` @ `4c94944` (Merge PR #193 CHANGELOG catch-up 9n+/9o/9p, 30 Apr 2026 ~19:05 UTC). **Session 9p task E (this PR)**: pure-unit tests cho `rollDungeonLoot` (Math.random stub deterministic + 50×3 fuzz qty range + itemKey leak check), `DUNGEON_LOOT` integrity (weight>0, qtyMin∈[1,qtyMax], itemByKey resolve no orphan), `QUALITY_COLOR` + `QUALITY_LABEL_VI` parity với `QUALITIES` enum. +18 vitest, no DB/Redis. Shared baseline **220 → 238** (12 file).
+> **Snapshot (session 9p task F, this PR)**: `main` @ `2bfa0e8` (Merge PR #194 items-dungeon-loot tests, 30/4 ~19:13 UTC). **Session 9p task F (this PR)**: render-level tests cho `apps/web/src/components/shell/LocaleSwitcher.vue` (8 vitest) — label render theo `locale`, click toggle gọi `setLocale('en'|'vi')`, `title` attribute resolve qua `t('locale.label')`, `type="button"` defensive. Web baseline **547 → 555** (57 file).
+>
+> **Snapshot (session 9p task E, merged)**: `main` @ `2bfa0e8` (Merge PR #194, 30/4 ~19:13 UTC). **PR #194**: `packages/shared/src/items-dungeon-loot.test.ts` (+18 vitest, lock-in `rollDungeonLoot` RNG + `DUNGEON_LOOT` integrity + `QUALITY_*` enum parity). Shared baseline **220 → 238**. CI ✅.
 >
 > **Snapshot (session 9p task D, merged)**: `main` @ `4c94944` (Merge PR #193, 30/4 ~19:05 UTC). **PR #193**: `docs/CHANGELOG.md` catch-up 3 sessions. Docs-only.
 >
@@ -181,9 +183,27 @@
 
 ---
 
-## Recent Changes (PR #33→#193 đã merged trên main; session 9p task E **this PR** pure-unit tests cho rollDungeonLoot + DUNGEON_LOOT + QUALITY maps)
+## Recent Changes (PR #33→#194 đã merged trên main; session 9p task F **this PR** render-level tests cho LocaleSwitcher)
 
-### PR session 9p task E (in-flight, this PR) — `test(shared): rollDungeonLoot + DUNGEON_LOOT + QUALITY maps +18 vitest` — **Pending merge**
+### PR session 9p task F (in-flight, this PR) — `test(web): LocaleSwitcher render + click toggle +8 vitest` — **Pending merge**
+
+- **Branch**: `devin/1777576680-localeswitcher-tests`. **Base**: `main` @ `2bfa0e8` (post PR #194 merge).
+- **Vì sao**: `apps/web/src/components/shell/LocaleSwitcher.vue` (22 line) là một trong vài component shell chưa có vitest. Component nhỏ nhưng đụng đến cả 3 đường: i18n locale state, `setLocale()` side-effect (localStorage + document.documentElement.lang), và a11y title via `t('locale.label')`. Click toggle silently regress nếu sau này thêm locale thứ 3 (zh) mà quên update. Render label `'VI'/'EN'` lock-in tránh người dùng thấy label sai sau refactor.
+- **Files**: `apps/web/src/components/__tests__/LocaleSwitcher.test.ts` — **new** 8 vitest (`@vue/test-utils` mount, `vi.mock('@/i18n')` cho `setLocale`).
+- **Lock-in**:
+  - Render: `locale=vi → 'VI'`, `locale=en → 'EN'`.
+  - `title` attribute: resolve qua i18n `locale.label` (vi="Ngôn ngữ", en="Language").
+  - Click vi → `setLocale('en')`, click en → `setLocale('vi')` (single-call, đúng arg).
+  - `type="button"` (không submit form vô tình khi LocaleSwitcher đặt trong `<form>`).
+  - Multi-click không double-fire (mock count exact).
+- **Tests**: 8/8 vitest mới ✅ (1.16s). Web baseline 547 → **555** (57 file).
+- **CI status (local)**: typecheck ✅ · lint ✅ · web 555/555 ✅.
+- **Risk**: 🟢 thấp — test-only, render-level smoke. No runtime change.
+- **Rollback**: revert single PR (xóa 1 file test).
+
+### PR #194 — `test(shared): rollDungeonLoot + DUNGEON_LOOT + QUALITY maps +18 vitest (session 9p task E)` — **Merged into main** @ `2bfa0e8` (30/4 ~19:13 UTC). CI ✅.
+
+### PR session 9p task E (closed, merged) — `test(shared): rollDungeonLoot + DUNGEON_LOOT + QUALITY maps +18 vitest` — **Merged into main** @ `2bfa0e8`
 
 - **Branch**: `devin/1777576174-items-dungeon-loot-tests`. **Base**: `main` @ `4c94944` (post PR #193 merge).
 - **Vì sao**: 4 export public ở `packages/shared/src/items.ts` chưa có test riêng — `rollDungeonLoot` (Math.random RNG cho weighted drop), `DUNGEON_LOOT` (drop table data), `QUALITY_COLOR` + `QUALITY_LABEL_VI` (Tailwind class + i18n label maps). `rollDungeonLoot` đặc biệt cần lock-in vì RNG-driven; nếu sau này refactor weight algo/qty range → silent regression nếu không có test. Drop table data integrity (orphan itemKey, weight=0, qtyMin>qtyMax) cần catch sớm trước khi đụng prod loot. Quality maps phải đồng bộ với enum `QUALITIES` (5 level: PHAM/LINH/HUYEN/TIEN/THAN); nếu sau này thêm Quality mới mà quên update map → UI render undefined / crash.
@@ -2593,7 +2613,8 @@ F. ~~**`docs/CHANGELOG.md` bootstrap**~~ — **Done by PR #104** (Merged into ma
 | #191 | session 9p task B — test(api): admin/ledger-audit auditResultToJson +12 pure unit | **Merged into main** @ `4b1d5b6` (30/4 ~18:35 UTC, CI ✅) |
 | #192 | session 9p task C — test(api): ops.service + mission.scheduler ghost-cleanup +12 pure unit | **Merged into main** @ `08b9f1f` (30/4 ~18:58 UTC, CI ✅) |
 | #193 | session 9p task D — docs(changelog): catch-up sessions 9n+ tail / 9o / 9p (PR #172→#192) | **Merged into main** @ `4c94944` (30/4 ~19:05 UTC, CI ✅) |
-| this PR | session 9p task E — test(shared): rollDungeonLoot + DUNGEON_LOOT + QUALITY maps +18 vitest | **Pending merge** (in-flight) |
+| #194 | session 9p task E — test(shared): rollDungeonLoot + DUNGEON_LOOT + QUALITY maps +18 vitest | **Merged into main** @ `2bfa0e8` (30/4 ~19:13 UTC, CI ✅) |
+| this PR | session 9p task F — test(web): LocaleSwitcher render + click toggle +8 vitest | **Pending merge** (in-flight) |
 
 #### PR session 9p task C (in-flight, this PR) — `test(api): ops.service + mission.scheduler ghost-cleanup +12 pure unit`
 
