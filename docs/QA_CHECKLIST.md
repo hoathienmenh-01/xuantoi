@@ -232,3 +232,91 @@ Script là file ESM `.mjs` (`scripts/smoke-beta.mjs`) dùng native `fetch` + `Ab
 - Không verify admin flow (ban/grant/revoke). Dùng Playwright + admin account seed để cover.
 - Không test concurrency / race condition. Chỉ happy-path sequential.
 - Không cleanup user đã tạo — khi smoke nhiều lần, DB accumulate `smoke-*@smoke.invalid` user. Dùng SQL `DELETE FROM "User" WHERE email LIKE 'smoke-%@smoke.invalid'` để cleanup (xem `docs/ADMIN_GUIDE.md` cẩn thận foreign-key).
+
+## 10. `pnpm smoke:economy` CLI (session 9q-5)
+
+**Mục đích**: smoke runtime ≤ 5 phút verify các invariant kinh tế trong [`docs/ECONOMY_MODEL.md`](./ECONOMY_MODEL.md) §3 còn nguyên trước khi mở rộng Phase 10 content scale (items/skills/missions/boss pack). Phòng regression khi reward/shop/mail code mới bypass `CurrencyService` hoặc grant double.
+
+Khác `smoke:beta`: focus vào **ledger consistency** + **idempotency** + **anti double-spend** thay vì coverage flow gameplay rộng. Khác `pnpm --filter @xuantoi/api audit:ledger`: smoke **perform mutations** (register → onboard → claim → buy) rồi verify ledger row được ghi đúng — audit:ledger chỉ read-only sau-fact.
+
+### Khi nào chạy
+
+- **BẮT BUỘC** trước khi mở Phase 10 content PR (PR-1..5: items/skills/monsters/missions/boss pack). Paste 20-step output `pass / fail` vào PR body.
+- **KHUYẾN NGHỊ** sau merge bất kỳ PR đụng tới `apps/api/src/modules/character/currency.service.ts`, `apps/api/src/modules/inventory/inventory.service.ts`, `apps/api/src/modules/shop/shop.service.ts`, `apps/api/src/modules/daily-login/daily-login.service.ts`, `apps/api/src/modules/mail/mail.service.ts`, `apps/api/src/modules/giftcode/giftcode.service.ts` — bất kỳ code path mutate `linhThach` / `tienNgoc` / `InventoryItem.qty`.
+- **BẮT BUỘC** ngay trước release tag closed beta v0.x (cùng `smoke:beta` + Playwright golden path).
+
+### Chạy local
+
+```bash
+# 1. Lên infra (Postgres + Redis)
+pnpm infra:up
+pnpm --filter @xuantoi/api prisma migrate deploy
+pnpm --filter @xuantoi/api bootstrap          # seed 3 sect
+
+# 2. Start API ở terminal riêng (cần env từ apps/api/.env)
+pnpm --filter @xuantoi/api dev                # listen :3000
+
+# 3. Terminal khác — chạy smoke
+pnpm smoke:economy
+```
+
+**Pass criteria**: exit code `0`, dòng cuối `done: 20 pass / 0 fail / 20 total`.
+**Fail criteria**: exit code `1`, có ít nhất 1 step `FAIL` với invariant message dạng `INVARIANT vi phạm: SUM(...) ≠ Character.linhThach`. Khi fail, **DỪNG mở Phase 10 PR** và mở 1 PR riêng fix root cause trước.
+
+### Env overrides
+
+| Env | Default | Công dụng |
+|---|---|---|
+| `SMOKE_API_BASE` | `http://localhost:3000` | API root. |
+| `SMOKE_TIMEOUT_MS` | `10000` | Timeout per-request (ms). |
+| `SMOKE_VERBOSE` | `0` | Set `1` để log request/response (debug). |
+| `SMOKE_SECT_KEY` | `thanh_van` | Sect onboard (`thanh_van` / `huyen_thuy` / `tu_la`). |
+| `SMOKE_BUY_ITEM` | `huyet_chi_dan` | Item shop để buy. Phải trong `NPC_SHOP` + currency `LINH_THACH`. Có fallback tự chọn item LINH_THACH rẻ nhất nếu key custom không có. |
+
+### 20 step
+
+1. `GET /api/healthz`.
+2. `POST /api/_auth/register` — random email `smoke-econ-*@smoke.invalid`.
+3. `POST /api/character/onboard`.
+4. `GET /api/character/me` — snapshot starting linhThach (= 0 theo schema default).
+5. `GET /api/logs/me?type=currency` — verify `SUM(delta) == startingLinhThach` (empty hoặc khớp nếu future thêm welcome bonus).
+6. `GET /api/logs/me?type=item` — verify shape array.
+7. `GET /api/daily-login/me` — verify `nextRewardLinhThach > 0`.
+8. `POST /api/daily-login/claim` — first call: `claimed=true` ⇒ `linhThachDelta > 0`, hoặc `claimed=false` (đã claim hôm nay).
+9. `GET /api/character/me` — verify `linhThach` tăng đúng `dailyClaimDelta` (hoặc unchanged nếu idempotent path).
+10. `GET /api/logs/me?type=currency` — verify `SUM(CurrencyLedger) == Character.linhThach`; nếu `claimed=true` thì có ≥ 1 row `reason=DAILY_LOGIN`, `currency=LINH_THACH`, `delta == DAILY_LOGIN_LINH_THACH`.
+11. `POST /api/daily-login/claim` lần 2 — verify `claimed=false`, balance unchanged, ZERO ledger row mới.
+12. `GET /api/shop/npc` — tìm `BUY_ITEM` LINH_THACH (fallback: rẻ nhất user mua nổi).
+13. `POST /api/shop/buy` 1 item — verify response shape (`itemKey`, `qty`, `totalPrice`, `currency=LINH_THACH`).
+14. `GET /api/character/me` — verify `linhThach` giảm đúng `totalPrice`.
+15. `GET /api/logs/me?type=currency` — verify ≥ 1 row `reason=SHOP_BUY`, `delta = -totalPrice`, `refType='NPC_SHOP'`, `refId=itemKey`.
+16. `GET /api/logs/me?type=item` — verify ≥ 1 row `reason=SHOP_BUY`, `qtyDelta = +qty`, `refType='NPC_SHOP'`.
+17. `GET /api/inventory` — verify `Inventory.qty == SUM(ItemLedger.qtyDelta)` per `(character, itemKey)`. Verify `Inventory.qty >= 0` cho mọi item.
+18. `POST /api/shop/buy` qty=99 (= 2475 LT) khi balance ~75 LT — verify status ≠ 200, balance unchanged, ZERO CurrencyLedger / ItemLedger row mới (atomic rollback).
+19. `GET /api/character/me` + `GET /api/logs/me?type=currency` — final verify `SUM(CurrencyLedger) == Character.linhThach`, `linhThach >= 0`.
+20. `POST /api/_auth/logout`.
+
+### CI gating
+
+Smoke `pnpm smoke:economy` **KHÔNG vào CI flow** vì cần API + DB + Redis live cùng process. CI hiện chạy:
+- `unit` job: typecheck/lint/vitest/build trên Postgres+Redis service nhưng KHÔNG `pnpm dev`.
+- `e2e-smoke` job: Playwright trên build artifact `vite preview`, KHÔNG có API.
+
+Mở rộng CI để chạy `smoke:economy` cần job mới — start API trong background trước Playwright (giống local). **Deferred** vì chi phí maintenance > giá trị (smoke đã verify chỗ ledger consistency mà unit tests đã cover invariants tương đương trong `currency.service.test.ts` + `shop.service.test.ts` + `daily-login.service.test.ts`). Smoke chính xác là để **integration check** trước release / Phase boundary, không phải replace unit tests.
+
+### Deferred sub-checks
+
+- **Mail double-claim**: cần admin grant mail trước → smoke phải login admin (cần secret `INITIAL_ADMIN_PASSWORD`). Defer cho session sau khi smoke admin được thiết kế. Hiện tại unit test `mail.service.test.ts` đã cover `Mail.claimedAt IS NULL` invariant.
+- **Giftcode double-redeem**: cần admin tạo gift code trước. Cùng lý do defer như mail. Unit test `giftcode-race.test.ts` đã cover unique `(giftCodeId, userId)` constraint dưới concurrency.
+- **Mission claim double-claim**: cần wait cultivate tick → mission complete (15-30s ngẫu nhiên). Defer vì smoke phải tăng timeout đáng kể. `mission.service.test.ts` đã cover `MissionProgress.claimed` flag idempotency.
+- **Cross-character anomaly**: smoke chỉ tạo 1 user → không scan toàn DB. Dùng `pnpm --filter @xuantoi/api audit:ledger` (read-only, scan all) cho check cross-user định kỳ.
+
+### Không có dependency mới
+
+Script là `scripts/smoke-economy.mjs` (~470 dòng ESM), dùng native `fetch` + `AbortController` Node 20+. KHÔNG install thêm `tsx`/`ts-node`/`axios`/`@prisma/client` cho runtime smoke. Chỉ verify qua HTTP `/api/character/me`, `/api/logs/me`, `/api/inventory`, `/api/shop/*`, `/api/daily-login/*` (đã có từ PR #88 cho `/logs/me` self-audit).
+
+### Giới hạn
+
+- Không cleanup user — như `smoke:beta`. Cleanup: `DELETE FROM "User" WHERE email LIKE 'smoke-econ-%@smoke.invalid'` (cẩn thận FK → `Character`, `CurrencyLedger`, `ItemLedger`, `DailyLoginClaim`, ...).
+- Không cover currency `TIEN_NGOC` (premium). Topup flow cần admin approve → ngoài scope smoke ẩn danh.
+- Không cover `CONG_HIEN` / `CHIEN_CONG_TONG_MON` (sect war), `NGUYEN_THACH` (refine). Phase 9 closed beta chưa expose endpoint trực tiếp.

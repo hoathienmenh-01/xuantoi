@@ -7,15 +7,16 @@
 > **30 dòng đầu = đủ context.** Các dòng dưới `## Snapshots` là chi tiết theo session.
 > **Cập nhật mỗi PR.** Nếu bạn vừa merge PR mới, sửa block này TRƯỚC, sau đó mới thêm snapshot bên dưới.
 
-- **Current `main` commit**: `ec2bf69` (Merge PR #206 README docs grouping, 30/4 ~21:20 UTC).
-- **Latest merged PR**: [#206 docs(readme): group docs links into 4 sections](https://github.com/hoathienmenh-01/xuantoi/pull/206) (docs-only).
-- **Current phase**: **Phase 9 — Closed beta stabilization** (audit refresh, smoke:beta, Playwright golden path, bug triage, mobile/i18n polish, release checklist). Xem [`LONG_TERM_ROADMAP.md`](./LONG_TERM_ROADMAP.md) §Phase 9.
-- **Current test baseline**: **1926 vitest** = api **1133** + shared **238** + web **555**. CI ✅ trên `main`.
-- **Open PRs**: none known at time of writing (xem [PR list](https://github.com/hoathienmenh-01/xuantoi/pulls) để check live).
+- **Current `main` commit**: `c1437f6` (Merge PR #207 add Current Executive Summary block, 30/4 ~21:22 UTC).
+- **Latest merged PR**: [#207 docs(handoff): add Current Executive Summary block at top of AI_HANDOFF_REPORT](https://github.com/hoathienmenh-01/xuantoi/pull/207) (docs-only).
+- **Current phase**: **Phase 9 — Closed beta stabilization** (audit refresh, smoke:economy ✅, smoke:ws (next), Playwright golden path, bug triage, mobile/i18n polish, release checklist). Xem [`LONG_TERM_ROADMAP.md`](./LONG_TERM_ROADMAP.md) §Phase 9.
+- **Current test baseline**: **1959 vitest** = api **1133** + shared **238** + web **588**. CI ✅ trên `main`. (Web baseline tăng 555→588 từ các PR session 9q sau snapshot 9q-4.)
+- **Open PRs**: this PR — `test: add economy smoke for ledger safety`. Xem [PR list](https://github.com/hoathienmenh-01/xuantoi/pulls) để check live.
 - **Immediate next task** (theo thứ tự khuyến nghị):
-  1. **Phase 9 finish** — `pnpm smoke:economy` end-to-end (cultivate → boss → mail → market → claim → audit), Playwright golden path mở rộng (login → cultivate → breakthrough → mission → market), bug triage P0/P1.
-  2. **Phase 10 PR-1..5** — content scale: items pack 1 (+50 item), skills pack 1 (+15 skill), monsters & dungeons pack 1 (+20 monster, +6 dungeon), missions pack 1 (+50 mission), boss catalog (+10 named boss). Theo [`CONTENT_PIPELINE.md`](./CONTENT_PIPELINE.md).
-  3. **Phase 11 PR-1** — `CultivationMethod` model + migration + service skeleton. Theo [`LONG_TERM_ROADMAP.md`](./LONG_TERM_ROADMAP.md) §Phase 11.
+  1. **`pnpm smoke:ws`** — runtime smoke kế tiếp cho realtime gateway (cookie auth → connect → cultivate:tick / mission:progress / chat:msg push → throttle 500ms → reconnect). Pattern giống `smoke:economy` (zero-install, pure HTTP/WS, gated manual nếu CI không phù hợp).
+  2. **Playwright golden path mở rộng** — login → cultivate → breakthrough → mission → market (đã có scaffold `apps/web/e2e/golden.spec.ts`, gated `E2E_FULL=1`).
+  3. **Phase 10 PR-1..5** — content scale: items pack 1 (+50 item), skills pack 1 (+15 skill), monsters & dungeons pack 1 (+20 monster, +6 dungeon), missions pack 1 (+50 mission), boss catalog (+10 named boss). Theo [`CONTENT_PIPELINE.md`](./CONTENT_PIPELINE.md).
+  4. **Phase 11 PR-1** — `CultivationMethod` model + migration + service skeleton. Theo [`LONG_TERM_ROADMAP.md`](./LONG_TERM_ROADMAP.md) §Phase 11.
 - **Do NOT build yet** (anti-feature-creep, full list trong [`LONG_TERM_ROADMAP.md`](./LONG_TERM_ROADMAP.md) cuối file):
   - Real-time PvP (cần async PvP — Phase 14 — đi trước, validate 1 season).
   - Party / co-op dungeon (cần async PvE Phase 12 + user demand).
@@ -38,7 +39,9 @@
 
 > Snapshot mới nhất ở trên cùng. Mỗi PR thêm 1 snapshot mô tả: PR đụng cái gì, baseline thay đổi thế nào, risk.
 
-> **Snapshot (session 9q-4, this PR — exec summary block)**: docs-only — thêm `## Current Executive Summary` block 30 dòng đầu file để AI sau đọc nhanh hiểu ngay (current commit / latest PR / current phase / test baseline / open PRs / next task / do-not-build / required docs). Tách các snapshot cũ ra dưới `## Snapshots`. Không sửa runtime code. Risk: low.
+> **Snapshot (session 9q-5, this PR — `pnpm smoke:economy` add)**: test/QA — thêm root script `pnpm smoke:economy` (`scripts/smoke-economy.mjs`) chạy 20 step end-to-end verify các invariant kinh tế ([`ECONOMY_MODEL.md`](./ECONOMY_MODEL.md) §3): single mutation point + atomic tx (CurrencyLedger debit + ItemLedger credit cùng tx khi shop buy), ledger row contract (`reason`, `refType/refId`, dấu của `delta`), idempotency anti double-claim daily-login (claim lần 2 cùng ngày phải `claimed=false` + 0 ledger row mới), anti double-spend (insufficient funds → balance unchanged + 0 ledger row), cross-check `SUM(CurrencyLedger.delta) == Character.linhThach` + `SUM(ItemLedger.qtyDelta) == SUM(InventoryItem.qty)` per `(character, itemKey)`, no negative currency / item qty. Zero-install (pure HTTP, native fetch). Cập nhật `docs/QA_CHECKLIST.md` (mục §14 mới) + `docs/RUN_LOCAL.md` (§7) + Recent Changes block bên dưới. **Runtime smoke verified local 30/4 ~21:42 UTC**: 20/20 step pass trong 633ms với real Postgres + Redis + API `:3000`; chạy lại ngày sau (idempotent path daily-login claimed=false) cũng pass. CI integration deferred — script là manual/gated (cần API+DB+Redis cùng một process), document rõ trong QA checklist. Không sửa runtime code, không migration. Risk: low. Web baseline tăng độc lập 555→588 từ các PR session 9q trước (không liên quan PR này).
+>
+> **Snapshot (session 9q-4, merged)**: docs-only — thêm `## Current Executive Summary` block 30 dòng đầu file để AI sau đọc nhanh hiểu ngay (current commit / latest PR / current phase / test baseline / open PRs / next task / do-not-build / required docs). Tách các snapshot cũ ra dưới `## Snapshots`. Không sửa runtime code. Risk: low.
 >
 > **Snapshot (session 9q-3, merged)**: docs-only — restructure `README.md` "Tài liệu developer" thành 4 nhóm rõ ràng: **Start Here for AI / Developers** (START_HERE + AI_HANDOFF) → **Long-Term Game Design** (6 file: BIBLE/ROADMAP/ECONOMY/CONTENT/BALANCE/LIVE_OPS) → **Operational / Runtime** (RUN_LOCAL/DEPLOY/ADMIN_GUIDE/API/SEEDING/SECURITY/BACKUP_RESTORE/TROUBLESHOOTING) → **QA & History** (BETA/QA checklist + BALANCE cũ + CHANGELOG/RELEASE_NOTES + 04/05 historical). Không sửa runtime code. Risk: low.
 >
@@ -263,9 +266,32 @@
 
 ---
 
-## Recent Changes (PR #33→#202 đã merged trên main; session 9p task N **this PR** controller-level tests cho admin.controller — controller LỚN NHẤT)
+## Recent Changes (PR #33→#207 đã merged trên main; session 9q-5 **this PR** thêm `pnpm smoke:economy` cho ledger safety trước Phase 10 content scale)
 
-### PR session 9p task N (in-flight, this PR) — `test(api): admin.controller +97 vitest` — **Pending merge**
+### PR session 9q-5 (in-flight, this PR) — `test: add economy smoke for ledger safety` — **Pending merge**
+
+- **Branch**: `devin/$(date +%s)-smoke-economy`. **Base**: `main` @ `c1437f6` (Merge PR #207).
+- **Vì sao**: Trước khi mở rộng Phase 10 content scale (PR-1..5: items/skills/monsters/missions/boss pack), cần 1 script "tự bay" 5 phút verify các invariant kinh tế (xem [`ECONOMY_MODEL.md`](./ECONOMY_MODEL.md) §3) còn nguyên. `pnpm --filter @xuantoi/api audit:ledger` đã có (read-only consistency check) nhưng KHÔNG perform mutations — không bắt được regression khi shop buy bypass ledger hoặc daily-login double-grant. `smoke:beta` đi qua flow gameplay nhưng KHÔNG verify ledger sum vs character balance hay anti double-claim.
+- **Files** (1 file new + 1 root script entry + 3 docs):
+  - `scripts/smoke-economy.mjs` (new, ~470 lines, ESM, zero new dep — chỉ native fetch + URL).
+  - `package.json` — thêm `"smoke:economy": "node scripts/smoke-economy.mjs"` cạnh `smoke:beta`.
+  - `docs/AI_HANDOFF_REPORT.md` — Executive Summary bump (commit/baseline/next task) + snapshot 9q-5 + Recent Changes block (file này).
+  - `docs/QA_CHECKLIST.md` — §14 mới "Economy smoke tự động (`pnpm smoke:economy`)" với env requirement + pass/fail criteria + step list.
+  - `docs/RUN_LOCAL.md` — §7 thêm gợi ý chạy `pnpm smoke:economy` sau khi `pnpm dev` lên.
+- **Invariants script lock-in** (20 step, exit 1 nếu bất kỳ fail):
+  - **Ledger contract**: SHOP_BUY ghi 1 row CurrencyLedger `delta=-totalPrice`, currency=LINH_THACH, refType='NPC_SHOP', refId=itemKey; ĐỒNG THỜI 1 row ItemLedger `qtyDelta=+qty`, refType='NPC_SHOP'. Cùng tx (verify gián tiếp qua sum check sau).
+  - **Single mutation point**: Sau mỗi mutation (daily-login claim, shop buy), `SUM(CurrencyLedger.delta WHERE LINH_THACH) == Character.linhThach`. Nếu code bypass `currencyService.mutate` (vd `prisma.character.update({ data: { linhThach: { increment } } })`) → diff > 0 → smoke fail.
+  - **Idempotency anti-double-claim**: Gọi `/daily-login/claim` 2 lần cùng ngày — lần 2 phải `claimed=false`, balance unchanged, ZERO ledger row mới.
+  - **Anti-double-spend (insufficient funds)**: Buy 99 × `huyet_chi_dan` (= 2475 LT) khi balance ~75 LT → status ≠ 200, balance unchanged, ZERO CurrencyLedger/ItemLedger row mới (verify atomic rollback).
+  - **Inventory ↔ ItemLedger consistency**: Per `(character, itemKey)`, `SUM(ItemLedger.qtyDelta) == SUM(InventoryItem.qty)`. Smoke verify cho mọi item user vừa nhận (smoke chỉ tạo 1 user mới → diff non-zero là regression rõ ràng).
+  - **No negative balance / qty**: Sau mỗi step, `Character.linhThach >= 0`, mọi `InventoryItem.qty >= 0`.
+- **Tests**: Không thay đổi vitest baseline (`1959 = 1133 api + 238 shared + 588 web` — web 555→588 đã merge từ PR session 9q trước, không liên quan PR này). `pnpm typecheck`, `pnpm lint`, `pnpm test`, `pnpm build` PASS local. **Runtime smoke verified local 30/4 ~21:42 UTC**: 20/20 step pass trong 633ms với real Postgres + Redis + API `:3000` (chạy lại idempotent path daily-login `claimed=false` cũng pass).
+- **CI gating**: `pnpm smoke:economy` KHÔNG vào CI flow vì cần API + DB + Redis live cùng process (CI hiện chạy unit + Playwright build-artifact, không chạy `pnpm dev`). Script là **manual/gated** — document cách chạy trong `docs/QA_CHECKLIST.md` §14 + `docs/RUN_LOCAL.md` §7. Khi ai đó mở Phase 10 content PR, pre-merge cần chạy smoke local + paste output vào PR body.
+- **Risk**: low. Script chỉ tạo user mới qua `/api/_auth/register` (random email `smoke-econ-*@smoke.invalid`), KHÔNG đụng admin/payment/secret. KHÔNG migration. KHÔNG sửa runtime code.
+- **Rollback**: 1 commit revert (xóa `scripts/smoke-economy.mjs`, gỡ entry `package.json`, revert 3 docs). Không có DB state để rollback.
+- **Next task** (per user request đầu PR): `pnpm smoke:ws` (realtime gateway smoke — auth + connect + cultivate:tick / mission:progress / chat:msg push + throttle + reconnect).
+
+### PR session 9p task N (merged) — `test(api): admin.controller +97 vitest`
 
 - **Branch**: `devin/1777581229-admin-controller-tests`. **Base**: `main` @ `a359875` (Merge PR #202).
 - **Vì sao**: `admin.controller.ts` là controller LỚN NHẤT trong codebase (562 lines, 19 endpoint, 3 service deps + ConfigService) chưa có pure-unit vitest trực tiếp. Đây là controller mang nhiều risk regression nhất vì:
