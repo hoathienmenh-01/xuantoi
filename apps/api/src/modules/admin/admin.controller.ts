@@ -5,6 +5,7 @@ import {
   HttpCode,
   HttpException,
   HttpStatus,
+  Logger,
   Param,
   Post,
   Query,
@@ -12,12 +13,18 @@ import {
   Res,
   UseGuards,
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import type { Request, Response } from 'express';
 import { Role, TopupStatus } from '@prisma/client';
 import { z } from 'zod';
 import { AdminGuard } from './admin.guard';
 import { RequireAdmin } from './require-admin.decorator';
 import { AdminError, AdminService } from './admin.service';
+import {
+  clampStaleHours,
+  resolveEconomyAlertsBounds,
+  type EconomyAlertsBounds,
+} from './economy-alerts-config';
 import { GiftCodeError, GiftCodeService } from '../giftcode/giftcode.service';
 import { MailError, MailService } from '../mail/mail.service';
 import { formatUsersCsv } from './user-csv';
@@ -86,11 +93,20 @@ type AdminReq = Request & { userId: string; role: Role };
 @Controller('admin')
 @UseGuards(AdminGuard)
 export class AdminController {
+  private readonly logger = new Logger(AdminController.name);
+  private readonly economyAlertsBounds: EconomyAlertsBounds;
+
   constructor(
     private readonly admin: AdminService,
     private readonly giftCodes: GiftCodeService,
     private readonly mailService: MailService,
-  ) {}
+    private readonly config: ConfigService,
+  ) {
+    this.economyAlertsBounds = resolveEconomyAlertsBounds(
+      (key) => this.config.get<string>(key),
+      (msg) => this.logger.warn(`[economy-alerts] ${msg}`),
+    );
+  }
 
   @Get('users')
   async users(
@@ -355,12 +371,23 @@ export class AdminController {
     return { ok: true, data: r };
   }
 
+  /**
+   * Trả danh sách cảnh báo economy:
+   *   - Currency âm (`Character.linhThach/tienNgoc < 0`).
+   *   - Inventory âm (`InventoryItem.qty < 1`).
+   *   - Topup PENDING quá `staleHours` (mặc định 24h, ops override qua
+   *     env `ECONOMY_ALERTS_DEFAULT_STALE_HOURS` / `_MIN_` / `_MAX_`).
+   *
+   * Read-only. Xem `docs/ADMIN_GUIDE.md §11` cho cron monitoring.
+   */
   @Get('economy/alerts')
   async economyAlerts(@Query('staleHours') staleHours: string | undefined) {
-    const parsed = Number.parseInt(staleHours ?? '24', 10);
-    const hrs = Number.isFinite(parsed) ? Math.max(1, Math.min(24 * 30, parsed)) : 24;
+    const hrs = clampStaleHours(staleHours, this.economyAlertsBounds);
     const r = await this.admin.getEconomyAlerts(hrs);
-    return { ok: true, data: r };
+    return {
+      ok: true,
+      data: { ...r, bounds: this.economyAlertsBounds },
+    };
   }
 
   /**

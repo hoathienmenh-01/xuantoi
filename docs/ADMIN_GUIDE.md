@@ -149,6 +149,25 @@ pnpm --filter @xuantoi/api audit:ledger -- --json
 
 Read-only — an toàn chạy production không ảnh hưởng player.
 
+### 11.3 Economy alerts — ops-tunable thresholds
+
+`GET /admin/economy/alerts?staleHours=<N>` query range mặc định `[1..720]` giờ với default `24`. Ops có thể override qua env:
+
+| Env var | Default | Ý nghĩa |
+|---|---|---|
+| `ECONOMY_ALERTS_DEFAULT_STALE_HOURS` | `24` | Hours mặc định khi query param missing. |
+| `ECONOMY_ALERTS_MIN_STALE_HOURS` | `1` | Lower bound clamp cho query param. |
+| `ECONOMY_ALERTS_MAX_STALE_HOURS` | `720` (30 ngày) | Upper bound clamp cho query param. |
+
+Ví dụ: muốn chạy closed-beta soft-launch 48h auto-approve topup và audit dài 90 ngày:
+
+```bash
+ECONOMY_ALERTS_DEFAULT_STALE_HOURS=48
+ECONOMY_ALERTS_MAX_STALE_HOURS=2160  # 90 * 24
+```
+
+Invariant tự clamp: nếu `max < min` → max = min; nếu `default` out of `[min, max]` → clamp to range. Ops set sai log warn `[economy-alerts] ...` trong Nest Logger, endpoint vẫn serve (không brick). Response payload giờ trả thêm `data.bounds: { defaultHours, minHours, maxHours }` để FE show range hint nếu muốn.
+
 ## 12. Reset môi trường staging
 
 - DB: `prisma migrate reset --force --skip-seed` rồi `pnpm --filter @xuantoi/api bootstrap` (xem `docs/RUN_LOCAL.md`).
