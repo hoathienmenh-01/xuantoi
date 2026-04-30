@@ -1,10 +1,14 @@
 # AI Handoff Report — Xuân Tôi
 
-> **Snapshot (session 9n-N in-flight, AllExceptionsFilter unit tests — post-#177)**: `main` @ `d531c49` (Merge PR #177 `test(api) realtime.service unit tests 20 vitest`, 30 Apr 2026 ~17:00 UTC). **Session 9n progress (13 PR merged + 1 in-flight)**: PR #165..#177 merged · this PR in-flight. **This PR (9n-N, branch `devin/1777572000-all-exceptions-filter-tests`)**: unit test cho `apps/api/src/common/all-exceptions.filter.ts` (86 dòng, security filter critical, 0 test trước). +21 vitest cover: (a) HttpException với body đã là envelope → pass-through; (b) HttpException body string/object với `message` → wrap envelope; (c) HttpException body object không `message` → message fallback = code; (d) status → code mapping (400/401/403/404/409/429/500/502/503 + 4xx fallback BAD_REQUEST); (e) **security**: Error thường/TypeError/non-Error throw value → 500 `INTERNAL_ERROR`, **không leak stack/IP/path/sensitive info** ra client; (f) envelope shape đầy đủ `{ok:false, error:{code:string, message:string}}` không có field lạ. Pure unit (no DB, fake ArgumentsHost + Response). API test baseline (post-#177 merge) 565 → **586**.
+> **Snapshot (session 9n-P, PR #180 — chat.service WS emit + history isolation +11 vitest)**: `main` @ `e20d2fe` (Merge PR #178). API test baseline 586 → **597**.
 
-> **Snapshot (session 9n-M merged as PR #177)**: unit test RealtimeService — +20 vitest pure unit (no DB, fake Socket.IO) cover attach/detach/emit/broadcast/room/bind idempotent.
+> **Snapshot (session 9n-O, PR #179 pending merge)**: ws/client.ts resolveWsOrigin +15 vitest. Web test baseline 532 → 547.
 
-> **Snapshot (session 9n-L merged as PR #176)**: test bổ sung cho `apps/api/src/modules/mail/mail.service.ts` — +22 vitest cover WS emit, pruneExpired, validateInput edge cases + **bugfix pruneExpired item-only mail loss** (Devin Review catch: thiếu `rewardItems.equals=[]` trong Prisma JSON filter → expired mail có item-only rewards bị xoá nhầm → mất item người chơi).
+> **Snapshot (session 9n-N merged as PR #178)**: AllExceptionsFilter +21 vitest. API test baseline 565 → **586**.
+
+> **Snapshot (session 9n-M merged as PR #177)**: RealtimeService +20 vitest. API test baseline 545 → **565**.
+
+> **Snapshot (session 9n-L merged as PR #176)**: mail.service +22 vitest + bugfix pruneExpired item-only mail loss.
 
 > **Snapshot (session 9n-K merged as PR #175)**: smart catalog integrity tests cho `packages/shared/src/{enums,ws-events,api-contracts}.ts` — +66 vitest cover enum values/order/uniqueness + WS heartbeat/reconnect/cultivation tick constants + zod schema validation + AuthErrorCode enum + AUTH_ERROR_VI i18n map.
 
@@ -1932,7 +1936,7 @@ apps/api/src/modules/character/currency.service.ts:88   data: { tienNgoc: { incr
 | Inventory | **19 test** (`inventory.service.test.ts`) (PR #34) + **7 test** (`item-ledger.test.ts`) (PR #40) | Concurrency `Promise.all` race | Low |
 | Market | **10 test** (`market.service.test.ts`) — +2 ledger flow (PR #40) | Fee config test | Low |
 | Sect | 7 test (`sect.service.test.ts`) | Leader transfer (feature chưa có) | Low |
-| Chat | 9 test (`chat.service.test.ts`) | Redis failover test | Low |
+| Chat | **20 test** — `chat.service.test.ts` 9 (validate + rate-limit) + **`chat.service.ws-history.test.ts` 11 (session 9n-P)**: WS emit verify (broadcast/emitToRoom + channel mutual exclusion), history ordering oldest-first, sect isolation (A không leak B), WORLD↔SECT isolation, historySect NO_CHARACTER/NO_SECT, view shape + trim. | Redis failover test (in-memory → Redis sliding window swap) | Low |
 | Boss | **16 test** (`boss.service.test.ts`) — +7 cho `adminSpawn` (PR #36) | Spawn cron auto (feature chưa có) | Medium |
 | Admin/Topup | **13 test** (`admin-stats` 3 + `topup-admin` 10) + **17 test** (`topup.service.test.ts` session 9m) — createOrder happy/invalid/limit/isolation/uniqueness/persistence/slot-free, listForUser empty/sorted/isolation/cap-50, bankInfo, toView normal/fallback, economy safety (no currency change/no ledger entry) | — | — |
 | GiftCode | 12 test (`giftcode.service.test.ts`) + **5 race test** (`giftcode-race.test.ts` session 9m) — concurrent maxRedeems=1 (3 users), maxRedeems=2 (5 users), same-user double-redeem (unique index), concurrent items grant, revoke-during-redeem consistency | — | — |
