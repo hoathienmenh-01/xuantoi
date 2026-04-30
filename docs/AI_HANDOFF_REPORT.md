@@ -1,6 +1,8 @@
 # AI Handoff Report — Xuân Tôi
 
-> **Snapshot (session 9p task F, this PR)**: `main` @ `2bfa0e8` (Merge PR #194 items-dungeon-loot tests, 30/4 ~19:13 UTC). **Session 9p task F (this PR)**: render-level tests cho `apps/web/src/components/shell/LocaleSwitcher.vue` (8 vitest) — label render theo `locale`, click toggle gọi `setLocale('en'|'vi')`, `title` attribute resolve qua `t('locale.label')`, `type="button"` defensive. Web baseline **547 → 555** (57 file).
+> **Snapshot (session 9p task G, this PR)**: `main` @ `3109497` (Merge PR #195 LocaleSwitcher tests, 30/4 ~19:21 UTC). **Session 9p task G (this PR)**: render-level tests cho 4 UI atom chưa có vitest — `MButton` (10 test: type default/explicit, slot vs loading swap, disabled state), `MToast` (8 test: empty/single/multi/order, color class per type, click remove, fixed-positioning), `SkeletonBlock` (7 test: default classes, aria-hidden, custom height/width/rounded/testId), `SkeletonTable` (8 test: rows×cols cells, default 6×5=30, gridTemplateColumns inline reflect cols prop, animate-pulse on each cell). +33 vitest. Web baseline **555 → 588** (61 file).
+>
+> **Snapshot (session 9p task F, merged)**: `main` @ `3109497` (Merge PR #195, 30/4 ~19:21 UTC). **PR #195**: `apps/web/src/components/__tests__/LocaleSwitcher.test.ts` (+8 vitest, lock-in render label + click toggle). Web baseline **547 → 555**. CI ✅.
 >
 > **Snapshot (session 9p task E, merged)**: `main` @ `2bfa0e8` (Merge PR #194, 30/4 ~19:13 UTC). **PR #194**: `packages/shared/src/items-dungeon-loot.test.ts` (+18 vitest, lock-in `rollDungeonLoot` RNG + `DUNGEON_LOOT` integrity + `QUALITY_*` enum parity). Shared baseline **220 → 238**. CI ✅.
 >
@@ -183,9 +185,24 @@
 
 ---
 
-## Recent Changes (PR #33→#194 đã merged trên main; session 9p task F **this PR** render-level tests cho LocaleSwitcher)
+## Recent Changes (PR #33→#195 đã merged trên main; session 9p task G **this PR** render-level tests cho 4 UI atom — MButton/MToast/SkeletonBlock/SkeletonTable)
 
-### PR session 9p task F (in-flight, this PR) — `test(web): LocaleSwitcher render + click toggle +8 vitest` — **Pending merge**
+### PR session 9p task G (in-flight, this PR) — `test(web): UI atoms MButton + MToast + SkeletonBlock + SkeletonTable +33 vitest` — **Pending merge**
+
+- **Branch**: `devin/1777577031-ui-atoms-tests`. **Base**: `main` @ `3109497` (post PR #195 merge).
+- **Vì sao**: 4 UI atom ở `apps/web/src/components/ui/{MButton,MToast,SkeletonBlock,SkeletonTable}.vue` chưa có vitest. Đây là các primitive được dùng khắp project (auth form / mission / leaderboard / shop / admin) — silent regress ở atom level kéo theo lỗi toàn hệ kiểu: button submit form vô tình, toast màu sai theo type, skeleton không pulse, table grid kích thước sai cols. Tổ chức mỗi atom = 1 file test — dễ đọc, dễ maintain, atomic rollback.
+- **Files** (4 file new):
+  - `apps/web/src/components/__tests__/MButton.test.ts` (10 vitest): default `type="button"`, explicit submit/reset; slot render vs loading swap (`t('common.loading')` vi+en); disabled khi `loading` hoặc `disabled`; click no-throw smoke.
+  - `apps/web/src/components/__tests__/MToast.test.ts` (8 vitest): Pinia store-driven; empty → 0 toast; render type/text; color class per type (`error → border-red-700`, `warning → border-yellow-600`, `success → border-emerald-700`); multi order; click → `store.remove(id)` reactive remove; fixed top-4/right-4/z-50 positioning lock.
+  - `apps/web/src/components/__tests__/SkeletonBlock.test.ts` (7 vitest): default `h-4 w-full rounded animate-pulse bg-ink-700/40`; `aria-hidden="true"`; default + custom `data-testid`; prop override (`height`/`width`/`rounded`).
+  - `apps/web/src/components/__tests__/SkeletonTable.test.ts` (8 vitest): default 6×5=30 cells, custom 3×4=12, edge 1×1=1; `gridTemplateColumns: repeat(N, minmax(0,1fr))` reflect `cols`; `aria-hidden="true"`; default + custom `data-testid`; mỗi cell có `animate-pulse`.
+- **Tests**: +33 vitest mới (verified local 30/4 19:24 UTC, 3.71s). Web baseline 555 → **588** (61 file). typecheck ✅ · lint ✅.
+- **Risk**: 🟢 thấp — test-only, render + Pinia store integration smoke. No runtime change.
+- **Rollback**: revert single PR (xóa 4 file test).
+
+### PR #195 — `test(web): LocaleSwitcher render + click toggle +8 vitest (session 9p task F)` — **Merged into main** @ `3109497` (30/4 ~19:21 UTC). CI ✅.
+
+### PR session 9p task F (closed, merged) — `test(web): LocaleSwitcher render + click toggle +8 vitest` — **Merged into main** @ `3109497`
 
 - **Branch**: `devin/1777576680-localeswitcher-tests`. **Base**: `main` @ `2bfa0e8` (post PR #194 merge).
 - **Vì sao**: `apps/web/src/components/shell/LocaleSwitcher.vue` (22 line) là một trong vài component shell chưa có vitest. Component nhỏ nhưng đụng đến cả 3 đường: i18n locale state, `setLocale()` side-effect (localStorage + document.documentElement.lang), và a11y title via `t('locale.label')`. Click toggle silently regress nếu sau này thêm locale thứ 3 (zh) mà quên update. Render label `'VI'/'EN'` lock-in tránh người dùng thấy label sai sau refactor.
@@ -2614,7 +2631,8 @@ F. ~~**`docs/CHANGELOG.md` bootstrap**~~ — **Done by PR #104** (Merged into ma
 | #192 | session 9p task C — test(api): ops.service + mission.scheduler ghost-cleanup +12 pure unit | **Merged into main** @ `08b9f1f` (30/4 ~18:58 UTC, CI ✅) |
 | #193 | session 9p task D — docs(changelog): catch-up sessions 9n+ tail / 9o / 9p (PR #172→#192) | **Merged into main** @ `4c94944` (30/4 ~19:05 UTC, CI ✅) |
 | #194 | session 9p task E — test(shared): rollDungeonLoot + DUNGEON_LOOT + QUALITY maps +18 vitest | **Merged into main** @ `2bfa0e8` (30/4 ~19:13 UTC, CI ✅) |
-| this PR | session 9p task F — test(web): LocaleSwitcher render + click toggle +8 vitest | **Pending merge** (in-flight) |
+| #195 | session 9p task F — test(web): LocaleSwitcher render + click toggle +8 vitest | **Merged into main** @ `3109497` (30/4 ~19:21 UTC, CI ✅) |
+| this PR | session 9p task G — test(web): UI atoms MButton + MToast + SkeletonBlock + SkeletonTable +33 vitest | **Pending merge** (in-flight) |
 
 #### PR session 9p task C (in-flight, this PR) — `test(api): ops.service + mission.scheduler ghost-cleanup +12 pure unit`
 
