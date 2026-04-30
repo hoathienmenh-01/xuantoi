@@ -21,7 +21,7 @@ Khi tài liệu xung đột nhau, ưu tiên theo thứ tự sau:
 
 | Bạn muốn... | Đọc file | Vì sao |
 |---|---|---|
-| **Biết trạng thái thật hiện tại của repo** (đã làm gì, baseline test, model nào đã có, PR nào vừa merge) | [`AI_HANDOFF_REPORT.md`](./AI_HANDOFF_REPORT.md) (đọc snapshot trên cùng) | Cập nhật mỗi PR. Đây là nguồn sự thật về "hôm nay đang ở đâu". |
+| **Biết trạng thái thật hiện tại của repo** (đã làm gì, baseline test, model nào đã có, PR nào vừa merge) | [`AI_HANDOFF_REPORT.md`](./AI_HANDOFF_REPORT.md) — đọc **`## Current Executive Summary`** (30 dòng đầu) là đủ; muốn chi tiết theo session đọc tiếp `## Snapshots`. | Cập nhật mỗi PR. Đây là nguồn sự thật về "hôm nay đang ở đâu". |
 | **Biết game sẽ đi đâu, fantasy là gì, core loop, 13 gameplay system, product principles** | [`GAME_DESIGN_BIBLE.md`](./GAME_DESIGN_BIBLE.md) | Vision + thiết kế dài hạn. Đọc xong hiểu "Xuân Tôi muốn trở thành cái gì". |
 | **Biết phase nào nên làm tiếp, entry/exit criteria, module nào bị cấm chưa được build** | [`LONG_TERM_ROADMAP.md`](./LONG_TERM_ROADMAP.md) | Phase 9 → 17 với dependency rule + DO-NOT-BUILD-YET list. |
 | **Sẽ đụng tiền/item/reward** (linh thạch, tiên ngọc, mail reward, giftcode, market, daily login, topup, ledger) | [`ECONOMY_MODEL.md`](./ECONOMY_MODEL.md) | 5 hard invariants + anti-abuse playbook. **Vi phạm = data corruption.** |
