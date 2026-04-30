@@ -1,6 +1,8 @@
 # AI Handoff Report — Xuân Tôi
 
-> **Snapshot (session 9o progress)**: `main` @ `59e0901` (Merge PR #188, 30 Apr 2026 ~17:48 UTC). **Session 9o merged**: PR #184 (audit refresh) @ `b283cb9`, PR #186 (chat.service WS+history +11 vitest) @ `1b587bc`, PR #187 (mission.processor +8 vitest) @ `295ae6b`, PR #188 (cultivation processor+service +14 vitest) @ `59e0901`. **i18n parity audit**: no VN hard-code in production templates — project i18n clean. **Baseline**: `pnpm typecheck` ✅ · `pnpm lint` ✅ · shared **220/220** · web **547/547** · `pnpm build` ✅. API test chưa chạy local (cần infra:up, estimated ~619+ post-#186/#187/#188).
+> **Snapshot (session 9p kickoff, this PR)**: `main` @ `bb9f571` (Merge PR #189 docs(handoff) session 9o progress, 30 Apr 2026 ~17:52 UTC). **Session 9p task A (this PR)**: pure-unit failure-path tests cho `HealthController.readyz` — DB fail/Redis fail/Redis non-PONG/both fail/non-Error throw stringify + healthz ts ISO + version env override/fallback (+10 vitest, mocked Prisma+Redis, không cần infra:up). API baseline **619 → 629** (verified local 30/4 18:09 UTC với real Postgres + Redis: 55 file / 629 pass). Web/shared/typecheck/lint/build vẫn xanh.
+>
+> **Snapshot (session 9o progress)**: `main` @ `59e0901` (Merge PR #188, 30 Apr 2026 ~17:48 UTC). **Session 9o merged**: PR #184 (audit refresh) @ `b283cb9`, PR #186 (chat.service WS+history +11 vitest) @ `1b587bc`, PR #187 (mission.processor +8 vitest) @ `295ae6b`, PR #188 (cultivation processor+service +14 vitest) @ `59e0901`. **i18n parity audit**: no VN hard-code in production templates — project i18n clean. **Baseline**: `pnpm typecheck` ✅ · `pnpm lint` ✅ · shared **220/220** · web **547/547** · `pnpm build` ✅. API test verified local 30/4 18:09 UTC: **619/619** (pre-9p) → **629/629** (post-9p task A). PR #189 (audit refresh session 9o progress) merged into main @ `bb9f571` (30/4 ~17:52 UTC).
 
 > **Snapshot (session 9n-O merged as PR #179)**: ws/client.ts resolveWsOrigin +15 vitest. Web test baseline 532 → **547**.
 
@@ -171,9 +173,21 @@
 
 ---
 
-## Recent Changes (PR #33→#166 đã merged trên main; session 9n-C **this PR** smart admin economy alerts thresholds env-tunable)
+## Recent Changes (PR #33→#189 đã merged trên main; session 9p task A **this PR** pure-unit failure tests cho HealthController.readyz)
 
-### PR session 9n-C (in-flight, this PR) — `feat(api,docs): smart admin economy alerts thresholds — ECONOMY_ALERTS_DEFAULT_STALE_HOURS / _MIN_ / _MAX_ env override + 22 vitest unit + ADMIN_GUIDE §11.3 + .env.example` — **Pending merge**
+### PR session 9p task A (in-flight, this PR) — `test(api): HealthController.readyz failure paths +10 pure unit (DB fail/Redis fail/non-PONG/both fail/non-Error stringify + healthz ts ISO + version env override/fallback)` — **Pending merge**
+
+- **Branch**: `devin/1777572345-health-readyz-failure-unit-tests`. **Base**: `main` @ `bb9f571` (post PR #189 merge).
+- **Vì sao**: `health.controller.test.ts` cũ chỉ cover happy path (DB+Redis live) — yêu cầu real Postgres/Redis qua `TEST_DATABASE_URL`. Production readiness cần lock-in luôn 503 envelope khi dependency down (DB fail / Redis fail / Redis non-PONG / cả hai fail) để khỏi sai khi rotate connection / restart cluster / blue-green cutover. Bug regression nếu future code throw lệch error field hoặc không bump status 503 sẽ gây kubernetes/load-balancer route traffic vào instance sick mà không biết. Pure-unit + mock Prisma `$queryRaw` + Redis `ping` → có thể chạy không cần `infra:up` (CI service vẫn run cùng dataset để cover happy path), bổ sung branch coverage 100% cho `ready()` failure modes + version env precedence + healthz ts ISO contract.
+- **Files**:
+  - `apps/api/src/modules/health/health.controller.unit.test.ts` — **new** 10 vitest pure-unit (mocked PrismaService + Redis): happy path (no res.status() call), DB throw → 503 + db.error, Redis throw → 503 + redis.error, Redis non-PONG → 503 + redis.error undefined (non-throw branch), both fail → 503 + cả 2 error set, DB throw non-Error string → `String(e)` stringify branch, Redis throw non-Error object → `[object Object]` stringify branch, healthz ts ISO round-trip, version env override (`APP_VERSION='1.2.3-test'` + `GIT_SHA='deadbeef'`), version default fallback (env unset → `0.0.1` + `unknown`).
+- **Tests**: 10 vitest mới (verified local 30/4 18:06 UTC, 632ms). API baseline **619 → 629** (verified local 30/4 18:09 UTC với real Postgres + Redis: 55 file / 629 pass).
+- **Risk / rollback**: 🟢 thấp — pure test additions, không thay đổi runtime logic, không schema change. Rollback = revert PR.
+- **Audit update**: §0 snapshot bump `bb9f571` → kickoff session 9p, §12 Health row 4 → 14, §21 thêm task A entry.
+
+### PR #189 — `docs(handoff): session 9o progress — bump snapshot 59e0901, mark #184/#186/#187/#188 merged` — **Merged into main** @ `bb9f571` (30/4 ~17:52 UTC)
+
+### PR session 9n-C (closed, merged) — `feat(api,docs): smart admin economy alerts thresholds — ECONOMY_ALERTS_DEFAULT_STALE_HOURS / _MIN_ / _MAX_ env override + 22 vitest unit + ADMIN_GUIDE §11.3 + .env.example` — **Merged into main**
 
 - **Branch**: `devin/1777552393-economy-alerts-env-thresholds`. **Base**: `main` @ `0b1b6da` (post PR #166 merge).
 - **Vì sao**: `GET /admin/economy/alerts?staleHours=N` trước đây hard-code default `24` giờ + range `[1..720]` trong controller. Ops soft-launch closed beta có thể muốn 48h default (topup pending tolerance longer) hoặc audit dài 90 ngày (2160h max) mà không cần patch code. PR này tách parsing sang pure helper + inject qua ConfigService để đọc env override.
@@ -1963,7 +1977,7 @@ apps/api/src/modules/character/currency.service.ts:88   data: { tienNgoc: { incr
 | Mail | **34 test** (`mail.service.test.ts` 14 + `mail.service.ws-and-prune.test.ts` 20 session 9n-L) — +20 cover WS `mail:new` emit spy cho sendToCharacter/broadcast + pruneExpired (claim cũ/expired không reward/expired có reward GIỮ) + validateInput edge cases (subject>120/body>2000/items>10/qty<=0/itemKey rỗng/reward âm/boundary OK) | Full WS integration end-to-end qua socket.io client | Low |
 | Mission | **34 test** (`mission.service.test.ts` 26 + `mission.processor.test.ts` 8 PR #187) — +8 pure unit cover: process('reset') order DAILY→WEEKLY, skip non-reset job name, skip empty name, error propagation (DAILY fail → no WEEKLY), 4 log branch combos (daily=weekly=0 / daily>0 / weekly>0 / both>0). | — | — |
 | **Shop** | **10 test** (`shop.service.test.ts`) (PR #39) | Daily limit (feature chưa có) | — |
-| Health | 4 test (`health.controller.test.ts`) | — | — |
+| Health | **14 test** (`health.controller.test.ts` 3 baseline integration: healthz/readyz happy/version + `health.controller.unit.test.ts` 10 pure-unit failure paths PR session 9p task A) — pure-unit cover: DB fail/Redis fail/Redis non-PONG/both fail/non-Error throw (string + object) stringify branch + healthz ts ISO round-trip + version env override (`APP_VERSION`/`GIT_SHA`) + version default fallback. Mocked Prisma/Redis → no infra:up needed; existing integration test giữ nguyên cho readyz happy path real DB+Redis. | — | — |
 | Ops | **7 test** (`ops.processor.test.ts`) | — | — |
 | Realtime | **30 test** (`realtime.gateway.test.ts` 10 + `realtime.service.test.ts` 20 session 9n-M) — pure unit cover attach/detach/emit/broadcast/room/bind idempotent | Ban user during connection | Medium |
 | Rate limiter | 8 test (`rate-limiter.test.ts`) | — | — |
@@ -2490,7 +2504,43 @@ F. ~~**`docs/CHANGELOG.md` bootstrap**~~ — **Done by PR #104** (Merged into ma
 | #173 | session 9n-I — test(shared): smart combat catalog integrity (+40 vitest) | **Pending merge** (rebased 30/4 ~15:45 UTC, CI ✅ on force-push) |
 | #174 | session 9n-J — test(shared): smart missions catalog integrity (+18 vitest) | **Pending merge** (rebased 30/4 ~15:45 UTC, CI ✅ on force-push) |
 
-#### PR session 9n-K (in-flight, this PR) — `test(shared): smart core-types catalog tests — enums/ws-events/api-contracts +66 vitest`
+### Session 9o (đã đóng, 4/4 PR merged vào main `b283cb9 → bb9f571`)
+
+| PR | Task | Status |
+|---|---|---|
+| #184 | session 9o — docs(handoff): audit refresh kickoff session 9o | **Merged into main** @ `b283cb9` |
+| #186 | session 9o — test(api): chat.service WS emit + history isolation +11 vitest | **Merged into main** @ `1b587bc` |
+| #187 | session 9o — test(api): mission.processor reset worker +8 vitest | **Merged into main** @ `295ae6b` |
+| #188 | session 9o — test(api): cultivation processor+service pure unit +14 vitest | **Merged into main** @ `59e0901` |
+| #189 | session 9o close-out — docs(handoff): bump snapshot 59e0901, mark #184/#186/#187/#188 merged | **Merged into main** @ `bb9f571` (30/4 ~17:52 UTC) |
+
+### Session 9p (current)
+
+| PR | Task | Status |
+|---|---|---|
+| this PR | session 9p task A — test(api): HealthController.readyz failure paths +10 pure unit | **Pending merge** (in-flight) |
+
+#### PR session 9p task A (in-flight, this PR) — `test(api): HealthController.readyz failure paths +10 pure unit`
+
+- **Branch**: `devin/1777572345-health-readyz-failure-unit-tests`. **Base**: `main` @ `bb9f571` (post PR #189 merge). **Status**: in-flight.
+- **Files**: `apps/api/src/modules/health/health.controller.unit.test.ts` (new 10 vitest pure-unit) · `docs/AI_HANDOFF_REPORT.md`.
+- **Why**: production readiness — lock-in 503 + error envelope khi DB hoặc Redis down để khỏi sai khi rotate / restart cluster. Pure-unit (mock Prisma `$queryRaw` + Redis `ping`) → chạy không cần `infra:up`; integration test cũ giữ nguyên cho happy path real DB+Redis.
+- **Tests added**: 10 vitest unit (no DB).
+- **Branches locked**:
+  - DB throw (Error) → `db.ok=false` + `db.error=e.message` + `latencyMs` set + status 503.
+  - Redis throw (Error) → `redis.ok=false` + `redis.error=e.message` + `latencyMs` set + status 503.
+  - Redis returns non-PONG → `redis.ok=false` + `redis.error=undefined` (non-throw branch) + status 503.
+  - Cả 2 fail → `out.ok=false` + cả 2 error set (idempotent — không đè lẫn nhau).
+  - DB throw non-Error string → `String(e)` fallback branch.
+  - Redis throw non-Error object `{code:'ETIMEDOUT'}` → `String(e)='[object Object]'` branch.
+  - Happy path → không gọi `res.status()` (default 200).
+  - `healthz()` → `ok=true` + `uptimeMs ≥ 0` + `ts` ISO round-trip.
+  - `version()` → `APP_VERSION='1.2.3-test'` + `GIT_SHA='deadbeef'` reflected; default fallback `0.0.1` + `unknown` khi env unset.
+- **CI status (local)**: typecheck ✅ · lint ✅ · new vitest 10/10 ✅ · API 55 file / **629/629** ✅ (verified với real Postgres + Redis 30/4 18:09 UTC) · shared 220/220 ✅ · web 547/547 ✅ · build ✅.
+- **Risk**: 🟢 thấp — test-only, lock-in failure invariants. No runtime change, no schema change.
+- **Rollback**: revert single PR (xóa 1 file test).
+
+#### PR session 9n-K (closed, merged) — `test(shared): smart core-types catalog tests — enums/ws-events/api-contracts +66 vitest`
 - **Branch**: `devin/1777564100-shared-core-types-tests`. **Base**: `main` @ `c02573a` (post PR #171 merge). **Status**: in-flight.
 - **Files**: `packages/shared/src/enums.test.ts` (new 17 vitest) · `packages/shared/src/ws-events.test.ts` (new 19 vitest) · `packages/shared/src/api-contracts.test.ts` (new 30 vitest) · `docs/AI_HANDOFF_REPORT.md`.
 - **Why**: 3 file core types shared (tổng 231 dòng) trước đây không có test dedicated. Lỗi typo/đổi tên enum (vd `QUALITIES` bỏ `'THAN'`, `WS_HEARTBEAT_INTERVAL_MS` set > 60s, `AuthErrorCode` thêm/bớt code) sẽ không bị bắt ở compile time vì được dùng gián tiếp qua zod schema + type union. Test lock-in giá trị cụ thể + invariant quan hệ (heartbeat timeout < interval, throttle < cultivation tick).
