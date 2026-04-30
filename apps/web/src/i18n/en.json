@@ -952,6 +952,7 @@
       }
     },
     "giftcodes": {
+      "activeBadgeTooltip": "{count} active giftcodes",
       "filter": {
         "qPlaceholder": "Search by code…"
       },
