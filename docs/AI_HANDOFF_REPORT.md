@@ -1,5 +1,7 @@
 # AI Handoff Report — Xuân Tôi
 
+> **Snapshot (session 9n kickoff — audit refresh post-9m close-out)**: `main` @ `d332a18` (Merge PR #164 `test(api): giftcode-race.test.ts — 5 vitest concurrent economy safety (double-grant prevention)`, 30 Apr 2026 ~11:51 UTC). **Session 9m close-out (5/5 PR merged)**: PR #160 (docs audit refresh kickoff @ `873a0a3`), #161 (docs CHANGELOG catch-up sessions 9g/9h/9i/9j/9l @ `9c1e63a`), #162 (test API topup.service +17 vitest @ `0f56438`), #163 (test API email.service +14 vitest @ `ba17380`), #164 (test API giftcode-race +5 vitest @ `d332a18`). **Zero open PRs** at audit time 30/4 ~12:10 UTC. **Baseline verified local 30/4 ~12:10 UTC trên branch audit refresh**: `pnpm typecheck` ✅ (3 project) · `pnpm lint` ✅ · `pnpm --filter @xuantoi/shared test` ✅ **96/96** (6 file) · `pnpm --filter @xuantoi/web test` ✅ **509/509** (54 file) · `pnpm build` ✅ (PWA precache 47 entries / 763.79 KiB). API test chưa chạy local (cần `pnpm infra:up` — Postgres+Redis); CI matrix verify trên PR — session 9m PR #162/#163/#164 đã merge xanh, baseline API tăng từ ~259 lên **+36 test** (topup 17 + email 14 + giftcode-race 5). **Lưu ý**: cần `pnpm --filter @xuantoi/api exec prisma generate` trước khi chạy `pnpm typecheck` local vì `@prisma/client` types sinh ra từ `prisma generate`; thiếu sẽ fail TS2305 ở `apps/api/src/modules/topup/topup.service.ts` + `test-helpers.ts`. CI auto-run vì `prebuild` hook. Cần `pnpm build` (hoặc `pnpm --filter @xuantoi/shared build`) trước khi chạy web test local vì `@xuantoi/shared` export từ `dist/`. **Roadmap session 9n**: tiếp tục backlog post-9m — chọn task an toàn có giá trị cao nhất theo §20.
+
 > **Snapshot (session 9m kickoff — audit refresh)**: `main` @ `f103485` (Merge PR #159 `test(web): UI primitive render tests — ConfirmModal 17 + SkeletonBlock 4 + SkeletonTable 4`, 30 Apr 2026 ~11:00 UTC). **Session 9l close-out (4/4 PR merged)**: PR #156 (audit refresh @ `739b10a`), #157 (docs RELEASE_NOTES + CHANGELOG @ `64d02fd`), #158 (handoff M9 Resolved @ `a1079dc`), #159 (UI primitive tests +25 vitest @ `f103485`). **Zero open PRs**. **Baseline verified local 30/4 ~11:05 UTC**: `pnpm typecheck` ✅ (3 project) · `pnpm lint` ✅ · `pnpm --filter @xuantoi/shared test` ✅ **96/96** (6 file) · `pnpm --filter @xuantoi/web test` ✅ **509/509** (54 file — includes PR #159 +25 test) · `pnpm build` ✅ (PWA precache 47 entries / 763.79 KiB). **Lưu ý**: cần `pnpm build` (hoặc `pnpm --filter @xuantoi/shared build`) trước khi chạy web test local vì `@xuantoi/shared` export từ `dist/` — thiếu build sẽ fail 15 test file với "Failed to resolve entry for package @xuantoi/shared". CI không gặp vì CI build trước test. **Roadmap session 9m**: tiếp tục backlog post-9k — chọn task an toàn có giá trị cao nhất.
 >
 > **Snapshot (session 9k task F — M9 doc merged)**: `main` @ `f1214a3` (Merge PR #150, 30 Apr 2026 ~09:10 UTC).
@@ -44,14 +46,20 @@
 ## 2. Current Branch / CI / PR Status
 
 - **Default branch**: `main`.
-- **Commit audit (session 9m kickoff)**: `f103485 Merge pull request #159 from hoathienmenh-01/devin/1777546019-ui-primitive-tests` (HEAD `main`, 30/4 ~11:00 UTC).
-- **CI gần nhất trên main**: xanh — PR #159 ✅ (5/5); trước đó #156, #157, #158 cũng xanh khi merge.
-- **PR open đáng kể (audit time 30/4 ~11:15 UTC)**: **0 PR open** — toàn bộ session 9l (#156..#159) đã merged.
+- **Commit audit (session 9n kickoff)**: `d332a18 Merge pull request #164 from hoathienmenh-01/devin/1777549692-economy-race-tests` (HEAD `main`, 30/4 ~11:51 UTC).
+- **CI gần nhất trên main**: xanh — PR #164 ✅; trước đó #160, #161, #162, #163 cũng xanh khi merge.
+- **PR open đáng kể (audit time 30/4 ~12:10 UTC)**: **0 PR open** — toàn bộ session 9m (#160..#164) đã merged.
+- **Commit audit (trước đó, session 9m kickoff)**: `f103485 Merge pull request #159 from hoathienmenh-01/devin/1777546019-ui-primitive-tests` (HEAD `main`, 30/4 ~11:00 UTC).
 - **Commit audit (trước đó, session 9i close)**: `27552a8 Merge pull request #118 from hoathienmenh-01/devin/1777527557-admin-tab-badges` (HEAD `main`, 30/4 ~06:18 UTC).
 - **Replay gap PR #47**: **Đã đóng** — PR #53 (cherry-pick `32a33a6` từ `devin/1777398483-h5-vitest-playwright`) merge vào main commit `2ae4cc0` (28/4 20:15 UTC). File `apps/web/vitest.config.ts` + `playwright.config.ts` + `e2e/golden.spec.ts` + `apps/web/src/stores/__tests__/{toast,game}.test.ts` đã có trên main.
 - **PR merged gần đây ảnh hưởng lớn**:
   | PR | Chủ đề | Impact |
   |---|---|---|
+  | #164 | test(api): giftcode-race.test.ts — 5 vitest concurrent economy safety (session 9m) | Reward safety — chống double-grant qua unique index `[giftCodeId,userId]` + `Promise.allSettled` race; cover maxRedeems=1 (3 user concurrent), maxRedeems=2 (5 user), same-user double-redeem, concurrent items grant, revoke-during-redeem — merge `d332a18` |
+  | #163 | test(api): email.service.test.ts — 14 vitest unit (session 9m) | Email infra coverage — mode selection (console/smtp/smtp+auth), sendPasswordResetEmail link generation + URL-encode + expiry minutes copy, SMTP_FROM default + custom — merge `ba17380` |
+  | #162 | test(api): topup.service.test.ts — 17 vitest economy safety (session 9m) | Topup createOrder happy/invalid/limit/isolation/uniqueness, listForUser empty/sorted/cap-50, bankInfo, toView normal/fallback, no-currency-side-effect — merge `0f56438` |
+  | #161 | docs(changelog): catch-up sessions 9g/9h/9i/9j/9l (session 9m) | Reconstruct missing sections in `docs/CHANGELOG.md` from AI_HANDOFF_REPORT.md — merge `9c1e63a` |
+  | #160 | docs(handoff): session 9m kickoff — audit refresh stale §2/§13/§15/§17/§19 + bump snapshot a1079dc | Docs audit refresh kickoff — merge `873a0a3` |
   | #148 | test(shared): BOSSES catalog integrity — 22 vitest (session 9j task O) | Reward safety (boss drops + currency rewards) — merge `e342513` |
   | #147 | test(shared): shop + topup catalog integrity — 19 vitest (session 9j task N) | Economy safety (shop prices + topup packages) — merge `d14ae2c` |
   | #146 | test(web): MButton + MToast UI primitive — 14 vitest (session 9j task M / K3.11) | UI primitive smoke coverage — merge `178ec14` |
@@ -115,7 +123,60 @@
 
 ---
 
-## Recent Changes (PR #33→#149 đã merged trên main; session 9j đóng toàn bộ task A→O; session 9k task A **Merged** PR #149 @ `5a815b3`; session 9k task C **this PR** AdminView render-level vitest Pending merge)
+## Recent Changes (PR #33→#164 đã merged trên main; session 9m close-out 5/5 PR merged: #160 audit refresh / #161 changelog catch-up / #162 topup tests / #163 email tests / #164 giftcode-race tests; session 9n kickoff **this PR** docs audit refresh post-close-out)
+
+### PR session 9n kickoff (in-flight, this PR) — `docs(handoff): session 9n kickoff — audit refresh post-9m close-out — bump snapshot f103485 → d332a18 + mark PR #160..#164 Merged + ghi nhận +36 API vitest baseline + reset Roadmap Immediate` — **Pending merge**
+
+- **Branch**: `devin/1777551102-audit-refresh-9m-close-out`. **Base**: `main` @ `d332a18` (post PR #164 merge). **Status**: docs-only, in-flight.
+- **Vì sao**: snapshot block cũ ghi `main @ f103485` (PR #159) nhưng PRs #160..#164 đã merged sau đó. §2 commit audit + recent changes table + Roadmap Immediate đều stale. AI sau đọc report sẽ nhầm trạng thái close-out session 9m. PR này:
+  1. Bump top snapshot `f103485 → d332a18` + ghi rõ session 9m close-out 5/5 PR merged (ngày giờ + commit hash + tiêu đề).
+  2. §2 Current Branch / CI / PR Status: bump commit audit `f103485 → d332a18`, di chuyển f103485 xuống "trước đó".
+  3. §2 PR merged table: thêm 5 hàng PR #160..#164 với impact summary + commit hash.
+  4. §3 Recent Changes: tiêu đề bump `#149 → #164`; thêm entry chi tiết cho PR #160..#164 (branch, status, files, tests, CI status).
+  5. §12 Tests: cập nhật "Tổng" line baseline với count API +36 (topup 17 + email 14 + giftcode-race 5).
+  6. §20 Roadmap Immediate: đóng session 9m close-out (5/5 done); promote backlog post-9m sang Immediate session 9n.
+  7. §21 Exact PR Plan: mark PR #160..#164 Done; promote next priority task.
+- **Files**: `docs/AI_HANDOFF_REPORT.md` only.
+- **Tests added**: 0 (docs-only).
+- **CI status (local audit 30/4 ~12:10 UTC, trên branch này base `d332a18`)**: `pnpm typecheck` ✅ (3 project) · `pnpm lint` ✅ (max-warnings 0) · `pnpm --filter @xuantoi/shared test` ✅ **96/96** (6 file) · `pnpm --filter @xuantoi/web test` ✅ **509/509** (54 file) · `pnpm build` ✅ (PWA precache 47 entries / 763.79 KiB). API test cần `pnpm infra:up` local; CI matrix sẽ verify.
+- **Risk**: 🟢 thấp (docs-only, không touch code, schema, seed, migration, config).
+- **Rollback**: revert single PR (xóa edit duy nhất docs/AI_HANDOFF_REPORT.md).
+- **`AI_HANDOFF_REPORT.md updated`**: header §0 snapshot + §2 commit audit/CI/PR table + Recent Changes (this entry + 5 entry mới cho #160..#164) + §12 Tests "Tổng" + §20 Roadmap Immediate + §21 Exact PR Plan.
+
+### PR #164 — `test(api): giftcode-race.test.ts — 5 vitest concurrent economy safety (double-grant prevention)` — **Merged into main** @ `d332a18` (30/4 ~11:51 UTC, CI ✅) — **Resolved**
+
+- **Branch**: `devin/1777549692-economy-race-tests`. **Base**: `main` @ `ba17380` (post PR #163 merge).
+- Chống double-grant qua unique index `[giftCodeId, userId]` + `Promise.allSettled` race testing. Cover: (1) `maxRedeems=1` 3-user concurrent (chỉ 1 succeed, 2 fail `OUT_OF_USES`), (2) `maxRedeems=2` 5-user concurrent (đúng 2 succeed), (3) same-user 2 lần concurrent (1 succeed, 1 `ALREADY_REDEEMED`), (4) concurrent items grant không double-credit inventory, (5) revoke-during-redeem consistency (revoke phải block các redeem chưa commit).
+- **Files**: `apps/api/src/modules/giftcode/giftcode-race.test.ts` (new). **Tests added**: 5 vitest API. CI ✅
+- **Risk**: 🟢 (test-only). **Rollback**: revert single PR.
+
+### PR #163 — `test(api): email.service.test.ts — 14 vitest unit (mode selection/send console/sendPasswordResetEmail link generation/SMTP_FROM)` — **Merged into main** @ `ba17380` (30/4 ~11:40 UTC, CI ✅) — **Resolved**
+
+- **Branch**: `devin/1777549062-email-service-tests`. **Base**: `main` @ `0f56438` (post PR #162 merge).
+- Email infra coverage: mode selection (4: console default/explicit/smtp/smtp+auth), send console (2: log verify/text-only), `sendPasswordResetEmail` (6: default URL/custom URL/URL-encode/subject 'Xuân Tôi'/expiry minutes/min-1-phút), SMTP_FROM (2: default/custom).
+- **Files**: `apps/api/src/modules/email/email.service.test.ts` (new). **Tests added**: 14 vitest API. CI ✅ (Devin Review fix: thêm subject assertion 'Xuân Tôi').
+- **Risk**: 🟢 (test-only, no DB needed). **Rollback**: revert single PR.
+
+### PR #162 — `test(api): topup.service.test.ts — 17 vitest economy safety (createOrder/listForUser/bankInfo/toView/no-currency-side-effect)` — **Merged into main** @ `0f56438` (30/4 ~11:32 UTC, CI ✅) — **Resolved**
+
+- **Branch**: `devin/1777548417-topup-service-tests`. **Base**: `main` @ `9c1e63a` (post PR #161 merge).
+- Economy safety: `createOrder` happy/invalid/limit (`MAX_PENDING_PER_USER=5`)/isolation/uniqueness/persistence/slot-free, `listForUser` empty/sorted/isolation/cap-50, `bankInfo`, `toView` normal/fallback, no-currency-side-effect (createOrder không grant currency trước khi admin approve).
+- **Files**: `apps/api/src/modules/topup/topup.service.test.ts` (new). **Tests added**: 17 vitest API. CI ✅ (Devin Review fix: dùng fresh user per package để tránh `MAX_PENDING_PER_USER=5` limit).
+- **Risk**: 🟢 (test-only). **Rollback**: revert single PR.
+
+### PR #161 — `docs(changelog): catch-up sessions 9g/9h/9i/9j/9l — fill 5 missing sections trong docs/CHANGELOG.md (session 9m)` — **Merged into main** @ `9c1e63a` (30/4 ~11:23 UTC, CI ✅) — **Resolved**
+
+- **Branch**: `devin/1777547964-changelog-catchup-9g-9j`. **Base**: `main` @ `873a0a3` (post PR #160 merge).
+- Reconstruct CHANGELOG sections cho session 9g/9h/9i/9j/9l từ AI_HANDOFF_REPORT.md. CHANGELOG trước đó chỉ có sections 9d→9f. PR fill gap để dev/AI sau có thể đọc CHANGELOG độc lập.
+- **Files**: `docs/CHANGELOG.md` (+5 section). **Tests added**: 0 (docs-only). CI ✅
+- **Risk**: 🟢 (docs-only). **Rollback**: revert single PR.
+
+### PR #160 — `docs(handoff): session 9m kickoff — audit refresh fix stale §2/§13/§15/§17/§19 + bump snapshot a1079dc` — **Merged into main** @ `873a0a3` (30/4 ~11:10 UTC, CI ✅) — **Resolved**
+
+- **Branch**: `devin/1777547236-audit-refresh-session-9m`. **Base**: `main` @ `f103485` (post PR #159 merge).
+- Session 9m kickoff audit refresh: bump snapshot `2e54a1e → f103485 → a1079dc` (intermediate), fix §2 commit audit cũ (`27552a8` → `f103485`), §13 Seed Data, §15 Docs (mark CHANGELOG/RELEASE_NOTES updated), §17 Missing forgot-password Resolved (PR #101..#103 đã merged), §19 self-demote Resolved.
+- **Files**: `docs/AI_HANDOFF_REPORT.md` only. **Tests added**: 0 (docs-only). CI ✅
+- **Risk**: 🟢 (docs-only). **Rollback**: revert single PR.
 
 ### PR session 9k task C (in-flight, this PR) — `test(web): smart AdminView render-level smoke tests — 18 vitest (session 9k task C / admin ops safety)` — **Pending merge**
 
@@ -1818,7 +1879,7 @@ apps/api/src/modules/character/currency.service.ts:88   data: { tienNgoc: { incr
 | **Economy integration** | Rải rác trong từng service + `item-ledger.test.ts` consistency check + `pnpm audit:ledger` script | Cross-module: market post → buy, ngân sách sect | Low |
 | **Logs (G3 cũ/M6)** | **20 test** (`logs.service.test.ts`) (PR #88) — cursor encode/decode 6 + listForUser currency 11 + listForUser item 3 | — | — |
 
-**Tổng (`vitest run` thực tế, baseline session 9m trên main @ `ba17380` + this PR branch)**: **~431 test API (cần infra:up — +17 topup + 14 email + 5 giftcode-race session 9m) + 96 test shared + 509 test web = ~1036 test pass expected**. CI xanh. Real Postgres + real Redis service trên CI; local dùng `infra/docker-compose.dev.yml` (`docker compose up -d pg redis`). Web count 509 (54 file). Shared count 96 (6 file). API count ~431 (+17 topup + 14 email + 5 giftcode-race session 9m).
+**Tổng (`vitest run` thực tế, baseline session 9n trên main @ `d332a18` post session 9m close-out)**: **~431 test API (cần infra:up — +17 topup + 14 email + 5 giftcode-race session 9m, all merged) + 96 test shared + 509 test web = ~1036 test pass expected**. CI xanh trên cả 5 PR session 9m (#160..#164). Real Postgres + real Redis service trên CI; local dùng `infra/docker-compose.dev.yml` (`docker compose up -d pg redis`). Web count 509 (54 file). Shared count 96 (6 file). API count ~431 (+17 topup + 14 email + 5 giftcode-race session 9m).
 
 **Chạy**:
 ```bash
@@ -2094,25 +2155,44 @@ Admin hiện tại có thể vào `/admin` → Users → tìm → **Set role = A
 
 ## 20. Recommended Next Roadmap
 
-### Immediate (session 9m — sau khi session 9l đóng PR #156/#157/#158/#159 merged vào main @ `f103485`, 30/4 ~11:00 UTC)
+### Immediate (session 9n — sau khi session 9m đóng PR #160/#161/#162/#163/#164 merged vào main @ `d332a18`, 30/4 ~11:51 UTC)
 
-**Session 9l close-out (4/4 PR Merged)**:
+**Session 9m close-out (5/5 PR Merged)**:
 
-- 1. **Docs audit refresh session 9l kickoff** — Merged PR #156 @ `739b10a`.
-- 2. **Docs RELEASE_NOTES + CHANGELOG session 9k close-out** — Merged PR #157 @ `64d02fd`.
-- 3. **Docs(handoff) M9 Resolved in §16** — Merged PR #158 @ `a1079dc`.
-- 4. **test(web): UI primitive ConfirmModal 17 + SkeletonBlock 4 + SkeletonTable 4** — Merged PR #159 @ `f103485`.
+- 1. **Docs audit refresh session 9m kickoff** — Merged PR #160 @ `873a0a3`.
+- 2. **Docs CHANGELOG catch-up sessions 9g/9h/9i/9j/9l** — Merged PR #161 @ `9c1e63a`.
+- 3. **test(api): topup.service +17 vitest economy safety** — Merged PR #162 @ `0f56438`.
+- 4. **test(api): email.service +14 vitest unit (no DB needed)** — Merged PR #163 @ `ba17380`.
+- 5. **test(api): giftcode-race +5 vitest concurrent (double-grant prevention)** — Merged PR #164 @ `d332a18`.
 
-**This PR (session 9m kickoff, docs audit)**: audit refresh — fix stale §2/§13/§15/§17/§19, bump snapshot `2e54a1e → f103485`, mark #156-#159 merged. Then continue with highest-priority code task.
+**This PR (session 9n kickoff, docs audit)**: audit refresh post-9m close-out — bump snapshot `f103485 → d332a18`, mark #160..#164 merged, ghi nhận +36 API vitest baseline trong §12. Then continue with highest-priority code task.
 
-**Backlog còn lại (post-9l, an toàn nếu credit còn)**:
-- `M7` CSP CDN prod verify — **chỉ khi deploy staging/prod, cần env thật**. Scope out nếu không deploy.
-- `M10` shop daily limit (post-beta) — model `ShopBuyDailyCounter` + reset cron → mỗi item key có `dailyLimit`, mặc định null = unlimited. **Risk 🟡** — schema change, cần migration + seed logic update + test coverage mới.
-- Smart admin: bulk actions cho user list (multi-select ban, multi-select grant currency với confirm). **Risk 🟡** — admin UI mới + API mới; cần admin seed test.
-- Performance: page-load benchmark `/leaderboard` + `/admin` users tab khi >100 user. **Risk 🟢 thấp** — ops-only.
-- ~~Forgot-password + reset-password API~~ — **Resolved** (PR #101 BE + #102 FE + #103 timing fix, Merged @ `3c1aa39`). Đã có `ForgotPasswordView.vue` + `ResetPasswordView.vue` + 23 vitest + Mailhog scaffold.
-- CHANGELOG catch-up sessions 9g-9j — **Risk 🟢 thấp** docs-only, reconstruct từ AI_HANDOFF_REPORT.md.
-- Smart audit helper: script `scripts/audit-ledger.mjs` verify CurrencyLedger sum per user = actual `linhThach`/`tienNgoc`. **Risk 🟢 thấp** — script-only, read-only, nhưng endpoint `GET /admin/economy/audit-ledger` đã có trên main (PR #112).
+**Backlog còn lại (post-9m, an toàn nếu credit còn)** — ưu tiên theo §22 priority order (Critical/High > runtime smoke > missing API/page > economy safety > E2E > admin/security > docs > i18n/UX > smart beta > post-beta):
+
+1. **Smart audit helper script** — `scripts/audit-ledger.mjs` verify `CurrencyLedger` sum per user = actual `linhThach`/`tienNgoc` balance + `ItemLedger` sum vs inventory qty. **Risk 🟢 thấp** — script-only, read-only, no schema change. Endpoint `GET /admin/economy/audit-ledger` đã có trên main (PR #112) → script CLI cho devops chạy local. Giá trị: phát hiện sớm ledger drift trước beta. **Test**: cover happy path + intentional drift seed → script exit 1 + report file. **Next: this session priority #1**.
+
+2. **API service tests còn thiếu (sau 9m)** — kiểm tra coverage gap:
+   - `mail.service.test.ts` mở rộng WS `mail:new` integration end-to-end.
+   - `chat.service.test.ts` Redis failover branch.
+   - `boss.service.test.ts` spawn cron auto branch (chưa có feature, skip).
+   - `cultivation.processor.test.ts` multi-instance lock.
+   - **Risk 🟢 thấp** — test-only. **Priority**: medium (test gap trong §12).
+
+3. **i18n parity audit cho mission/mail/giftcode/admin keys mới sau 9j** — grep `\['"\`].*[À-ỹ].*['"\`]\` trong .vue/.ts để bắt VN hard-code còn sót. **Risk 🟢 thấp** — docs/i18n only.
+
+4. **Mobile responsive smoke** — viewport <375px audit cho AppShell + AdminView + InventoryView. Chưa có test E2E mobile-specific. **Risk 🟢 thấp** — Playwright config viewport.
+
+5. **Smart admin bulk actions** — multi-select user ban/grant với confirm modal + audit log. **Risk 🟡** — admin UI mới + API mới + admin seed test mở rộng. **Priority**: medium nếu không có Critical/High blocker.
+
+6. **`M7` CSP CDN prod verify** — chỉ khi deploy staging/prod, cần env thật. **Scope out** nếu không deploy.
+
+7. **`M10` shop daily limit (post-beta)** — model `ShopBuyDailyCounter` + reset cron → mỗi item key có `dailyLimit`, mặc định null = unlimited. **Risk 🟡** — schema change, cần migration + seed logic update + test coverage mới. **Priority**: post-beta nếu chưa cần.
+
+8. **Performance page-load benchmark** `/leaderboard` + `/admin` users tab khi >100 user. **Risk 🟢 thấp** — ops-only.
+
+9. **Smart admin: economy alerts thresholds tunable env** — hiện tại hard-code threshold (`STALE_PENDING_TOPUP_HOURS=72`, etc.). Thêm `.env` override + test. **Risk 🟢 thấp** — config only.
+
+10. **PWA offline shell verify** — chạy lighthouse offline, ghi nhận cache strategy còn miss endpoint nào. **Risk 🟢 thấp** — docs/audit only.
 
 ---
 
@@ -2293,26 +2373,31 @@ F. ~~**`docs/CHANGELOG.md` bootstrap**~~ — **Done by PR #104** (Merged into ma
 | #158 | task 3 — handoff M9 Resolved in §16 | **Merged into main** @ `a1079dc` |
 | #159 | task 4 — UI primitive tests ConfirmModal + Skeleton | **Merged into main** @ `f103485` |
 
-### Session 9m (current)
+### Session 9m (đã đóng, 5/5 PR merged vào main `873a0a3 → d332a18`)
 
-#### PR session 9m-A — `docs(handoff): audit refresh` — **Merged** PR #160 @ `873a0a3`
-- Fix stale §2/§13/§15/§17/§19/§20/§21 + bump snapshot `f103485`. Docs-only.
+| PR | Task | Status |
+|---|---|---|
+| #160 | session 9m-A — docs(handoff): audit refresh fix stale §2/§13/§15/§17/§19 | **Merged into main** @ `873a0a3` |
+| #161 | session 9m-B — docs(changelog): catch-up sessions 9g/9h/9i/9j/9l | **Merged into main** @ `9c1e63a` |
+| #162 | session 9m-C — test(api): topup.service +17 vitest economy safety | **Merged into main** @ `0f56438` |
+| #163 | session 9m-D — test(api): email.service +14 vitest unit | **Merged into main** @ `ba17380` |
+| #164 | session 9m-E — test(api): giftcode-race +5 vitest concurrent | **Merged into main** @ `d332a18` |
 
-#### PR session 9m-B — `docs(changelog): catch-up sessions 9g/9h/9i/9j/9l` — **Merged** PR #161 @ `9c1e63a`
-- +98 lines, 5 new session sections covering PR #105→#159. Docs-only.
+### Session 9n (current)
 
-#### PR session 9m-C — `test(api): topup.service.test.ts — 17 vitest economy safety` — **Merged** PR #162 @ `0f56438`
-- TopupService 17 tests: createOrder 8 + listForUser 4 + bankInfo 1 + toView 2 + economy safety 2. Test-only.
+#### PR session 9n-A (in-flight, this PR) — `docs(handoff): session 9n kickoff — audit refresh post-9m close-out`
+- **Branch**: `devin/1777551102-audit-refresh-9m-close-out`. **Base**: `main` @ `d332a18` (post PR #164 merge). **Status**: docs-only, in-flight.
+- **Files**: `docs/AI_HANDOFF_REPORT.md` only.
+- **Updates**: header §0 snapshot bump `f103485 → d332a18` + §2 commit audit/CI/PR table + Recent Changes (this entry + 5 entry mới #160..#164) + §12 Tổng baseline session 9n + §20 Roadmap Immediate (close 9m, promote 9n) + §21 Exact PR Plan (mark 9m table done, add 9n).
+- **Tests added**: 0 (docs-only).
+- **CI status (local 30/4 ~12:10 UTC, base `d332a18`)**: typecheck ✅ / lint ✅ / shared 96/96 ✅ / web 509/509 ✅ / build ✅ (PWA 47 entries 763.79 KiB). API test cần infra:up local; CI matrix verify.
+- **Risk**: 🟢 thấp (docs-only). **Rollback**: revert single PR.
 
-#### PR session 9m-D — `test(api): email.service.test.ts — 14 vitest unit` — **Merged** PR #163 @ `ba17380`
-- EmailService 14 unit tests: mode selection 4 + send console 2 + sendPasswordResetEmail 6 + SMTP_FROM 2. No DB needed. Test-only.
+#### Sẽ làm tiếp (session 9n) — sau khi PR session 9n-A merge
 
-#### PR session 9m-E (this PR) — `test(api): giftcode-race.test.ts — 5 vitest concurrent economy safety`
-- **Branch**: `devin/1777549692-economy-race-tests`. **Base**: `main` @ `ba17380`.
-- **File**: `apps/api/src/modules/giftcode/giftcode-race.test.ts` (new) + `docs/AI_HANDOFF_REPORT.md`.
-- **Tests added**: 5 — concurrent maxRedeems=1 (3 users, verify exactly 1 wins + total currency correct) + maxRedeems=2 (5 users) + same-user double-redeem (unique index guard) + concurrent items grant (no over-grant) + revoke-during-redeem consistency.
-- **Risk**: 🟢 thấp — test-only, integration test (needs Postgres), no production code change.
-- **Rollback**: revert single PR.
+- **session 9n-B (priority #1)**: Smart audit helper script `scripts/audit-ledger.mjs` — verify CurrencyLedger sum vs balance + ItemLedger sum vs inventory qty. Read-only CLI cho devops. Test cover happy + intentional drift seed → exit 1 + report file.
+- **session 9n-C (priority #2)**: API test gap — `mail.service.test.ts` mở rộng WS `mail:new` integration; `chat.service.test.ts` Redis failover; `cultivation.processor.test.ts` multi-instance lock.
+- **session 9n-D**: i18n parity audit cho keys mới session 9j (mission/mail/giftcode/admin) — grep VN hard-code còn sót.
 
 ### Done (chuỗi #33→#45 đã merge trên `main` tại `e99a35f`)
 
