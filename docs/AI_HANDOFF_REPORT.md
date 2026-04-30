@@ -6,7 +6,7 @@
 >
 > Báo cáo trung thực. Mọi tuyên bố "đã xong" đều có PR + file + test chứng minh. Khi chưa verify runtime, ghi rõ **"Needs runtime smoke"**.
 >
-> **Baseline session 9j task B (đã verify local 30/4 ~07:33 UTC trên branch `devin/1777534094-k3-view-tests-topup-mail-inventory-settings` ancestor `2521672`)**: `pnpm typecheck` ✅ (3 project, 0 error, sau khi `prisma generate` + `shared build`) · `pnpm lint` ✅ (max-warnings 0) · `pnpm --filter @xuantoi/shared test` ✅ **55/55** (3 file) · `pnpm --filter @xuantoi/web test` ✅ **326/326** (37 file — baseline 302 + PR #134 fix giữ nguyên + session 9j task B TopupView.test 10 + MailView.test 14 = +24 vs baseline session 9j task A close). Số file: 35 base + TopupView.test + MailView.test = 37. `pnpm --filter @xuantoi/web build` ✅ (Vite 5.21s + PWA generateSW 47 entries 763.47 KiB). API test: chưa run trong session 9j task B (cần `pnpm infra:up` + `prisma migrate deploy`); CI matrix `e2e-smoke` + build job sẽ verify trên PR.
+> **Baseline session 9j task C (đã verify local 30/4 ~07:41 UTC trên branch `devin/1777534748-k3-2-inventory-view-tests` stacked trên PR #135)**: `pnpm typecheck` ✅ (3 project, 0 error) · `pnpm lint` ✅ (max-warnings 0) · `pnpm --filter @xuantoi/shared test` ✅ **55/55** · `pnpm --filter @xuantoi/web test` ✅ **341/341** (38 file — baseline task B close 326 + InventoryView.test 15 = +15). Task B (PR #135 TopupView 10 + MailView 14) vẫn đang Pending merge; task C sẽ rebase xuống main sau khi #135 merge. API test: chưa run trong session 9j (cần `pnpm infra:up`); CI matrix sẽ verify trên PR.
 >
 > **Trạng thái (30/4 session 9i, ~06:35 UTC)**: PR #33..#122 đã merge `main`; session 9i task A (#119 docs audit refresh) + task B (#120 docs/RELEASE_NOTES.md bootstrap) + task C (#121 smart giftcode active badge) + task D (#122 smart UX toast duration policy) đều cascade merged. **Đang Pending merge**: PR #123 (task E admin user export CSV — endpoint + helper + 15 vitest + Export CSV button) và PR #124 (task F HomeView smoke tests — 9 vitest). Toàn bộ Critical/High/Medium đã Resolved trừ M7 (CSP CDN — chỉ verify khi prod deploy), M9 (logout-all `passwordVersion` — intentional trade-off), M10 (shop daily limit — post-beta nice-to-have). Low: tất cả Resolved. Roadmap session 9i tiếp theo: task G (AppShell skeleton tests — RouterLink + 4 store mock pattern) → task H (admin giftcode revoke UI consume PR #61 BE) → task I (beta runtime smoke matrix end-to-end via Playwright).
 >
@@ -93,9 +93,20 @@
 
 ---
 
-## Recent Changes (PR #33→#134 đã merged trên main; session 9j task B **this PR** smart TopupView + MailView smoke tests Pending merge)
+## Recent Changes (PR #33→#134 đã merged trên main; session 9j task B PR #135 Pending merge, task C **this PR** stacked trên #135 Pending merge)
 
-### PR session 9j task B (in-flight, this PR) — `test(web): smart TopupView + MailView smoke tests — 24 vitest (session 9j task B / K3)` — **Pending merge**
+### PR session 9j task C (in-flight, this PR) — `test(web): smart InventoryView smoke tests — 15 vitest (session 9j task C / K3.2)` — **Pending merge** (stacked trên PR #135)
+
+- **Branch**: `devin/1777534748-k3-2-inventory-view-tests`. **Base**: PR #135 branch `devin/1777534094-k3-view-tests-topup-mail-inventory-settings` (sau khi #135 merge, rebase xuống main).
+- **Vì sao**: InventoryView đụng **economy safety** (ItemLedger) — equip/unequip/use đều có thể tạo ledger entry; double-click gây duplicate ledger/duplicate consume (đặc biệt là đan dược consume qty). Trước đó view này **không có vitest coverage**. Thêm 15 test chống regression: (a) submitting guard chống double equip, (b) handleErr map `inventory.errors.<code>` / fallback UNKNOWN, (c) unequip/use flow + toast chính xác, (d) listInventory fail → `inventory.loadFailToast`.
+- **Changes**:
+  1. **`apps/web/src/views/__tests__/InventoryView.test.ts`** (NEW, +370 line, **15 vitest**): 3 onMounted routing (unauth redirect · auth → fetchState + bindSocket + listInventory · listInventory fail → `loadFailToast` nhưng header vẫn render) · 4 render (9 slot empty label "Trống" + "Túi đồ trống." · item đã equipped trong gear section + nút "Tháo" · item có slot + bonus text "ATK +10 / DEF +3" + nút "Trang bị" · pill có effect + nút "Dùng", không có "Trang bị") · 4 equip flow (success: equipItem + toast `equipToast` + list cập nhật, nút Tháo xuất hiện · error NOT_OWNER map `inventory.errors.NOT_OWNER` · error code lạ → fallback UNKNOWN · submitting guard: click lần 2 trong khi pending → `equipItem` chỉ 1 call) · 2 unequip flow (success: `unequipItem('WEAPON')` + toast `unequipToast` với {slot}, nút Trang bị xuất hiện · error code lạ → fallback UNKNOWN) · 2 use flow (success: useItem + toast `useToast` + qty giảm 3→2 · error NOT_OWNER map).
+- **Pattern**: mock `@/api/inventory` qua `vi.importActual` spread (preserve `InventoryView` type export); i18n setup mô phỏng đủ namespace `inventory.*`, `equipSlot.*`, `quality.*` để test render chính xác. Submitting guard test dùng `resolveHolder: { current }` pattern (C-TSNARROW-RESOLVEFN-safe).
+- **Tests**: `pnpm typecheck` ✅ · `pnpm lint` ✅ · `pnpm --filter @xuantoi/shared test` ✅ 55/55 · `pnpm --filter @xuantoi/web test` ✅ **341/341** (38 file — InventoryView.test 15/15 + không regression test cũ).
+- **Risk**: 🟢 thấp — test-only, không touch production code. Rollback: revert PR.
+- **Follow-up sau merge**: SettingsView test mở rộng (nếu cần) hoặc chuyển sang session 9i task I — beta runtime smoke matrix end-to-end Playwright.
+
+### PR #135 — `test(web): smart TopupView + MailView smoke tests — 24 vitest (session 9j task B / K3)` — **Pending merge** (CI 5/5 ✅)
 
 - **Branch**: `devin/1777534094-k3-view-tests-topup-mail-inventory-settings`. **Base**: `main` @ `2521672` (post PR #134 merge).
 - **Vì sao**: TopupView + MailView là 2 view nạp tiền + hệ thống thư — core flow nhưng trước đó **không có vitest coverage**. Rủi ro regression: (a) double-click buy → duplicate order (economy safety), (b) readMail fail → block render thư đã chọn, (c) handleErr map thiếu fallback. Thêm 24 test giúp CI chặn regression khi refactor API client, rename i18n key, hoặc đổi error code.
