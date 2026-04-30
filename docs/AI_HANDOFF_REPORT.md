@@ -1888,7 +1888,7 @@ pnpm test                              # toàn bộ — gộp shared + api + web
 | `docs/SECURITY.md` | **Có** (PR #35 + PR #154 session 9k) | Threat model, secret rotation, rate limit, audit, logout-all behavior. 8.5 KB. |
 | `docs/RUN_LOCAL.md` | **Có** (PR #35) | Tách riêng từ README — full step-by-step. 4.7 KB. |
 | `docs/TROUBLESHOOTING.md` | **Có** (PR #35) | WS không connect, migration fail, Redis down, typecheck loop. 6.7 KB. |
-| `docs/CHANGELOG.md` | **Có** (PR #104 + PR #157) | Keep-a-Changelog format, session 9d→9k entries. 9.7 KB. |
+| `docs/CHANGELOG.md` | **Có** (PR #104 + PR #157 + session 9m catch-up) | Full changelog sessions 9d→9l. Session 9m PR thêm sections 9g/9h/9i/9j/9l. ~10 KB. |
 | `docs/RELEASE_NOTES.md` | **Có** (PR #120 + PR #157) | Closed beta press kit, roadmap, known issues. 9.8 KB. |
 | `docs/PRIVACY.md` | **Có** (PR #151 session 9k) | Closed-beta data retention policy. 9.3 KB. |
 | `docs/TOS.md` | **Có** (PR #151 session 9k) | Closed-beta tester agreement. 10.3 KB. |
