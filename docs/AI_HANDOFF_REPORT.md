@@ -1,6 +1,8 @@
 # AI Handoff Report — Xuân Tôi
 
-> **Snapshot (session 9p task K, this PR)**: `main` @ `ecd08d6` (Merge PR #199 controller trio2 tests, 30/4 ~19:52 UTC). **Session 9p task K (this PR)**: controller-level pure-unit vitest cho 3 controller tiếp (mission/mail/chat) — `mission.controller` (17 vitest 2 endpoint, auth + zod missionKey 1..80 + MissionError 4-code {NO_CHARACTER/MISSION_UNKNOWN→404, NOT_READY/ALREADY_CLAIMED→409}), `mail.controller` (24 vitest 4 endpoint incl `unread-count` rethrow no-try/catch + IdParam 1..80 + MailError 7-code {NO_CHARACTER/MAIL_NOT_FOUND/RECIPIENT_NOT_FOUND→404, ALREADY_CLAIMED/MAIL_EXPIRED/NO_REWARD→409, INVALID_INPUT→400}), `chat.controller` (25 vitest 3 endpoint, ChannelEnum WORLD|SECT case-sensitive + WORLD historyWorld() KHÔNG truyền userId vs SECT historySect(userId) + text 1..200 + ChatError 5-code {NO_CHARACTER/NO_SECT→404, EMPTY_TEXT/TEXT_TOO_LONG→400, RATE_LIMITED→429}). +66 vitest. API baseline **749 → 815** (68 file).
+> **Snapshot (session 9p task L, this PR)**: `main` @ `21c06ba` (Merge PR #200 controller trio3 tests, 30/4 ~20:08 UTC). **Session 9p task L (this PR)**: controller-level pure-unit vitest cho 3 controller gameplay-related (boss/combat/inventory) — `boss.controller` (30 vitest 3 endpoint incl AdminGuard-bypassed `adminSpawn` + public-after-auth `current()` getViewer pattern + zod skillKey max 64 / level 1..10 / bossKey 1..64 + BossError 11-code mapping {NO_CHARACTER/NO_ACTIVE_BOSS→404, COOLDOWN→429, SKILL_NOT_USABLE/INVALID_BOSS_KEY/INVALID_LEVEL→400, BOSS_DEFEATED/STAMINA_LOW/MP_LOW/HP_LOW/BOSS_ALREADY_ACTIVE→409}), `combat.controller` (29 vitest 5 endpoint incl PUBLIC `dungeons()` no-auth + `getActive` characterId-not-userId + `action` body-nullable fallback `body ?? {}` + duck-typed handleErr 8-code {NO_CHARACTER/DUNGEON_NOT_FOUND/ENCOUNTER_NOT_FOUND→404, STAMINA_LOW/MP_LOW/SKILL_NOT_USABLE/ALREADY_IN_FIGHT/ENCOUNTER_ENDED→409}), `inventory.controller` (36 vitest 4 endpoint incl shared `requireCharacter` 401/404 fail-fast + EquipSlot enum 9-value full coverage (WEAPON/ARMOR/BELT/BOOTS/HAT/TRAM/ARTIFACT_1..3) + duck-typed handleErr 7-code {NO_CHARACTER/INVENTORY_ITEM_NOT_FOUND/ITEM_NOT_FOUND→404, NOT_EQUIPPABLE/NOT_USABLE/WRONG_SLOT/ALREADY_USED→409}). +95 vitest. API baseline **815 → 910** (71 file).
+>
+> **Snapshot (session 9p task K, merged)**: `main` @ `21c06ba` (Merge PR #200, 30/4 ~20:08 UTC). **PR #200**: `apps/api/src/modules/{mission,mail,chat}/*.controller.test.ts` (+66 vitest). API baseline **749 → 815**. CI ✅
 >
 > **Snapshot (session 9p task J, merged)**: `main` @ `ecd08d6` (Merge PR #199, 30/4 ~19:52 UTC). **PR #199**: `apps/api/src/modules/{logs,shop,topup}/*.controller.test.ts` (+46 vitest). API baseline **703 → 749**. CI ✅
 >
@@ -191,9 +193,36 @@
 
 ---
 
-## Recent Changes (PR #33→#199 đã merged trên main; session 9p task K **this PR** controller-level tests cho 3 controller: mission + mail + chat)
+## Recent Changes (PR #33→#200 đã merged trên main; session 9p task L **this PR** controller-level tests cho 3 controller gameplay-related: boss + combat + inventory)
 
-### PR session 9p task K (in-flight, this PR) — `test(api): mission + mail + chat controller +66 vitest` — **Pending merge**
+### PR session 9p task L (in-flight, this PR) — `test(api): boss + combat + inventory controller +95 vitest` — **Pending merge**
+
+- **Branch**: `devin/1777580025-controller-trio4-tests`. **Base**: `main` @ `21c06ba` (post PR #200 merge).
+- **Vì sao**: 3 controller gameplay-related ở `apps/api/src/modules/{boss,combat,inventory}/*.controller.ts` chưa có vitest trực tiếp. Service-level test đã cover business logic (boss combat math + dungeon RNG + equip bonus); controller layer chứa các risk silent regression đặc biệt:
+  - **`BossController`**: 3 endpoint, mix auth/public — `current()` PUBLIC-after-auth (viewer pattern, characterId nullable). `attack()` auth + zod skillKey max 64. `adminSpawn()` AdminGuard + zod (bossKey 1..64, level 1..10, force opt). `BossError` 11-code → 4 status (404/429/400/409). `COOLDOWN→429` đặc biệt — không trùng với các controller khác.
+  - **`CombatController`**: 5 endpoint, mix PUBLIC + auth — `dungeons()` PUBLIC sync getter. `active()` auth + characterId-not-userId (cross-arg risk). `start()` zod dungeonKey min 1. `action(:id)` zod skillKey optional + body-nullable fallback `body ?? {}` (controller bug shield). `abandon(:id)` auth-only no zod. Duck-typed handleErr 8-code → 2 status (404/409). `CombatError` không export → test dùng `class DuckErr extends Error` với `.code` field.
+  - **`InventoryController`**: 4 endpoint, all-auth-protected — shared `requireCharacter` helper (401 nếu không cookie + 404 NO_CHARACTER nếu user chưa tạo nhân vật, fail-fast trực tiếp KHÔNG qua handleErr). EquipSlot enum 9-value (zod sẽ block các slot khác). Duck-typed handleErr 7-code → 2 status (404/409).
+- **Files** (3 file new):
+  - `apps/api/src/modules/boss/boss.controller.test.ts` (30 vitest): public-after-auth current() × 4 + auth/zod attack × 6 (skillKey max 64 boundary + non-string + optional + 64-char accept) + adminSpawn × 6 (level 0/11 boundary + bossKey empty/65 + happy + empty body) + BossError 11-code × 11 + 2 cross-endpoint (adminSpawn INVALID_BOSS_KEY/BOSS_ALREADY_ACTIVE) + 1 unknown rethrow.
+  - `apps/api/src/modules/combat/combat.controller.test.ts` (29 vitest): PUBLIC dungeons × 2 + active × 4 (auth + 404 no-character + null + characterId arg) + start × 5 (auth + zod 3 case + happy) + action × 5 (auth + body null/undefined fallback + zod non-string + happy) + abandon × 2 + handleErr duck-typed 8-code × 8 + 2 rethrow paths + 1 cross-endpoint abandon error.
+  - `apps/api/src/modules/inventory/inventory.controller.test.ts` (36 vitest): requireCharacter shared × 4 (cross 4 endpoint) + list × 2 + equip zod × 4 + unequip slot enum × 4 (invalid/empty/lowercase/missing) + 9 slot accept × 9 (full enum) + use zod × 3 + handleErr duck-typed 7-code × 7 + 1 cross-endpoint use:WRONG_SLOT + 2 rethrow paths.
+- **Lock-in invariants**:
+  - `BossController.current()`: PUBLIC (no 401), characterId fallback null khi không cookie hoặc character chưa có. 
+  - `BossController.adminSpawn()`: AdminGuard runtime-active in prod; trong test bypass bằng instantiate trực tiếp + truyền `AdminReq = Request & { userId, role }`.
+  - `CombatController.dungeons()`: synchronous (no await trong controller), no auth.
+  - `CombatController.active()`: gọi `getActive(characterId)` chứ KHÔNG `getActive(userId)` — bug shield.
+  - `CombatController.action()`: body null/undefined fallback `body ?? {}` để body trống không 400.
+  - `InventoryController`: 4 endpoint share `requireCharacter` → identical 401/404 paths.
+  - `InventoryController.unequip`: slot enum strict uppercase, `WEAPON|ARMOR|BELT|BOOTS|HAT|TRAM|ARTIFACT_1|ARTIFACT_2|ARTIFACT_3` (9 value), `weapon` lowercase fail.
+  - All 3 controller: envelope `{ ok: true, data }` strict; unknown error rethrow nguyên.
+- **Tests**: 95/95 vitest mới ✅ (1.17s, 3 file). API baseline 815 → **910** (71 file). typecheck ✅ · lint ✅.
+- **Risk**: 🟢 thấp — test-only, pure unit. No runtime change. Không cần migration / seed / Postgres.
+- **Rollback**: revert single PR (xóa 3 file test).
+- **Next planned**: tiếp tục controller trio cho `market + sect + auth` — 3 controller tương đối lớn cần PR riêng cho `admin` (562 lines).
+
+### PR #200 — `test(api): mission + mail + chat controller +66 vitest (session 9p task K)` — **Merged into main** @ `21c06ba` (30/4 ~20:08 UTC). CI ✅
+
+### PR session 9p task K (closed, merged) — `test(api): mission + mail + chat controller +66 vitest` — **Merged into main** @ `21c06ba`
 
 - **Branch**: `devin/1777579375-controller-trio3-tests`. **Base**: `main` @ `ecd08d6` (post PR #199 merge).
 - **Vì sao**: 3 controller ở `apps/api/src/modules/{mission,mail,chat}/*.controller.ts` chưa có vitest trực tiếp. Service-level test đã cover business logic; controller layer chứa các risk silent regression đặc biệt:
@@ -2723,7 +2752,8 @@ F. ~~**`docs/CHANGELOG.md` bootstrap**~~ — **Done by PR #104** (Merged into ma
 | #197 | session 9p task H — test(api): leaderboard.controller auth + delegation + limit parsing +14 vitest | **Merged into main** @ `643d8b8` (30/4 ~19:38 UTC, CI ✅) |
 | #198 | session 9p task I — test(api): daily-login + next-action + giftcode controller +36 vitest | **Merged into main** @ `cbefe05` (30/4 ~19:46 UTC, CI ✅) |
 | #199 | session 9p task J — test(api): logs + shop + topup controller +46 vitest | **Merged into main** @ `ecd08d6` (30/4 ~19:52 UTC, CI ✅) |
-| this PR | session 9p task K — test(api): mission + mail + chat controller +66 vitest | **Pending merge** (in-flight) |
+| #200 | session 9p task K — test(api): mission + mail + chat controller +66 vitest | **Merged into main** @ `21c06ba` (30/4 ~20:08 UTC, CI ✅) |
+| this PR | session 9p task L — test(api): boss + combat + inventory controller +95 vitest | **Pending merge** (in-flight) |
 
 #### PR session 9p task C (in-flight, this PR) — `test(api): ops.service + mission.scheduler ghost-cleanup +12 pure unit`
 
