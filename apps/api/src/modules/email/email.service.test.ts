@@ -156,6 +156,7 @@ describe('EmailService.sendPasswordResetEmail', () => {
     const calls = logSpy.mock.calls.map((c) => c[0] as string);
     const initCall = calls.find((c) => c.includes('subj@test.com'));
     expect(initCall).toBeDefined();
+    expect(initCall).toContain('Xuân Tôi');
     logSpy.mockRestore();
   });
 
