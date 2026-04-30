@@ -664,7 +664,15 @@ async function confirmGiftcodeRevoke(): Promise<void> {
   } catch (e) {
     const code = (e as { code?: string }).code;
     const key = mapGiftcodeRevokeErrorKey(code);
-    toast.push({ type: 'error', text: t(key) });
+    // Helper chỉ map riêng CODE_NOT_FOUND / CODE_REVOKED. Mọi code khác
+    // (UNAUTHENTICATED, FORBIDDEN, ADMIN_ONLY, NOT_FOUND, ...) cần dùng
+    // `handleErr` chung để toast hiển thị message i18n cụ thể, không phải
+    // generic "Có lỗi xảy ra" (admin.errors.UNKNOWN).
+    if (key === 'admin.errors.UNKNOWN') {
+      handleErr(e);
+    } else {
+      toast.push({ type: 'error', text: t(key) });
+    }
   } finally {
     giftcodeRevokeBusy.value = false;
   }
