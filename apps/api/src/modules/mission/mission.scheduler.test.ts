@@ -13,6 +13,7 @@
  * Mocked Queue (no Redis), pure-unit, chạy không cần `infra:up`.
  */
 import { describe, expect, it, vi } from 'vitest';
+import type { Queue } from 'bullmq';
 import { MissionScheduler } from './mission.scheduler';
 import { MISSION_RESET_INTERVAL_MS } from './mission.queue';
 
@@ -36,9 +37,7 @@ function makeFakeQueue(opts?: {
 }
 
 function makeScheduler(queue: FakeQueue): MissionScheduler {
-  return new MissionScheduler(
-    queue as unknown as Parameters<typeof MissionScheduler>[0],
-  );
+  return new MissionScheduler(queue as unknown as Queue);
 }
 
 describe('MissionScheduler.onModuleInit', () => {

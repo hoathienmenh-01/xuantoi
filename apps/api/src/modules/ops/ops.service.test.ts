@@ -13,6 +13,7 @@
  * Mocked Queue (no Redis), pure-unit, chạy không cần `infra:up`.
  */
 import { describe, expect, it, vi } from 'vitest';
+import type { Queue } from 'bullmq';
 import { OpsService } from './ops.service';
 import { OPS_PRUNE_INTERVAL_MS } from './ops.queue';
 
@@ -38,7 +39,7 @@ function makeFakeQueue(opts?: {
 function makeService(queue: FakeQueue): OpsService {
   // OpsService dùng `@InjectQueue` constructor injection — bypass DI bằng cách
   // truyền queue trực tiếp qua `as unknown as Queue`.
-  return new OpsService(queue as unknown as Parameters<typeof OpsService>[0]);
+  return new OpsService(queue as unknown as Queue);
 }
 
 describe('OpsService.scheduleRecurring', () => {
