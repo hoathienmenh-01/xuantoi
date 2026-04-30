@@ -149,7 +149,55 @@ pnpm --filter @xuantoi/api audit:ledger -- --json
 
 Read-only — an toàn chạy production không ảnh hưởng player.
 
-### 11.3 Economy alerts — ops-tunable thresholds
+### 11.3 Economy alerts CLI — `alerts:economy`
+
+Tương tự `audit:ledger`: chạy admin endpoint `GET /admin/economy/alerts` ở dạng CLI để cron / pipeline kiểm tra read-only.
+
+```bash
+# Human-readable (mặc định)
+pnpm --filter @xuantoi/api alerts:economy
+
+# Machine-parseable JSON
+pnpm --filter @xuantoi/api alerts:economy -- --json
+
+# Override stale-hours (default 24h)
+pnpm --filter @xuantoi/api alerts:economy -- --stale-hours=48
+pnpm --filter @xuantoi/api alerts:economy -- --json --stale-hours=72
+```
+
+**Exit codes**:
+- `0` — clean (no alerts)
+- `1` — alerts found
+- `2` — runtime error (DB connect, query crash, invalid arg)
+
+**JSON shape**:
+```json
+{
+  "summary": {
+    "negativeCurrency": 0,
+    "negativeInventory": 0,
+    "stalePendingTopups": 0,
+    "total": 0,
+    "ok": true
+  },
+  "negativeCurrency": [...],
+  "negativeInventory": [...],
+  "stalePendingTopups": [...],
+  "staleHours": 24,
+  "generatedAt": "..."
+}
+```
+
+**Cron monitoring** (chạy mỗi giờ):
+```cron
+0 * * * * cd /opt/xuantoi && pnpm --filter @xuantoi/api alerts:economy -- --json > /var/log/xuantoi/alerts-$(date +\%Y-\%m-\%d-\%H).json 2>&1 || (cat /var/log/xuantoi/alerts-$(date +\%Y-\%m-\%d-\%H).json | jq '.summary' && curl -X POST $SLACK_WEBHOOK -d "Economy alerts!")
+```
+
+Khi cron exit code `1` (alerts có), dispatch Slack/PagerDuty notification dựa vào count: low (1..2), medium (3..9), high (>=10).
+
+`linhThach` là `BigInt` ở DB → JSON serialize sang string, không cast về `number` (có thể vượt `Number.MAX_SAFE_INTEGER`).
+
+### 11.4 Economy alerts — ops-tunable thresholds
 
 `GET /admin/economy/alerts?staleHours=<N>` query range mặc định `[1..720]` giờ với default `24`. Ops có thể override qua env:
 

@@ -13,7 +13,8 @@
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
     "bootstrap": "ts-node scripts/bootstrap.ts",
-    "audit:ledger": "ts-node scripts/audit-ledger.ts"
+    "audit:ledger": "ts-node scripts/audit-ledger.ts",
+    "alerts:economy": "ts-node scripts/economy-alerts.ts"
   },
   "dependencies": {
     "@nestjs/bullmq": "^10.2.1",
