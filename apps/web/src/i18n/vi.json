@@ -832,6 +832,21 @@
       "currencyHeading": "Currency mismatch",
       "inventoryHeading": "Inventory mismatch"
     },
+    "economyReport": {
+      "title": "Báo cáo kinh tế",
+      "subtitle": "Top 10 nhân vật giàu nhất + tổng circulation linh thạch / tiên ngọc.",
+      "run": "Tạo báo cáo",
+      "running": "Đang tải…",
+      "linhThachTotal": "Tổng linh thạch",
+      "tienNgocTotal": "Tổng tiên ngọc",
+      "tienNgocKhoaTotal": "Tiên ngọc khóa",
+      "characterCount": "Tổng nhân vật",
+      "cultivatingCount": "Đang tu luyện",
+      "topLinhThach": "Top linh thạch",
+      "topTienNgoc": "Top tiên ngọc",
+      "empty": "Chưa có dữ liệu.",
+      "generatedAt": "Tạo lúc"
+    },
     "noPermission": "Bạn không có quyền vào khu này.",
     "users": {
       "searchPlaceholder": "Tìm email hoặc đạo hiệu…",

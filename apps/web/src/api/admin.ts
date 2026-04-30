@@ -255,6 +255,48 @@ export async function adminAuditLedger(): Promise<AdminLedgerAudit> {
   return unwrap(data);
 }
 
+/**
+ * Smart economy report: kết quả từ `GET /admin/economy/report`.
+ *
+ * Top 10 character theo linhThach + tienNgoc + tổng circulation. Read-only.
+ * `linhThachTotal` + per-row `linhThach` là bigint string để tránh overflow.
+ */
+export interface AdminEconomyReportTopRowLinh {
+  characterId: string;
+  name: string;
+  realmKey: string;
+  realmStage: number;
+  userEmail: string;
+  linhThach: string;
+}
+
+export interface AdminEconomyReportTopRowTien {
+  characterId: string;
+  name: string;
+  realmKey: string;
+  realmStage: number;
+  userEmail: string;
+  tienNgoc: number;
+}
+
+export interface AdminEconomyReport {
+  generatedAt: string;
+  circulation: {
+    linhThachTotal: string;
+    tienNgocTotal: number;
+    tienNgocKhoaTotal: number;
+    characterCount: number;
+    cultivatingCount: number;
+  };
+  topByLinhThach: AdminEconomyReportTopRowLinh[];
+  topByTienNgoc: AdminEconomyReportTopRowTien[];
+}
+
+export async function adminEconomyReport(): Promise<AdminEconomyReport> {
+  const { data } = await apiClient.get<Envelope<AdminEconomyReport>>('/admin/economy/report');
+  return unwrap(data);
+}
+
 export interface AdminBossSpawnInput {
   bossKey?: string;
   level?: number;

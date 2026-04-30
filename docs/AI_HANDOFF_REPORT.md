@@ -93,25 +93,31 @@
 
 ---
 
-## Recent Changes (PR #33→#113 đã merged trên main; PR session 9h-D smart onboarding visit-steps in-flight)
+## Recent Changes (PR #33→#114 đã merged trên main; PR session 9h-E smart economy report in-flight)
 
-### PR session 9h-D (in-flight) — `feat(web): smart onboarding expand — track Leaderboard + Mail visits via localStorage (6-step checklist)` — **Pending merge**
+### PR session 9h-E (in-flight) — `feat(admin): smart economy report — top 10 whales theo linhThach + tienNgoc + circulation snapshot (GET /admin/economy/report)` — **Pending merge**
 
-- **Branch**: `devin/1777525372-onboarding-visit-steps`. **Base**: `main` @ `8cdb93c` (post PR #113 merge). **Status**: FE-only, in-flight.
-- **Mục tiêu**: mở rộng `OnboardingChecklist` từ 4 → 6 step. Step 5 = "Đã xem bảng xếp hạng", step 6 = "Đã kiểm tra thư" — track qua localStorage `onboarding:visited:leaderboard|mail`. Mục tiêu khuyến khích tân thủ khám phá 2 trang quan trọng (leaderboard giúp đối sánh sức mạnh, mail có quà từ admin / giftcode redeem) thay vì lạc đường. Smart onboarding feature theo §20 backlog (post-9h).
+- **Branch**: `devin/1777525664-economy-report-tab`. **Base**: `main` @ post-PR #114 merge. **Status**: Stats tab admin panel mới, in-flight.
+- **Mục tiêu**: thêm read-only endpoint `GET /admin/economy/report` + AdminView panel — admin closed beta cần overview "ai đang giàu nhất" + tổng circulation linh thạch / tiên ngọc để xác định reward target / phát hiện kinh tế bất thường (bot/exploit). Top 10 đủ overview, không quá nhiều rows trên UI.
 - **Changes**:
-  1. **`apps/web/src/lib/onboardingVisits.ts`** (mới, +57 line): module helper `hasVisited(key)` / `markVisited(key)` / `clearAllVisits()` SSR-safe (kiểm `typeof window`) + try/catch quota error (Safari private mode). Key prefix `onboarding:visited:`.
-  2. **`apps/web/src/components/OnboardingChecklist.vue`**: refactor steps 4 → 6 (thêm `leaderboard` route `/leaderboard` + `mail` route `/mail`). Đọc localStorage synchronously trong setup (không onMounted vì test-utils mount returns trước flush) qua `ref(hasVisited(...))`. Component re-mount mỗi lần user về `/home` (RouterView v-if) → flag latest đọc lại tự nhiên.
-  3. **`apps/web/src/views/LeaderboardView.vue`** (+2 line): `onMounted` thêm `void import('@/lib/onboardingVisits').then(m => m.markVisited('leaderboard'))` — dynamic import để giữ chunk nhỏ.
-  4. **`apps/web/src/views/MailView.vue`** (+2 line): tương tự `markVisited('mail')` trong `onMounted` sau auth check.
-  5. **`apps/web/src/i18n/{vi,en}.json`** (+2 key mỗi file): `home.onboarding.steps.leaderboard` + `home.onboarding.steps.mail` ("Xem bảng xếp hạng để đối sánh thiên hạ đạo hữu" / "Kiểm tra hòm thư — có thể có quà chờ nhận").
-  6. **`apps/web/src/lib/__tests__/onboardingVisits.test.ts`** (mới, +56 line, +6 vitest): hasVisited default false, markVisited single key, idempotent, clearAllVisits, raw value khác `'1'` treat false (defensive).
-  7. **`apps/web/src/components/__tests__/OnboardingChecklist.test.ts`** (+update +3 test): refactor expectations 4 → 6 step (`'1/4'` → `'1/6'` etc.), thêm test "leaderboard visited → step 5 done", "mail visited → step 6 done", "all 6/6 → panel ẩn".
-- **Tests added**: +6 vitest mới (`onboardingVisits.test.ts`) + 3 vitest cập nhật trong `OnboardingChecklist.test.ts`. Web `187 → 199` (file `23 → 25`).
-- **CI status (local)**: `pnpm typecheck` ✅ / `pnpm lint` ✅ / `pnpm --filter @xuantoi/web test` ✅ **199/199** (25 file) / `pnpm build` (skip).
-- **Risk**: thấp — FE-only, localStorage best-effort (panel re-hiện nếu mất localStorage cũng không phá flow). Không touch BE / schema / migration / API. Không ảnh hưởng economy / auth / admin. Component re-render đúng nhờ ref synchronous init (test verified).
-- **Rollback**: revert single PR. localStorage key có thể tự xoá qua DevTools nếu cần.
+  1. **`apps/api/src/modules/admin/admin.service.ts`** (+99 line): `getEconomyReport()` chạy 5 query `Promise.all` (aggregate `_sum` linhThach/tienNgoc/tienNgocKhoa, `count()` total, `count({where: cultivating: true})`, 2× `findMany orderBy desc take 10`). bigint linhThach serialize → string.
+  2. **`apps/api/src/modules/admin/admin.controller.ts`** (+13): `@Get('economy/report')` reuse JwtAdminGuard (ADMIN/MOD readable).
+  3. **`apps/api/src/modules/admin/admin-economy-report.test.ts`** (mới, +120, +6 vitest BE): empty DB / sort linhThach DESC / sort tienNgoc DESC / circulation total + cultivating count / top giới hạn 10 / bigint > MAX_SAFE_INTEGER serialize / row payload đầy đủ.
+  4. **`apps/web/src/api/admin.ts`** (+41): `adminEconomyReport()` helper + types `AdminEconomyReport` + `*TopRowLinh` / `*TopRowTien`.
+  5. **`apps/web/src/views/AdminView.vue`** (+82): panel cyan-500 trong Stats tab → button "Tạo báo cáo" + 5 stat cards (linhThach total, tienNgoc total, tienNgocKhoa total, characterCount, cultivatingCount) + 2 cột top whales với name + email.
+  6. **`apps/web/src/i18n/{vi,en}.json`** (+13 key mỗi file): `admin.economyReport.*`.
+  7. **`apps/web/src/api/__tests__/admin.economy-report.test.ts`** (mới, +93, +3 vitest FE): GET endpoint clean response, parse top whales với linhThach bigint string, throw on `ok=false`.
+- **Tests added**: +6 vitest BE + 3 vitest FE. Sau rebase trên main post-PR #114: web baseline `199 → 202` (file `25 → 26`).
+- **CI status (local)**: `pnpm typecheck` ✅ / `pnpm lint` ✅ / `pnpm --filter @xuantoi/web test` ✅ 193/193 (pre-rebase, 25 file) / BE vitest **chưa chạy local** (Postgres không có sẵn) → CI verify.
+- **Risk**: thấp — read-only endpoint, không mutate DB. 5 query parallel có thể nặng nếu DB lớn (10k+ char) nhưng closed-beta vài trăm character chạy < 50ms. Production sau này nên cache 60s nếu admin traffic tăng.
+- **Rollback**: revert single PR.
 - **`AI_HANDOFF_REPORT.md updated`**: ✅ — Recent Changes (this entry).
+
+### PR #114 — `feat(web): smart onboarding expand — track Leaderboard + Mail visits via localStorage (6-step checklist) (session 9h task D)` — **Merged into main** session 9h task D — **Resolved**
+
+- **Branch**: `devin/1777525372-onboarding-visit-steps`. **Status**: Merged. CI 5/5 ✅.
+- **Changes**: `apps/web/src/lib/onboardingVisits.ts` (mới, hasVisited/markVisited/clearAllVisits SSR-safe localStorage helper). `apps/web/src/components/OnboardingChecklist.vue` (4 → 6 step). `apps/web/src/views/{LeaderboardView,MailView}.vue` (+2 line mỗi file dynamic-import markVisited onMounted). `apps/web/src/i18n/{vi,en}.json` (+2 key). `apps/web/src/lib/__tests__/onboardingVisits.test.ts` (mới +6 vitest). `apps/web/src/components/__tests__/OnboardingChecklist.test.ts` (+3 test refactor 4 → 6 step). Web vitest 187 → 199 (file 23 → 25).
+- **Risk**: thấp — FE-only, localStorage best-effort, không touch BE/schema/economy.
 
 ### PR #113 — `test(web): expand Playwright golden path — daily login claim + leaderboard tabs (gated E2E_FULL=1) (session 9h task C)` — **Merged into main** @ `8cdb93c` session 9h task C — **Resolved**
 
