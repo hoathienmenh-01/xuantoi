@@ -171,3 +171,64 @@ Tất cả test mới dùng style "best-effort smoke" — `if (await el.isVisibl
 ### CI gate
 
 CI matrix `e2e-smoke` ở `.github/workflows/ci.yml` chạy `pnpm --filter @xuantoi/web exec playwright test --project=chromium` với Postgres+Redis services + build api+web. Vì `E2E_FULL` không set trong CI, **chỉ describe `AuthView smoke` chạy** (1 test: `auth page renders`). Describe `Golden path — full stack required` skip toàn bộ. Full golden path **không** chạy CI mặc định để tránh flaky network/timing. Chạy local trước khi mở PR thay đổi auth / onboarding / home / missions / daily-login / leaderboard.
+
+## 9. `pnpm smoke:beta` CLI (session 9k task E)
+
+**Mục đích**: smoke nhanh ≤ 2 phút end-to-end qua HTTP thuần (không cần browser). Dùng khi muốn verify API vẫn xanh sau deploy mà không phụ thuộc web build / Playwright.
+
+### Chạy local
+
+```bash
+# 1. Lên infra
+pnpm infra:up
+pnpm --filter @xuantoi/api prisma migrate deploy
+pnpm --filter @xuantoi/api bootstrap   # seed 3 sect + admin
+
+# 2. Start API (terminal riêng)
+pnpm --filter @xuantoi/api dev
+
+# 3. Chạy smoke ở terminal khác
+pnpm smoke:beta
+```
+
+Exit 0 = all green. Exit 1 = có step fail kèm stderr diagnostic (status code + response body + step name).
+
+### Env overrides
+
+| Env | Default | Công dụng |
+|---|---|---|
+| `SMOKE_API_BASE` | `http://localhost:3000` | API root (không có `/api` trailing). Dùng khi smoke staging. |
+| `SMOKE_TIMEOUT_MS` | `10000` | Timeout per-request (ms). |
+| `SMOKE_VERBOSE` | `0` | Set `1` để log request/response body (debug). |
+| `SMOKE_SECT_KEY` | `thanh_van` | Sect khi onboard (`thanh_van` / `huyen_thuy` / `tu_la`). |
+| `SMOKE_BUY_ITEM` | `huyet_chi_dan` | Item shop để buy (phải trong NPC_SHOP + currency LINH_THACH). |
+
+### Các step
+
+1. `GET /api/healthz` — API up.
+2. `POST /api/_auth/register` — tạo user random.
+3. `GET /api/_auth/session` — verify login.
+4. `POST /api/character/onboard` — tạo character.
+5. `GET /api/character/me` — lấy starting linhThach.
+6. `POST /api/character/cultivate {cultivating:true}` — start tick.
+7. `POST /api/character/cultivate {cultivating:false}` — stop tick (tránh leak).
+8. `GET /api/daily-login/me` + `POST /api/daily-login/claim` — skip nếu ALREADY_CLAIMED.
+9. `GET /api/missions/me` + `POST /api/missions/claim` — skip nếu không có mission complete.
+10. `GET /api/shop/npc` — list catalog.
+11. `GET /api/inventory` (before buy).
+12. `POST /api/shop/buy` — skip nếu không đủ tiền.
+13. `GET /api/inventory` (after buy).
+14. `GET /api/mail/me` + `POST /:id/read` + `POST /:id/claim` — skip nếu không có mail.
+15. `GET /api/leaderboard/power` — verify entries là array.
+16. `POST /api/_auth/logout` — cleanup.
+
+### Không có dependency mới
+
+Script là file ESM `.mjs` (`scripts/smoke-beta.mjs`) dùng native `fetch` + `AbortController` Node 20+. Không install `tsx` / `ts-node` / axios.
+
+### Giới hạn
+
+- Không verify WS `cultivate:tick` push (smoke HTTP-only). Dùng Playwright `E2E_FULL=1` để cover WS (session 9k task B).
+- Không verify admin flow (ban/grant/revoke). Dùng Playwright + admin account seed để cover.
+- Không test concurrency / race condition. Chỉ happy-path sequential.
+- Không cleanup user đã tạo — khi smoke nhiều lần, DB accumulate `smoke-*@smoke.invalid` user. Dùng SQL `DELETE FROM "User" WHERE email LIKE 'smoke-%@smoke.invalid'` để cleanup (xem `docs/ADMIN_GUIDE.md` cẩn thận foreign-key).
