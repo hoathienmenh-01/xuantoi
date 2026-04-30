@@ -912,6 +912,7 @@
       "selfDemoteBlocked": "Cannot target your own account (lock-out protection)."
     },
     "topups": {
+      "pendingBadgeTooltip": "{count} topups pending approval",
       "notePlaceholder": "Note for approval/rejection…",
       "col": {
         "code": "Code",

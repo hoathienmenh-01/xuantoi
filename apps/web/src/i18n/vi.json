@@ -912,6 +912,7 @@
       "selfDemoteBlocked": "Không thể tự thao tác lên chính tài khoản của bạn (chống lock-out)."
     },
     "topups": {
+      "pendingBadgeTooltip": "{count} đơn nạp đang chờ duyệt",
       "notePlaceholder": "Ghi chú khi duyệt/từ chối…",
       "col": {
         "code": "Mã",

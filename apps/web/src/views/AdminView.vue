@@ -60,6 +60,13 @@ const alerts = ref<AdminEconomyAlerts | null>(null);
  */
 const alertsCount = computed(() => countEconomyAlerts(alerts.value));
 
+/**
+ * Smart admin tab badge (9h-H): pending topup count hiển thị trên tab Topups
+ * để admin biết có bao nhiêu topup đang chờ duyệt mà không cần mở tab.
+ * Re-fetch song song với alerts mỗi 60s.
+ */
+const pendingTopupCount = ref(0);
+
 let alertsPollTimer: ReturnType<typeof setInterval> | null = null;
 
 // Smart economy safety: ledger audit on-demand
@@ -190,6 +197,13 @@ async function refreshStats(): Promise<void> {
     // Load recent activity widget song song khi vào Stats tab. Lỗi widget
     // không ảnh hưởng main stats — try/catch riêng tránh fail toàn bộ.
     loadRecentActivity().catch(() => null);
+    // Smart pending topup badge: load lần đầu cùng stats để đồng bộ với
+    // poll 60s sau đó. Lỗi im lặng giữ giá trị cũ.
+    adminListTopups('PENDING', 0)
+      .then((r) => {
+        pendingTopupCount.value = r.total;
+      })
+      .catch(() => null);
   } catch (e) {
     handleErr(e);
   } finally {
@@ -206,6 +220,14 @@ async function refreshAlertsOnly(): Promise<void> {
     alerts.value = await adminEconomyAlerts();
   } catch {
     // ignore — next 60s poll sẽ retry
+  }
+  // Smart pending topup badge: poll song song để cập nhật count khi admin
+  // ở tab khác. Lỗi im lặng giữ giá trị cũ.
+  try {
+    const r = await adminListTopups('PENDING', 0);
+    pendingTopupCount.value = r.total;
+  } catch {
+    // ignore
   }
 }
 
@@ -444,6 +466,7 @@ async function approveTopup(o: TopupOrderView): Promise<void> {
     await adminApproveTopup(o.id, topupNote.value);
     toast.push({ type: 'success', text: t('admin.topups.approvedToast') });
     await refreshTopups();
+    refreshPendingTopupCount();
   } catch (e) {
     handleErr(e);
   }
@@ -455,9 +478,21 @@ async function rejectTopup(o: TopupOrderView): Promise<void> {
     await adminRejectTopup(o.id, topupNote.value);
     toast.push({ type: 'success', text: t('admin.topups.rejectedToast') });
     await refreshTopups();
+    refreshPendingTopupCount();
   } catch (e) {
     handleErr(e);
   }
+}
+
+function refreshPendingTopupCount(): void {
+  // Fire-and-forget refresh after approve/reject so the tab badge updates
+  // immediately instead of waiting up to 60s for the next poll. Lỗi im lặng
+  // giữ giá trị cũ — không phá flow chính.
+  adminListTopups('PENDING', 0)
+    .then((r) => {
+      pendingTopupCount.value = r.total;
+    })
+    .catch(() => null);
 }
 
 async function refreshGiftcodes(): Promise<void> {
@@ -588,6 +623,12 @@ const isAdmin = () => game.character?.role === 'ADMIN';
             class="ml-1 inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-rose-500 text-ink-50 text-[10px] font-bold align-middle"
             :title="t('admin.alerts.badgeTooltip', { count: alertsCount })"
           >{{ alertsCount }}</span>
+          <span
+            v-if="tk === 'topups' && pendingTopupCount > 0"
+            data-testid="admin-tab-topups-pending-badge"
+            class="ml-1 inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-amber-500 text-ink-900 text-[10px] font-bold align-middle"
+            :title="t('admin.topups.pendingBadgeTooltip', { count: pendingTopupCount })"
+          >{{ pendingTopupCount }}</span>
         </button>
       </nav>
 
