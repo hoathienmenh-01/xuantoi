@@ -138,4 +138,30 @@ Manual smoke test checklist trước mỗi release closed beta. Mục tiêu: ~15
 
 ## Automation
 
-Phần lớn check ở section 1-10 có Playwright equivalent đã scaffolded ở `apps/web/e2e/golden.spec.ts`. Chạy `pnpm --filter @xuantoi/web test:e2e` để chạy subset. `E2E_FULL=1 pnpm test:e2e` chạy đầy đủ golden path (sau PR #47).
+Phần lớn check ở section 1-10 có Playwright equivalent đã scaffolded ở `apps/web/e2e/golden.spec.ts`. Mặc định CI chạy chỉ smoke test (`auth page renders`) — full golden path gated bởi env `E2E_FULL=1`.
+
+### Chạy full golden path local
+
+```bash
+# Tab 1: bật infra + api + web
+pnpm infra:up
+pnpm --filter @xuantoi/api exec prisma migrate deploy
+pnpm --filter @xuantoi/api dev    # port 3000
+# Tab 2:
+pnpm --filter @xuantoi/web dev    # port 5173
+# Tab 3 (hoặc sau khi tab 1+2 ready):
+PLAYWRIGHT_BASE_URL=http://localhost:5173 PLAYWRIGHT_SKIP_WEBSERVER=1 \
+  E2E_FULL=1 pnpm --filter @xuantoi/web e2e
+```
+
+### Test cases hiện có (PR session 9h-C)
+
+- `register → onboard → home → cultivate → mission claim` — flow gốc.
+- `daily login claim — first claim today (M9 / G7)` — verify DailyLoginCard render + click "Nhận thưởng hôm nay" không crash.
+- `leaderboard tabs — Power / Topup / Sect render danh sách` — verify 3 tab `/leaderboard` switch không crash.
+
+Tất cả test mới dùng style "best-effort smoke" — `if (await el.isVisible()) await el.click()` thay vì strict assert, để không fail khi state DB khác (ví dụ admin chưa có topup data → tab Topup empty list vẫn ok). Final assertion luôn là `expect(page).toHaveURL(...)` để chắc page không crash.
+
+### CI gate
+
+CI matrix `e2e-smoke` ở `.github/workflows/ci.yml` chạy `pnpm --filter @xuantoi/web exec playwright test --project=chromium` với Postgres+Redis services + build api+web. Vì `E2E_FULL` không set trong CI, **chỉ describe `AuthView smoke` chạy** (1 test: `auth page renders`). Describe `Golden path — full stack required` skip toàn bộ. Full golden path **không** chạy CI mặc định để tránh flaky network/timing. Chạy local trước khi mở PR thay đổi auth / onboarding / home / missions / daily-login / leaderboard.
