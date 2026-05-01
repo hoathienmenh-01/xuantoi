@@ -113,6 +113,17 @@ pnpm build                                           # api + web + shared
 
 Lưu ý: API test dùng database `mtt` thật. Test sẽ `wipeAll` trước mỗi case → **không** chạy chung lúc API dev đang phục vụ user thật. Để tách: dùng env `TEST_DATABASE_URL` trỏ vào DB riêng.
 
+### Smoke runtime end-to-end
+
+Sau khi `pnpm dev` lên (hoặc chỉ `pnpm --filter @xuantoi/api dev`), từ tab khác chạy:
+
+```bash
+pnpm smoke:beta        # ≤ 2 phút — gameplay flow (register → onboard → cultivate → shop → mail → leaderboard)
+pnpm smoke:economy     # ≤ 5 phút — ledger / reward safety (xem docs/QA_CHECKLIST.md §10)
+```
+
+Cả hai script là `.mjs` zero-install (native fetch, Node 20+). Exit `0` = pass, exit `1` = có invariant fail (stderr in step + diagnostic). **BẮT BUỘC** chạy `smoke:economy` trước khi mở Phase 10 content PR (xem [`QA_CHECKLIST.md`](./QA_CHECKLIST.md) §10).
+
 ## 8. Reset DB sạch
 
 ```bash
