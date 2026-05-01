@@ -120,9 +120,11 @@ Sau khi `pnpm dev` lên (hoặc chỉ `pnpm --filter @xuantoi/api dev`), từ ta
 ```bash
 pnpm smoke:beta        # ≤ 2 phút — gameplay flow (register → onboard → cultivate → shop → mail → leaderboard)
 pnpm smoke:economy     # ≤ 5 phút — ledger / reward safety (xem docs/QA_CHECKLIST.md §10)
+pnpm smoke:ws          # ≤ 30 giây — WebSocket auth, broadcast, isolation, throttle, reconnect (19 step)
+pnpm smoke:combat      # ≤ 1 phút — combat encounter end-to-end + ledger invariant (18 step, son_coc 3-monster fight, COMBAT_LOOT refType=Encounter check)
 ```
 
-Cả hai script là `.mjs` zero-install (native fetch, Node 20+). Exit `0` = pass, exit `1` = có invariant fail (stderr in step + diagnostic). **BẮT BUỘC** chạy `smoke:economy` trước khi mở Phase 10 content PR (xem [`QA_CHECKLIST.md`](./QA_CHECKLIST.md) §10).
+Tất cả script là `.mjs` zero-install (native fetch, Node 20+). Exit `0` = pass, exit `1` = có invariant fail (stderr in step + diagnostic). **BẮT BUỘC** chạy `smoke:economy` trước khi mở Phase 10 content PR (xem [`QA_CHECKLIST.md`](./QA_CHECKLIST.md) §10). `smoke:combat` là on-demand cho combat regression (Phase 9.5 polish session 9r-6).
 
 ### Playwright E2E full-stack (16 spec)
 
