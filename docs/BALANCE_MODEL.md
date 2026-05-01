@@ -377,6 +377,44 @@ Verify pattern (xem `items-dungeon-loot.test.ts`):
 
 **Stack interaction with gem (Phase 11.4 + 11.5)**: refine multiplier áp dụng lên `bonuses` của ItemDef trước khi compose socket bonus. `final_stat = (item.bonuses × refineMultiplier) + composeSocketBonus(equipment.sockets[])`. Cap tổng (refine + gem) chưa enforce ở Phase 11.5.A — sẽ tune Phase 11.4.B/11.5.B runtime.
 
+### 5.6 Tribulation curve (phase 11.6.A)
+
+**Phase 11.6.A catalog đã có (session 9r-10 PR — `packages/shared/src/tribulation.ts`)**:
+
+| Trigger (from→to realm) | Type | Severity | Waves | Wave 1 dmg | Wave N dmg | Reward LinhThach | Reward EXP | Fail expLoss | Cooldown | TâmMa% |
+|---|:---:|:---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| kim_dan→nguyen_anh | lei | minor | 3 | 800 | 1458 | 5,000 | 1,000 | 10% | 30m | 5% |
+| nguyen_anh→hoa_than | lei | minor | 3 | 800 | 1458 | 5,000 | 1,000 | 10% | 30m | 5% |
+| hoa_than→luyen_hu | hoa | major | 5 | 4,000 | 13,294 | 25,000 | 10,000 | 20% | 60m | 10% |
+| luyen_hu→hop_the | bang | major | 5 | 4,000 | 13,294 | 25,000 | 10,000 | 20% | 60m | 10% |
+| hop_the→dai_thua | phong | major | 5 | 4,000 | 13,294 | 25,000 | 10,000 | 20% | 60m | 10% |
+| dai_thua→do_kiep | lei | heavenly | 7 | 25,000 | 151,648 | 150,000 | 100,000 | 35% | 120m | 20% |
+| **do_kiep→nhan_tien** | **tam** | **heavenly** | **7** | **25,000** | **151,648** | **150,000** | **100,000** | **35%** | **120m** | **20%** |
+| chuan_thanh→thanh_nhan | lei | saint | 9 | 200,000 | 2,209,140 | 1,000,000 | 1,000,000 | 50% | 240m | 30% |
+
+**Severity rule**:
+- `minor` (3 wave): kim_dan/nguyen_anh threshold, low-friction breakthrough.
+- `major` (5 wave): hoa_than..dai_thua threshold, force player wear gear hệ-specific.
+- `heavenly` (7 wave): cross-tier breakthrough (pham→nhan_tien), endgame milestone.
+- `saint` (9 wave): chuan_thanh+ saint-tier kiếp, top-end whaling content.
+
+**Type rule (Ngũ Hành + Tâm)**:
+- `lei` (Lôi Kiếp): hoa+kim alternating element — iconic "9 lôi kiếp" — yêu cầu kháng cả 2 hệ.
+- `phong` (Phong Kiếp): kim only — gió kim cắt thân thể — ưu tiên kháng Kim.
+- `bang` (Băng Kiếp): thuy only — ưu tiên kháng Thuỷ.
+- `hoa` (Hoả Kiếp): hoa only — ưu tiên kháng Hoả.
+- `tam` (Tâm Kiếp / Tâm Ma): null element — không dùng được trang bị Ngũ Hành; phải dùng spirit/cultivationMethod để chống đỡ. Cross-tier kiếp (`do_kiep→nhan_tien`) intent: gating phàm thành tiên.
+
+**Wave damage curve**: geometric growth `severityBase × 1.35^waveIdx`. Wave cuối ~ 1.8x wave đầu cho minor, 2.6x cho saint. Wave 1 baseline scale với tier:
+- minor wave 1 = 800 ~ kim_dan player atk × 5 ticks combat (force defensive build).
+- saint wave 1 = 200k ~ chuan_thanh atk × 100 ticks (endgame need stack power).
+
+**Failure penalty curve**: expLossRatio + cooldown geometric. Tâm Ma debuff Phase 11.6.B sẽ block tu luyện 15-120 phút + atk -10% combat (intent: punish + force RP "tâm ma cản đường"). Protection Phase 11.6.B: charm hoặc support skill có thể giảm chance Tâm Ma trigger.
+
+**Reward curve (success)**: linhThach + expBonus + titleKey cosmetic + optional unique drop (heavenly = `kiep_van_thach`, saint = `thanh_kiep_tinh`). EV expectation Phase 11.6.B runtime: dùng `simulateTribulation(def, character.hpMax × cultivationMethod.hpScale, computeElementResist)` deterministic — KHÔNG có RNG → server replay-able + audit-able.
+
+**Stack interaction with all systems (Phase 11.4 + 11.5 + 11.6)**: tribulation `effectiveDamage = wave.baseDamage × elementResist(character)`, where `elementResist = 1.0 - resistPercentage`. ResistPercentage tính từ: spiritualRoot.affinity + equipment elemental gear + cultivationMethod.elementBonus. Player muốn pass kiếp phải stack toàn bộ system: linh căn + công pháp + trang bị + refine + gem cùng hệ.
+
 ---
 
 ## 6. BOSS CURVE

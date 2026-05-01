@@ -245,6 +245,7 @@ Hiện trạng (`packages/shared/src/combat.ts`):
 | **Đan dược** | `PILL_HP/MP/EXP` consume one-shot | Phase 11.X: alchemy crafting (`luyen_dan`), recipe drop |
 | **Luyện khí (refine)** | Phase 11.5.A catalog đã có (`packages/shared/src/refine.ts`) — 15 cấp 3 stage `safe/risky/extreme` × 5 level + helpers `getRefineLevelDef/getRefineAttemptCost/getRefineStatMultiplier/refineLevelsByStage/getRefinePathCostMin/simulateRefineAttempt` deterministic | Phase 11.5.B: `Equipment.refineLevel Int @default(0)` + `Equipment.refineHistory Json?` + service `refineEquipment` qua ItemLedger atomic + wire `getRefineStatMultiplier` vào `CharacterStatService.computeStats` |
 | **Phù lục / Trận pháp** | Không có | Phase 12: phù lục consumable single-use, trận pháp deploy ở dungeon |
+| **Thiên Kiếp / Tâm Ma** | Phase 11.6.A catalog đã có (`packages/shared/src/tribulation.ts`) — 8 kiếp baseline 5 type (`lei/phong/bang/hoa/tam`) × 4 severity (`minor/major/heavenly/saint`) cover realm threshold `kim_dan→thanh_nhan`; helpers `simulateTribulation/computeTribulationReward/computeTribulationFailurePenalty` deterministic | Phase 11.6.B: Prisma `Tribulation { id, characterId, status, attemptCount, cooldownAt, taoMaActive }` + service `attemptTribulation` hook vào BreakthroughService + Tâm Ma debuff modifier (-10% atk + block tu luyện) vào CombatService + cooldown enforcement |
 
 ### C.7 Achievement / Title
 
