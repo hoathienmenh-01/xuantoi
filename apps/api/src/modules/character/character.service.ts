@@ -7,6 +7,7 @@ import {
 } from '@xuantoi/shared';
 import { PrismaService } from '../../common/prisma.service';
 import { RealtimeService } from '../realtime/realtime.service';
+import { SpiritualRootService } from './spiritual-root.service';
 
 interface OnboardInput {
   name: string;
@@ -64,6 +65,7 @@ export class CharacterService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly realtime: RealtimeService,
+    private readonly spiritualRoot?: SpiritualRootService,
   ) {}
 
   async findByUser(userId: string) {
@@ -138,7 +140,16 @@ export class CharacterService {
         },
         include: { sect: true, user: true },
       });
-      const state = this.toState(c);
+      // Phase 11.3.A — server-authoritative roll Linh căn lần đầu khi onboard.
+      // Idempotent (chỉ roll lần đầu, retry an toàn).
+      if (this.spiritualRoot) {
+        await this.spiritualRoot.rollOnboard(c.id);
+      }
+      const fresh = await this.prisma.character.findUnique({
+        where: { id: c.id },
+        include: { sect: true, user: true },
+      });
+      const state = this.toState(fresh ?? c);
       this.realtime.emitToUser(userId, 'state:update', state);
       return state;
     } catch (e) {

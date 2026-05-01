@@ -224,12 +224,24 @@ Thêm depth cho progression: công pháp, skill upgrade, linh căn, thể chất
 - Skill book item drop từ dungeon/boss → consume convert thành skillShard ItemLedger.
 - Migration + rollback + idempotency cho upgradeMastery.
 
-#### 11.3 PR: Linh căn + Thể chất
+#### 11.3.A PR: Linh căn / Spiritual Root runtime FOUNDATION **(session 9r-12, this PR open — Phase 11.3 first runtime PR)**
 
-- Add column `Character.spiritualRoot` (enum 5-tier) + `Character.physique` (Int).
-- Roll spiritualRoot khi tạo character (RNG seed-by-userId immutable).
-- Item `linh_can_dan` reroll (cost cao).
-- Migration + rollback.
+- `apps/api/prisma/schema.prisma` thêm 5 field vào `Character`: `spiritualRootGrade String?`, `primaryElement String?`, `secondaryElements String[] @default([])`, `rootPurity Int @default(100)`, `rootRerollCount Int @default(0)`.
+- Model mới `SpiritualRootRollLog` audit + idempotency (index `[characterId, source]`).
+- Migration `20260501000000_phase_11_3_spiritual_root` safe: `ALTER ADD COLUMN ... DEFAULT ...` + `CREATE TABLE` + 2 INDEX + FK CASCADE. Nullable + default → backward-compat với character pre-Phase 11.3.
+- `SpiritualRootService` server-authoritative: `rollOnboard(characterId, rng?)` idempotent (kiểm tra existing log `source='onboard'` trước, nếu có → return state hiện tại không roll lại); `getState(characterId, rng?)` lazy-roll cho character legacy. RNG inject `() => number` cho test deterministic, default `Math.random` runtime.
+- Pure helper `rollRandomState(rng)`: weighted grade pick (60/25/10/4/1) + uniform element + Fisher-Yates secondary elements (no duplicate, count match `getSpiritualRootGradeDef(grade).secondaryElementCount`) + purity uniform [80,100].
+- `CharacterService.onboard` auto-call `rollOnboard(c.id)` sau khi tạo character (idempotent retry-safe). `CharacterController` thêm endpoint `GET /character/spiritual-root` auth required.
+- 14 vitest API: 11 service test (idempotency + seeded determinism + lazy-roll + concurrent race + grade distribution 10000 sample bám sát weight ±5 percentage point + element distribution uniform 5000 sample) + 2 onboard integration test + 1 backward-compat test.
+- KHÔNG runtime wire combat/cultivation/UI — đó là Phase 11.3.B.
+
+#### 11.3.B PR: Linh căn / Spiritual Root runtime WIRE (Pending)
+
+- Wire `elementMultiplier(attacker.primaryElement, defender.primaryElement)` vào `CombatService.computeDamage()` (tương khắc +30%, tương sinh +20%, bị khắc -30%, bị sinh -15%, cùng hệ -10%, vô hệ 1.0).
+- Wire `cultivationMethod.expMultiplier` (Phase 11.1.A catalog) vào `CultivationService.tick()` (cần `Character.cultivationMethodKey` field — sẽ thêm trong PR-B hoặc Phase 11.1.B).
+- UI character profile display Linh căn (icon + grade tooltip + element wheel).
+- Reroll service: consume `linh_can_dan` (Phase 11.4.A item catalog có rồi) qua `ItemLedger` + cost gating + rate limit + insert log `source='reroll'` + `rootRerollCount++`.
+- E2E Playwright test onboard auto-roll display trong character profile.
 
 #### 11.4.A PR: Gem catalog foundation **(this PR — session 9r-10, P11-4 Gem MVP catalog half)**
 

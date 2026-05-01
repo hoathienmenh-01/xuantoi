@@ -106,11 +106,11 @@ model User {
   createdAt       DateTime  @default(now())
   lastLoginAt     DateTime?
 
-  character      Character?
-  topupOrders    TopupOrder[]    @relation("TopupOrderUser")
-  topupApprovals TopupOrder[]    @relation("TopupOrderApprover")
-  auditLogs      AdminAuditLog[] @relation("AdminAuditActor")
-  refreshTokens  RefreshToken[]
+  character           Character?
+  topupOrders         TopupOrder[]         @relation("TopupOrderUser")
+  topupApprovals      TopupOrder[]         @relation("TopupOrderApprover")
+  auditLogs           AdminAuditLog[]      @relation("AdminAuditActor")
+  refreshTokens       RefreshToken[]
   passwordResetTokens PasswordResetToken[]
 }
 
@@ -194,18 +194,62 @@ model Character {
   settings    Json    @default("{}")
   cultivating Boolean @default(false)
 
+  /// Phase 11.3.A — Linh căn / Spiritual Root server-authoritative.
+  /// `spiritualRootGrade` ∈ {'pham','linh','huyen','tien','than'} (5-tier).
+  /// `primaryElement` ∈ Ngũ Hành {'kim','moc','thuy','hoa','tho'}.
+  /// `secondaryElements` String[] = subset Ngũ Hành (size match grade tier).
+  /// `rootPurity` 0-100 — tinh khiết linh căn, future Phase 11.3.B sẽ wire vào refine/reroll cost.
+  /// `rootRerollCount` int counter — anti-spam reroll, idempotency key cho future reroll service.
+  /// Nullable cho legacy character pre-Phase 11.3 (auto-roll lazy on first read).
+  spiritualRootGrade String?
+  primaryElement     String?
+  secondaryElements  String[] @default([])
+  rootPurity         Int      @default(100)
+  rootRerollCount    Int      @default(0)
+
   sectId String?
   sect   Sect?   @relation(fields: [sectId], references: [id])
 
-  inventory       InventoryItem[]
-  ledger          CurrencyLedger[]
-  itemLedger      ItemLedger[]
-  missionProgress MissionProgress[]
-  mails           Mail[]
-  dailyLoginClaims DailyLoginClaim[]
+  inventory             InventoryItem[]
+  ledger                CurrencyLedger[]
+  itemLedger            ItemLedger[]
+  missionProgress       MissionProgress[]
+  mails                 Mail[]
+  dailyLoginClaims      DailyLoginClaim[]
+  spiritualRootRollLogs SpiritualRootRollLog[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+/// Phase 11.3.A — Audit log cho mỗi lần roll Linh căn (onboard auto + future
+/// manual reroll bằng `linh_can_dan` Phase 11.3.B). Idempotency: server-side
+/// chống double-roll bằng query `findFirst({ characterId, source })` trước khi
+/// roll mới (chỉ 1 row source='onboard' per character).
+model SpiritualRootRollLog {
+  id                        String    @id @default(cuid())
+  characterId               String
+  character                 Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  /// Source: `onboard` (auto-roll khi tạo character) | `reroll` (manual qua item).
+  source                    String
+  /// Grade trước khi roll (null nếu lần đầu onboard).
+  previousGrade             String?
+  newGrade                  String
+  /// Element trước khi roll (null nếu lần đầu onboard).
+  previousElement           String?
+  newElement                String
+  /// Số element phụ trước/sau (validate match grade tier).
+  previousSecondaryElements String[]  @default([])
+  newSecondaryElements      String[]  @default([])
+  /// Purity trước/sau roll.
+  previousPurity            Int?
+  newPurity                 Int
+  /// Seed RNG (test deterministic) — nullable nếu dùng Math.random.
+  rngSeed                   String?
+  rolledAt                  DateTime  @default(now())
+
+  @@index([characterId, source])
+  @@index([rolledAt])
 }
 
 enum MissionPeriod {
@@ -452,7 +496,7 @@ model GiftCodeRedemption {
 /// Audit trail mọi thay đổi InventoryItem.qty (Phase 9). Một dòng = một thao
 /// tác đổi vật phẩm của 1 character. `qtyDelta` có dấu (âm = trừ / mất / dùng).
 model ItemLedger {
-  id          String   @id @default(cuid())
+  id          String    @id @default(cuid())
   characterId String
   character   Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
   itemKey     String
@@ -461,10 +505,10 @@ model ItemLedger {
   reason      String
   refType     String?
   refId       String?
-  meta        Json     @default("{}")
+  meta        Json      @default("{}")
   /// Nếu thao tác do admin thực hiện (vd ADMIN_GRANT).
   actorUserId String?
-  createdAt   DateTime @default(now())
+  createdAt   DateTime  @default(now())
 
   @@index([characterId, createdAt])
   @@index([itemKey, createdAt])
@@ -478,7 +522,7 @@ model ItemLedger {
 /// không double-claim. `claimDateLocal` là `YYYY-MM-DD` theo `MISSION_RESET_TZ`
 /// (Asia/Ho_Chi_Minh mặc định) để mốc reset trùng với daily mission.
 model DailyLoginClaim {
-  id             String   @id @default(cuid())
+  id             String    @id @default(cuid())
   characterId    String
   character      Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
   /// `YYYY-MM-DD` theo timezone reset; vd "2026-04-29".
@@ -487,7 +531,7 @@ model DailyLoginClaim {
   linhThachDelta BigInt
   /// Số ngày liên tiếp đã claim trước + bao gồm lần này (1 nếu mới hoặc bị gãy chuỗi).
   streakAtClaim  Int
-  createdAt      DateTime @default(now())
+  createdAt      DateTime  @default(now())
 
   @@unique([characterId, claimDateLocal])
   @@index([characterId, createdAt])

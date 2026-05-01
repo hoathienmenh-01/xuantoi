@@ -8,6 +8,7 @@ import {
 } from './character.controller';
 import { CharacterService } from './character.service';
 import { CurrencyService } from './currency.service';
+import { SpiritualRootService } from './spiritual-root.service';
 import { PrismaService } from '../../common/prisma.service';
 import { AuthModule } from '../auth/auth.module';
 import { RealtimeModule } from '../realtime/realtime.module';
@@ -40,7 +41,13 @@ const profileLimiterProvider = {
 @Module({
   imports: [AuthModule, RealtimeModule],
   controllers: [CharacterController],
-  providers: [CharacterService, CurrencyService, PrismaService, profileLimiterProvider],
-  exports: [CharacterService, CurrencyService],
+  providers: [
+    CharacterService,
+    CurrencyService,
+    SpiritualRootService,
+    PrismaService,
+    profileLimiterProvider,
+  ],
+  exports: [CharacterService, CurrencyService, SpiritualRootService],
 })
 export class CharacterModule {}

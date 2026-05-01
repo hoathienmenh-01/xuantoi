@@ -14,6 +14,7 @@ import {
 import type { Request } from 'express';
 import { z } from 'zod';
 import { CharacterService } from './character.service';
+import { SpiritualRootService } from './spiritual-root.service';
 import { AuthService } from '../auth/auth.service';
 import {
   InMemorySlidingWindowRateLimiter,
@@ -57,6 +58,7 @@ export class CharacterController {
   constructor(
     private readonly chars: CharacterService,
     private readonly auth: AuthService,
+    @Optional() private readonly spiritualRoot?: SpiritualRootService,
     @Optional() @Inject(PROFILE_RATE_LIMITER) profileLimiter?: RateLimiter,
   ) {
     this.profileLimiter =
@@ -149,5 +151,21 @@ export class CharacterController {
       if (code === 'NOT_AT_PEAK') fail('NOT_AT_PEAK', HttpStatus.CONFLICT);
       throw e;
     }
+  }
+
+  /**
+   * Phase 11.3.A — Đọc state Linh căn / Spiritual Root server-authoritative.
+   * Nếu character pre-Phase 11.3 (legacy) thì lazy-roll lần đầu (idempotent).
+   */
+  @Get('spiritual-root')
+  async spiritualRootState(@Req() req: Request) {
+    const userId = await this.requireUserId(req);
+    if (!this.spiritualRoot) {
+      fail('SPIRITUAL_ROOT_UNAVAILABLE', HttpStatus.NOT_IMPLEMENTED);
+    }
+    const character = await this.chars.findByUser(userId);
+    if (!character) fail('NO_CHARACTER', HttpStatus.NOT_FOUND);
+    const state = await this.spiritualRoot.getState(character.id);
+    return { ok: true, data: { spiritualRoot: state } };
   }
 }
