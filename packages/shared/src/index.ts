@@ -7,5 +7,6 @@ export * from './combat';
 export * from './items';
 export * from './missions';
 export * from './boss';
+export * from './cultivation-methods';
 export * from './topup';
 export * from './shop';

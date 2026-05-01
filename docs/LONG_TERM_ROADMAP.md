@@ -186,7 +186,14 @@ Thêm depth cho progression: công pháp, skill upgrade, linh căn, thể chất
 
 ### Scope
 
-#### 11.1 PR: CultivationMethod model
+#### 11.1.A PR: CultivationMethod catalog foundation **(DONE — session 9r-9)**
+
+- `packages/shared/src/cultivation-methods.ts` NEW — 4-grade tier (`pham/huyen/tien/than`) + 12 method baseline (1 starter + 5 huyen Ngũ Hành + 3 tien sect-locked + 3 than endgame).
+- Helper: `getCultivationMethodDef(key)`, `methodsByElement(element)`, `methodsForSect(sect)`, `canLearnMethod(method, primaryElement)`.
+- 35 vitest cover catalog shape, balance (expMultiplier per grade, statBonus bounds), coverage (5 element + 3 sect + 4 grade), forbiddenElements safety.
+- KHÔNG schema migration, KHÔNG runtime hook (catalog-only foundation cho 11.1.B runtime).
+
+#### 11.1.B PR: CultivationMethod runtime (Pending)
 
 - Prisma model mới `CultivationMethod` (catalog static initially) + `CharacterCultivationMethod` (DB).
 - Service: `learnCultivationMethod(characterId, methodKey)`.
