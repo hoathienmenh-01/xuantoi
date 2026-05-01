@@ -18,8 +18,8 @@ Mục tiêu: thêm content **không phá CI**, **không lệch curve**, **không
 | Skill | `packages/shared/src/combat.ts` `SKILLS` | 25 skill (Phase 10 PR-2 +15 Ngũ Hành) | Phase 10-11: → 25-30 ✅ |
 | Monster | `packages/shared/src/combat.ts` `MONSTERS` | 29 monster (Phase 10 PR-3 +20 Ngũ Hành × MonsterType BEAST/HUMANOID/SPIRIT/ELITE/BOSS) | Phase 10: → 30 ✅ |
 | Dungeon | `packages/shared/src/combat.ts` `DUNGEONS` + `DUNGEON_LOOT` | 9 dungeon (Phase 10 PR-3 +6 element-thematic) | Phase 10: → 8-10 ✅ |
-| Mission | `packages/shared/src/missions.ts` | 12 mission | Phase 10: → 65+ |
-| Boss | `packages/shared/src/boss.ts` | 0 named (chỉ helper) | Phase 10: → 10 named |
+| Mission | `packages/shared/src/missions.ts` | 12 mission (PR #217 Phase 10 PR-4 +54 → 66 mission, daily/weekly/once × Ngũ Hành chain quest — Pending merge) | Phase 10: → 65+ ✅ (PR-4 mở [#217](https://github.com/hoathienmenh-01/xuantoi/pull/217)) |
+| Boss | `packages/shared/src/boss.ts` | 12 boss (Phase 10 PR-5 +10 named × Ngũ Hành × realm tier kim_dan → hop_the) | Phase 10: → 10 named ✅ |
 | Topup pack | `packages/shared/src/topup.ts` | (đã có) | Tunable theo monetization |
 | Shop pack | `packages/shared/src/shop.ts` | (đã có) | Tunable |
 | **Quest chain** | (chưa có) | 0 | Phase 11 — DB-backed |
@@ -163,26 +163,56 @@ Mỗi content type có 1 contract chung:
 
 ### 4.5 Boss
 
-1. Mở `packages/shared/src/boss.ts` (mở rộng) hoặc tạo `boss-catalog.ts` mới.
-2. Define `BossDef`:
-   ```ts
-   export interface BossDef {
-     key: string;
-     nameVi: string;
-     nameEn: string;
-     level: number;
-     maxHp: bigint;
-     atk: number;
-     def: number;
-     rewardLinhThach: bigint;
-     rewardItems: Array<{ itemKey: string; weight: number; qtyMin: number; qtyMax: number }>;
-     spawnIntervalMin?: number;  // phase 12: auto-spawn
-     regionKey?: string;          // phase 12
-   }
-   ```
-3. Append `BOSSES` array.
-4. Test pass.
-5. PR title: `feat(shared): boss pack <theme> (+N boss)`.
+**Schema hiện tại** (Phase 10 PR-5 — `packages/shared/src/boss.ts`):
+
+```ts
+import type { ElementKey, MonsterType } from './combat';
+
+export interface BossDef {
+  key: string;
+  name: string;
+  description: string;
+  /** Mức cảnh giới khuyến nghị (REALMS key). */
+  recommendedRealm: string;
+  baseMaxHp: number;
+  atk: number;
+  def: number;
+  baseRewardLinhThach: number;
+  /** Top-1 chắc chắn nhận 1 item từ list này (random). */
+  topDropPool: readonly string[];
+  /** Top 2-3 nhận. */
+  midDropPool: readonly string[];
+  // Forward-compat phase 10 PR-5 (optional):
+  level?: number;
+  element?: ElementKey | null;            // Ngũ Hành affinity
+  regionKey?: string | null;              // align với MonsterDef/DungeonDef
+  monsterType?: Extract<MonsterType, 'BOSS'>;
+  lowDropPool?: readonly string[];        // top 4-10 reward (phase 12 pity)
+}
+```
+
+**Steps**:
+
+1. Mở `packages/shared/src/boss.ts` (mở rộng).
+2. Append vào `BOSSES` theo monotonic power scaling (test enforce: `baseMaxHp` / `atk` / `baseRewardLinhThach` non-decreasing).
+3. Stat budget bound (BALANCE_MODEL.md §6.1):
+   - `baseMaxHp` ∈ [100k, 5M] (phase 10 cap).
+   - `atk` ∈ [hp/8000, hp/1000] (early burst → late raid).
+   - `def ≤ atk` (boss thiên tấn công, không pure tank).
+   - `baseRewardLinhThach` ∈ [hp/8, hp/2] (boss reward > dungeon).
+4. Forward-compat field (optional nhưng **khuyến nghị set** cho boss mới):
+   - `element`: 1 trong 5 Ngũ Hành (`'kim'|'moc'|'thuy'|'hoa'|'tho'`) hoặc `null` cho cross-element endgame.
+   - `regionKey`: match với MonsterDef/DungeonDef.regionKey để FE map view phase 12 group được. Element của boss phải khớp element của region (test enforce).
+   - `level`: monotonic non-decreasing, dùng cho AI moveset compose phase 11.3.
+   - `monsterType`: luôn `'BOSS'`.
+   - `lowDropPool`: ≥ 1 entry cho boss mới (forward-compat phase 12 pity).
+5. Drop pool requirement:
+   - `topDropPool` có ≥ 1 entry quality `HUYEN/TIEN/THAN` (signature reward).
+   - Mọi item ref phải tồn tại trong `ITEMS`.
+   - 3 pool không trùng lặp internal.
+6. Helper sẵn có: `bossesByElement(el)` / `bossesByRegion(key)` / `bossesByRealm(key)`.
+7. Test pass: `boss.test.ts` (22 test) + `boss-balance.test.ts` (28 test).
+8. PR title: `feat(shared): boss pack <theme> (+N named boss, ngũ hành)`.
 
 ### 4.6 Quest chain (phase 11+)
 
