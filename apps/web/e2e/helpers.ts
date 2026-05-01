@@ -196,5 +196,66 @@ export async function flushAuthRateLimits(): Promise<void> {
   }
 }
 
+/**
+ * Claim daily-login qua API. Fresh char: claim đầu tiên trong ngày → +100 LT
+ * (DAILY_LOGIN_LINH_THACH).
+ *
+ * Trả về `{ claimed, linhThachDelta }`. `claimed=true` nếu vừa claim, `false`
+ * nếu hôm nay đã claim rồi (idempotent).
+ */
+export async function claimDailyLogin(
+  page: Page,
+): Promise<{ claimed: boolean; linhThachDelta: string }> {
+  const base = apiBase();
+  const res = await page.request.post(`${base}/api/daily-login/claim`, { data: {} });
+  const data = (await expectOk(res, 'daily-login/claim')) as
+    | { claimed?: boolean; linhThachDelta?: string }
+    | undefined;
+  return {
+    claimed: Boolean(data?.claimed),
+    linhThachDelta: data?.linhThachDelta ?? '0',
+  };
+}
+
+/**
+ * Buy 1 item từ NPC shop qua API. Throw nếu insufficient funds / not in shop.
+ *
+ * Trả về `{ qty, totalPrice }` — verify post-buy invariants ở caller.
+ */
+export async function buyShopItem(
+  page: Page,
+  itemKey: string,
+  qty = 1,
+): Promise<{ qty: number; totalPrice: number; currency: string }> {
+  const base = apiBase();
+  const res = await page.request.post(`${base}/api/shop/buy`, {
+    data: { itemKey, qty },
+  });
+  const data = (await expectOk(res, `shop/buy ${itemKey}×${qty}`)) as
+    | { qty?: number; totalPrice?: number; currency?: string }
+    | undefined;
+  if (!data || typeof data.qty !== 'number') {
+    throw new Error(`[e2e helpers] shop/buy ${itemKey} returned no qty`);
+  }
+  return {
+    qty: data.qty,
+    totalPrice: Number(data.totalPrice ?? 0),
+    currency: String(data.currency ?? 'LINH_THACH'),
+  };
+}
+
+/**
+ * List inventory qua API. Trả về raw items array (mỗi entry gồm `id`,
+ * `item.key`, `qty`, `equippedSlot` …).
+ */
+export async function listInventoryApi(
+  page: Page,
+): Promise<Array<Record<string, unknown>>> {
+  const base = apiBase();
+  const res = await page.request.get(`${base}/api/inventory`);
+  const data = (await expectOk(res, 'inventory')) as { items?: Array<Record<string, unknown>> };
+  return data?.items ?? [];
+}
+
 /** Re-export expect để spec dùng cùng instance. */
 export { expect };
