@@ -256,6 +256,24 @@ Verify pattern (xem `items-dungeon-loot.test.ts`):
 
 ### 6.1 Boss HP per tier
 
+**Phase 10 PR-5 catalog cap (BOSSES hiện tại 12 boss)**:
+
+| Tier (recommendedRealm) | baseMaxHp | atk band | reward band |
+|---|---:|---:|---:|
+| Sect-level (truc_co/kim_dan early) | 100k..500k | hp/8000..hp/1000 | hp/8..hp/2 |
+| World pham (kim_dan/nguyen_anh) | 500k..1M | hp/8000..hp/1000 | hp/8..hp/2 |
+| World late pham (hoa_than/luyen_hu) | 1M..2M | hp/8000..hp/1000 | hp/8..hp/2 |
+| Cross-element endgame (hop_the+) | 2M..5M | hp/8000..hp/1000 | hp/8..hp/2 |
+
+Bound enforce bởi `boss-balance.test.ts` 28 test:
+- `baseMaxHp` ∈ [100k, 5M] (phase 10 cap).
+- `atk` ∈ [hp/8000, hp/1000] (early burst (~hp/1300) → late raid-style (~hp/4500)).
+- `def ≤ atk` (boss thiên về tấn công, không pure tank).
+- `baseRewardLinhThach` ∈ [hp/8, hp/2] (boss reward > dungeon — §7.1).
+- `level` (forward-compat phase 11.3) monotonic non-decreasing, ≤ 100.
+
+**Phase 12+ scale-up (BigInt)**:
+
 | Tier | maxHp |
 |---|---:|
 | Sect-level (phase 13) | 100k..500k |
@@ -263,6 +281,8 @@ Verify pattern (xem `items-dungeon-loot.test.ts`):
 | World nhan_tien | 10M..100M |
 | World tien_gioi | 100M..1B |
 | World hon_nguyen+ | 1B+ (BigInt) |
+
+**Element coverage (phase 10 PR-5)**: BOSSES có ≥ 2 boss / element Ngũ Hành (kim/moc/thuy/hoa/tho) + ≥ 1 cross-element endgame (`element=null`). Element của boss phải khớp với element của `regionKey` (consistency với MonsterDef/DungeonDef phase 10 PR-3 region whitelist).
 
 ### 6.2 Boss reward distribute
 
