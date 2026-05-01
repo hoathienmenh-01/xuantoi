@@ -163,10 +163,10 @@ Checklist để promote beta (closed 50 users → open). Tick khi xong.
 
 ✅ **ĐỦ điều kiện mở Phase 10 PR-1..5** (items / skills / monsters / missions / boss pack) — verified session 9r-2.
 
-**Phase 10 progress** (session 9r-3):
-- **PR-1 Item Pack 1 (this PR)**: catalog 31 → 81 item (+50). Stat budget tuân thủ `BALANCE_MODEL.md` §3.3, bound bằng `items-balance.test.ts` (+21 vitest). Pre-gate baseline + post-code re-run trùng khớp.
-- PR-2 Skill Pack 1 (+15 skill) — pending.
-- PR-3 Monster & Dungeon Pack 1 — pending (sau PR-2 vì cần skill compose enemy moveset).
+**Phase 10 progress** (session 9r-4):
+- **PR-1 Item Pack 1 (DONE — merged #214)**: catalog 31 → 81 item (+50). Stat budget tuân thủ `BALANCE_MODEL.md` §3.3, bound bằng `items-balance.test.ts` (+21 vitest). Pre-gate baseline + post-code re-run trùng khớp.
+- **PR-2 Skill Pack 1 (this PR)**: catalog 10 → 25 skill (+15) tổ chức theo Ngũ Hành (Kim/Mộc/Thuỷ/Hoả/Thổ × ≥1 active + ≥1 passive) + 1 vô hệ early. SkillDef extend forward-compat (`element`/`type`/`role`/`unlockRealm`/`cooldownTurns`) cho Phase 11 Spiritual Root + Elemental Combat — combat runtime KHÔNG đổi (`element` chỉ là metadata; phase 11.3 sẽ wire `elementMultiplier`). Stat budget tuân thủ `BALANCE_MODEL.md` §4 (atkScale ≤ 5, mpCost ≤ 80, selfHealRatio ≤ 0.5, selfBloodCost ≤ 0.3, cooldownTurns ≤ 6), bound bằng `skills-balance.test.ts` (+26 vitest). FE picker thêm helper `activeSkillsForSect` để loại passive khỏi dropdown.
+- PR-3 Monster & Dungeon Pack 1 — pending (skill Ngũ Hành đã đủ để compose AI moveset theo `element` + `role`).
 - PR-4 Mission Pack 1 — pending.
 - PR-5 Boss Catalog — pending.
 
@@ -174,7 +174,7 @@ Checklist để promote beta (closed 50 users → open). Tick khi xong.
 1. Mỗi gameplay flow core có ≥ 1 layer test (vitest unit / integration / smoke / golden path).
 2. 5 nhóm Partial chỉ thiếu **runtime smoke** chứ KHÔNG thiếu **logic test** (vitest đã cover invariant: ledger SUM, idempotency, double-claim, RNG seeded combat outcome).
 3. Không có P0/P1 issue open (`gh issue list --state all` empty 1/5).
-4. Baseline 1980 test stable (+21 từ items-balance.test.ts session 9r-3).
+4. Baseline **2006 test** stable (+26 từ skills-balance.test.ts session 9r-4, +21 items-balance.test.ts session 9r-3).
 5. CI integration verified GREEN (PR #212 + main run 25203605650 1m35s).
 
 **Pre-gate BẮT BUỘC trước khi mở Phase 10 PR-1**: paste 3 output sau vào PR-1 body để pin baseline:

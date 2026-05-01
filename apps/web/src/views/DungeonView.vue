@@ -5,7 +5,7 @@ import { useRouter } from 'vue-router';
 import {
   SKILL_BASIC_ATTACK,
   realmByKey,
-  skillsForSect,
+  activeSkillsForSect,
   type DungeonDef,
   type SectKey,
   type SkillDef,
@@ -38,7 +38,7 @@ const submitting = ref(false);
 const sectKey = computed<SectKey | null>(() => game.character?.sectKey ?? null);
 
 const usableSkills = computed<SkillDef[]>(() => {
-  return skillsForSect(sectKey.value);
+  return activeSkillsForSect(sectKey.value);
 });
 
 function realmDisplay(key: string): string {

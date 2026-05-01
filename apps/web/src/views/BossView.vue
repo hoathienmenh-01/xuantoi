@@ -4,7 +4,7 @@ import { useI18n } from 'vue-i18n';
 import { RouterLink, useRouter } from 'vue-router';
 import {
   SKILL_BASIC_ATTACK,
-  skillsForSect,
+  activeSkillsForSect,
   type SectKey,
   type SkillDef,
 } from '@xuantoi/shared';
@@ -37,7 +37,7 @@ let tickTimer: ReturnType<typeof setInterval> | null = null;
 const offHandlers: Array<() => void> = [];
 
 const sectKey = computed<SectKey | null>(() => game.character?.sectKey ?? null);
-const usableSkills = computed<SkillDef[]>(() => skillsForSect(sectKey.value));
+const usableSkills = computed<SkillDef[]>(() => activeSkillsForSect(sectKey.value));
 const selectedSkill = ref<string>(SKILL_BASIC_ATTACK.key);
 
 const hpPct = computed(() => {
