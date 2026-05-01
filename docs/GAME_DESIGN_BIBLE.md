@@ -240,10 +240,10 @@ Hiện trạng (`packages/shared/src/combat.ts`):
 
 | Hệ thống | Hiện trạng | Long-term |
 |---|---|---|
-| **Trang bị** | 9 slot, 5 quality, +bonuses, không refine/enchant | Phase 11.4.B: socket gem (3 slot per equipment); Phase 11.5: refine 0..15 + enchant suffix + soul-bind |
+| **Trang bị** | 9 slot, 5 quality, +bonuses, không refine/enchant | Phase 11.4.B: socket gem (3 slot per equipment); Phase 11.5.B: refine 0..15 + statMultiplier 1.0..3.25 |
 | **Linh thạch (gem)** | Phase 11.4.A catalog đã có (`packages/shared/src/gems.ts`) — 25 gem 5 element × 5 grade `PHAM..THAN` + helpers `composeSocketBonus/combineGems/canSocketGem/gemUpgradePathCost` | Phase 11.4.B: `Equipment.sockets[]` Json + service `socketGem/unsocketGem/combineGems` qua ItemLedger; wire `composeSocketBonus` vào `CharacterStatService.computeStats` |
 | **Đan dược** | `PILL_HP/MP/EXP` consume one-shot | Phase 11.X: alchemy crafting (`luyen_dan`), recipe drop |
-| **Luyện khí** | Không có | Phase 11.5: refinery — combine ore → upgrade weapon |
+| **Luyện khí (refine)** | Phase 11.5.A catalog đã có (`packages/shared/src/refine.ts`) — 15 cấp 3 stage `safe/risky/extreme` × 5 level + helpers `getRefineLevelDef/getRefineAttemptCost/getRefineStatMultiplier/refineLevelsByStage/getRefinePathCostMin/simulateRefineAttempt` deterministic | Phase 11.5.B: `Equipment.refineLevel Int @default(0)` + `Equipment.refineHistory Json?` + service `refineEquipment` qua ItemLedger atomic + wire `getRefineStatMultiplier` vào `CharacterStatService.computeStats` |
 | **Phù lục / Trận pháp** | Không có | Phase 12: phù lục consumable single-use, trận pháp deploy ở dungeon |
 
 ### C.7 Achievement / Title

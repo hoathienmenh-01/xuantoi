@@ -341,6 +341,42 @@ Verify pattern (xem `items-dungeon-loot.test.ts`):
 
 **Stack budget cap (phase 11.4.B runtime)**: per-equipment `Equipment.sockets[]` cap = 3 slot (PHAM equipment 0 slot, LINH 1, HUYEN 2, TIEN/THAN 3). Per-character total gem-bonus cap = 50% baseline equipment bonus (cap enforced ở `CharacterStatService.computeStats` Phase 11.4.B). Không cap per-stat (atk/def/hp/mp), chỉ cap total contribution.
 
+### 5.5 Refine curve (phase 11.5.A)
+
+**Phase 11.5.A catalog đã có (session 9r-10 PR — `packages/shared/src/refine.ts`)**:
+
+| Level | Stage | Success rate | LinhThach cost | Material (qty) | Stat multiplier | Failure behavior | Break chance |
+|---:|:---:|---:|---:|---|---:|:---|---:|
+| 1 | safe | 0.95 | 100 | tinh_thiet (1) | 1.10 | no_loss | 0 |
+| 2 | safe | 0.90 | 160 | tinh_thiet (1) | 1.20 | no_loss | 0 |
+| 3 | safe | 0.85 | 256 | tinh_thiet (1) | 1.30 | no_loss | 0 |
+| 4 | safe | 0.80 | 410 | tinh_thiet (1) | 1.40 | no_loss | 0 |
+| 5 | safe | 0.75 | 655 | tinh_thiet (1) | 1.50 | no_loss | 0 |
+| 6 | risky | 0.60 | 1049 | yeu_dan (2) | 1.65 | level_minus_one | 0 |
+| 7 | risky | 0.525 | 1678 | yeu_dan (2) | 1.80 | level_minus_one | 0 |
+| 8 | risky | 0.45 | 2684 | yeu_dan (2) | 1.95 | level_minus_one | 0 |
+| 9 | risky | 0.375 | 4295 | yeu_dan (2) | 2.10 | level_minus_one | 0 |
+| 10 | risky | 0.30 | 6872 | yeu_dan (2) | 2.25 | level_minus_one | 0 |
+| 11 | extreme | 0.20 | 10995 | han_ngoc (3) | 2.45 | level_minus_one_or_break | 0.10 |
+| 12 | extreme | 0.1625 | 17592 | han_ngoc (3) | 2.65 | level_minus_one_or_break | 0.15 |
+| 13 | extreme | 0.125 | 28147 | han_ngoc (3) | 2.85 | level_minus_one_or_break | 0.20 |
+| 14 | extreme | 0.0875 | 45036 | han_ngoc (3) | 3.05 | level_minus_one_or_break | 0.30 |
+| 15 | extreme | 0.05 | 72057 | han_ngoc (3) | 3.25 | level_minus_one_or_break | 0.40 |
+
+**Stage rule**:
+- `safe` (L1..L5): fail = no_loss (mất material thôi); statMultiplier +0.10/level.
+- `risky` (L6..L10): fail = level -1 unless protection; statMultiplier +0.15/level.
+- `extreme` (L11..L15): fail = level -1 OR break (`extremeBreakChance` quyết định); statMultiplier +0.20/level. Protection cứu level-loss nhưng KHÔNG cứu break (intent: high-risk-high-reward, F2P-friendly cho L1..L10).
+
+**Material curve (3-tier ore)**: safe → `tinh_thiet` (LINH ore, dungeon LINH drop, qty 1); risky → `yeu_dan` (HUYEN ore, dungeon HUYEN drop, qty 2); extreme → `han_ngoc` (TIEN ore, dungeon TIEN drop, qty 3). `getRefinePathCostMin(0, 15)` = `{ linhThach: 191k, materials: { tinh_thiet: 5, yeu_dan: 10, han_ngoc: 15 } }` best-case (no fail).
+
+**EV expectation (Phase 11.5.B runtime)**:
+- L0→L5 (safe stage): expected attempts ~5.6 (avg success 0.85), ~600 LinhThach total → low-friction.
+- L5→L10 (risky stage): expected attempts ~10.5 (avg success 0.45), need protection charm × ~5 + 21 ore + ~30k LinhThach.
+- L10→L15 (extreme stage): expected attempts ~50+ (avg success 0.12), break risk ~25% per fail → endgame whaling.
+
+**Stack interaction with gem (Phase 11.4 + 11.5)**: refine multiplier áp dụng lên `bonuses` của ItemDef trước khi compose socket bonus. `final_stat = (item.bonuses × refineMultiplier) + composeSocketBonus(equipment.sockets[])`. Cap tổng (refine + gem) chưa enforce ở Phase 11.5.A — sẽ tune Phase 11.4.B/11.5.B runtime.
+
 ---
 
 ## 6. BOSS CURVE
