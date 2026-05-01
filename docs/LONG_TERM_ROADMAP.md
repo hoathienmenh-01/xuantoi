@@ -249,11 +249,26 @@ Thêm depth cho progression: công pháp, skill upgrade, linh căn, thể chất
 - Wire `composeSocketBonus(equipment.sockets[].gemKey)` vào `CharacterStatService.computeStats` cho tổng equipment bonus + socket bonus.
 - Migration + rollback note + idempotency cho socketGem/combineGems.
 
-#### 11.5 PR: Refinery (Luyện khí) (P11-5 spec)
+#### 11.5.A PR: Refine catalog foundation **(this PR — session 9r-10, P11-5 Refine MVP catalog half)**
 
-- Tương tự alchemy nhưng cho weapon/armor.
-- Refine 0..15 level. % fail tăng theo level.
-- Material: `nguyenThach` + `linhThach`.
+- `packages/shared/src/refine.ts` NEW (~340 lines) — 15 level baseline 3 stage `safe/risky/extreme` × 5 level.
+- Schema `RefineLevelDef { level, stage, successRate, linhThachCost, materialKey, materialQty, statMultiplier, failureBehavior, extremeBreakChance }`.
+- Curve: success rate `safe 0.95→0.75 / risky 0.60→0.30 / extreme 0.20→0.05`; linhThach geometric `100 × 1.6^(level-1)`; statMultiplier cumulative L0=1.0 → L15=3.25; material per stage (`tinh_thiet/yeu_dan/han_ngoc` qty 1/2/3); extremeBreakChance L11=10% → L15=40%.
+- Failure path: `no_loss` (safe), `level_minus_one` (risky), `level_minus_one_or_break` (extreme); protection charm cứu level-loss nhưng KHÔNG cứu break.
+- Helper: `getRefineLevelDef`, `getRefineAttemptCost`, `getRefineStatMultiplier`, `refineLevelsByStage`, `getRefinePathCostMin`, `simulateRefineAttempt(currentLevel, rng, opts)` deterministic server-authoritative simulation.
+- Protection charm key reserved `refine_protection_charm` (Phase 11.5.B add vào ITEMS).
+- 56 vitest cover catalog shape, material curve (ref ITEMS valid), balance, helpers happy + error paths, simulateRefineAttempt 12 scenario (safe/risky/extreme × success/fail/protection × break/no-break) + replay determinism.
+- KHÔNG schema migration, KHÔNG runtime hook (catalog-only foundation cho 11.5.B runtime).
+
+#### 11.5.B PR: Refine runtime (Pending)
+
+- Prisma migration: `Equipment.refineLevel Int @default(0)` + optional `Equipment.refineHistory Json?` (audit log per attempt).
+- Add item `refine_protection_charm` (HUYEN MISC consumable) vào `packages/shared/src/items.ts` + drop table dungeon HUYEN+.
+- Service: `refineEquipment(characterId, equipmentId, useProtection)` → consume linhThach + material qua `CurrencyLedger` + `ItemLedger`, optional consume protection, call `simulateRefineAttempt(currentLevel, seedrandom(attemptId))` deterministic, write equipment.refineLevel + audit log.
+- Service: handle `broken` case — equipment break = soft delete (set `isBroken: true`) hoặc full delete (configurable feature flag).
+- Wire `getRefineStatMultiplier(equipment.refineLevel)` vào `CharacterStatService.computeStats` cho atk/def/hpMax/mpMax/spirit scaling.
+- Idempotency cho `refineEquipment` qua `attemptId` UUID per call.
+- Migration + rollback note.
 
 #### 11.6 PR: Thiên kiếp + Tâm ma (P11-6 spec)
 
