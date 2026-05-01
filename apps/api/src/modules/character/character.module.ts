@@ -9,6 +9,7 @@ import {
 import { CharacterService } from './character.service';
 import { CurrencyService } from './currency.service';
 import { SpiritualRootService } from './spiritual-root.service';
+import { CultivationMethodService } from './cultivation-method.service';
 import { PrismaService } from '../../common/prisma.service';
 import { AuthModule } from '../auth/auth.module';
 import { RealtimeModule } from '../realtime/realtime.module';
@@ -45,9 +46,15 @@ const profileLimiterProvider = {
     CharacterService,
     CurrencyService,
     SpiritualRootService,
+    CultivationMethodService,
     PrismaService,
     profileLimiterProvider,
   ],
-  exports: [CharacterService, CurrencyService, SpiritualRootService],
+  exports: [
+    CharacterService,
+    CurrencyService,
+    SpiritualRootService,
+    CultivationMethodService,
+  ],
 })
 export class CharacterModule {}

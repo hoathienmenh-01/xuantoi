@@ -52,6 +52,7 @@ export async function makeUserChar(
     primaryElement?: string | null;
     secondaryElements?: string[];
     rootPurity?: number;
+    equippedCultivationMethodKey?: string | null;
   },
 ): Promise<TestCharacterFixture> {
   const suffix = nextSuffix();
@@ -89,6 +90,7 @@ export async function makeUserChar(
       primaryElement: opts?.primaryElement ?? null,
       secondaryElements: opts?.secondaryElements ?? [],
       rootPurity: opts?.rootPurity ?? 100,
+      equippedCultivationMethodKey: opts?.equippedCultivationMethodKey ?? null,
     },
   });
   return { userId: user.id, characterId: char.id, email, name };
@@ -99,6 +101,7 @@ export async function wipeAll(prisma: PrismaService): Promise<void> {
   // Thứ tự: con trước cha (FK cascade phần lớn rồi nhưng explicit cho rõ).
   await prisma.itemLedger.deleteMany({});
   await prisma.currencyLedger.deleteMany({});
+  await prisma.characterCultivationMethod.deleteMany({});
   await prisma.spiritualRootRollLog.deleteMany({});
   await prisma.dailyLoginClaim.deleteMany({});
   await prisma.bossDamage.deleteMany({});

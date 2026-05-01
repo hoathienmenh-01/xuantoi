@@ -278,6 +278,48 @@ Curve table (đã có sẵn trong `packages/shared/src/spiritual-root.ts`):
 - UI character profile display Linh căn.
 - Reroll service consume `linh_can_dan` ItemLedger + insert log `source='reroll'` + `rootRerollCount++`.
 
+### 2.9.4 Phase 11.1.B wire điểm — Cultivation Method (Công pháp) compose (DONE this PR)
+
+`CultivationProcessor.process()` compose method `expMultiplier` thêm vào gain công thức:
+
+```
+baseGain    = cultivationRateForRealm(realm) + floor(spirit/4)
+cultivMul   = isValidSpiritualRootGrade(grade) ? def.cultivationMultiplier : 1.0
+methodMul   = methodExpMultiplierFor(equippedCultivationMethodKey)  // 1.0 nếu null
+gain        = BigInt(max(1, round(baseGain * cultivMul * methodMul)))
+```
+
+Curve table (đã có sẵn trong `packages/shared/src/cultivation-methods.ts`):
+
+| Grade | Tier name | expMultiplier (range) | Source |
+| --- | --- | --- | --- |
+| pham (starter) | `khai_thien_quyet` | 1.00 | starter (auto-grant onboard) |
+| huyen | 5 method (Ngũ Hành: kim/moc/thuy/hoa/tho) | 1.20–1.30 | dungeon_drop |
+| tien | 3 method (sect-locked: thanh_van/huyen_thuy/tu_la) | 1.40–1.50 | sect_shop |
+| than | 3 method (cross-element / vô hệ) | 1.60–1.80 | boss_drop / event |
+
+**Compose example (worst → best)**:
+
+| Linh căn | Method | Total mul | Note |
+| --- | --- | --- | --- |
+| pham (1.0) | starter (1.0) | **1.00×** | new player baseline |
+| huyen (1.30) | huyen-grade (1.20) | **1.56×** | mid-game expected |
+| tien (1.50) | tien sect (1.50) | **2.25×** | end-of-mid scale |
+| than (1.80) | than (1.80) | **3.24×** | endgame ceiling |
+
+- Legacy character (`equippedCultivationMethodKey=null`) → methodMul 1.0 → backward-compat preserved.
+- Onboard auto-grant + auto-equip starter `khai_thien_quyet` (`source='starter'`) → mọi character mới có baseline 1.0×.
+- Idempotent qua `@@unique([characterId, methodKey])` (P2002 catch trong service `learn`).
+- Validation tại service: `realmByKey(c.realmKey).order ≥ realmByKey(method.unlockRealm).order` + sect lock (qua `SECT_NAME_TO_KEY`) + `forbiddenElements ∌ c.primaryElement`.
+- `equip()` re-validate (e.g. character đổi linh căn vào forbidden → throw `FORBIDDEN_ELEMENT`).
+- KHÔNG cooldown 24h re-equip trong MVP — future enhancement.
+
+### 2.9.5 Phase 11.1.C wire điểm (Pending)
+
+- UI character profile display equipped method (icon + grade + multiplier tooltip).
+- Modal "Công pháp" list learned methods + button equip.
+- Optional 24h cooldown anti-spam re-equip.
+
 ---
 
 ## 3. POWER CURVE

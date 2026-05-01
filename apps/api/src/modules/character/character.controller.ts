@@ -15,6 +15,10 @@ import type { Request } from 'express';
 import { z } from 'zod';
 import { CharacterService } from './character.service';
 import { SpiritualRootService } from './spiritual-root.service';
+import {
+  CultivationMethodError,
+  CultivationMethodService,
+} from './cultivation-method.service';
 import { AuthService } from '../auth/auth.service';
 import {
   InMemorySlidingWindowRateLimiter,
@@ -47,6 +51,10 @@ const CultivateInput = z.object({
   cultivating: z.boolean(),
 });
 
+const CultivationMethodEquipInput = z.object({
+  methodKey: z.string().min(1).max(64),
+});
+
 function fail(code: string, status = HttpStatus.BAD_REQUEST): never {
   throw new HttpException({ ok: false, error: { code, message: code } }, status);
 }
@@ -59,6 +67,7 @@ export class CharacterController {
     private readonly chars: CharacterService,
     private readonly auth: AuthService,
     @Optional() private readonly spiritualRoot?: SpiritualRootService,
+    @Optional() private readonly cultivationMethod?: CultivationMethodService,
     @Optional() @Inject(PROFILE_RATE_LIMITER) profileLimiter?: RateLimiter,
   ) {
     this.profileLimiter =
@@ -167,5 +176,57 @@ export class CharacterController {
     if (!character) fail('NO_CHARACTER', HttpStatus.NOT_FOUND);
     const state = await this.spiritualRoot.getState(character.id);
     return { ok: true, data: { spiritualRoot: state } };
+  }
+
+  /**
+   * Phase 11.1.B — Đọc state công pháp (Cultivation Method) đã học + đang
+   * equip. Auto-grant + auto-equip starter `khai_thien_quyet` cho legacy
+   * character (idempotent qua `getState`).
+   */
+  @Get('cultivation-method')
+  async cultivationMethodState(@Req() req: Request) {
+    const userId = await this.requireUserId(req);
+    if (!this.cultivationMethod) {
+      fail('CULTIVATION_METHOD_UNAVAILABLE', HttpStatus.NOT_IMPLEMENTED);
+    }
+    const character = await this.chars.findByUser(userId);
+    if (!character) fail('NO_CHARACTER', HttpStatus.NOT_FOUND);
+    const state = await this.cultivationMethod.getState(character.id);
+    return { ok: true, data: { cultivationMethod: state } };
+  }
+
+  /**
+   * Phase 11.1.B — Equip công pháp đã học. Validate ownership + realm/sect/
+   * forbiddenElement + đổi `Character.equippedCultivationMethodKey`.
+   */
+  @Post('cultivation-method/equip')
+  @HttpCode(200)
+  async cultivationMethodEquip(@Req() req: Request, @Body() body: unknown) {
+    const userId = await this.requireUserId(req);
+    if (!this.cultivationMethod) {
+      fail('CULTIVATION_METHOD_UNAVAILABLE', HttpStatus.NOT_IMPLEMENTED);
+    }
+    const parsed = CultivationMethodEquipInput.safeParse(body);
+    if (!parsed.success) fail('INVALID_INPUT');
+
+    const character = await this.chars.findByUser(userId);
+    if (!character) fail('NO_CHARACTER', HttpStatus.NOT_FOUND);
+
+    try {
+      const state = await this.cultivationMethod.equip(
+        character.id,
+        parsed.data.methodKey,
+      );
+      return { ok: true, data: { cultivationMethod: state } };
+    } catch (e) {
+      if (e instanceof CultivationMethodError) {
+        const httpStatus =
+          e.code === 'METHOD_NOT_FOUND' || e.code === 'CHARACTER_NOT_FOUND'
+            ? HttpStatus.NOT_FOUND
+            : HttpStatus.CONFLICT;
+        fail(e.code, httpStatus);
+      }
+      throw e;
+    }
   }
 }

@@ -15,6 +15,7 @@ import {
 import { PrismaService } from '../../common/prisma.service';
 import { RealtimeService } from '../realtime/realtime.service';
 import { MissionService } from '../mission/mission.service';
+import { methodExpMultiplierFor } from '../character/cultivation-method.service';
 import { CULTIVATION_QUEUE } from './cultivation.queue';
 
 /**
@@ -59,6 +60,7 @@ export class CultivationProcessor extends WorkerHost {
         exp: true,
         spirit: true,
         spiritualRootGrade: true,
+        equippedCultivationMethodKey: true,
       },
     });
     if (cultivating.length === 0) return;
@@ -78,7 +80,13 @@ export class CultivationProcessor extends WorkerHost {
         const cultivationMul = isValidSpiritualRootGrade(c.spiritualRootGrade)
           ? getSpiritualRootGradeDef(c.spiritualRootGrade).cultivationMultiplier
           : 1.0;
-        const gain = BigInt(Math.max(1, Math.round(baseGain * cultivationMul)));
+        // Phase 11.1.B — Công pháp (CultivationMethod) `expMultiplier` wire.
+        // Compose với linh căn cultivationMul. Legacy character (no method
+        // equipped) → methodMul=1.0 → backward-compat.
+        const methodMul = methodExpMultiplierFor(c.equippedCultivationMethodKey);
+        const gain = BigInt(
+          Math.max(1, Math.round(baseGain * cultivationMul * methodMul)),
+        );
         let exp = c.exp + gain;
         let realmKey = c.realmKey;
         let realmStage = c.realmStage;
