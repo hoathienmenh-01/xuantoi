@@ -429,11 +429,11 @@ Script là `scripts/smoke-ws.mjs` (~700 dòng ESM), dùng native `fetch` + `Abor
 
 ---
 
-## 12. Playwright Golden Path E2E (`pnpm --filter @xuantoi/web e2e`, session 9q-7)
+## 12. Playwright Golden Path E2E (`pnpm --filter @xuantoi/web e2e`, session 9q-7 → 9q-8)
 
 ### Mục tiêu
 
-Verify **closed beta core loop end-to-end UI flow** ([`BETA_CHECKLIST.md`](./BETA_CHECKLIST.md) §QA + Launch — register → onboarding → cultivate → daily login → mission → market/shop → chat → leaderboard → profile → logout) trong môi trường full stack thật. Bắt regression UI/route/store/i18n mà vitest component test cô lập + smoke server-side không phát hiện được. Cụ thể:
+Verify **closed beta core loop end-to-end UI flow** ([`BETA_CHECKLIST.md`](./BETA_CHECKLIST.md) §QA + Launch — register → onboarding → cultivate → daily login → mission → market/shop browse → chat → leaderboard → profile → logout → shop **buy** → inventory **equip** → mail → dungeon list → settings) trong môi trường full stack thật. Bắt regression UI/route/store/i18n mà vitest component test cô lập + smoke server-side không phát hiện được. Cụ thể:
 
 - Vue Router push/replace + route guard (chưa onboard → `/onboarding`, đã onboard → `/home`).
 - Pinia store hydration sau navigation (character store, shop store, mission store).
@@ -447,7 +447,7 @@ Khác `smoke:beta`/`smoke:economy`/`smoke:ws`: focus vào **UI rendering + user 
 ### Khi nào chạy
 
 - **BẮT BUỘC** trước khi merge bất kỳ PR đụng:
-  - `apps/web/src/views/AuthView.vue` / `OnboardingView.vue` / `HomeView.vue` / `MissionView.vue` / `ShopView.vue` / `InventoryView.vue` / `LeaderboardView.vue` / `ProfileView.vue`.
+  - `apps/web/src/views/AuthView.vue` / `OnboardingView.vue` / `HomeView.vue` / `MissionView.vue` / `ShopView.vue` / `InventoryView.vue` / `LeaderboardView.vue` / `ProfileView.vue` / `MailView.vue` / `DungeonView.vue` / `SettingsView.vue`.
   - `apps/web/src/components/shell/AppShell.vue` / `ChatPanel.vue`.
   - `apps/web/src/router/*` (route guard logic, redirect rules).
   - `apps/web/src/stores/character.ts` / `auth.ts` (hydration + ws push consumption).
@@ -476,7 +476,7 @@ E2E_FULL=1 \
 pnpm --filter @xuantoi/web e2e --reporter=list
 ```
 
-**Pass criteria**: exit code `0`, dòng cuối `<N> passed (<time>s)` với N = 11 (suite full) hoặc N = 1 (smoke-only, không set `E2E_FULL=1`).
+**Pass criteria**: exit code `0`, dòng cuối `<N> passed (<time>s)` với N = 16 (suite full sau 9q-8) hoặc N = 1 (smoke-only, không set `E2E_FULL=1`).
 
 **Fail criteria**: exit code `1`, có ít nhất 1 spec `failed`. Khi fail, **DỪNG mở Phase 10 PR** và mở 1 PR riêng fix root cause trước. Trace + screenshot lưu ở `apps/web/test-results/`.
 
@@ -486,11 +486,13 @@ pnpm --filter @xuantoi/web e2e --reporter=list
 |---|---|---|
 | `PLAYWRIGHT_BASE_URL` | `http://localhost:4173` | URL Web dev/preview server. Dùng `:5173` cho `pnpm dev`, `:4173` cho `pnpm preview` (default Playwright config tự spawn `vite preview`). |
 | `PLAYWRIGHT_SKIP_WEBSERVER` | `0` | `1` để Playwright KHÔNG spawn `vite preview` (khi đã có `pnpm dev` chạy sẵn). |
-| `E2E_FULL` | unset | `1` để chạy full 11 spec. Không set → chỉ chạy 1 spec smoke `AuthView` (không cần backend). |
+| `E2E_FULL` | unset | `1` để chạy full 16 spec (sau 9q-8, tăng từ 11). Không set → chỉ chạy 1 spec smoke `AuthView` (không cần backend). |
 | `API_BASE_URL` | `http://localhost:3000` | API root cho `helpers.ts` seed user qua `page.request`. |
 | `REDIS_URL` | `redis://localhost:6379` | Redis cho `flushAuthRateLimits()` xoá `rl:register:*` / `rl:login:*` / `rl:forgot-password:*` trước mỗi spec. |
 
-### Spec breakdown (11 spec, tổng ~17–19s)
+### Spec breakdown (16 spec, tổng ~22–25s)
+
+**Spec 1–11 (PR #210, session 9q-7)**:
 
 1. **AuthView smoke** (no backend) — form input render + 3 tab button. Luôn chạy, không cần `E2E_FULL`.
 2. **Register UI → 4-step onboarding → /home** — full UI flow (3.5s).
@@ -503,6 +505,25 @@ pnpm --filter @xuantoi/web e2e --reporter=list
 9. **Leaderboard 3 tab** — `[data-testid="leaderboard-tab-power|topup|sect"]` click + URL persist.
 10. **Profile public view ownId** — `/profile/{characterId}` render char name.
 11. **Logout** — click `Xuất Quan` → redirect `/auth`.
+
+**Spec 12–16 (this PR, session 9q-8)**:
+
+12. **Shop buy LINH_THACH (UI)** — register + onboard + claim daily login (+100 LT) qua API → goto `/shop` → tìm card "Sơ Kiếm" 30 LT → click `Mua` → `linhThach -= 30` cross-check qua `/api/character/me` poll trong 6s + verify inventory có 1 Sơ Kiếm qua `/api/inventory`.
+13. **Inventory equip UI** — setup buy `so_kiem` qua API helper → goto `/inventory` → click `Mang` (i18n `inventory.equip`) → `expect.poll` API `equippedSlot === 'WEAPON'` trong 6s + UI button `Tháo` (i18n `inventory.takeOff`) hiện ra cho slot đã equip.
+14. **Mail empty state** — fresh char goto `/mail` → heading `Thiên Đạo Thư Các` (i18n `mail.title`) + empty `Hộp thư trống rỗng` (i18n `mail.empty`) visible.
+15. **Dungeon list visible + entry enabled** — fresh char goto `/dungeon` → heading `Luyện Khí Đường` + 3 dungeon catalog (Sơn Cốc / Hắc Lâm / Yêu Thú Động) + Sơn Cốc enter button `Khai ải` (i18n `dungeon.enter`) enabled (fresh stamina 100 ≥ Sơn Cốc staminaEntry 10) + cross-check API `character.stamina ≥ 10`. **KHÔNG enter combat** (random damage RNG + multi-monster turn-based → flaky, defer thành `smoke:combat` riêng).
+16. **Settings page load** — goto `/settings` → heading `Tâm Pháp Đường` (i18n `settings.title`) + email seed render đúng + 3 input password (change-password section) visible.
+
+### Flow chưa cover (defer)
+
+- **Cultivation breakthrough end-to-end** — cần exp ≥ realm cost, không thực tế trong < 30s suite. Defer thành `smoke:cultivation` riêng.
+- **Cultivation tick (BullMQ 30s)** — đã cover ngoài Playwright bằng `pnpm smoke:ws` với `SMOKE_WAIT_TICK_MS=40000` ($§11 file này).
+- **Dungeon enter+clear+loot end-to-end** — random RNG damage + multi-monster turn-based → flaky. Defer thành `smoke:combat` riêng.
+- **Mail claim attachment** — cần admin send mail. Defer cùng `smoke:admin`.
+- **Inventory use HP pill** — fresh char hp full → no observable change. Defer.
+- **Giftcode redeem** — cần admin create giftcode. Defer cùng `smoke:admin`.
+- **Multi-tab same user real-time sync** — cần spawn 2 BrowserContext, phức tạp. Defer.
+- **Topup IAP simulator** — cần env IAP sandbox. Defer ngoài beta scope.
 
 ### Rate limiter caveat
 

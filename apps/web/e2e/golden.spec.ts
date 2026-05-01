@@ -2,7 +2,7 @@
  * E2E golden path — closed beta core loop.
  *
  * Mục tiêu: cover end-to-end các tương tác chính của user closed beta để
- * regression-safe trước khi mở rộng Phase 10 content scale. Coverage:
+ * regression-safe trước khi mở rộng Phase 10 content scale. Coverage (16 spec):
  *   1. AuthView smoke (no backend)
  *   2. Register UI + 4-step onboarding + landing /home (full UI flow)
  *   3. Cultivate toggle ON/OFF (UI label flip + API state cross-check)
@@ -14,6 +14,11 @@
  *   9. Leaderboard tabs Power / Topup / Sect (data-testid stable)
  *   10. Profile public view ownId
  *   11. Logout → redirect /auth, session sạch
+ *   12. Shop buy LINH_THACH (UI) — debit balance + credit inventory (post-9q-7)
+ *   13. Inventory equip UI → equipped slot WEAPON cross-check (post-9q-7)
+ *   14. Mail — page load + empty state cho fresh char (post-9q-7)
+ *   15. Dungeon — list 3 dungeon + Sơn Cốc entry button enabled (post-9q-7)
+ *   16. Settings — page load + account info + change-password section (post-9q-7)
  *
  * Yêu cầu chạy local:
  *   1. `pnpm infra:up` (Postgres + Redis)
@@ -34,6 +39,9 @@ import {
   getCharacterMe,
   waitCharacter,
   flushAuthRateLimits,
+  claimDailyLogin,
+  buyShopItem,
+  listInventoryApi,
 } from './helpers';
 
 const FULL_E2E = process.env.E2E_FULL === '1';
@@ -346,5 +354,181 @@ test.describe('Golden path — full stack required', () => {
     // FE redirect về /auth (interceptor 401 hoặc explicit push).
     await page.waitForURL(/\/auth/, { timeout: 10_000 });
     await expect(page).toHaveURL(/\/auth/);
+  });
+
+  // ---------------------------------------------------------------------------
+  // 11. Shop buy LINH_THACH (UI) — full purchase flow.
+  // Setup qua API: claim daily login → +100 LT (DAILY_LOGIN_LINH_THACH).
+  // Sau đó UI: goto /shop → tìm card "Sơ Kiếm" (30 LT, WEAPON) → click "Mua" →
+  // toast success → balance giảm 30 → inventory có 1 Sơ Kiếm (cross-check API).
+  // ---------------------------------------------------------------------------
+  test('shop buy LINH_THACH — UI buy debits balance + credits inventory', async ({ page }) => {
+    await registerAndOnboard(page, { emailPrefix: 'e2e_shopbuy' });
+
+    // Setup: daily login → 100 LT.
+    const claim = await claimDailyLogin(page);
+    expect(claim.claimed).toBe(true);
+    expect(BigInt(claim.linhThachDelta)).toBeGreaterThanOrEqual(100n);
+
+    await page.goto('/shop');
+    await expect(page).toHaveURL(/\/shop/);
+    await expect(page.getByRole('heading', { name: /NPC Tiệm/i })).toBeVisible({
+      timeout: 10_000,
+    });
+
+    // Tìm card "Sơ Kiếm" (WEAPON, 30 LT) — name unique trong shop catalog.
+    const soKiemCard = page.locator('li', { hasText: /Sơ Kiếm/i }).first();
+    await expect(soKiemCard).toBeVisible({ timeout: 5000 });
+
+    // Nút "Mua" trong card "Sơ Kiếm" phải ENABLED (100 ≥ 30 LT).
+    const buyBtn = soKiemCard.getByRole('button', { name: /^Mua$/i }).first();
+    await expect(buyBtn).toBeEnabled({ timeout: 5000 });
+
+    // Snapshot balance trước mua (qua API).
+    const before = await getCharacterMe(page);
+    const beforeLT = BigInt(String(before.linhThach ?? '0'));
+
+    await buyBtn.click();
+
+    // Sau mua, FE refetch state → balance giảm. Cross-check qua API: char
+    // linhThach đã trừ 30 (giá Sơ Kiếm). Poll vì FE refresh không đồng bộ.
+    await waitCharacter(
+      page,
+      (c) => BigInt(String(c.linhThach ?? '0')) === beforeLT - 30n,
+      { label: 'linhThach -= 30 sau buy Sơ Kiếm', timeoutMs: 6000 },
+    );
+
+    // Inventory có 1 Sơ Kiếm (cross-check API).
+    const inv = await listInventoryApi(page);
+    const soKiem = inv.find((i) => {
+      const item = i.item as { key?: string } | undefined;
+      return item?.key === 'so_kiem';
+    });
+    expect(soKiem).toBeDefined();
+    expect(soKiem?.qty ?? 0).toBe(1);
+  });
+
+  // ---------------------------------------------------------------------------
+  // 12. Inventory equip — UI flow.
+  // Setup: daily claim → buy "Sơ Kiếm" qua API. UI: goto /inventory → list
+  // shows Sơ Kiếm trong unequipped → click "Trang bị" → equipped slot WEAPON
+  // hiện Sơ Kiếm + cross-check API equippedSlot.
+  // ---------------------------------------------------------------------------
+  test('inventory equip — UI click "Mang" → equipped slot WEAPON', async ({ page }) => {
+    await registerAndOnboard(page, { emailPrefix: 'e2e_equip' });
+
+    // API setup.
+    await claimDailyLogin(page);
+    await buyShopItem(page, 'so_kiem', 1);
+
+    await page.goto('/inventory');
+    await expect(page).toHaveURL(/\/inventory/);
+    await expect(page.getByRole('heading', { name: /Linh Bảo Các/i })).toBeVisible({
+      timeout: 10_000,
+    });
+
+    // Sơ Kiếm xuất hiện trong unequipped section.
+    const card = page.locator('div', { hasText: /Sơ Kiếm/i }).first();
+    await expect(card).toBeVisible({ timeout: 5000 });
+
+    // Click "Mang" — i18n `inventory.equip` = "Mang".
+    const equipBtn = page.getByRole('button', { name: /^Mang$/i }).first();
+    await expect(equipBtn).toBeVisible();
+    await equipBtn.click();
+
+    // Cross-check API: inventory item now has equippedSlot=WEAPON.
+    await expect
+      .poll(
+        async () => {
+          const inv = await listInventoryApi(page);
+          const sk = inv.find((i) => {
+            const item = i.item as { key?: string } | undefined;
+            return item?.key === 'so_kiem';
+          });
+          return sk?.equippedSlot ?? null;
+        },
+        { timeout: 6000, message: 'so_kiem.equippedSlot === WEAPON' },
+      )
+      .toBe('WEAPON');
+
+    // UI: equipped section (left column) phải hiện "Sơ Kiếm".
+    // i18n `inventory.takeOff` = "Tháo" — button xuất hiện cho slot đã equip.
+    await expect(page.getByRole('button', { name: /^Tháo$/i }).first()).toBeVisible({
+      timeout: 5000,
+    });
+  });
+
+  // ---------------------------------------------------------------------------
+  // 13. Mail — empty state cho fresh char.
+  // Fresh user có 0 mail (no admin send / no event reward). Verify page load +
+  // empty placeholder text.
+  // ---------------------------------------------------------------------------
+  test('mail — page loads + empty state for fresh char', async ({ page }) => {
+    await registerAndOnboard(page, { emailPrefix: 'e2e_mail' });
+    await page.goto('/mail');
+
+    await expect(page).toHaveURL(/\/mail/);
+    // Title `mail.title` = "Thiên Đạo Thư Các".
+    await expect(page.getByRole('heading', { name: /Thiên Đạo Thư Các/i })).toBeVisible({
+      timeout: 10_000,
+    });
+
+    // Empty state `mail.empty` = "Hộp thư trống rỗng." (aside panel).
+    await expect(page.getByText(/Hộp thư trống rỗng/i).first()).toBeVisible({
+      timeout: 5000,
+    });
+  });
+
+  // ---------------------------------------------------------------------------
+  // 14. Dungeon — list visible + Sơn Cốc entry button enabled.
+  // Fresh char stamina = 100; Sơn Cốc cần 10 → button "Vào" enabled.
+  // KHÔNG enter combat (random damage + multi-monster → defer smoke:combat).
+  // ---------------------------------------------------------------------------
+  test('dungeon — list 3 dungeon + Sơn Cốc enter enabled (stamina ≥ 10)', async ({ page }) => {
+    await registerAndOnboard(page, { emailPrefix: 'e2e_dungeon' });
+    await page.goto('/dungeon');
+
+    await expect(page).toHaveURL(/\/dungeon/);
+    // Title `dungeon.title` = "Luyện Khí Đường".
+    await expect(page.getByRole('heading', { name: /Luyện Khí Đường/i })).toBeVisible({
+      timeout: 10_000,
+    });
+
+    // 3 dungeon catalog: Sơn Cốc / Hắc Lâm / Yêu Thú Động.
+    await expect(page.getByRole('heading', { name: /^Sơn Cốc$/ })).toBeVisible();
+    await expect(page.getByRole('heading', { name: /^Hắc Lâm$/ })).toBeVisible();
+    await expect(page.getByRole('heading', { name: /Yêu Thú Động/ })).toBeVisible();
+
+    // Sơn Cốc card: enter button "Khai ải" enabled (fresh char stamina 100 ≥ 10).
+    // i18n `dungeon.enter` = "Khai ải".
+    const enterBtn = page.getByRole('button', { name: /^Khai ải$/ }).first();
+    await expect(enterBtn).toBeEnabled({ timeout: 5000 });
+
+    // Cross-check API: stamina ≥ 10 (Sơn Cốc staminaEntry).
+    const ch = await getCharacterMe(page);
+    expect(Number(ch.stamina ?? 0)).toBeGreaterThanOrEqual(10);
+  });
+
+  // ---------------------------------------------------------------------------
+  // 15. Settings page — render account info + change-password section.
+  // ---------------------------------------------------------------------------
+  test('settings — page loads + account info + change-password section', async ({ page }) => {
+    const seed = await registerAndOnboard(page, { emailPrefix: 'e2e_settings' });
+    await page.goto('/settings');
+
+    await expect(page).toHaveURL(/\/settings/);
+    // Title `settings.title` = "Tâm Pháp Đường".
+    await expect(page.getByRole('heading', { name: /Tâm Pháp Đường/i })).toBeVisible({
+      timeout: 10_000,
+    });
+
+    // Account info section: email render đúng.
+    await expect(page.getByText(seed.email, { exact: false }).first()).toBeVisible({
+      timeout: 5000,
+    });
+
+    // Change password section: 3 input password.
+    const pwdInputs = page.locator('input[type="password"]');
+    expect(await pwdInputs.count()).toBeGreaterThanOrEqual(3);
   });
 });
