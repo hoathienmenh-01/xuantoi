@@ -320,3 +320,109 @@ Script là `scripts/smoke-economy.mjs` (~470 dòng ESM), dùng native `fetch` + 
 - Không cleanup user — như `smoke:beta`. Cleanup: `DELETE FROM "User" WHERE email LIKE 'smoke-econ-%@smoke.invalid'` (cẩn thận FK → `Character`, `CurrencyLedger`, `ItemLedger`, `DailyLoginClaim`, ...).
 - Không cover currency `TIEN_NGOC` (premium). Topup flow cần admin approve → ngoài scope smoke ẩn danh.
 - Không cover `CONG_HIEN` / `CHIEN_CONG_TONG_MON` (sect war), `NGUYEN_THACH` (refine). Phase 9 closed beta chưa expose endpoint trực tiếp.
+
+## 11. `pnpm smoke:ws` CLI (session 9q-6)
+
+**Mục đích**: smoke runtime ≤ 30s verify các invariant realtime của `RealtimeGateway` (`apps/api/src/modules/realtime/realtime.gateway.ts`) còn nguyên trước khi mở rộng Phase 10 content scale (đặc biệt skill / mission / boss / dungeon mới đều push qua WS). Phòng regression khi:
+
+- Logic auth cookie `xt_access` thay đổi → user A nhận frame `state:update` của user B (privacy regression).
+- Refactor `RealtimeService.emitToUser/broadcast/emitToRoom` → frame duplicate hoặc miss.
+- Change `MISSION_PROGRESS_PUSH_THROTTLE_MS` (default 500ms, [`packages/shared/src/ws-events.ts`](../packages/shared/src/ws-events.ts)) → spam mission track flood WS.
+- `cultivation.processor.ts` đổi shape payload `cultivate:tick` → FE crash khi parse.
+- Reconnect path bug → user reconnect bằng cookie cũ vẫn dính userId map của session trước → broadcast leak.
+
+Khác `smoke:economy`: focus vào **realtime safety + WS auth + push throttle** thay vì ledger consistency. Khác vitest `realtime.gateway.test.ts` (14 case unit): smoke chạy NestApp full + cookie auth thật (không stub JWT) + 2 user A/B isolated cookie jar + reconnect path qua socket.io-client thật.
+
+### Khi nào chạy
+
+- **BẮT BUỘC** trước khi merge bất kỳ PR đụng:
+  - `apps/api/src/modules/realtime/realtime.gateway.ts` / `realtime.service.ts`.
+  - `apps/api/src/modules/mission/mission-ws.emitter.ts` (throttle).
+  - `apps/api/src/modules/chat/chat.service.ts` (broadcast WORLD / room SECT).
+  - `apps/api/src/modules/cultivation/cultivation.processor.ts` (BullMQ tick + emit).
+  - `apps/api/src/modules/character/character.service.ts` (`emitToUser('state:update', …)` từ onboard/cultivate/breakthrough).
+  - `packages/shared/src/ws-events.ts` (`WsEventType` / `WsFrame` / `MISSION_PROGRESS_PUSH_THROTTLE_MS` / `CULTIVATION_TICK_MS`).
+- **KHUYẾN NGHỊ** trước khi mở Phase 10 content PR (PR-1..5: items/skills/monsters/missions/boss pack) — content mới track mission progress nhiều hơn → throttle phải còn nguyên.
+- **BẮT BUỘC** ngay trước release tag closed beta v0.x (cùng `smoke:beta` + `smoke:economy` + Playwright golden path).
+
+### Chạy local
+
+```bash
+# 1. Lên infra (Postgres + Redis cho BullMQ tick scheduler)
+pnpm infra:up
+pnpm --filter @xuantoi/api prisma migrate deploy
+
+# 2. Start API ở terminal riêng (cần env từ apps/api/.env)
+pnpm --filter @xuantoi/api dev                # listen :3000, WS path /ws
+
+# 3. Terminal khác — chạy smoke (default: SKIP cultivate:tick — nhanh ~5s)
+pnpm smoke:ws
+
+# 4. (Optional) Bật cultivate:tick check (cộng ~30-40s đợi BullMQ tick):
+SMOKE_WAIT_TICK_MS=40000 pnpm smoke:ws
+```
+
+**Pass criteria**: exit code `0`, dòng cuối `done: 19 pass / 0 fail / 19 total in <ms>`.
+
+**Fail criteria**: exit code `1`, có ít nhất 1 step `FAIL` với invariant message dạng `INVARIANT vi phạm: emitToUser leak qua user khác — B nhận N state:update của A`. Khi fail, **DỪNG mở Phase 10 PR** và mở 1 PR riêng fix root cause trước.
+
+### Env overrides
+
+| Env | Default | Công dụng |
+|---|---|---|
+| `SMOKE_API_BASE` | `http://localhost:3000` | API root. WS origin = `scheme://host:port` (path `/ws` cố định). |
+| `SMOKE_TIMEOUT_MS` | `10000` | Timeout per HTTP request (ms). |
+| `SMOKE_WS_TIMEOUT_MS` | `4000` | Timeout WS connect / wait frame (ms). |
+| `SMOKE_THROTTLE_MS` | `500` | Phải khớp `MISSION_PROGRESS_PUSH_THROTTLE_MS` trong [`packages/shared/src/ws-events.ts`](../packages/shared/src/ws-events.ts). Khi shared bump throttle, override đây. |
+| `SMOKE_WAIT_TICK_MS` | `0` | `0` = SKIP cultivate:tick step (default, smoke nhanh). Đặt `≥ 35000` để chờ BullMQ tick (`CULTIVATION_TICK_MS=30000` + buffer). |
+| `SMOKE_VERBOSE` | `0` | Set `1` để log HTTP request/response + WS frame inbound (debug). |
+| `SMOKE_SECT_KEY` | `thanh_van` | Sect onboard cho 2 user. |
+
+### 19 step (default — `SMOKE_WAIT_TICK_MS=0`)
+
+1. `GET /api/healthz`.
+2. Setup user A — `POST /api/_auth/register` (random email `smoke-ws-A-*@smoke.invalid`) → `POST /api/character/onboard` → `GET /api/character/me`.
+3. Setup user B — same flow, cookie jar độc lập.
+4. WS auth: thiếu cookie → server `client.emit('error') + disconnect(true)` → `sock.connected === false` sau 1.5s.
+5. WS connect A với cookie `xt_access` → `sock.connected === true`, `sock.id` non-empty.
+6. WS connect B với cookie `xt_access` → connect OK.
+7. `ping` → `pong` ack callback roundtrip — verify shape `WsFrame { type:'pong', payload:{}, ts:number }`.
+8. **state:update isolation** — `POST /api/character/cultivate {cultivating:true}` (user A) → A nhận `state:update` (`payload.id == characterId(A)`, `cultivating === true`); đợi 150ms — B **KHÔNG** nhận frame nào (verify `emitToUser` không leak).
+9. **chat:msg broadcast** — `POST /api/chat/world` (user A) → cả A và B nhận đúng 1 frame `chat:msg` với `payload.id` cùng row, `payload.text` khớp, `payload.senderId == characterId(A)`, `payload.channel === 'WORLD'`.
+10. **chat:msg no duplicate** — 1 send → đúng 1 frame trong cửa sổ 600ms (capture array).
+11. **mission:progress throttle** — spam 5 `POST /api/chat/world` trong cửa sổ < 500ms (mỗi send tracks `CHAT_MESSAGE` mission → `MissionWsEmitter.tryEmit`) → ≤ 1 frame `mission:progress`. Nếu env quá chậm (5 send ≥ 500ms) → step skip với note.
+12. **mission:progress next window** — wait > 500ms+200ms → 1 send → ≤ 1 frame (window reset).
+13. **reconnect A (disconnect + reconnect)** — `disconnect()` → `newSock(jarA)` → connect OK + `sock.id` mới khác cũ.
+14. **reconnect A — state:update vẫn deliver** — `POST /api/character/cultivate {cultivating:false}` → A nhận `state:update` với `cultivating === false` (userId map intact sau reconnect).
+15. **reconnect A — chat:msg broadcast vẫn deliver** — user B gửi → A nhận đúng 1 frame, không duplicate frame leak từ session cũ.
+16. **cultivate:tick (gated)** — chỉ chạy khi `SMOKE_WAIT_TICK_MS > 0`. Bật cultivating=true → đợi BullMQ tick processor emit `cultivate:tick` (cron `CULTIVATION_TICK_MS=30s`) → assert payload shape `{ characterId, expGained:string-numeric, exp, expNext, realmKey, realmStage:number, brokeThrough:boolean }`. Cleanup: tắt cultivating sau khi nhận.
+17. **logout A** — `POST /api/_auth/logout` → cookie jar A mất `xt_access`.
+18. **after logout — WS reconnect fail** — `newSock(jarA)` → server disconnect (`sock.connected === false` sau 1.5s).
+19. Cleanup: logout B + clean disconnect cả 2 socket.
+
+### CI gating
+
+`pnpm smoke:ws` KHÔNG vào CI flow vì cần API + DB + Redis (BullMQ scheduler) live cùng process. CI hiện chạy unit + Playwright build-artifact, KHÔNG chạy `pnpm dev`. Script là **manual/gated**.
+
+Khi PR đụng các file thuộc danh sách "BẮT BUỘC" ở §11 trên, reviewer **phải** request:
+- Output `pnpm smoke:ws` (default — 19/19 PASS) trong PR body.
+- Khi PR đụng `cultivation.processor.ts` hoặc shared `CultivateTickPayload` → output thêm `SMOKE_WAIT_TICK_MS=40000 pnpm smoke:ws` (cultivate:tick PASS).
+
+### Deferred sub-checks (không có trong smoke này)
+
+- **Multi-tab same user**: 1 user mở 2 tab → 1 trigger emit phải deliver cả 2 socket. `realtime.gateway.test.ts` cover gián tiếp qua `userSockets: Map<string, Set<string>>` set logic. Defer vì cần spawn 2 socket cùng cookie jar — phức tạp với socket.io-client `forceNew`.
+- **Sect room broadcast**: smoke chỉ test WORLD broadcast. SECT room test cần seed sect + auto-join logic — gateway test đã cover (`sock.join('sect:<id>')` + `emitToRoom`).
+- **JWT expired path**: cần expired JWT thật (TTL 0). `realtime.gateway.test.ts` đã cover. Skip trong smoke runtime để giữ < 30s.
+- **Race condition rapid reconnect**: disconnect → reconnect 5x trong 1s. Không phải invariant gameplay critical. Defer.
+
+### Không có dependency mới
+
+Script là `scripts/smoke-ws.mjs` (~700 dòng ESM), dùng native `fetch` + `AbortController` Node 20+ + `socket.io-client` load qua `createRequire(apps/api/package.json)` từ workspace dep đã có (`@xuantoi/api` devDep + `@xuantoi/web` dep). KHÔNG install thêm dep ở root.
+
+### Giới hạn
+
+- Không cleanup user — như `smoke:beta` / `smoke:economy`. Cleanup: `DELETE FROM "User" WHERE email LIKE 'smoke-ws-%@smoke.invalid'` (cẩn thận FK).
+- Không cover `state:update` từ breakthrough (cần exp ≥ cost realm 9 — không thực tế trong < 30s smoke).
+- Không cover `chat:msg` SECT room (cần seed sect + assign character, defer).
+- Không cover BullMQ failure path (tick processor crash) — cần test framework integration sâu hơn, defer.
+- Rate limit `/api/_auth/register` = 5/IP/15 phút. Smoke tạo 2 user → có thể chạy 2 lần liên tiếp, lần 3 sẽ 429. Khi cần test nhiều, flush key Redis: `docker exec xuantoi-redis redis-cli --scan --pattern 'rl:register*' | xargs -r docker exec -i xuantoi-redis redis-cli DEL`.
