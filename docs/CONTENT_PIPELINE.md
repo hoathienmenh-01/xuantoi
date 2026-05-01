@@ -20,14 +20,15 @@ Mục tiêu: thêm content **không phá CI**, **không lệch curve**, **không
 | Dungeon | `packages/shared/src/combat.ts` `DUNGEONS` + `DUNGEON_LOOT` | 9 dungeon (Phase 10 PR-3 +6 element-thematic) | Phase 10: → 8-10 ✅ |
 | Mission | `packages/shared/src/missions.ts` | 66 mission (PR #217 Phase 10 PR-4 +54: tier daily/weekly + element chronicle + tu-tien-progression chain) | Phase 10: → 65+ ✅ |
 | Boss | `packages/shared/src/boss.ts` | 12 boss (Phase 10 PR-5 +10 named × Ngũ Hành × realm tier kim_dan → hop_the) | Phase 10: → 10 named ✅ |
-| Buff/Debuff | `packages/shared/src/buffs.ts` | 18 buff/debuff (Phase 11.8.A — this PR open: 10 buff + 8 debuff × 5 element + 8 source pill/skill/sect_aura/event/talent/boss/tribulation) | Phase 11: → 18+ ✅ catalog-only |
+| Buff/Debuff | `packages/shared/src/buffs.ts` | 18 buff/debuff (Phase 11.8.A — merged #229: 10 buff + 8 debuff × 5 element + 8 source pill/skill/sect_aura/event/talent/boss/tribulation) | Phase 11: → 18+ ✅ catalog-only |
+| Title (Danh hiệu) | `packages/shared/src/titles.ts` | 24 title (Phase 11.9.A — this PR open: 9 realm + 5 element + 4 achievement + 3 sect + 2 event + 1 donation × 5 rarity common/rare/epic/legendary/mythic) | Phase 11: → 24+ ✅ catalog-only |
 | Topup pack | `packages/shared/src/topup.ts` | (đã có) | Tunable theo monetization |
 | Shop pack | `packages/shared/src/shop.ts` | (đã có) | Tunable |
 | **Quest chain** | (chưa có) | 0 | Phase 11 — DB-backed |
 | **Story chapter** | (chưa có) | 0 | Phase 11 — DB-backed |
 | **Map region** | (chưa có) | 0 | Phase 12 — DB-backed |
 | **DungeonTemplate** | (chưa có, dùng static `DungeonDef`) | — | Phase 12 — migrate sang DB |
-| **Title** | (`Character.title` là free string) | 0 catalog | Phase 11 — static catalog |
+| **Title (legacy row)** | (replaced by `packages/shared/src/titles.ts` Phase 11.9.A) | (see Title row above) | (resolved) |
 | **Achievement** | (chưa có) | 0 | Phase 11 — static catalog + DB progress |
 | **EventConfig** | (chưa có) | 0 | Phase 15 — DB-backed |
 

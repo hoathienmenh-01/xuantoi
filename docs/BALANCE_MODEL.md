@@ -169,6 +169,35 @@ Khi thêm runtime (Phase 11.8.B):
 - DOT tick (1s wall hoặc combat turn) gọi `dotPerTickFlat` damage qua `CombatService.applyDamage`.
 - `cultivationBlocked` → `CultivationService.tick` skip exp gain (Tâm Ma).
 
+### 2.8 Title (Danh hiệu) curve (phase 11.9.A)
+
+**Phase 11.9.A catalog đã có (session 9r-11 PR — `packages/shared/src/titles.ts`)**:
+
+| Rarity | Count | flavorStatBonus cap | Source mix |
+|---|---|---|---|
+| common | 5 | 0 hoặc ≤ 1.02 | realm low, achievement, sect initiate |
+| rare | 5 | ≤ 1.03 | realm mid, achievement boss, sect inner, event |
+| epic | 8 | ≤ 1.05 | realm high, element mastery (×5), sect elder |
+| legendary | 3 | ≤ 1.10 | realm very high, donation |
+| mythic | 1 | ≤ 1.15 | realm hu_khong_chi_ton (đỉnh phong) |
+| **TOTAL** | **24** | — | — |
+
+**Stack cap rule (Phase 11.9.B runtime)**:
+
+- `Character.title` String? = single equipped title slot. Multi-slot reserved cho future "title page" feature.
+- `composeTitleMods([Character.title])` áp multiplicative cho atk/def/hpMax/mpMax/spirit (mỗi title bonus ≤ 1.15).
+- Combined với cultivation method (×1.8 max) + linh căn (×1.8 max) + buff (×1.5 max) + title (×1.15 max) → grand total cap 3.5× theo §2.5 (multiplicative — bumped từ 3.0× để cover mythic title × 1.15 hiếm-but-allowed). Vượt → cap.
+- Title cosmetic-first; flavor stat bonus không thể exceed equipment/skill mastery curve (vitest enforce per-rarity cap).
+
+Khi thêm runtime (Phase 11.9.B):
+
+- `CharacterTitleUnlock` table idempotent unique on `[characterId, titleKey]`.
+- Auto-grant trên realm breakthrough event call `titleForRealmMilestone(newRealmKey)` → `unlockTitle`.
+- Auto-grant trên achievement complete event (Phase 11.10) call `titleForAchievement(achievementKey)` → `unlockTitle`.
+- Auto-grant trên sect role change event call `titleForSectRole(role)` → `unlockTitle`.
+- `equipTitle` validate ownership trước khi set `Character.title`.
+- Wire `composeTitleMods([Character.title])` vào `CharacterStatService.computeStats`.
+
 ---
 
 ## 3. POWER CURVE

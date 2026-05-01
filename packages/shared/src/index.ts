@@ -15,6 +15,7 @@ export * from './refine';
 export * from './skill-templates';
 export * from './spiritual-root';
 export * from './talents';
+export * from './titles';
 export * from './tribulation';
 export * from './topup';
 export * from './shop';
