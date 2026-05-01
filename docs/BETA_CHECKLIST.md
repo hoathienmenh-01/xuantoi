@@ -61,7 +61,7 @@ Checklist để promote beta (closed 50 users → open). Tick khi xong.
 - [x] **CSP production** policy chặt, dev `false` (`apps/api/src/main.ts` `helmetConfig`) — chỉ cần review CDN khi prod deploy
 
 ### Testing
-- [x] **api 1133** + **web 588** + **shared 259** = **1980 vitest** (auto-snapshot 1/5 session 9r-3 — shared +21 từ `items-balance.test.ts` Phase 10 PR-1). Stale snapshot cũ "557 test" của session 9d đã bị thay; mỗi PR mới phải verify số này không giảm.
+- [x] **api 1133** + **web 588** + **shared 330** = **2051 vitest** (auto-snapshot 1/5 session 9r-4 — shared +45 từ `monsters-balance.test.ts` 23 + `dungeons-balance.test.ts` 22 Phase 10 PR-3, +26 từ `skills-balance.test.ts` Phase 10 PR-2, +21 từ `items-balance.test.ts` Phase 10 PR-1). Stale snapshot cũ "557 test" của session 9d đã bị thay; mỗi PR mới phải verify số này không giảm.
 - [x] Real Postgres integration (CI `postgres` service, schema `mtt`)
 - [x] WS integration test (real socket.io-client)
 - [x] CI postgres + redis service xanh
@@ -82,8 +82,10 @@ Checklist để promote beta (closed 50 users → open). Tick khi xong.
 ### Content / Balance
 - [x] 28 cảnh giới × 9 trọng (`packages/shared/src/realms.ts`)
 - [x] `cultivationRateForRealm` scale 1.45^order — property test ≤24h/stage 1
-- [x] **81 item** cover 9 EquipSlot + pill (HP/MP/EXP) + ore + artifact + misc (was 31; +50 từ Phase 10 PR-1 Item Pack 1, see `packages/shared/src/items.ts`).
-- [x] 10 skill (3/sect + basic_attack)
+- [x] **87 item** cover 9 EquipSlot + pill (HP/MP/EXP) + ore + artifact + misc (was 31 → 81 PR-1, +6 yêu phù Phase 10 PR-3, see `packages/shared/src/items.ts`).
+- [x] **25 skill** tổ chức theo Ngũ Hành Kim/Mộc/Thuỷ/Hoả/Thổ × ≥1 active + ≥1 passive + 1 vô hệ early (was 10; +15 từ Phase 10 PR-2 Skill Pack 1, see `packages/shared/src/combat.ts` SKILLS).
+- [x] **29 monster** (was 9; +20 từ Phase 10 PR-3 Monster Pack 1) × Ngũ Hành element + MonsterType (BEAST/HUMANOID/SPIRIT/ELITE/BOSS), 8 region (3 legacy + 5 element-thematic kim_son_mach/moc_huyen_lam/thuy_long_uyen/hoa_diem_son/hoang_tho_huyet).
+- [x] **9 dungeon** (was 3; +6 từ Phase 10 PR-3 Dungeon Pack 1) × element thematic + recommendedRealm luyenkhi→nguyen_anh + DUNGEON_LOOT cover all dungeon (no orphan).
 - [x] 12+ mission (5 daily + 4 weekly + 3 once)
 
 ### Docs
@@ -165,17 +167,17 @@ Checklist để promote beta (closed 50 users → open). Tick khi xong.
 
 **Phase 10 progress** (session 9r-4):
 - **PR-1 Item Pack 1 (DONE — merged #214)**: catalog 31 → 81 item (+50). Stat budget tuân thủ `BALANCE_MODEL.md` §3.3, bound bằng `items-balance.test.ts` (+21 vitest). Pre-gate baseline + post-code re-run trùng khớp.
-- **PR-2 Skill Pack 1 (this PR)**: catalog 10 → 25 skill (+15) tổ chức theo Ngũ Hành (Kim/Mộc/Thuỷ/Hoả/Thổ × ≥1 active + ≥1 passive) + 1 vô hệ early. SkillDef extend forward-compat (`element`/`type`/`role`/`unlockRealm`/`cooldownTurns`) cho Phase 11 Spiritual Root + Elemental Combat — combat runtime KHÔNG đổi (`element` chỉ là metadata; phase 11.3 sẽ wire `elementMultiplier`). Stat budget tuân thủ `BALANCE_MODEL.md` §4 (atkScale ≤ 5, mpCost ≤ 80, selfHealRatio ≤ 0.5, selfBloodCost ≤ 0.3, cooldownTurns ≤ 6), bound bằng `skills-balance.test.ts` (+26 vitest). FE picker thêm helper `activeSkillsForSect` để loại passive khỏi dropdown.
-- PR-3 Monster & Dungeon Pack 1 — pending (skill Ngũ Hành đã đủ để compose AI moveset theo `element` + `role`).
-- PR-4 Mission Pack 1 — pending.
-- PR-5 Boss Catalog — pending.
+- **PR-2 Skill Pack 1 (DONE — merged #215)**: catalog 10 → 25 skill (+15) tổ chức theo Ngũ Hành (Kim/Mộc/Thuỷ/Hoả/Thổ × ≥1 active + ≥1 passive) + 1 vô hệ early. SkillDef extend forward-compat (`element`/`type`/`role`/`unlockRealm`/`cooldownTurns`) cho Phase 11 Spiritual Root + Elemental Combat — combat runtime KHÔNG đổi (`element` chỉ là metadata; phase 11.3 sẽ wire `elementMultiplier`). Stat budget tuân thủ `BALANCE_MODEL.md` §4, bound bằng `skills-balance.test.ts` (+26 vitest). FE picker thêm helper `activeSkillsForSect` để loại passive khỏi dropdown.
+- **PR-3 Monster & Dungeon Pack 1 (this PR)**: monster catalog 9 → 29 (+20) × Ngũ Hành element + MonsterType (BEAST/HUMANOID/SPIRIT/ELITE/BOSS), dungeon catalog 3 → 9 (+6 element-thematic + 1 single-boss endgame `cuu_la_dien`), DUNGEON_LOOT 3 → 9 entries (no orphan), ITEMS 81 → 87 (+6 yêu phù mới wire stable key). MonsterDef + DungeonDef extend forward-compat (`element`/`monsterType`/`regionKey`/`dailyLimit`) cho phase 11.3 elementMultiplier + phase 11.5 DungeonRun service. Stat curve tuân thủ `BALANCE_MODEL.md` §5.1 (hp ≤ 200×level, atk ≤ 25×level, def ≤ 8×level, stamina luyenkhi ≤ 15 / truc_co ≤ 30 / kim_dan ≤ 40 / nguyen_anh ≤ 65), bound bằng `monsters-balance.test.ts` (+23 vitest) + `dungeons-balance.test.ts` (+22 vitest). 4 helper mới: `monstersByElement` / `dungeonsByElement` / `monstersByRegion` / `dungeonsByRegion`.
+- PR-4 Mission Pack 1 — pending (Skill + monster + dungeon đã đủ → mission có thể reference deterministic).
+- PR-5 Boss Catalog — pending (MonsterType=BOSS đã có → có thể reuse schema).
 
 **Justification**:
 1. Mỗi gameplay flow core có ≥ 1 layer test (vitest unit / integration / smoke / golden path).
 2. 5 nhóm Partial chỉ thiếu **runtime smoke** chứ KHÔNG thiếu **logic test** (vitest đã cover invariant: ledger SUM, idempotency, double-claim, RNG seeded combat outcome).
 3. Không có P0/P1 issue open (`gh issue list --state all` empty 1/5).
-4. Baseline **2006 test** stable (+26 từ skills-balance.test.ts session 9r-4, +21 items-balance.test.ts session 9r-3).
-5. CI integration verified GREEN (PR #212 + main run 25203605650 1m35s).
+4. Baseline **2051 test** stable (+45 từ monsters-balance + dungeons-balance.test.ts session 9r-4 PR-3, +26 từ skills-balance.test.ts session 9r-4 PR-2, +21 items-balance.test.ts session 9r-3 PR-1).
+5. CI integration verified GREEN (PR #212 + #214 + #215 5/5 checks pass).
 
 **Pre-gate BẮT BUỘC trước khi mở Phase 10 PR-1**: paste 3 output sau vào PR-1 body để pin baseline:
 
