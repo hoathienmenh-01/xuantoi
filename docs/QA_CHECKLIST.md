@@ -513,6 +513,110 @@ Script `scripts/smoke-combat.mjs` (~480 dòng ESM), dùng native `fetch` + `Abor
 
 ---
 
+## 11.6. `pnpm smoke:admin` CLI (session 9r-7)
+
+### Mục tiêu
+
+Smoke runtime ≤ 2 phút verify admin module HTTP runtime end-to-end (admin login → read-only stats/economy/audit-ledger → write grant linhThach + giftcode + mail → player redeem giftcode + claim mail → ledger/inventory invariants → RBAC isolation → idempotency rejection) còn nguyên trước khi mở rộng Phase 11. Phòng regression khi:
+
+- `AdminService.grant` bypass `CurrencyService.applyTx` hoặc bỏ `AdminAuditLog`.
+- `GiftCodeService.create` / `redeem` bypass `CurrencyLedger`/`ItemLedger` (reason `GIFTCODE_REDEEM`).
+- `MailService.claim` bypass ledger (reason `MAIL_CLAIM`) hoặc anti-double-claim break.
+- `AdminGuard` regress (player cookie qua được `/api/admin/*`).
+- Idempotency `ALREADY_REDEEMED` / `ALREADY_CLAIMED` / `CODE_REVOKED` đổi error code shape.
+- `admin/economy/alerts` / `admin/economy/audit-ledger` / `admin/audit?action=...` đổi response shape mà admin dashboard chưa biết.
+
+Khác `smoke:economy`: focus **admin write actions + ledger reason linkage** thay vì shop/daily-login flow. Khác `smoke:combat`: không depend RNG (deterministic delta `+1000 LT / -300 LT / +500 LT giftcode / +200 LT mail`). Bổ sung **multi-jar pattern** (admin jar + player jar parallel) — đầu tiên trong smoke suite.
+
+### Khi nào chạy
+
+- **BẮT BUỘC** trước khi merge PR đụng:
+  - `apps/api/src/modules/admin/admin.service.ts` (grant, listAudit, stats, getEconomyAlerts, runLedgerAudit).
+  - `apps/api/src/modules/admin/admin.controller.ts` (endpoint shape, auth, RequireAdmin decorator).
+  - `apps/api/src/modules/admin/admin.guard.ts` (RBAC role check).
+  - `apps/api/src/modules/giftcode/giftcode.service.ts` (create / redeem / revoke contract + idempotency).
+  - `apps/api/src/modules/mail/mail.service.ts` (send / claim contract + ledger reason).
+  - `apps/api/src/modules/auth/auth.service.ts` (login flow, session cookie behavior).
+  - Schema migration đụng `AdminAuditLog`, `GiftCode`, `Mail`, `MailRecipient`, `CurrencyLedger`, `ItemLedger`.
+- **BẮT BUỘC** trước release tag closed beta v0.x (cùng `smoke:beta` + `smoke:economy` + `smoke:ws` + `smoke:combat` + Playwright golden path).
+- **Tự ý chạy** trước khi mở Phase 11 elemental combat MVP PR (đảm bảo admin grant + economy alert pipeline còn xanh để debug runtime nếu Phase 11 phá ledger).
+
+### Cách chạy
+
+Yêu cầu môi trường giống `smoke:combat` + bootstrap admin user:
+
+```bash
+pnpm infra:up
+pnpm --filter @xuantoi/api exec prisma migrate deploy
+pnpm --filter @xuantoi/api bootstrap   # seed admin INITIAL_ADMIN_EMAIL/PASSWORD
+pnpm --filter @xuantoi/api dev         # tab 1 — API listen :3000
+
+# Tab khác:
+pnpm smoke:admin
+```
+
+Env vars (mặc định khớp `apps/api/.env` defaults):
+
+- `SMOKE_API_BASE` — `http://localhost:3000`.
+- `SMOKE_TIMEOUT_MS` — `10000`.
+- `SMOKE_VERBOSE=1` — log request/response (debug).
+- `SMOKE_SECT_KEY` — `thanh_van`. Có thể đổi `huyen_thuy` / `tu_la`.
+- `SMOKE_ADMIN_EMAIL` — `admin@example.com` (must khớp `INITIAL_ADMIN_EMAIL` đã bootstrap).
+- `SMOKE_ADMIN_PASSWORD` — `change-me-bootstrap-pass` (must khớp `INITIAL_ADMIN_PASSWORD` đã bootstrap).
+
+Pre-condition: `pnpm --filter @xuantoi/api bootstrap` PHẢI đã chạy ít nhất 1 lần (tạo admin user trong DB). Nếu chạy lần đầu trên DB clean, bootstrap idempotent — không tạo trùng.
+
+### 30 step expect PASS
+
+1. healthz.
+2. admin login (`POST /api/_auth/login`) — cookie `xt_access` set.
+3. admin `/api/_auth/session` — `data.user.role === 'ADMIN'`.
+4. admin `/api/admin/stats` — shape (`users.total/admins`, `characters.total`, `economy.linhThachCirculating`).
+5. admin `/api/admin/economy/alerts` — shape (`negativeCurrency[]`, `negativeInventory[]`, `stalePendingTopups[]`, `bounds.{defaultHours,minHours,maxHours}`).
+6. admin `/api/admin/economy/audit-ledger` — shape (`charactersScanned`, `itemKeysScanned`, `currencyDiscrepancies[]`, `inventoryDiscrepancies[]`). Smoke KHÔNG assert pre-condition `discrepancies=0` vì local dev DB có data dữ từ smoke cũ — production chạy `audit:ledger` script riêng.
+7. register player (jar mới, isolated từ admin).
+8. player onboard (sect `thanh_van`).
+9. player `/character/me` — snapshot starting `linhThach`.
+10–11. admin grant `+1000 LT` → player. Verify `character/me.linhThach == starting + 1000`.
+12–13. admin grant `-300 LT` → player. Verify `character/me.linhThach == starting + 700`.
+14. admin `POST /admin/giftcodes` create code (`+500 LT + 2× huyet_chi_dan`).
+15. player `POST /giftcodes/redeem` first redeem.
+16. player `/character/me.linhThach == starting + 1200`.
+17. player redeem cùng code lần 2 → `409 ALREADY_REDEEMED`.
+18. admin `POST /admin/mail/send` to player character (`+200 LT + 1× huyet_chi_dan`).
+19. player `/api/mail/me` — see new mail (`unread`, `claimable=true`).
+20. player `POST /mail/:id/claim` reward applied.
+21. player `/character/me.linhThach == starting + 1400`.
+22. player claim cùng mail lần 2 → `409 ALREADY_CLAIMED`.
+23. admin `/api/admin/audit?action=user.grant` — ≥ 2 row (positive + negative grant) cho admin smoke. Note: `GiftCodeService` + `MailService` KHÔNG ghi `AdminAuditLog` (known gap, xem `AI_HANDOFF_REPORT.md`).
+24. **INVARIANT**: `SUM(CurrencyLedger[reason ∈ {ADMIN_GRANT, GIFTCODE_REDEEM, MAIL_CLAIM}].delta) == Character.linhThach final`. Verify đủ 4 reason: `ADMIN_GRANT` ×2 + `GIFTCODE_REDEEM` + `MAIL_CLAIM`.
+25. **INVARIANT**: `Inventory.qty per itemKey == SUM(ItemLedger[itemKey].qtyDelta)`. Verify huyet_chi_dan qty == 3 (giftcode 2 + mail 1). Không qty âm.
+26. admin `POST /admin/giftcodes/:code/revoke` — `revokedAt` set ISO.
+27. admin `GET /admin/giftcodes?status=REVOKED` — code visible với `revokedAt`.
+28. player → `/api/admin/stats` → `403 FORBIDDEN` (admin guard reject PLAYER role).
+29. admin logout → cookie cleared.
+30. player logout → cookie cleared.
+
+Local run reference (session 9r-7): 2 lần chạy idempotent → `done: 30 pass / 0 fail / 30 total in ~1.3s`.
+
+### Không có dependency mới
+
+Script `scripts/smoke-admin.mjs` (~860 dòng ESM), dùng native `fetch` + `AbortController` Node 20+. CookieJar class đa user (mirror `smoke-ws.mjs`). KHÔNG install thêm dep ở root.
+
+### Giới hạn
+
+- Không cover topup approve/reject flow (cần test client pay flow + topup order create — defer cho `smoke:topup`).
+- Không cover MOD role (chỉ ADMIN role login + RBAC isolation từ player). Defer cho future smoke nếu MOD role có phân quyền riêng.
+- Không cover mail `system` broadcast (1-to-many) — smoke chỉ test `mail/send` đến 1 character cụ thể.
+- Không cover giftcode `expiresAt` / `maxRedeems` exhaustion path — defer (cần manipulate Date hoặc batch test).
+- Không cleanup user/character/giftcode/mail — smoke idempotent (random email + random code prefix `SMK-ADM-`). Cleanup: `DELETE FROM "User" WHERE email LIKE 'smoke-admin-%@smoke.invalid'` và `DELETE FROM "GiftCode" WHERE code LIKE 'SMK-ADM-%'` (cẩn thận FK).
+- Auth register rate limit 5/IP/15 phút (`auth.service.ts:REGISTER_RATE_LIMIT_*`). Smoke tạo 1 user/run → có thể chạy ~5 lần/15 phút trên cùng IP. Khi cần chạy nhiều, flush:
+  ```bash
+  docker exec xuantoi-redis redis-cli --scan --pattern 'rl:register*' | xargs -r docker exec -i xuantoi-redis redis-cli DEL
+  ```
+
+---
+
 ## 12. Playwright Golden Path E2E (`pnpm --filter @xuantoi/web e2e`, session 9q-7 → 9q-8)
 
 ### Mục tiêu
