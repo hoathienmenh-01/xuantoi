@@ -14,8 +14,8 @@ Mục tiêu: thêm content **không phá CI**, **không lệch curve**, **không
 |---|---|---|---|
 | Realm | `packages/shared/src/realms.ts` | 28 đại cảnh giới | Static, ít thay đổi |
 | Proverb | `packages/shared/src/proverbs.ts` | 7 câu | Có thể thêm dần |
-| Item | `packages/shared/src/items.ts` | 30 item | Phase 10: → 80-100 |
-| Skill | `packages/shared/src/combat.ts` `SKILLS` | 10 skill | Phase 10-11: → 25-30 |
+| Item | `packages/shared/src/items.ts` | 81 item (Phase 10 PR-1 +50) | Phase 10: → 80-100 ✅ |
+| Skill | `packages/shared/src/combat.ts` `SKILLS` | 25 skill (Phase 10 PR-2 +15 Ngũ Hành) | Phase 10-11: → 25-30 ✅ |
 | Monster | `packages/shared/src/combat.ts` `MONSTERS` | 9 monster | Phase 10: → 30 |
 | Dungeon | `packages/shared/src/combat.ts` `DUNGEONS` + `DUNGEON_LOOT` | 3 dungeon | Phase 10: → 8-10 |
 | Mission | `packages/shared/src/missions.ts` | 12 mission | Phase 10: → 65+ |
@@ -79,7 +79,7 @@ Mỗi content type có 1 contract chung:
 | Loại | Fields đặc trưng |
 |---|---|
 | Item | `kind`, `slot?`, `bonuses?`, `effect?`, `stackable`, `priceLinhThach?` |
-| Skill | `sect?`, `atkScale`, `mpCost`, `cooldownTurns?`, `selfHealRatio?`, `selfBloodCost?` |
+| Skill | `sect?`, `atkScale`, `mpCost`, `cooldownTurns?`, `selfHealRatio?`, `selfBloodCost?`, `element?` (kim/moc/thuy/hoa/tho/null), `type?` (ACTIVE/PASSIVE), `role?` (DAMAGE/HEAL/BUFF/DEBUFF/CONTROL/UTILITY), `unlockRealm?` (REALMS key) |
 | Monster | `level`, `hp`, `atk`, `def`, `speed`, `expDrop`, `linhThachDrop` |
 | Dungeon | `recommendedRealm`, `monsters[]`, `staminaEntry` |
 | Mission | `period`, `goalKind`, `goalAmount`, `rewards`, `requiredRealmKey?` |
@@ -124,10 +124,17 @@ Mỗi content type có 1 contract chung:
 
 1. Mở `packages/shared/src/combat.ts`.
 2. Append vào `SKILLS` với `sect: 'thanh_van' | 'huyen_thuy' | 'tu_la' | null`.
-3. Set `atkScale`, `mpCost`, `cooldownTurns` (nếu phase 11 đã merge cooldown), `selfHealRatio`, `selfBloodCost`.
-4. Tên EN.
-5. Test pass.
-6. PR title: `feat(shared): skill pack <name> (+N skill)`.
+3. Set `atkScale`, `mpCost`, `cooldownTurns` (BALANCE_MODEL §4.3 band), `selfHealRatio`, `selfBloodCost`.
+4. **Phase 10 PR-2 forward-compat fields** (optional nhưng khuyến khích đặt cho mọi skill mới): `element` (`'kim' | 'moc' | 'thuy' | 'hoa' | 'tho' | null`) — Ngũ Hành affinity; `type` (`'ACTIVE' | 'PASSIVE'`) — default ACTIVE, PASSIVE không xuất hiện ở picker FE (xem `activeSkillsForSect`); `role` (`'DAMAGE' | 'HEAL' | 'BUFF' | 'DEBUFF' | 'CONTROL' | 'UTILITY'`) — UI/AI moveset compose; `unlockRealm` (REALMS key e.g. `'luyenkhi'`/`'truc_co'`/`'kim_dan'`) — phase 11.2 sẽ enforce.
+5. Mỗi hệ Ngũ Hành nên có ≥ 1 ACTIVE + ≥ 1 PASSIVE (test `skills-balance.test.ts` enforce).
+6. Tên EN.
+7. Test pass: `pnpm --filter @xuantoi/shared test` — verify `combat.test.ts` (legacy invariant) + `skills-balance.test.ts` (Ngũ Hành coverage + stat budget) cả hai green.
+8. PR title: `feat(shared): skill pack <name> (+N skill)`.
+
+**Quality gate**:
+- `skills-balance.test.ts` pass: unique key, atkScale ≤ 5, mpCost ≤ 80, selfHeal ≤ 0.5, selfBlood ≤ 0.3, cooldown ≤ 6, element/type/role/unlockRealm hợp lệ.
+- Mỗi Ngũ Hành có active + passive (sample test).
+- PASSIVE skill: atkScale = 0, mpCost = 0, cooldown = 0 (catalog only — runtime áp dụng phase 11.8 buff system).
 
 ### 4.3 Monster + Dungeon
 
