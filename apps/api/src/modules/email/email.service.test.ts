@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { ConfigService } from '@nestjs/config';
 import { EmailService } from './email.service';
 
@@ -7,14 +7,52 @@ import { EmailService } from './email.service';
  *
  * Vì EmailService dùng console mode khi không có SMTP_HOST, ta chỉ cần
  * verify logic: mode selection, link generation, email body format.
+ *
+ * Lưu ý: `ConfigService.get(key)` ưu tiên `process.env[key]` trước
+ * `internalConfig[key]` (xem @nestjs/config v3 — `getFromProcessEnv`
+ * chạy trước `getFromInternalConfig`). Khi chạy `pnpm test` ở máy có
+ * `apps/api/.env` (Prisma client load env tự động qua schema.prisma),
+ * `WEB_PUBLIC_URL`, `SMTP_*`, … leak vào `process.env` và làm
+ * override constructor lose. Ta stub các key liên quan trong từng
+ * test bằng `vi.stubEnv` (đã `unstubAllEnvs` ở `afterEach`).
  */
 
+const ENV_KEYS_UNDER_TEST = [
+  'WEB_PUBLIC_URL',
+  'MAIL_TRANSPORT',
+  'SMTP_HOST',
+  'SMTP_PORT',
+  'SMTP_USER',
+  'SMTP_PASS',
+  'SMTP_FROM',
+] as const;
+
+const savedEnv: Record<string, string | undefined> = {};
+
 function makeService(env: Record<string, string> = {}): EmailService {
+  // Save + clear toàn bộ key liên quan để test không lệ thuộc state
+  // máy (Prisma có thể load `apps/api/.env` vào process.env làm
+  // ConfigService trả về giá trị máy thay vì constructor override —
+  // xem `getFromProcessEnv` của @nestjs/config@3).
+  for (const k of ENV_KEYS_UNDER_TEST) {
+    savedEnv[k] = process.env[k];
+    delete process.env[k];
+  }
+  for (const [k, v] of Object.entries(env)) {
+    process.env[k] = v;
+  }
   const cfg = new ConfigService(env);
   const svc = new EmailService(cfg);
   svc.onModuleInit();
   return svc;
 }
+
+afterEach(() => {
+  for (const k of ENV_KEYS_UNDER_TEST) {
+    if (savedEnv[k] === undefined) delete process.env[k];
+    else process.env[k] = savedEnv[k];
+  }
+});
 
 // ---------------------------------------------------------------------------
 // Mode selection

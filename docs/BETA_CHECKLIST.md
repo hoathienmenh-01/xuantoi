@@ -61,7 +61,7 @@ Checklist để promote beta (closed 50 users → open). Tick khi xong.
 - [x] **CSP production** policy chặt, dev `false` (`apps/api/src/main.ts` `helmetConfig`) — chỉ cần review CDN khi prod deploy
 
 ### Testing
-- [x] **api 1133** + **web 588** + **shared 238** = **1959 vitest** (auto-snapshot 1/5 session 9r-2 — baseline đã ổn định qua 50+ PR từ 9d→9r). Stale snapshot cũ "557 test" của session 9d đã bị thay; mỗi PR mới phải verify số này không giảm.
+- [x] **api 1133** + **web 588** + **shared 259** = **1980 vitest** (auto-snapshot 1/5 session 9r-3 — shared +21 từ `items-balance.test.ts` Phase 10 PR-1). Stale snapshot cũ "557 test" của session 9d đã bị thay; mỗi PR mới phải verify số này không giảm.
 - [x] Real Postgres integration (CI `postgres` service, schema `mtt`)
 - [x] WS integration test (real socket.io-client)
 - [x] CI postgres + redis service xanh
@@ -82,7 +82,7 @@ Checklist để promote beta (closed 50 users → open). Tick khi xong.
 ### Content / Balance
 - [x] 28 cảnh giới × 9 trọng (`packages/shared/src/realms.ts`)
 - [x] `cultivationRateForRealm` scale 1.45^order — property test ≤24h/stage 1
-- [x] 30+ item cover 9 EquipSlot + pill + ore + artifact
+- [x] **81 item** cover 9 EquipSlot + pill (HP/MP/EXP) + ore + artifact + misc (was 31; +50 từ Phase 10 PR-1 Item Pack 1, see `packages/shared/src/items.ts`).
 - [x] 10 skill (3/sect + basic_attack)
 - [x] 12+ mission (5 daily + 4 weekly + 3 once)
 
@@ -163,11 +163,18 @@ Checklist để promote beta (closed 50 users → open). Tick khi xong.
 
 ✅ **ĐỦ điều kiện mở Phase 10 PR-1..5** (items / skills / monsters / missions / boss pack) — verified session 9r-2.
 
+**Phase 10 progress** (session 9r-3):
+- **PR-1 Item Pack 1 (this PR)**: catalog 31 → 81 item (+50). Stat budget tuân thủ `BALANCE_MODEL.md` §3.3, bound bằng `items-balance.test.ts` (+21 vitest). Pre-gate baseline + post-code re-run trùng khớp.
+- PR-2 Skill Pack 1 (+15 skill) — pending.
+- PR-3 Monster & Dungeon Pack 1 — pending (sau PR-2 vì cần skill compose enemy moveset).
+- PR-4 Mission Pack 1 — pending.
+- PR-5 Boss Catalog — pending.
+
 **Justification**:
 1. Mỗi gameplay flow core có ≥ 1 layer test (vitest unit / integration / smoke / golden path).
 2. 5 nhóm Partial chỉ thiếu **runtime smoke** chứ KHÔNG thiếu **logic test** (vitest đã cover invariant: ledger SUM, idempotency, double-claim, RNG seeded combat outcome).
 3. Không có P0/P1 issue open (`gh issue list --state all` empty 1/5).
-4. Baseline 1959 test stable qua 50+ PR.
+4. Baseline 1980 test stable (+21 từ items-balance.test.ts session 9r-3).
 5. CI integration verified GREEN (PR #212 + main run 25203605650 1m35s).
 
 **Pre-gate BẮT BUỘC trước khi mở Phase 10 PR-1**: paste 3 output sau vào PR-1 body để pin baseline:
