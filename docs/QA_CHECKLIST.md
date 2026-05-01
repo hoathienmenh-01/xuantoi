@@ -575,6 +575,8 @@ Playwright golden path chạy trong CI qua workflow gated `.github/workflows/e2e
 
 **Khi PR đụng `apps/web/**` / `apps/api/**` / `packages/shared/**`**: reviewer phải verify workflow `e2e-full` xanh trong PR Status Checks. Nếu workflow KHÔNG run (PR docs-only), chạy manual qua `workflow_dispatch` nếu cần xác nhận.
 
+**Verified status (post #212 merge, session 9r-2)**: workflow đã chạy thật trên main HEAD `6fd1120` (run `25203605650`) — 1m35s tổng (Playwright step 20s với browsers cache hit), 16/16 spec pass, GREEN. PR #212 ban đầu run cold-cache ~5–8 phút; sau khi cache Playwright browsers stick (key dựa `apps/web/package.json` + `pnpm-lock.yaml`), warm runs ổn định ~1m30s–2m. Cancel-in-progress concurrency hoạt động đúng (push lên cùng PR huỷ run cũ).
+
 **Roadmap (post-PR này)**:
 - Sau 2–3 tuần stable, đánh giá có nên upgrade `e2e-full` thành required check trong branch protection rules.
 - Nếu tiếp tục stable, xem xét add 1 spec `forgot-password` (cần SMTP Mailhog service container).
