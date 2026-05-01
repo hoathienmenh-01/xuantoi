@@ -186,6 +186,12 @@ Thêm depth cho progression: công pháp, skill upgrade, linh căn, thể chất
 
 ### Scope
 
+#### 11.0 PR: Spiritual Root catalog foundation **(DONE — session 9r-8)**
+
+- `packages/shared/src/spiritual-root.ts` NEW — 5-grade tier (`pham/linh/huyen/tien/than`) + helper `elementMultiplier`/`elementGenerates`/`elementOvercomes`/`characterSkillElementBonus`/`validateSpiritualRootState`.
+- 43 vitest cover Ngũ Hành cycle (sinh/khắc), grade tier monotonic, multiplier bounds [0.7, 1.3], state validation.
+- KHÔNG schema migration, KHÔNG runtime hook (catalog-only foundation cho 11.3 runtime).
+
 #### 11.1 PR: CultivationMethod model
 
 - Prisma model mới `CultivationMethod` (catalog static initially) + `CharacterCultivationMethod` (DB).
