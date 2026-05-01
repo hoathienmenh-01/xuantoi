@@ -426,3 +426,119 @@ Script là `scripts/smoke-ws.mjs` (~700 dòng ESM), dùng native `fetch` + `Abor
 - Không cover `chat:msg` SECT room (cần seed sect + assign character, defer).
 - Không cover BullMQ failure path (tick processor crash) — cần test framework integration sâu hơn, defer.
 - Rate limit `/api/_auth/register` = 5/IP/15 phút. Smoke tạo 2 user → có thể chạy 2 lần liên tiếp, lần 3 sẽ 429. Khi cần test nhiều, flush key Redis: `docker exec xuantoi-redis redis-cli --scan --pattern 'rl:register*' | xargs -r docker exec -i xuantoi-redis redis-cli DEL`.
+
+---
+
+## 12. Playwright Golden Path E2E (`pnpm --filter @xuantoi/web e2e`, session 9q-7)
+
+### Mục tiêu
+
+Verify **closed beta core loop end-to-end UI flow** ([`BETA_CHECKLIST.md`](./BETA_CHECKLIST.md) §QA + Launch — register → onboarding → cultivate → daily login → mission → market/shop → chat → leaderboard → profile → logout) trong môi trường full stack thật. Bắt regression UI/route/store/i18n mà vitest component test cô lập + smoke server-side không phát hiện được. Cụ thể:
+
+- Vue Router push/replace + route guard (chưa onboard → `/onboarding`, đã onboard → `/home`).
+- Pinia store hydration sau navigation (character store, shop store, mission store).
+- i18n button text mismatch (FE binding sai key → user click không thấy gì).
+- WS push `chat:msg` deliver vào UI feed end-to-end (không chỉ server emit như `smoke:ws`).
+- Onboarding 4-step state machine không bị stuck ở step nào.
+- AppShell logout button → `POST /_auth/logout` → cookie clear → redirect `/auth`.
+
+Khác `smoke:beta`/`smoke:economy`/`smoke:ws`: focus vào **UI rendering + user interaction path**, không chỉ HTTP/WS contract.
+
+### Khi nào chạy
+
+- **BẮT BUỘC** trước khi merge bất kỳ PR đụng:
+  - `apps/web/src/views/AuthView.vue` / `OnboardingView.vue` / `HomeView.vue` / `MissionView.vue` / `ShopView.vue` / `InventoryView.vue` / `LeaderboardView.vue` / `ProfileView.vue`.
+  - `apps/web/src/components/shell/AppShell.vue` / `ChatPanel.vue`.
+  - `apps/web/src/router/*` (route guard logic, redirect rules).
+  - `apps/web/src/stores/character.ts` / `auth.ts` (hydration + ws push consumption).
+  - `apps/web/src/i18n/vi.json` (key naming → button text mismatch).
+  - `apps/api/src/modules/auth/*` (register/login/logout flow, cookie set/clear).
+  - `apps/api/src/modules/character/*` (onboard endpoint contract).
+- **KHUYẾN NGHỊ** trước release tag closed beta v0.x (cùng `smoke:beta` + `smoke:economy` + `smoke:ws`).
+
+### Chạy local
+
+```bash
+# 1. Lên infra (Postgres + Redis cho BullMQ + auth rate limiter)
+pnpm infra:up
+pnpm --filter @xuantoi/api prisma migrate deploy
+
+# 2. Start API ở terminal riêng (cần env từ apps/api/.env)
+pnpm --filter @xuantoi/api dev                # listen :3000
+
+# 3. Start Web dev ở terminal khác
+pnpm --filter @xuantoi/web dev                # listen :5173, proxy /api → :3000
+
+# 4. Terminal khác — chạy E2E full
+PLAYWRIGHT_BASE_URL=http://localhost:5173 \
+PLAYWRIGHT_SKIP_WEBSERVER=1 \
+E2E_FULL=1 \
+pnpm --filter @xuantoi/web e2e --reporter=list
+```
+
+**Pass criteria**: exit code `0`, dòng cuối `<N> passed (<time>s)` với N = 11 (suite full) hoặc N = 1 (smoke-only, không set `E2E_FULL=1`).
+
+**Fail criteria**: exit code `1`, có ít nhất 1 spec `failed`. Khi fail, **DỪNG mở Phase 10 PR** và mở 1 PR riêng fix root cause trước. Trace + screenshot lưu ở `apps/web/test-results/`.
+
+### Env overrides
+
+| Env | Default | Công dụng |
+|---|---|---|
+| `PLAYWRIGHT_BASE_URL` | `http://localhost:4173` | URL Web dev/preview server. Dùng `:5173` cho `pnpm dev`, `:4173` cho `pnpm preview` (default Playwright config tự spawn `vite preview`). |
+| `PLAYWRIGHT_SKIP_WEBSERVER` | `0` | `1` để Playwright KHÔNG spawn `vite preview` (khi đã có `pnpm dev` chạy sẵn). |
+| `E2E_FULL` | unset | `1` để chạy full 11 spec. Không set → chỉ chạy 1 spec smoke `AuthView` (không cần backend). |
+| `API_BASE_URL` | `http://localhost:3000` | API root cho `helpers.ts` seed user qua `page.request`. |
+| `REDIS_URL` | `redis://localhost:6379` | Redis cho `flushAuthRateLimits()` xoá `rl:register:*` / `rl:login:*` / `rl:forgot-password:*` trước mỗi spec. |
+
+### Spec breakdown (11 spec, tổng ~17–19s)
+
+1. **AuthView smoke** (no backend) — form input render + 3 tab button. Luôn chạy, không cần `E2E_FULL`.
+2. **Register UI → 4-step onboarding → /home** — full UI flow (3.5s).
+3. **Cultivate toggle ON/OFF** — UI label `Nhập Định` ↔ `Xuất Định` + cross-check `/api/character/me.cultivating` flip.
+4. **Daily login claim** — claim button → text `Đạo hữu đã nhận quà hôm nay` + `linhThach > 0`.
+5. **Mission view tabs** — `Hằng Ngày` / `Hằng Tuần` / `Thiên Kiếp` click không crash.
+6. **Shop browse + insufficient-funds disable** — fresh char 0 LT → mọi nút `Mua` `toBeDisabled`.
+7. **Inventory empty state** — text `Túi đồ trống`.
+8. **Chat WORLD send** — fill input + click `Gửi` → message render trong feed (verify ws end-to-end qua UI).
+9. **Leaderboard 3 tab** — `[data-testid="leaderboard-tab-power|topup|sect"]` click + URL persist.
+10. **Profile public view ownId** — `/profile/{characterId}` render char name.
+11. **Logout** — click `Xuất Quan` → redirect `/auth`.
+
+### Rate limiter caveat
+
+`apps/api/src/modules/auth/auth.service.ts` hardcode `REGISTER_RATE_LIMIT_MAX=5/IP/15min`. Suite chạy tạo 11 user mới cùng IP localhost → **bắt buộc flush Redis key trước mỗi spec**, helper tự lo qua `flushAuthRateLimits()` ở `globalSetup` + `test.beforeEach`. Nếu Redis unreachable, helper chỉ `console.warn` và return → suite vẫn chạy nhưng có thể fail 429 sau spec thứ 5. Manual flush:
+
+```bash
+docker exec xuantoi-redis redis-cli --scan --pattern 'rl:register:*' \
+  | xargs -r docker exec -i xuantoi-redis redis-cli DEL
+```
+
+### CI gating
+
+Playwright golden path KHÔNG vào CI flow vì cần Postgres + Redis + 2 dev server (`apps/api` + `apps/web`) cùng chạy. CI hiện chỉ chạy `pnpm test` + `pnpm build` artifact. Suite gated `E2E_FULL=1` (default skip qua `test.skip(!FULL_E2E, …)` ở describe block) → CI vẫn chạy spec smoke `AuthView` nhưng skip 10 spec full-stack. Script là **manual/gated**.
+
+Khi PR đụng các file thuộc danh sách "BẮT BUỘC" ở §12 trên, reviewer **phải** request:
+- Output `E2E_FULL=1 pnpm --filter @xuantoi/web e2e --reporter=line` (11/11 PASS) trong PR body.
+
+Roadmap Phase 9: setup CI service container Postgres + Redis + spawn 2 dev server → chạy `E2E_FULL=1` mỗi PR đụng `apps/web` hoặc `apps/api`.
+
+### Deferred sub-checks (không có trong spec hiện tại)
+
+- **Cultivation breakthrough end-to-end**: cần exp ≥ cost realm — không thực tế trong < 30s suite. Defer cho `smoke:cultivation` riêng.
+- **Combat dungeon**: cần seed monster + skill — defer cho Phase 10 content content QA.
+- **Sect join/leave**: cần seed sect ≥ 2 + member quota — defer.
+- **Boss fight**: cần seed boss + party — defer.
+- **Mail receive + claim attachment**: cần admin send mail — defer cùng `smoke:admin`.
+- **Giftcode redeem**: cần admin create giftcode — defer cùng `smoke:admin`.
+- **Multi-tab same user real-time sync**: cần spawn 2 BrowserContext với cookie share — phức tạp, defer.
+- **Topup IAP simulator**: cần env IAP sandbox — defer ngoài beta scope.
+
+### Không có dependency mới
+
+`apps/web/e2e/helpers.ts` (~200 lines) + `apps/web/e2e/global-setup.ts` (~30 lines) + `apps/web/e2e/golden.spec.ts` (rewrite) — Playwright + ioredis đã là devDep workspace. ioredis load qua `createRequire(apps/api/package.json)` từ `apps/api/node_modules`. KHÔNG install thêm dep ở root.
+
+### Giới hạn
+
+- Không cleanup user — như `smoke:beta` / `smoke:economy` / `smoke:ws`. Cleanup: `DELETE FROM "User" WHERE email LIKE 'e2e_%@local.test'` (cẩn thận FK cascade tới Character/Inventory/CurrencyLedger).
+- 11 spec chạy `--workers=1` (default Playwright config khi `webServer` không spawn) để tránh DB write conflict — nếu cần parallel, thêm `--workers=N` với DB schema riêng cho mỗi worker.
+- Timing assertion (`waitCharacter` polling 200ms × 30 = 6s) có thể flaky trên CI runner chậm — local Linux máy dev pass < 50ms mỗi poll.

@@ -126,7 +126,7 @@ Checklist để promote beta (closed 50 users → open). Tick khi xong.
 
 ### QA + Launch
 - [ ] **Runtime smoke tích hợp**: execute `docs/QA_CHECKLIST.md` 13 section trên local hoặc staging (15 phút).
-- [ ] **Playwright E2E** golden path: register → onboarding → cày 30s → đột phá → inventory → mission claim → daily login. Hiện chỉ có `e2e-smoke` CI nhỏ.
+- [x] **Playwright E2E** golden path closed beta core loop (session 9q-7, manual gated `E2E_FULL=1`): 11/11 spec pass trong ~17–19s — register → 4-step onboarding → /home → cultivate ON/OFF → daily login claim → mission tabs → shop disabled-buy → inventory empty → chat WORLD → leaderboard → profile → logout. Xem [`QA_CHECKLIST.md`](./QA_CHECKLIST.md) §12. **Pending**: CI integration (Postgres + Redis service container + 2 dev server) — hiện manual gated, `e2e-smoke` CI chỉ build artifact + run 1 spec smoke `AuthView`.
 - [ ] **Load test** 1000 socket + 500 RPS (k6 / Artillery) — verify BullMQ tick scaling.
 - [ ] **A Linh onboarding** bilingual full text (placeholder hiện tại).
 - [ ] Terms of Service + Privacy Policy (legal).
@@ -149,7 +149,7 @@ Checklist để promote beta (closed 50 users → open). Tick khi xong.
 - [ ] M7 CSP review (production deploy)
 - [ ] Sentry + structured logs (production observability)
 - [ ] Backup DB daily script + restore test
-- [ ] Playwright E2E golden path (regression safety net)
+- [x] Playwright E2E golden path closed beta core loop (regression safety net) — manual gated, cần CI integration
 - [ ] Runtime smoke tích hợp 13 section QA_CHECKLIST
 
 **Có thể defer đến sau beta**:

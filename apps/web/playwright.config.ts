@@ -13,6 +13,9 @@ const skipWebServer = process.env.PLAYWRIGHT_SKIP_WEBSERVER === '1';
 
 export default defineConfig({
   testDir: './e2e',
+  // `globalSetup` flush các Redis rate-limit key trước E2E_FULL=1 suite —
+  // tránh 429 khi tạo > 5 user/IP/15min. No-op khi `E2E_FULL` chưa set.
+  globalSetup: './e2e/global-setup.ts',
   timeout: 30_000,
   expect: { timeout: 5_000 },
   retries: process.env.CI ? 1 : 0,
