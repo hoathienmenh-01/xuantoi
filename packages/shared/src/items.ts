@@ -963,6 +963,64 @@ export const ITEMS: readonly ItemDef[] = [
     stackable: true,
     price: 200,
   },
+
+  // ----- Phase 10 PR-3 — Yêu phù cho dungeon Ngũ Hành mới -----
+  // Stable key, stub PHẢI matching DUNGEONS.key (xem combat.ts). Hiện chưa wire
+  // runtime check (DungeonRun service phase 11.5 sẽ enforce); catalog only.
+  {
+    key: 'kim_son_mach_phu',
+    name: 'Kim Sơn Mạch Phù',
+    description: 'Phù lệnh vào mỏ kim cổ — kim đan kỳ tu sĩ kiếm tinh thiết và kim ngọc.',
+    kind: 'MISC',
+    quality: 'HUYEN',
+    stackable: true,
+    price: 700,
+  },
+  {
+    key: 'moc_huyen_lam_phu',
+    name: 'Mộc Huyền Lâm Phù',
+    description: 'Phù lệnh vào rừng cổ Mộc Huyền Lâm, dành cho Trúc Cơ tu sĩ luyện linh thảo.',
+    kind: 'MISC',
+    quality: 'LINH',
+    stackable: true,
+    price: 320,
+  },
+  {
+    key: 'thuy_long_uyen_phu',
+    name: 'Thuỷ Long Uyên Phù',
+    description: 'Phù lệnh vào hồ sâu Thuỷ Long Uyên — Kim Đan kỳ luyện băng tinh và thuỷ ngọc.',
+    kind: 'MISC',
+    quality: 'HUYEN',
+    stackable: true,
+    price: 720,
+  },
+  {
+    key: 'hoa_diem_son_phu',
+    name: 'Hoả Diệm Sơn Phù',
+    description: 'Phù lệnh vào núi lửa Hoả Diệm Sơn — Nguyên Anh kỳ luyện hoả tinh và Chu Tước trắc nghiệm.',
+    kind: 'MISC',
+    quality: 'TIEN',
+    stackable: true,
+    price: 1500,
+  },
+  {
+    key: 'hoang_tho_huyet_phu',
+    name: 'Hoàng Thổ Huyệt Phù',
+    description: 'Phù lệnh vào huyệt thổ ngàn năm — Nguyên Anh kỳ luyện thổ ngọc và Thạch Long.',
+    kind: 'MISC',
+    quality: 'TIEN',
+    stackable: true,
+    price: 1450,
+  },
+  {
+    key: 'cuu_la_dien_phu',
+    name: 'Cửu La Điện Phù',
+    description: 'Phù lệnh vào điện ma đạo Cửu La — Nguyên Anh đỉnh thử nghiệm tâm cảnh, hiếm.',
+    kind: 'MISC',
+    quality: 'THAN',
+    stackable: true,
+    price: 3200,
+  },
 ];
 
 export function itemByKey(key: string): ItemDef | undefined {
@@ -998,6 +1056,70 @@ export const DUNGEON_LOOT: Record<string, readonly LootEntry[]> = {
     { itemKey: 'co_thien_dan', weight: 15, qtyMin: 1, qtyMax: 3 },
     { itemKey: 'thanh_lam_dan', weight: 22, qtyMin: 1, qtyMax: 4 },
     { itemKey: 'huyet_tinh', weight: 35, qtyMin: 2, qtyMax: 6 },
+  ],
+
+  // ─────────────────────────────────────────────────────────────────────
+  // Phase 10 PR-3 — Drop tables cho Dungeon Pack 1 (Ngũ Hành dungeons)
+  // Loot strategy (BALANCE_MODEL.md §5.3):
+  //   - Equipment HUYEN/TIEN drop weight 3-6 (low rate, ~10-15% chance/run)
+  //   - Pill thường (HP/MP) weight 18-30 (consumable steady supply)
+  //   - Material element-themed (linh_thao, tinh_thiet, han_ngoc, tien_kim_sa)
+  //     weight 20-35 (chính nguồn craft material)
+  // Lưu ý: chỉ dùng item keys đã có ở `ITEMS`; không tạo orphan reference.
+  // ─────────────────────────────────────────────────────────────────────
+  kim_son_mach: [
+    // Element: kim → drop kim-themed weapon + tinh_thiet (kim material)
+    { itemKey: 'lanh_phong_kiem', weight: 4, qtyMin: 1, qtyMax: 1 },
+    { itemKey: 'than_phong_kiem', weight: 3, qtyMin: 1, qtyMax: 1 },
+    { itemKey: 'tinh_thiet', weight: 30, qtyMin: 2, qtyMax: 5 },
+    { itemKey: 'co_thien_dan', weight: 18, qtyMin: 1, qtyMax: 3 },
+    { itemKey: 'thanh_lam_dan', weight: 22, qtyMin: 2, qtyMax: 4 },
+    { itemKey: 'huyet_tinh', weight: 25, qtyMin: 2, qtyMax: 5 },
+  ],
+  moc_huyen_lam: [
+    // Element: moc → linh_thao + lien_hoa_truong (mộc-themed)
+    { itemKey: 'lien_hoa_truong', weight: 3, qtyMin: 1, qtyMax: 1 },
+    { itemKey: 'truc_co_truong', weight: 5, qtyMin: 1, qtyMax: 1 },
+    { itemKey: 'linh_thao', weight: 35, qtyMin: 3, qtyMax: 6 },
+    { itemKey: 'thanh_lam_dan', weight: 25, qtyMin: 2, qtyMax: 4 },
+    { itemKey: 'linh_lo_dan', weight: 22, qtyMin: 2, qtyMax: 4 },
+    { itemKey: 'huyet_chi_dan', weight: 28, qtyMin: 2, qtyMax: 5 },
+  ],
+  thuy_long_uyen: [
+    // Element: thuy → han_ngoc + băng-themed
+    { itemKey: 'han_thiet_giap', weight: 4, qtyMin: 1, qtyMax: 1 },
+    { itemKey: 'cuu_u_bi_thuong', weight: 3, qtyMin: 1, qtyMax: 1 },
+    { itemKey: 'han_ngoc', weight: 20, qtyMin: 1, qtyMax: 3 },
+    { itemKey: 'co_thien_dan', weight: 22, qtyMin: 2, qtyMax: 4 },
+    { itemKey: 'tieu_phuc_dan', weight: 18, qtyMin: 1, qtyMax: 3 },
+    { itemKey: 'huyet_tinh', weight: 28, qtyMin: 2, qtyMax: 5 },
+  ],
+  hoa_diem_son: [
+    // Element: hoa → xich_huyet_dao + cuu_la_giap + yeu_dan (hoả material)
+    { itemKey: 'xich_huyet_dao', weight: 4, qtyMin: 1, qtyMax: 1 },
+    { itemKey: 'cuu_la_giap', weight: 3, qtyMin: 1, qtyMax: 1 },
+    { itemKey: 'tu_la_dao', weight: 2, qtyMin: 1, qtyMax: 1 },
+    { itemKey: 'yeu_dan', weight: 25, qtyMin: 2, qtyMax: 5 },
+    { itemKey: 'cuu_huyen_dan', weight: 12, qtyMin: 1, qtyMax: 2 },
+    { itemKey: 'co_thien_dan', weight: 18, qtyMin: 2, qtyMax: 4 },
+  ],
+  hoang_tho_huyet: [
+    // Element: tho → than_lan_giap + yeu_phach_giap + phu_van_ngoc (thổ material)
+    { itemKey: 'than_lan_giap', weight: 3, qtyMin: 1, qtyMax: 1 },
+    { itemKey: 'yeu_phach_giap', weight: 4, qtyMin: 1, qtyMax: 1 },
+    { itemKey: 'phu_van_ngoc', weight: 22, qtyMin: 1, qtyMax: 3 },
+    { itemKey: 'tinh_thiet', weight: 25, qtyMin: 2, qtyMax: 4 },
+    { itemKey: 'cuu_huyen_dan', weight: 14, qtyMin: 1, qtyMax: 3 },
+    { itemKey: 'tieu_phuc_dan', weight: 18, qtyMin: 2, qtyMax: 4 },
+  ],
+  cuu_la_dien: [
+    // Single-boss endgame instance, drop hiếm THAN + TIEN
+    { itemKey: 'than_dan', weight: 1, qtyMin: 1, qtyMax: 1 },
+    { itemKey: 'tien_huyen_kiem', weight: 2, qtyMin: 1, qtyMax: 1 },
+    { itemKey: 'tien_huyen_giap', weight: 2, qtyMin: 1, qtyMax: 1 },
+    { itemKey: 'tien_kim_sa', weight: 8, qtyMin: 1, qtyMax: 2 },
+    { itemKey: 'so_huyen_dan', weight: 12, qtyMin: 1, qtyMax: 2 },
+    { itemKey: 'cuu_thien_dan', weight: 6, qtyMin: 1, qtyMax: 1 },
   ],
 };
 

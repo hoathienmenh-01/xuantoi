@@ -16,8 +16,8 @@ Mục tiêu: thêm content **không phá CI**, **không lệch curve**, **không
 | Proverb | `packages/shared/src/proverbs.ts` | 7 câu | Có thể thêm dần |
 | Item | `packages/shared/src/items.ts` | 81 item (Phase 10 PR-1 +50) | Phase 10: → 80-100 ✅ |
 | Skill | `packages/shared/src/combat.ts` `SKILLS` | 25 skill (Phase 10 PR-2 +15 Ngũ Hành) | Phase 10-11: → 25-30 ✅ |
-| Monster | `packages/shared/src/combat.ts` `MONSTERS` | 9 monster | Phase 10: → 30 |
-| Dungeon | `packages/shared/src/combat.ts` `DUNGEONS` + `DUNGEON_LOOT` | 3 dungeon | Phase 10: → 8-10 |
+| Monster | `packages/shared/src/combat.ts` `MONSTERS` | 29 monster (Phase 10 PR-3 +20 Ngũ Hành × MonsterType BEAST/HUMANOID/SPIRIT/ELITE/BOSS) | Phase 10: → 30 ✅ |
+| Dungeon | `packages/shared/src/combat.ts` `DUNGEONS` + `DUNGEON_LOOT` | 9 dungeon (Phase 10 PR-3 +6 element-thematic) | Phase 10: → 8-10 ✅ |
 | Mission | `packages/shared/src/missions.ts` | 12 mission | Phase 10: → 65+ |
 | Boss | `packages/shared/src/boss.ts` | 0 named (chỉ helper) | Phase 10: → 10 named |
 | Topup pack | `packages/shared/src/topup.ts` | (đã có) | Tunable theo monetization |
@@ -138,13 +138,19 @@ Mỗi content type có 1 contract chung:
 
 ### 4.3 Monster + Dungeon
 
-1. Append `MONSTERS` (nếu cần monster mới).
+1. Append `MONSTERS` (nếu cần monster mới):
+   - **Required**: `key` (snake_case stable), `name` (VN tu tiên), `level` ∈ [1,40], `hp/atk/def/speed` ≥ 1, `expDrop/linhThachDrop` ≥ 0.
+   - **Forward-compat (Phase 10 PR-3+, optional, recommended)**: `element: 'kim'|'moc'|'thuy'|'hoa'|'tho'|null` (Ngũ Hành, null = vô hệ early-game), `monsterType: 'BEAST'|'HUMANOID'|'SPIRIT'|'ELITE'|'BOSS'` (compose AI moveset phase 11.3), `regionKey: string | null` (group monsters theo region để map UI phase 11+).
+   - **Stat budget** (`BALANCE_MODEL.md` §5.1): `hp ≤ 200×level`, `atk ≤ 25×level`, `def ≤ 8×level`, `speed ∈ [3, 25]`. Bound bằng `monsters-balance.test.ts`.
 2. Append `DUNGEONS` (nếu cần dungeon mới):
-   - `key`, `name`, `description`, `recommendedRealm`, `monsters: ['key1', 'key2', ...]` theo thứ tự.
-   - `staminaEntry` đề xuất theo realm (xem `BALANCE_MODEL.md`).
-3. Append `DUNGEON_LOOT[<key>]` với weight + qty range.
-4. Test pass.
-5. PR title: `feat(shared): dungeon <name> + N monster`.
+   - **Required**: `key`, `name`, `description` (≥ 20 ký tự), `recommendedRealm` (REALMS key), `monsters: string[]` (≥ 1; ≥ 3 nếu multi-encounter), `staminaEntry`.
+   - **Forward-compat (Phase 10 PR-3+, optional, recommended)**: `element: ElementKey | null` (Ngũ Hành theme), `regionKey: string | null` (link với monster region), `dailyLimit: number` ∈ [1,10] (phase 11.5 sẽ enforce qua `DungeonRun` service).
+   - **Stamina budget** (`BALANCE_MODEL.md` §5.1): luyenkhi ≤ 15, truc_co ≤ 30, kim_dan ≤ 40, nguyen_anh ≤ 65. Bound bằng `dungeons-balance.test.ts`.
+3. Append `DUNGEON_LOOT[<key>]` với weight + qty range. Mọi `itemKey` phải resolve qua `itemByKey`. Mỗi loot table cần ≥ 3 entries (variety guarantee). Phải có entry cho mọi dungeon (no orphan parity).
+4. Test pass: `monsters-balance.test.ts` (catalog integrity, element coverage ≥ 1 BOSS/ELITE / element, region coverage ≥ 2 monster / region) + `dungeons-balance.test.ts` (recommendedRealm valid, monster ref valid, stamina budget, element coverage ≥ 1 dungeon / element, DUNGEON_LOOT parity).
+5. **Combat runtime KHÔNG đọc `element`/`monsterType`/`regionKey`/`dailyLimit`** ở phase 10 (catalog only). Phase 11.3 sẽ wire `elementMultiplier(skill.element, target.element)` qua `BALANCE_MODEL.md §4.2`. Phase 11.5 sẽ wire `dailyLimit` enforce.
+6. **Helpers** (Phase 10 PR-3+): `monstersByElement(elem)` / `dungeonsByElement(elem)` / `monstersByRegion(regionKey)` / `dungeonsByRegion(regionKey)` cho phase 11+ AI/UI compose.
+7. PR title: `feat(shared): monster & dungeon pack N (+M monster, +K dungeon, ngũ hành)`.
 
 ### 4.4 Mission
 
