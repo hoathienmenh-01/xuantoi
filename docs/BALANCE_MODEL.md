@@ -241,10 +241,41 @@ elementMultiplier(attacker, defender):
 - Legacy character (`spiritualRootGrade=null`) → `charElementState=null` → bypass character bonus, chỉ áp `elementMultiplier` base → backward-compat preserved.
 - Log line trigger: `playerElementMul ≥ 1.15` → "Ngũ Hành tương khắc/sinh — sát thương khuếch đại ×N.NN", `≤ 0.90` → "lệch hệ — sát thương suy giảm ×N.NN".
 
-### 2.9.2 Phase 11.3.C wire điểm (Pending)
+### 2.9.2 Phase 11.3.C wire điểm — Cultivation + Stat bonus (DONE this PR)
 
-- Wire `getSpiritualRootGradeDef(character.spiritualRootGrade).cultivationMultiplier` vào `CultivationService.tick()`.
-- Wire `getSpiritualRootGradeDef(...).statBonusPercent` vào `CharacterStatService.computeStats()`.
+`CultivationProcessor.process()` apply `cultivationMultiplier` vào exp gain:
+
+```
+baseGain = cultivationRateForRealm(realm) + floor(spirit/4)
+mul = isValidSpiritualRootGrade(grade) ? getSpiritualRootGradeDef(grade).cultivationMultiplier : 1.0
+gain = BigInt(max(1, round(baseGain * mul)))
+```
+
+`CombatService.action()` apply `statBonusPercent` vào atk/def:
+
+```
+statMul = isValidSpiritualRootGrade(grade) ? 1 + def.statBonusPercent / 100 : 1.0
+effPower = (char.power + equip.atk) * statMul
+effDef = equip.def * statMul
+```
+
+Curve table (đã có sẵn trong `packages/shared/src/spiritual-root.ts`):
+
+| Grade | tier | cultivationMul | statBonus% | rollWeight |
+| --- | --- | --- | --- | --- |
+| Phàm Linh Căn | 0 | 1.00 | 0% | 60 |
+| Linh Căn | 1 | 1.15 | 5% | 25 |
+| Huyền Linh Căn | 2 | 1.30 | 10% | 10 |
+| Tiên Linh Căn | 3 | 1.50 | 18% | 4 |
+| Thần Linh Căn | 4 | 1.80 | 30% | 1 |
+
+- Legacy character (`spiritualRootGrade=null`) → multiplier 1.0 → backward-compat preserved.
+- Stat bonus applied **trước** rollDamage → max impact tại Thần linh căn (×1.30 power, ×1.30 def).
+- Combined với element multiplier (1.40 max) + cultivation method (×1.8 max) + buff (×1.5 max) + title (×1.15 max) → grand total cap **5.0× theo §2.5** (multiplicative). Vượt → cap.
+
+### 2.9.3 Phase 11.3.D wire điểm (Pending)
+
+- UI character profile display Linh căn.
 - Reroll service consume `linh_can_dan` ItemLedger + insert log `source='reroll'` + `rootRerollCount++`.
 
 ---

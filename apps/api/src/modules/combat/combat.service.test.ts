@@ -234,4 +234,66 @@ describe('CombatService', () => {
       expect(log).toMatch(/×0\.90/);
     });
   });
+
+  // — Phase 11.3.C statBonusPercent wire vào combat power -------------------
+  describe('Linh căn statBonusPercent wire vào atk/def (Phase 11.3.C)', () => {
+    afterEach(() => {
+      vi.restoreAllMocks();
+    });
+
+    it('character grade=than (statBonus 30%) damage > grade=pham (statBonus 0%) cùng power=100', async () => {
+      vi.spyOn(Math, 'random').mockReturnValue(0.5);
+      const pham = await makeUserChar(prisma, {
+        stamina: 100,
+        power: 100,
+        hp: 1000,
+        hpMax: 1000,
+        spiritualRootGrade: 'pham',
+        primaryElement: 'kim',
+      });
+      const than = await makeUserChar(prisma, {
+        stamina: 100,
+        power: 100,
+        hp: 1000,
+        hpMax: 1000,
+        spiritualRootGrade: 'than',
+        primaryElement: 'kim',
+        secondaryElements: ['moc', 'thuy', 'hoa', 'tho'],
+      });
+      // basic_attack (element undefined) → playerElementMul = 1.0 cho cả 2.
+      // pham: effPower = 100 * 1.0 = 100. than: effPower = 100 * 1.30 = 130.
+      const encPham = await combat.start(pham.userId, 'son_coc');
+      const viewPham = await combat.action(pham.userId, encPham.id, {});
+      const encThan = await combat.start(than.userId, 'son_coc');
+      const viewThan = await combat.action(than.userId, encThan.id, {});
+      const dmgPham = parseInt(
+        viewPham.log.find((l) => l.text.includes('sát thương'))!.text.match(/gây (\d+)/)![1],
+        10,
+      );
+      const dmgThan = parseInt(
+        viewThan.log.find((l) => l.text.includes('sát thương'))!.text.match(/gây (\d+)/)![1],
+        10,
+      );
+      expect(dmgThan).toBeGreaterThan(dmgPham);
+      expect(dmgThan).toBeGreaterThanOrEqual(Math.round(dmgPham * 1.25));
+    });
+
+    it('legacy character (spiritualRootGrade=null) statMul=1.0 → damage formula gốc', async () => {
+      vi.spyOn(Math, 'random').mockReturnValue(0.5);
+      const legacy = await makeUserChar(prisma, {
+        stamina: 100,
+        power: 100,
+        hp: 1000,
+        hpMax: 1000,
+      });
+      const enc = await combat.start(legacy.userId, 'son_coc');
+      const view = await combat.action(legacy.userId, enc.id, {});
+      const dmg = parseInt(
+        view.log.find((l) => l.text.includes('sát thương'))!.text.match(/gây (\d+)/)![1],
+        10,
+      );
+      // son_thu_lon def=2. dmgBase = round((100*1 - 2*0.5) * 1.0) = 99.
+      expect(dmg).toBe(99);
+    });
+  });
 });

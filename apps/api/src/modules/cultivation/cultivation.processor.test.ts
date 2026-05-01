@@ -127,4 +127,60 @@ describe('CultivationProcessor.process (tick)', () => {
     expect(cA.exp).toBeGreaterThan(0n);
     expect(cB.exp).toBeGreaterThan(0n);
   });
+
+  // — Phase 11.3.C Linh căn cultivationMultiplier wire ----------------------
+  describe('Linh căn cultivationMultiplier wire (Phase 11.3.C)', () => {
+    it('character có spiritualRootGrade=than → gain × 1.80 vs legacy null × 1.0', async () => {
+      const baseGain = cultivationRateForRealm('luyenkhi', CULTIVATION_TICK_BASE_EXP) + 2;
+      // Legacy character (spiritualRootGrade=null) → multiplier 1.0
+      const legacy = await makeUserChar(prisma, {
+        cultivating: true,
+        spirit: 8,
+        // KHÔNG set spiritualRootGrade → null
+      });
+      // Thần linh căn → multiplier 1.80
+      const than = await makeUserChar(prisma, {
+        cultivating: true,
+        spirit: 8,
+        spiritualRootGrade: 'than',
+        primaryElement: 'kim',
+        secondaryElements: ['moc', 'thuy', 'hoa', 'tho'],
+      });
+
+      await processor.process(tickJob());
+
+      const cLegacy = await prisma.character.findUniqueOrThrow({ where: { id: legacy.characterId } });
+      const cThan = await prisma.character.findUniqueOrThrow({ where: { id: than.characterId } });
+      expect(cLegacy.exp).toBe(BigInt(baseGain));
+      // Thần grade × 1.80 → round(baseGain * 1.80)
+      expect(cThan.exp).toBe(BigInt(Math.round(baseGain * 1.8)));
+    });
+
+    it('character có spiritualRootGrade=pham → gain × 1.0 (KHÔNG bonus)', async () => {
+      const baseGain = cultivationRateForRealm('luyenkhi', CULTIVATION_TICK_BASE_EXP) + 2;
+      const pham = await makeUserChar(prisma, {
+        cultivating: true,
+        spirit: 8,
+        spiritualRootGrade: 'pham',
+        primaryElement: 'kim',
+      });
+      await processor.process(tickJob());
+      const c = await prisma.character.findUniqueOrThrow({ where: { id: pham.characterId } });
+      expect(c.exp).toBe(BigInt(baseGain));
+    });
+
+    it('character có spiritualRootGrade=huyen → gain × 1.30', async () => {
+      const baseGain = cultivationRateForRealm('luyenkhi', CULTIVATION_TICK_BASE_EXP) + 2;
+      const huyen = await makeUserChar(prisma, {
+        cultivating: true,
+        spirit: 8,
+        spiritualRootGrade: 'huyen',
+        primaryElement: 'kim',
+        secondaryElements: ['moc'],
+      });
+      await processor.process(tickJob());
+      const c = await prisma.character.findUniqueOrThrow({ where: { id: huyen.characterId } });
+      expect(c.exp).toBe(BigInt(Math.round(baseGain * 1.3)));
+    });
+  });
 });

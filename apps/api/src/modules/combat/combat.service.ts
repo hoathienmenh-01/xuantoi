@@ -2,11 +2,13 @@ import { Injectable } from '@nestjs/common';
 import { CurrencyKind, Prisma, EncounterStatus } from '@prisma/client';
 import {
   DUNGEONS,
+  SPIRITUAL_ROOT_GRADES,
   STAMINA_PER_ACTION,
   SKILL_BASIC_ATTACK,
   characterSkillElementBonus,
   dungeonByKey,
   elementMultiplier,
+  getSpiritualRootGradeDef,
   itemByKey,
   monsterByKey,
   rollDamage,
@@ -17,6 +19,7 @@ import {
   type MonsterDef,
   type SectKey,
   type SkillDef,
+  type SpiritualRootGrade,
 } from '@xuantoi/shared';
 import { PrismaService } from '../../common/prisma.service';
 import { RealtimeService } from '../realtime/realtime.service';
@@ -56,6 +59,18 @@ export interface EncounterView {
 
 interface ActionInput {
   skillKey?: string;
+}
+
+/**
+ * Phase 11.3.C narrowing helper — Prisma trả về `string | null` cho
+ * `spiritualRootGrade`, runtime cần check khớp catalog
+ * `SPIRITUAL_ROOT_GRADES` trước khi gọi `getSpiritualRootGradeDef` để
+ * tránh throw. Legacy character (`null`) → return false → multiplier 1.0.
+ */
+function isValidSpiritualRootGrade(
+  grade: string | null,
+): grade is SpiritualRootGrade {
+  return grade !== null && (SPIRITUAL_ROOT_GRADES as readonly string[]).includes(grade);
 }
 
 class CombatError extends Error {
@@ -168,8 +183,13 @@ export class CombatService {
     if (charMp < skill.mpCost) throw new CombatError('MP_LOW');
 
     const equip = await this.inventory.equipBonus(char.id);
-    const effPower = char.power + equip.atk;
-    const effDef = equip.def;
+    // Phase 11.3.C — Linh căn statBonusPercent wire vào atk/def.
+    // Legacy character (spiritualRootGrade=null) → statMul = 1.0.
+    const statMul = isValidSpiritualRootGrade(char.spiritualRootGrade)
+      ? 1 + getSpiritualRootGradeDef(char.spiritualRootGrade).statBonusPercent / 100
+      : 1.0;
+    const effPower = (char.power + equip.atk) * statMul;
+    const effDef = equip.def * statMul;
 
     const log: EncounterLogLine[] = [
       ...((enc.log as unknown as EncounterLogLine[]) ?? []),
