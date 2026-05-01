@@ -21,7 +21,8 @@ Mục tiêu: thêm content **không phá CI**, **không lệch curve**, **không
 | Mission | `packages/shared/src/missions.ts` | 66 mission (PR #217 Phase 10 PR-4 +54: tier daily/weekly + element chronicle + tu-tien-progression chain) | Phase 10: → 65+ ✅ |
 | Boss | `packages/shared/src/boss.ts` | 12 boss (Phase 10 PR-5 +10 named × Ngũ Hành × realm tier kim_dan → hop_the) | Phase 10: → 10 named ✅ |
 | Buff/Debuff | `packages/shared/src/buffs.ts` | 18 buff/debuff (Phase 11.8.A — merged #229: 10 buff + 8 debuff × 5 element + 8 source pill/skill/sect_aura/event/talent/boss/tribulation) | Phase 11: → 18+ ✅ catalog-only |
-| Title (Danh hiệu) | `packages/shared/src/titles.ts` | 24 title (Phase 11.9.A — this PR open: 9 realm + 5 element + 4 achievement + 3 sect + 2 event + 1 donation × 5 rarity common/rare/epic/legendary/mythic) | Phase 11: → 24+ ✅ catalog-only |
+| Title (Danh hiệu) | `packages/shared/src/titles.ts` | 24 title (Phase 11.9.A — merged #230: 9 realm + 5 element + 4 achievement + 3 sect + 2 event + 1 donation × 5 rarity common/rare/epic/legendary/mythic) | Phase 11: → 24+ ✅ catalog-only |
+| Achievement (Thành tựu) | `packages/shared/src/achievements.ts` | 32 achievement (Phase 11.10.A — this PR open: 8 combat + 6 cultivation + 5 exploration + 4 social + 4 economy + 3 milestone + 2 collection × 5 tier bronze/silver/gold/platinum/diamond, reuse MissionGoalKind enum, link với titles.ts qua rewardTitleKey) | Phase 11: → 30+ ✅ catalog-only |
 | Topup pack | `packages/shared/src/topup.ts` | (đã có) | Tunable theo monetization |
 | Shop pack | `packages/shared/src/shop.ts` | (đã có) | Tunable |
 | **Quest chain** | (chưa có) | 0 | Phase 11 — DB-backed |
@@ -29,7 +30,7 @@ Mục tiêu: thêm content **không phá CI**, **không lệch curve**, **không
 | **Map region** | (chưa có) | 0 | Phase 12 — DB-backed |
 | **DungeonTemplate** | (chưa có, dùng static `DungeonDef`) | — | Phase 12 — migrate sang DB |
 | **Title (legacy row)** | (replaced by `packages/shared/src/titles.ts` Phase 11.9.A) | (see Title row above) | (resolved) |
-| **Achievement** | (chưa có) | 0 | Phase 11 — static catalog + DB progress |
+| **Achievement (legacy row)** | (replaced by `packages/shared/src/achievements.ts` Phase 11.10.A) | (see Achievement row above) | (resolved) |
 | **EventConfig** | (chưa có) | 0 | Phase 15 — DB-backed |
 
 ---

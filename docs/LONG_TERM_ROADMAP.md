@@ -379,6 +379,45 @@ Thêm depth cho progression: công pháp, skill upgrade, linh căn, thể chất
 - 51 vitest (catalog shape + curve coverage + balance cap + helper + compose + REALMS integration).
 - KHÔNG runtime / schema / Prisma migration trong PR này (`Character.title String?` đã tồn tại từ phase 0).
 
+#### 11.10.A PR: Achievement (Thành tựu) catalog foundation — DONE ✅ (this branch / merge target)
+
+- `packages/shared/src/achievements.ts` NEW catalog 32 achievement baseline.
+  - 8 combat (first kill / 100 / 1000 + 4 element-specialist 50 + first boss).
+  - 6 cultivation (first breakthrough + 3 realm milestone + 2 cultivation seconds).
+  - 5 exploration (first dungeon / 10 / 100 / kim element / endgame hidden).
+  - 4 social (sect join / first chat / sect donate 1k / 10k).
+  - 4 economy (first buy / first sell / 100 buy / 100 sell).
+  - 3 milestone (1k exp / 100k exp / 10M exp).
+  - 2 collection (50 buy / 500 buy).
+- Schema: `AchievementDef { key, nameVi, nameEn, description, category, tier, goalKind, goalAmount, element, rewardTitleKey, reward, hidden }`.
+- 5 tier: `bronze` / `silver` / `gold` / `platinum` / `diamond`.
+- 7 category: `combat` / `cultivation` / `exploration` / `social` / `economy` / `milestone` / `collection`.
+- Reuse `MissionGoalKind` enum (KILL_MONSTER/CLEAR_DUNGEON/BOSS_HIT/BREAKTHROUGH/GAIN_EXP/CULTIVATE_SECONDS/BUY_LISTING/SELL_LISTING/CHAT_MESSAGE/SECT_CONTRIBUTE) cho Phase 11.10.B service share event listener với mission service.
+- Title link: `rewardTitleKey` non-null cho 4 achievement (first_monster_kill / first_dungeon_clear / first_boss_kill / first_breakthrough) khớp với `titles.ts` `titleForAchievement` lookup → Phase 11.10.B + 11.9.B service auto-grant title trên achievement complete.
+- Balance cap per tier (vitest enforce): bronze ≤ 200 linhThach, silver ≤ 3000, gold ≤ 20_000, platinum ≤ 50_000, diamond ≤ 100_000.
+- Helpers deterministic: `getAchievementDef`, `achievementsByCategory/Tier/GoalKind/Element`, `visibleAchievements`.
+- 45 vitest (catalog shape + curve + balance + title link integration + helpers).
+- KHÔNG runtime / schema / Prisma migration trong PR này.
+
+#### 11.10.B PR: Achievement runtime (Pending)
+
+- Model `CharacterAchievement(id, characterId, achievementKey, progress, completedAt?)` Prisma migration (idempotent unique on `[characterId, achievementKey]`).
+- Service `incrementAchievement(characterId, achievementKey, delta)` (idempotent — nếu progress đã ≥ goalAmount thì set `completedAt` chỉ nếu null).
+- Service `claimAchievement(characterId, achievementKey)` validate `completedAt!=null` + grant reward via Currency/Item Ledger + auto-`unlockTitle(achievementKey → rewardTitleKey)` qua Phase 11.9.B service.
+- Event listener route mỗi `goalKind`:
+  - `KILL_MONSTER` → on monster killed event → increment all `KILL_MONSTER` achievements (filter by element nếu có).
+  - `CLEAR_DUNGEON` → on dungeon cleared event.
+  - `BOSS_HIT` → on boss killed event.
+  - `BREAKTHROUGH` → on realm breakthrough event (also trigger Phase 11.9.B `titleForRealmMilestone`).
+  - `GAIN_EXP` → on exp gained event.
+  - `CULTIVATE_SECONDS` → on cultivation tick event.
+  - `BUY_LISTING` / `SELL_LISTING` → on market transaction.
+  - `CHAT_MESSAGE` → on world chat sent.
+  - `SECT_CONTRIBUTE` → on sect donation.
+- Share event-listener với existing mission service (refactor `MissionTrackerService` → generic `GoalTrackerService` cover both mission + achievement).
+- REST `GET /achievement/list` + `GET /achievement/progress` + `POST /achievement/claim`.
+- UI achievement page với category tab + tier badge + progress bar + claim button + title preview.
+
 #### 11.9.B PR: Title runtime (Pending)
 
 - Model `CharacterTitleUnlock(id, characterId, titleKey, unlockedAt, source)` Prisma migration (idempotent unique on `[characterId, titleKey]`).
