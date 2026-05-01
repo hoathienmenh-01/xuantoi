@@ -6,6 +6,7 @@ export * from './api-contracts';
 export * from './combat';
 export * from './items';
 export * from './missions';
+export * from './alchemy';
 export * from './boss';
 export * from './cultivation-methods';
 export * from './gems';
