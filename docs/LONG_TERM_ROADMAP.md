@@ -270,12 +270,29 @@ Thêm depth cho progression: công pháp, skill upgrade, linh căn, thể chất
 - Idempotency cho `refineEquipment` qua `attemptId` UUID per call.
 - Migration + rollback note.
 
-#### 11.6 PR: Thiên kiếp + Tâm ma (P11-6 spec)
+#### 11.6.A PR: Tribulation catalog foundation **(this PR — session 9r-10, P11-6 Thiên Kiếp + Tâm Ma MVP catalog half)**
 
-- Trigger khi break realm `pham → nhan_tien`, `nhan_tien → tien_gioi`, `tien_gioi → hon_nguyen`.
-- Combat 1 lượt vs "Thiên Kiếp Lôi" deterministic theo character power.
-- Fail: rớt EXP về stage 9 + cooldown 1h.
-- Tâm ma: 3-10% chance set debuff `cultivating: false` 30p.
+- `packages/shared/src/tribulation.ts` NEW (~480 lines) — 8 kiếp baseline cover realm threshold quan trọng (`kim_dan→nguyen_anh` minor lei → `chuan_thanh→thanh_nhan` saint lei).
+- Schema `TribulationDef { key, name, fromRealmKey, toRealmKey, type, severity, waves[], reward, failurePenalty }` + `TribulationType` 5-type (`lei/phong/bang/hoa/tam`) + `TribulationSeverity` 4-tier (`minor/major/heavenly/saint`).
+- Wave count theo severity (3/5/7/9), baseDamage geometric `severityBase × 1.35^waveIdx`, element rotation theo type (lei = hoa+kim alternating, tam = null inner-demon).
+- Reward base linhThach `5k/25k/150k/1M` per severity + expBonus BigInt + titleKey cosmetic + uniqueDropItemKey (null cho minor/major, `kiep_van_thach`/`thanh_kiep_tinh` cho heavenly/saint).
+- Failure penalty: expLossRatio `10%/20%/35%/50%` + cooldown `30/60/120/240 min` + taoMaDebuffChance `5%/10%/20%/30%` + taoMaDebuffDurationMinutes.
+- Tâm Ma kiếp (`tam` type) = `do_kiep → nhan_tien` cross-tier; element=null force player tự thắng nội tâm (no element resist).
+- Helper: `getTribulationDef`, `getTribulationForBreakthrough`, `tribulationsByType/Severity`, `simulateTribulationWave` (deterministic damage), `simulateTribulation` full-fight chain wave-by-wave, `computeTribulationReward`, `computeTribulationFailurePenalty` BigInt-safe.
+- 52 vitest cover catalog shape + ref REALMS valid + waves balance + reward/failure monotonic theo severity + helpers happy + error paths + sim deterministic replay.
+- KHÔNG schema migration, KHÔNG runtime hook (catalog-only foundation cho 11.6.B runtime).
+
+#### 11.6.B PR: Tribulation runtime (Pending)
+
+- Prisma migration: `Tribulation { id, characterId, tribulationKey, fromRealmKey, toRealmKey, status: 'pending'|'success'|'failed', attemptCount, lastAttemptAt, cooldownAt, taoMaActive, taoMaExpiresAt, ... }`.
+- Add Character field: `taoMaActive Boolean @default(false)` + `taoMaExpiresAt DateTime?` + extend `cultivating: Boolean` để gating.
+- Add ITEMS catalog: `kiep_van_thach` (TIEN MISC) + `thanh_kiep_tinh` (THAN MISC) reward unique drop.
+- Service `TribulationService.attemptTribulation(characterId, fromRealmKey)` → detect via `getTribulationForBreakthrough`, run `simulateTribulation(def, character.hpMax, computeElementResist)` deterministic, on success: grant reward qua CurrencyLedger + ItemLedger + bump realm; on fail: apply `computeTribulationFailurePenalty`, set cooldown + taoMaActive flag.
+- Service hook vào `BreakthroughService.attemptBreakthrough` → nếu transition match getTribulationForBreakthrough → force tribulation flow.
+- `CombatService.computeStats` apply Tâm Ma debuff: -10% atk + block tu luyện while taoMaActive.
+- Cooldown enforcement: REST `POST /tribulation/attempt` reject 429 nếu `cooldownAt > now`.
+- Idempotency cho `attemptTribulation` qua `attemptId` UUID per call.
+- Migration + rollback note + audit log.
 
 #### 11.X PR: Alchemy (Luyện đan)
 
