@@ -429,6 +429,90 @@ Script là `scripts/smoke-ws.mjs` (~700 dòng ESM), dùng native `fetch` + `Abor
 
 ---
 
+## 11.5. `pnpm smoke:combat` CLI (session 9r-6)
+
+### Mục tiêu
+
+Smoke runtime ≤ 1 phút verify combat encounter end-to-end (register → onboard → start dungeon → action loop → reward → ledger invariant) còn nguyên trước khi mở rộng Phase 11 elemental combat / spiritual root runtime. Phòng regression khi:
+
+- `CombatService.start` / `action` / `abandon` đổi hợp đồng response.
+- `CombatService` bypass `CurrencyService.applyTx` hoặc `InventoryService.grant` (không qua ledger).
+- `EncounterStatus` state machine break (start → ACTIVE → WON|LOST|ABANDONED).
+- Reward shape `{exp, linhThach, loot[]}` đổi mà FE chưa biết.
+- Stamina budget (entry + per-action) bypass server-side check.
+
+Khác `smoke:economy`: focus vào **combat state machine + loot drop ledger** thay vì shop/daily-login flow. Khác vitest `combat.service.test.ts` (RNG seeded unit): smoke chạy NestApp full + cookie auth thật + RNG live (basic attack hơn ~3-5 turn / monster) + assert end status WON|LOST + verify post-combat ledger consistency.
+
+### Khi nào chạy
+
+- **BẮT BUỘC** trước khi merge PR đụng:
+  - `apps/api/src/modules/combat/combat.service.ts` (RNG, damage formula, reward distribution).
+  - `apps/api/src/modules/combat/combat.controller.ts` (endpoint shape, auth, error code).
+  - `packages/shared/src/combat.ts` (DUNGEONS, MONSTERS, STAMINA_PER_ACTION, MIN_DUNGEONS quota).
+  - `apps/api/src/modules/inventory/inventory.service.ts` (`grant` reason + refType).
+  - `apps/api/src/modules/currency/currency.service.ts` (`applyTx` reason 'COMBAT_LOOT' contract).
+- **BẮT BUỘC** trước release tag closed beta v0.x (cùng `smoke:beta` + `smoke:economy` + `smoke:ws` + Playwright golden path).
+- **Tự ý chạy** trước khi mở Phase 11 elemental combat MVP PR.
+
+### Cách chạy
+
+Yêu cầu môi trường giống `smoke:beta`:
+
+```bash
+pnpm infra:up
+pnpm --filter @xuantoi/api exec prisma migrate deploy
+pnpm --filter @xuantoi/api bootstrap
+pnpm --filter @xuantoi/api dev   # tab 1 — API listen :3000
+
+# Tab khác:
+pnpm smoke:combat
+```
+
+Env vars (mặc định đủ cho Phase 10 catalog):
+
+- `SMOKE_API_BASE` — `http://localhost:3000`.
+- `SMOKE_TIMEOUT_MS` — `10000`.
+- `SMOKE_VERBOSE=1` — log request/response (debug).
+- `SMOKE_SECT_KEY` — `thanh_van`. Có thể đổi `huyen_thuy` / `tu_la`.
+- `SMOKE_DUNGEON` — `son_coc` (3 monster level 1-3, stamina 10). Có thể đổi `hac_lam` / `yeu_thu_dong` / 5 element-thematic dungeon từ Phase 10 PR-3.
+- `SMOKE_MAX_TURNS` — `50` (safety stop).
+
+### 18 step expect PASS
+
+1. healthz.
+2. `combat/dungeons` — public list, ≥ 9 dungeon (Phase 10 PR-3 baseline), son_coc tồn tại.
+3. register fresh user.
+4. onboard sect.
+5. `character/me` — starting hp/mp/stamina/linhThach + invariant hp ∈ [1, hpMax], mp ∈ [0, mpMax], stamina ≥ entry.
+6. `combat/encounter/active` — empty cho fresh user.
+7. `combat/encounter/start <dungeon>` → encounter ACTIVE + monster đầu tiên load.
+8. Anti double-start lần 2 → 409 ALREADY_IN_FIGHT.
+9. `combat/encounter/:id/action` loop tới WON | LOST (max 50 turn).
+10. Reward shape `{exp, linhThach, loot[]}` non-null khi WON.
+11. action sau khi end → 409 ENCOUNTER_ENDED.
+12. abandon sau khi end → 409 ENCOUNTER_ENDED.
+13. `combat/encounter/active` — null sau khi end.
+14. **INVARIANT**: SUM(CurrencyLedger.LINH_THACH) == Character.linhThach + COMBAT_LOOT row chỉ với refType='Encounter' refId=encounter.id delta>0.
+15. ItemLedger COMBAT_LOOT khớp reward.loot per itemKey + qtyDelta>0.
+16. **INVARIANT**: Inventory.qty == SUM(ItemLedger.qtyDelta) per itemKey + no qty âm.
+17. character invariant exp tăng (WON) + stamina giảm ≥ staminaEntry + hp/mp final trong bound.
+18. logout.
+
+Local run reference (session 9r-6): 2 lần chạy idempotent → `done: 18 pass / 0 fail / 18 total in 757-856ms`, final encounter status WON after 15 action(s), reward exp=45 linhThach=15 loot=2.
+
+### Không có dependency mới
+
+Script `scripts/smoke-combat.mjs` (~480 dòng ESM), dùng native `fetch` + `AbortController` Node 20+. KHÔNG install thêm dep ở root.
+
+### Giới hạn
+
+- Không cover skill-pick combat (basic attack only — đủ verify state machine + ledger; skill-pick deferred Phase 11 elemental combat).
+- Không cover `LOST` outcome path explicit (smoke depend RNG; nếu `son_coc` 3 monster vs starting char power, nhân vật rất hiếm khi LOST. Để force LOST: dùng dungeon mid-tier + giảm hp DB-direct trước khi action loop — defer Phase 11 polish).
+- Không cleanup user — như `smoke:beta` / `smoke:economy` / `smoke:ws`. Cleanup: `DELETE FROM "User" WHERE email LIKE 'smoke-combat-%@smoke.invalid'` (cẩn thận FK → `Character`, `Encounter`, `CurrencyLedger`, `ItemLedger`, ...).
+- Stamina regen tick (BullMQ cron 30s) có thể fire trong long-mode → smoke giả định regen tick chưa fire (smoke complete < 5s). Long-mode stamina assertion bypass.
+
+---
+
 ## 12. Playwright Golden Path E2E (`pnpm --filter @xuantoi/web e2e`, session 9q-7 → 9q-8)
 
 ### Mục tiêu
