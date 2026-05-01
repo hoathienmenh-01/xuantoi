@@ -294,12 +294,25 @@ Thêm depth cho progression: công pháp, skill upgrade, linh căn, thể chất
 - Idempotency cho `attemptTribulation` qua `attemptId` UUID per call.
 - Migration + rollback note + audit log.
 
-#### 11.X PR: Alchemy (Luyện đan)
+#### 11.X.A PR: Alchemy catalog foundation **(this PR — session 9r-10, P11-X Luyện Đan MVP catalog half)**
 
-- Module mới `apps/api/src/modules/alchemy/`.
-- Recipe catalog static (`packages/shared/src/alchemy.ts`).
-- Process: chọn recipe + nguyên liệu (item) → consume → roll success → grant pill.
-- Ledger: `ItemLedger` consume + grant.
+- `packages/shared/src/alchemy.ts` NEW (~340 lines) — 13 recipe baseline cover toàn bộ pill HP/MP/EXP × 5 quality tier (PHAM..THAN) hiện có trong ITEMS.
+- Schema `AlchemyRecipeDef { key, name, description, outputItem, outputQty, outputQuality, inputs[{ itemKey, qty }], furnaceLevel, realmRequirement, linhThachCost, successRate }`.
+- Curve: PHAM (5 recipe) furnace L1 success 0.90–0.95 cost 50–180 LinhThach + LINH (2) furnace L3 success 0.80–0.85 cost 400–500 + HUYEN (2) furnace L5 success 0.65 cost 1500 + TIEN (3) furnace L7 success 0.35–0.40 cost 8000–12000 + THAN (1) furnace L9 success 0.20 cost 30000.
+- Input nguyên liệu tham chiếu material existing trong ITEMS: `linh_thao` (LINH herb-ish ore) + `huyet_tinh` (LINH yêu thú blood) + `tinh_thiet` (LINH metal) + `yeu_dan` (HUYEN yêu dan) + `han_ngoc` (TIEN cold ore) + `tien_kim_sa` (TIEN gold sand).
+- Convention: input + linhThach LUÔN bị consume dù fail (intent: balance không cho free retry).
+- Helper: `getAlchemyRecipeDef`, `alchemyRecipesByQuality/OutputItem`, `alchemyRecipesAvailableAtFurnace`, `getAlchemyIngredientTotal`, `getExpectedAlchemyAttempts` = 1/successRate, `simulateAlchemyAttempt(recipe, rng)` deterministic, `simulateAlchemyBulk(recipe, rngArray)` aggregated stats.
+- 55 vitest cover catalog shape + ref ITEMS/REALMS valid + curve sanity (success monotonic giảm + cost monotonic tăng theo tier + cover ≥ 3 pill mỗi kind HP/MP/EXP) + helpers happy + error paths + sim deterministic replay.
+- KHÔNG schema migration, KHÔNG runtime hook (catalog-only foundation cho 11.X.B runtime).
+
+#### 11.X.B PR: Alchemy runtime (Pending)
+
+- Module mới `apps/api/src/modules/alchemy/` (controller + service + DTO).
+- Prisma migration: `Character.alchemyFurnaceLevel Int @default(1)` + `AlchemyAttempt { id, characterId, recipeKey, attemptId UNIQUE, success, rollValue, createdAt }` model cho audit.
+- Service `AlchemyService.attemptAlchemy(characterId, recipeKey, attemptId)` → resolve recipe via `getAlchemyRecipeDef`, check furnaceLevel + realmRequirement gating, sample rollValue via `seedrandom(attemptId)` deterministic, call `simulateAlchemyAttempt(recipe, rollValue)`, atomic transaction qua `ItemLedger.consume(input)` + `CurrencyLedger.consume(linhThach)` + nếu success → `ItemLedger.grant(output)`, persist `AlchemyAttempt` row.
+- Idempotency cho `attemptAlchemy` qua `attemptId` UUID per call (constraint UNIQUE).
+- REST `POST /alchemy/recipes` (list available) + `POST /alchemy/attempt` + `GET /alchemy/history`.
+- Migration + rollback note + audit log.
 
 #### 11.7 PR: Talent / Thần thông
 
