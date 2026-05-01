@@ -61,7 +61,7 @@ Checklist để promote beta (closed 50 users → open). Tick khi xong.
 - [x] **CSP production** policy chặt, dev `false` (`apps/api/src/main.ts` `helmetConfig`) — chỉ cần review CDN khi prod deploy
 
 ### Testing
-- [x] **api 1133** + **web 588** + **shared 330** = **2051 vitest** (auto-snapshot 1/5 session 9r-4 — shared +45 từ `monsters-balance.test.ts` 23 + `dungeons-balance.test.ts` 22 Phase 10 PR-3, +26 từ `skills-balance.test.ts` Phase 10 PR-2, +21 từ `items-balance.test.ts` Phase 10 PR-1). Stale snapshot cũ "557 test" của session 9d đã bị thay; mỗi PR mới phải verify số này không giảm.
+- [x] **api 1133** + **web 588** + **shared 357** = **2078 vitest** (auto-snapshot 1/5 session 9r-5 — shared +27 từ `missions-balance.test.ts` Phase 10 PR-4, +45 từ `monsters-balance.test.ts` 23 + `dungeons-balance.test.ts` 22 Phase 10 PR-3, +26 từ `skills-balance.test.ts` Phase 10 PR-2, +21 từ `items-balance.test.ts` Phase 10 PR-1). Stale snapshot cũ "557 test" của session 9d đã bị thay; mỗi PR mới phải verify số này không giảm.
 - [x] Real Postgres integration (CI `postgres` service, schema `mtt`)
 - [x] WS integration test (real socket.io-client)
 - [x] CI postgres + redis service xanh
@@ -86,7 +86,7 @@ Checklist để promote beta (closed 50 users → open). Tick khi xong.
 - [x] **25 skill** tổ chức theo Ngũ Hành Kim/Mộc/Thuỷ/Hoả/Thổ × ≥1 active + ≥1 passive + 1 vô hệ early (was 10; +15 từ Phase 10 PR-2 Skill Pack 1, see `packages/shared/src/combat.ts` SKILLS).
 - [x] **29 monster** (was 9; +20 từ Phase 10 PR-3 Monster Pack 1) × Ngũ Hành element + MonsterType (BEAST/HUMANOID/SPIRIT/ELITE/BOSS), 8 region (3 legacy + 5 element-thematic kim_son_mach/moc_huyen_lam/thuy_long_uyen/hoa_diem_son/hoang_tho_huyet).
 - [x] **9 dungeon** (was 3; +6 từ Phase 10 PR-3 Dungeon Pack 1) × element thematic + recommendedRealm luyenkhi→nguyen_anh + DUNGEON_LOOT cover all dungeon (no orphan).
-- [x] 12+ mission (5 daily + 4 weekly + 3 once)
+- [x] **66 mission** (was 12; +54 từ Phase 10 PR-4 Mission Pack 1) × DAILY/WEEKLY/ONCE × realmTier (luyenkhi/truc_co/kim_dan/nguyen_anh/hoa_than) + Ngũ Hành element-themed weekly + 6 chain quest (`tu_tien_progression` 4 step + `{kim,moc,thuy,hoa,tho}_chronicle` 2 step each + `endgame` 2 step). MissionDef forward-compat extend (`element`/`regionKey`/`storyChainKey`/`realmTier`) cho phase 11+ chain quest UI + element bonus reward — runtime mission service KHÔNG đổi (track theo `goalKind`). Reward budget tuân `BALANCE_MODEL.md` §7.1 enforce bằng `missions-balance.test.ts` (27 vitest).
 
 ### Docs
 - [x] `docs/AI_HANDOFF_REPORT.md` (1800+ line, living handoff document)

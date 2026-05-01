@@ -1,14 +1,20 @@
 /**
- * Mission catalog — Phase 5c.
+ * Mission catalog — Phase 5c (extended Phase 10 PR-4 với element/region/storyChain
+ * forward-compat metadata).
  *
  * Định nghĩa tĩnh (không lưu DB) cho nhiệm vụ hằng ngày / hằng tuần / 1 lần.
  * Server sẽ tạo `MissionProgress` (DB) cho từng character dựa trên catalog này.
  * Client hiển thị đề bài + reward.
  *
- * Gameplay của nhiệm vụ (hook trigger khi gain exp, kill monster, …) sẽ bổ sung
- * ở phase sau — PR này chỉ cung cấp catalog để UI và BE service dùng chung key.
+ * Gameplay của nhiệm vụ (hook trigger khi gain exp, kill monster, …) đã có ở
+ * `mission.service.ts` — track theo `goalKind` (string) chứ không đọc
+ * `element`/`regionKey`/`storyChainKey`. Phase 11+ sẽ thêm:
+ *   - element-aware kill counter (bonus reward khi kill đúng monster cùng hệ)
+ *   - region-gated mission (chỉ track khi clear đúng region dungeon)
+ *   - chain quest progression (storyChainKey nối các mission ONCE thành cốt truyện)
  */
 
+import type { ElementKey } from './combat';
 import type { Quality } from './enums';
 
 export type MissionPeriod = 'DAILY' | 'WEEKLY' | 'ONCE';
@@ -45,6 +51,26 @@ export interface MissionDef {
   requiredRealmOrder?: number;
   quality: Quality;
   rewards: MissionReward;
+  /**
+   * Forward-compat metadata Phase 10 PR-4 — runtime KHÔNG đọc các field này
+   * ở phase 10. Phase 11+ sẽ wire: element bonus reward, region gating,
+   * story chain UI.
+   */
+  /** Ngũ Hành element affinity (kim/moc/thuy/hoa/tho), null = vô hệ general. */
+  element?: ElementKey | null;
+  /** Region key (kim_son_mach / moc_huyen_lam / …) match `MonsterDef.regionKey`. */
+  regionKey?: string | null;
+  /**
+   * Story chain key — group ONCE missions thành arc cốt truyện
+   * (ví dụ `kim_chronicle`, `moc_chronicle`, `endgame`).
+   */
+  storyChainKey?: string | null;
+  /**
+   * Realm tier label cho UI section (luyenkhi/truc_co/kim_dan/nguyen_anh/hoa_than).
+   * Khác với `requiredRealmOrder` — đây là metadata phục vụ filter/group ở UI;
+   * `requiredRealmOrder` mới là gate runtime.
+   */
+  realmTier?: string | null;
 }
 
 export const MISSIONS: readonly MissionDef[] = [
@@ -173,6 +199,823 @@ export const MISSIONS: readonly MissionDef[] = [
     quality: 'LINH',
     rewards: { linhThach: 200, congHien: 30 },
   },
+
+  // =========================================================================
+  // Phase 10 PR-4 — Mission Pack 1 (+50 mission, daily/weekly/once + ngũ hành).
+  //
+  // Reward budget tuân thủ BALANCE_MODEL.md §7.1:
+  //   - daily_T2 (truc_co):    ~1500 LT / mission, exp ~1500
+  //   - daily_T3 (kim_dan):    ~4000 LT / mission, exp ~5000
+  //   - daily_T4 (nguyen_anh): ~10000 LT / mission, exp ~15000
+  //   - weekly: 2-3× daily total
+  //   - once milestone: 2-5× daily total
+  //
+  // Element/region metadata KHÔNG ảnh hưởng runtime ở phase 10 (mission service
+  // track theo `goalKind`). Phase 11+ sẽ wire element bonus + region gating.
+  // =========================================================================
+
+  // ---------- DAILY tier 2 (Trúc Cơ) ----------
+  {
+    key: 'daily_T2_cultivate_3600s',
+    name: 'Trúc cơ tu hành',
+    description: 'Đạo hữu Trúc Cơ tu luyện đủ 1 giờ (3600 giây) trong ngày.',
+    period: 'DAILY',
+    goalKind: 'CULTIVATE_SECONDS',
+    goalAmount: 3600,
+    requiredRealmOrder: 2,
+    quality: 'LINH',
+    rewards: { linhThach: 1500, exp: 1500 },
+    realmTier: 'truc_co',
+  },
+  {
+    key: 'daily_T2_kill_monster_15',
+    name: 'Trúc cơ trảm yêu',
+    description: 'Hạ gục 15 yêu thú trong ngày (yêu cầu Trúc Cơ).',
+    period: 'DAILY',
+    goalKind: 'KILL_MONSTER',
+    goalAmount: 15,
+    requiredRealmOrder: 2,
+    quality: 'LINH',
+    rewards: { linhThach: 1500, exp: 800, items: [{ itemKey: 'thanh_lam_dan', qty: 1 }] },
+    realmTier: 'truc_co',
+  },
+  {
+    key: 'daily_T2_clear_dungeon_2',
+    name: 'Trúc cơ phá trận',
+    description: 'Hoàn thành 2 phó bản trong ngày (yêu cầu Trúc Cơ).',
+    period: 'DAILY',
+    goalKind: 'CLEAR_DUNGEON',
+    goalAmount: 2,
+    requiredRealmOrder: 2,
+    quality: 'LINH',
+    rewards: { linhThach: 1500, exp: 1000 },
+    realmTier: 'truc_co',
+  },
+
+  // ---------- DAILY tier 3 (Kim Đan) ----------
+  {
+    key: 'daily_T3_cultivate_7200s',
+    name: 'Kim đan ngưng khí',
+    description: 'Đạo hữu Kim Đan tu luyện đủ 2 giờ (7200 giây) trong ngày.',
+    period: 'DAILY',
+    goalKind: 'CULTIVATE_SECONDS',
+    goalAmount: 7200,
+    requiredRealmOrder: 3,
+    quality: 'HUYEN',
+    rewards: { linhThach: 4000, exp: 5000 },
+    realmTier: 'kim_dan',
+  },
+  {
+    key: 'daily_T3_kill_monster_30',
+    name: 'Kim đan trảm yêu',
+    description: 'Hạ gục 30 yêu thú trong ngày (yêu cầu Kim Đan).',
+    period: 'DAILY',
+    goalKind: 'KILL_MONSTER',
+    goalAmount: 30,
+    requiredRealmOrder: 3,
+    quality: 'HUYEN',
+    rewards: { linhThach: 4000, exp: 2500, items: [{ itemKey: 'co_thien_dan', qty: 2 }] },
+    realmTier: 'kim_dan',
+  },
+  {
+    key: 'daily_T3_clear_dungeon_3',
+    name: 'Kim đan tảo trận',
+    description: 'Hoàn thành 3 phó bản trong ngày (yêu cầu Kim Đan).',
+    period: 'DAILY',
+    goalKind: 'CLEAR_DUNGEON',
+    goalAmount: 3,
+    requiredRealmOrder: 3,
+    quality: 'HUYEN',
+    rewards: { linhThach: 4000, exp: 3000 },
+    realmTier: 'kim_dan',
+  },
+  {
+    key: 'daily_T3_boss_hit_10',
+    name: 'Kim đan công boss',
+    description: 'Đánh trúng Thế Giới Boss 10 lần (yêu cầu Kim Đan).',
+    period: 'DAILY',
+    goalKind: 'BOSS_HIT',
+    goalAmount: 10,
+    requiredRealmOrder: 3,
+    quality: 'HUYEN',
+    rewards: { linhThach: 4000, congHien: 80 },
+    realmTier: 'kim_dan',
+  },
+
+  // ---------- DAILY tier 4 (Nguyên Anh) ----------
+  {
+    key: 'daily_T4_cultivate_10800s',
+    name: 'Nguyên anh đại tu',
+    description: 'Đạo hữu Nguyên Anh tu luyện đủ 3 giờ (10800 giây) trong ngày.',
+    period: 'DAILY',
+    goalKind: 'CULTIVATE_SECONDS',
+    goalAmount: 10800,
+    requiredRealmOrder: 4,
+    quality: 'TIEN',
+    rewards: { linhThach: 10000, exp: 15000 },
+    realmTier: 'nguyen_anh',
+  },
+  {
+    key: 'daily_T4_kill_monster_50',
+    name: 'Nguyên anh trảm yêu',
+    description: 'Hạ gục 50 yêu thú trong ngày (yêu cầu Nguyên Anh).',
+    period: 'DAILY',
+    goalKind: 'KILL_MONSTER',
+    goalAmount: 50,
+    requiredRealmOrder: 4,
+    quality: 'TIEN',
+    rewards: { linhThach: 10000, exp: 8000, items: [{ itemKey: 'cuu_thien_dan', qty: 1 }] },
+    realmTier: 'nguyen_anh',
+  },
+  {
+    key: 'daily_T4_clear_dungeon_4',
+    name: 'Nguyên anh đãng trận',
+    description: 'Hoàn thành 4 phó bản trong ngày (yêu cầu Nguyên Anh).',
+    period: 'DAILY',
+    goalKind: 'CLEAR_DUNGEON',
+    goalAmount: 4,
+    requiredRealmOrder: 4,
+    quality: 'TIEN',
+    rewards: { linhThach: 10000, exp: 12000 },
+    realmTier: 'nguyen_anh',
+  },
+
+  // ---------- DAILY misc ----------
+  {
+    key: 'daily_market_buy_3',
+    name: 'Phường thị thường khách',
+    description: 'Mua thành công 3 món đồ qua Phường Thị trong ngày.',
+    period: 'DAILY',
+    goalKind: 'BUY_LISTING',
+    goalAmount: 3,
+    quality: 'LINH',
+    rewards: { linhThach: 200, congHien: 10 },
+  },
+
+  // ---------- WEEKLY tier 2 (Trúc Cơ) ----------
+  {
+    key: 'weekly_T2_clear_dungeon_20',
+    name: 'Trúc cơ tuần phá',
+    description: 'Hoàn thành 20 phó bản trong tuần (yêu cầu Trúc Cơ).',
+    period: 'WEEKLY',
+    goalKind: 'CLEAR_DUNGEON',
+    goalAmount: 20,
+    requiredRealmOrder: 2,
+    quality: 'HUYEN',
+    rewards: {
+      linhThach: 4500,
+      exp: 4500,
+      items: [{ itemKey: 'thanh_lam_dan', qty: 3 }],
+    },
+    realmTier: 'truc_co',
+  },
+
+  // ---------- WEEKLY tier 3 (Kim Đan) ----------
+  {
+    key: 'weekly_T3_clear_dungeon_30',
+    name: 'Kim đan tuần đãng',
+    description: 'Hoàn thành 30 phó bản trong tuần (yêu cầu Kim Đan).',
+    period: 'WEEKLY',
+    goalKind: 'CLEAR_DUNGEON',
+    goalAmount: 30,
+    requiredRealmOrder: 3,
+    quality: 'TIEN',
+    rewards: {
+      linhThach: 12000,
+      exp: 30000,
+      items: [{ itemKey: 'co_thien_dan', qty: 5 }],
+    },
+    realmTier: 'kim_dan',
+  },
+
+  // ---------- WEEKLY tier 4 (Nguyên Anh) ----------
+  {
+    key: 'weekly_T4_boss_hit_50',
+    name: 'Nguyên anh chiến boss',
+    description: 'Đánh trúng Thế Giới Boss 50 lần trong tuần (yêu cầu Nguyên Anh).',
+    period: 'WEEKLY',
+    goalKind: 'BOSS_HIT',
+    goalAmount: 50,
+    requiredRealmOrder: 4,
+    quality: 'TIEN',
+    rewards: {
+      linhThach: 30000,
+      congHien: 800,
+      items: [{ itemKey: 'cuu_thien_dan', qty: 3 }],
+    },
+    realmTier: 'nguyen_anh',
+  },
+
+  // ---------- WEEKLY element-themed ----------
+  {
+    key: 'weekly_kim_dungeon_10',
+    name: 'Kim Sơn vạn lộ',
+    description: 'Tảo đãng phó bản Kim Sơn Mạch 10 lần trong tuần (Kim Đan trở lên).',
+    period: 'WEEKLY',
+    goalKind: 'CLEAR_DUNGEON',
+    goalAmount: 10,
+    requiredRealmOrder: 3,
+    quality: 'HUYEN',
+    rewards: {
+      linhThach: 6000,
+      exp: 8000,
+      items: [{ itemKey: 'tinh_thiet', qty: 5 }],
+    },
+    element: 'kim',
+    regionKey: 'kim_son_mach',
+    realmTier: 'kim_dan',
+  },
+  {
+    key: 'weekly_moc_dungeon_10',
+    name: 'Mộc lâm tu nhiên',
+    description: 'Tảo đãng phó bản Mộc Huyền Lâm 10 lần trong tuần (Trúc Cơ trở lên).',
+    period: 'WEEKLY',
+    goalKind: 'CLEAR_DUNGEON',
+    goalAmount: 10,
+    requiredRealmOrder: 2,
+    quality: 'LINH',
+    rewards: {
+      linhThach: 3000,
+      exp: 4000,
+      items: [{ itemKey: 'linh_thao', qty: 8 }],
+    },
+    element: 'moc',
+    regionKey: 'moc_huyen_lam',
+    realmTier: 'truc_co',
+  },
+  {
+    key: 'weekly_thuy_dungeon_8',
+    name: 'Thuỷ uyên tầm long',
+    description: 'Tảo đãng phó bản Thuỷ Long Uyên 8 lần trong tuần (Kim Đan trở lên).',
+    period: 'WEEKLY',
+    goalKind: 'CLEAR_DUNGEON',
+    goalAmount: 8,
+    requiredRealmOrder: 3,
+    quality: 'HUYEN',
+    rewards: {
+      linhThach: 6000,
+      exp: 8000,
+      items: [{ itemKey: 'han_ngoc', qty: 4 }],
+    },
+    element: 'thuy',
+    regionKey: 'thuy_long_uyen',
+    realmTier: 'kim_dan',
+  },
+  {
+    key: 'weekly_hoa_dungeon_5',
+    name: 'Hoả diệm sơn lửa cháy',
+    description: 'Tảo đãng phó bản Hoả Diệm Sơn 5 lần trong tuần (Nguyên Anh trở lên).',
+    period: 'WEEKLY',
+    goalKind: 'CLEAR_DUNGEON',
+    goalAmount: 5,
+    requiredRealmOrder: 4,
+    quality: 'TIEN',
+    rewards: {
+      linhThach: 14000,
+      exp: 20000,
+      items: [{ itemKey: 'huyet_tinh', qty: 6 }],
+    },
+    element: 'hoa',
+    regionKey: 'hoa_diem_son',
+    realmTier: 'nguyen_anh',
+  },
+  {
+    key: 'weekly_tho_dungeon_5',
+    name: 'Hoàng thổ thần huyệt',
+    description: 'Tảo đãng phó bản Hoàng Thổ Huyệt 5 lần trong tuần (Nguyên Anh trở lên).',
+    period: 'WEEKLY',
+    goalKind: 'CLEAR_DUNGEON',
+    goalAmount: 5,
+    requiredRealmOrder: 4,
+    quality: 'TIEN',
+    rewards: {
+      linhThach: 14000,
+      exp: 20000,
+      items: [{ itemKey: 'tien_kim_sa', qty: 2 }],
+    },
+    element: 'tho',
+    regionKey: 'hoang_tho_huyet',
+    realmTier: 'nguyen_anh',
+  },
+
+  // ---------- WEEKLY misc ----------
+  {
+    key: 'weekly_market_buy_10',
+    name: 'Phường thị tuần khách',
+    description: 'Mua 10 món đồ qua Phường Thị trong tuần.',
+    period: 'WEEKLY',
+    goalKind: 'BUY_LISTING',
+    goalAmount: 10,
+    quality: 'LINH',
+    rewards: { linhThach: 1500, congHien: 30 },
+  },
+  {
+    key: 'weekly_sect_contribute_2000',
+    name: 'Tông môn trụ cột',
+    description: 'Đóng góp 2000 linh thạch cho tông môn trong tuần.',
+    period: 'WEEKLY',
+    goalKind: 'SECT_CONTRIBUTE',
+    goalAmount: 2000,
+    quality: 'HUYEN',
+    rewards: { congHien: 500, linhThach: 800 },
+  },
+  {
+    key: 'weekly_chat_50',
+    name: 'Đạo hữu thường ngữ',
+    description: 'Gửi 50 tin nhắn ở kênh thế giới hoặc tông môn trong tuần.',
+    period: 'WEEKLY',
+    goalKind: 'CHAT_MESSAGE',
+    goalAmount: 50,
+    quality: 'PHAM',
+    rewards: { linhThach: 500 },
+  },
+
+  // ---------- ONCE — Tu Tiên Progression chain ----------
+  {
+    key: 'once_breakthrough_truc_co',
+    name: 'Khai mạch Trúc Cơ',
+    description: 'Đột phá lần đầu tới cảnh giới Trúc Cơ.',
+    period: 'ONCE',
+    goalKind: 'BREAKTHROUGH',
+    goalAmount: 1,
+    quality: 'HUYEN',
+    rewards: {
+      linhThach: 3000,
+      exp: 5000,
+      items: [{ itemKey: 'thanh_lam_dan', qty: 5 }],
+    },
+    storyChainKey: 'tu_tien_progression',
+    realmTier: 'truc_co',
+  },
+  {
+    key: 'once_breakthrough_kim_dan',
+    name: 'Ngưng kết Kim Đan',
+    description: 'Đột phá lần đầu tới cảnh giới Kim Đan.',
+    period: 'ONCE',
+    goalKind: 'BREAKTHROUGH',
+    goalAmount: 1,
+    quality: 'TIEN',
+    rewards: {
+      linhThach: 10000,
+      exp: 30000,
+      items: [{ itemKey: 'co_thien_dan', qty: 5 }],
+    },
+    storyChainKey: 'tu_tien_progression',
+    realmTier: 'kim_dan',
+  },
+  {
+    key: 'once_breakthrough_nguyen_anh',
+    name: 'Hoá kiếp Nguyên Anh',
+    description: 'Đột phá lần đầu tới cảnh giới Nguyên Anh.',
+    period: 'ONCE',
+    goalKind: 'BREAKTHROUGH',
+    goalAmount: 1,
+    quality: 'TIEN',
+    rewards: {
+      linhThach: 25000,
+      exp: 80000,
+      items: [{ itemKey: 'cuu_thien_dan', qty: 3 }],
+    },
+    storyChainKey: 'tu_tien_progression',
+    realmTier: 'nguyen_anh',
+  },
+  {
+    key: 'once_breakthrough_hoa_than',
+    name: 'Vạn pháp Hoá Thần',
+    description: 'Đột phá lần đầu tới cảnh giới Hoá Thần.',
+    period: 'ONCE',
+    goalKind: 'BREAKTHROUGH',
+    goalAmount: 1,
+    quality: 'THAN',
+    rewards: {
+      linhThach: 60000,
+      exp: 200000,
+      items: [{ itemKey: 'than_dan', qty: 3 }],
+    },
+    storyChainKey: 'tu_tien_progression',
+    realmTier: 'hoa_than',
+  },
+
+  // ---------- ONCE — Kim Chronicle chain ----------
+  {
+    key: 'once_clear_kim_son_mach_first',
+    name: 'Kim Sơn sơ thám',
+    description: 'Hoàn thành phó bản Kim Sơn Mạch lần đầu.',
+    period: 'ONCE',
+    goalKind: 'CLEAR_DUNGEON',
+    goalAmount: 1,
+    requiredRealmOrder: 3,
+    quality: 'HUYEN',
+    rewards: {
+      linhThach: 4000,
+      items: [{ itemKey: 'kim_son_mach_phu', qty: 1 }],
+    },
+    element: 'kim',
+    regionKey: 'kim_son_mach',
+    storyChainKey: 'kim_chronicle',
+    realmTier: 'kim_dan',
+  },
+  {
+    key: 'once_clear_kim_son_mach_5',
+    name: 'Kim Sơn ngũ thám',
+    description: 'Hoàn thành phó bản Kim Sơn Mạch tổng cộng 5 lần.',
+    period: 'ONCE',
+    goalKind: 'CLEAR_DUNGEON',
+    goalAmount: 5,
+    requiredRealmOrder: 3,
+    quality: 'TIEN',
+    rewards: {
+      linhThach: 8000,
+      items: [{ itemKey: 'tinh_thiet', qty: 10 }],
+    },
+    element: 'kim',
+    regionKey: 'kim_son_mach',
+    storyChainKey: 'kim_chronicle',
+    realmTier: 'kim_dan',
+  },
+
+  // ---------- ONCE — Moc Chronicle chain ----------
+  {
+    key: 'once_clear_moc_huyen_lam_first',
+    name: 'Mộc Lâm sơ vào',
+    description: 'Hoàn thành phó bản Mộc Huyền Lâm lần đầu.',
+    period: 'ONCE',
+    goalKind: 'CLEAR_DUNGEON',
+    goalAmount: 1,
+    requiredRealmOrder: 2,
+    quality: 'LINH',
+    rewards: {
+      linhThach: 2000,
+      items: [{ itemKey: 'moc_huyen_lam_phu', qty: 1 }],
+    },
+    element: 'moc',
+    regionKey: 'moc_huyen_lam',
+    storyChainKey: 'moc_chronicle',
+    realmTier: 'truc_co',
+  },
+  {
+    key: 'once_clear_moc_huyen_lam_5',
+    name: 'Mộc Lâm ngũ vào',
+    description: 'Hoàn thành phó bản Mộc Huyền Lâm tổng cộng 5 lần.',
+    period: 'ONCE',
+    goalKind: 'CLEAR_DUNGEON',
+    goalAmount: 5,
+    requiredRealmOrder: 2,
+    quality: 'HUYEN',
+    rewards: {
+      linhThach: 4000,
+      items: [{ itemKey: 'linh_thao', qty: 15 }],
+    },
+    element: 'moc',
+    regionKey: 'moc_huyen_lam',
+    storyChainKey: 'moc_chronicle',
+    realmTier: 'truc_co',
+  },
+
+  // ---------- ONCE — Thuỷ Chronicle chain ----------
+  {
+    key: 'once_clear_thuy_long_uyen_first',
+    name: 'Thuỷ Uyên sơ kiến',
+    description: 'Hoàn thành phó bản Thuỷ Long Uyên lần đầu.',
+    period: 'ONCE',
+    goalKind: 'CLEAR_DUNGEON',
+    goalAmount: 1,
+    requiredRealmOrder: 3,
+    quality: 'HUYEN',
+    rewards: {
+      linhThach: 4500,
+      items: [{ itemKey: 'thuy_long_uyen_phu', qty: 1 }],
+    },
+    element: 'thuy',
+    regionKey: 'thuy_long_uyen',
+    storyChainKey: 'thuy_chronicle',
+    realmTier: 'kim_dan',
+  },
+  {
+    key: 'once_clear_thuy_long_uyen_5',
+    name: 'Thuỷ Uyên ngũ kiến',
+    description: 'Hoàn thành phó bản Thuỷ Long Uyên tổng cộng 5 lần.',
+    period: 'ONCE',
+    goalKind: 'CLEAR_DUNGEON',
+    goalAmount: 5,
+    requiredRealmOrder: 3,
+    quality: 'TIEN',
+    rewards: {
+      linhThach: 9000,
+      items: [{ itemKey: 'han_ngoc', qty: 8 }],
+    },
+    element: 'thuy',
+    regionKey: 'thuy_long_uyen',
+    storyChainKey: 'thuy_chronicle',
+    realmTier: 'kim_dan',
+  },
+
+  // ---------- ONCE — Hoả Chronicle chain ----------
+  {
+    key: 'once_clear_hoa_diem_son_first',
+    name: 'Hoả Diệm sơ thiêu',
+    description: 'Hoàn thành phó bản Hoả Diệm Sơn lần đầu.',
+    period: 'ONCE',
+    goalKind: 'CLEAR_DUNGEON',
+    goalAmount: 1,
+    requiredRealmOrder: 4,
+    quality: 'TIEN',
+    rewards: {
+      linhThach: 8000,
+      items: [{ itemKey: 'hoa_diem_son_phu', qty: 1 }],
+    },
+    element: 'hoa',
+    regionKey: 'hoa_diem_son',
+    storyChainKey: 'hoa_chronicle',
+    realmTier: 'nguyen_anh',
+  },
+  {
+    key: 'once_clear_hoa_diem_son_3',
+    name: 'Hoả Diệm tam thiêu',
+    description: 'Hoàn thành phó bản Hoả Diệm Sơn tổng cộng 3 lần.',
+    period: 'ONCE',
+    goalKind: 'CLEAR_DUNGEON',
+    goalAmount: 3,
+    requiredRealmOrder: 4,
+    quality: 'TIEN',
+    rewards: {
+      linhThach: 18000,
+      items: [{ itemKey: 'huyet_tinh', qty: 12 }],
+    },
+    element: 'hoa',
+    regionKey: 'hoa_diem_son',
+    storyChainKey: 'hoa_chronicle',
+    realmTier: 'nguyen_anh',
+  },
+
+  // ---------- ONCE — Thổ Chronicle chain ----------
+  {
+    key: 'once_clear_hoang_tho_huyet_first',
+    name: 'Hoàng Thổ sơ huyệt',
+    description: 'Hoàn thành phó bản Hoàng Thổ Huyệt lần đầu.',
+    period: 'ONCE',
+    goalKind: 'CLEAR_DUNGEON',
+    goalAmount: 1,
+    requiredRealmOrder: 4,
+    quality: 'TIEN',
+    rewards: {
+      linhThach: 9000,
+      items: [{ itemKey: 'hoang_tho_huyet_phu', qty: 1 }],
+    },
+    element: 'tho',
+    regionKey: 'hoang_tho_huyet',
+    storyChainKey: 'tho_chronicle',
+    realmTier: 'nguyen_anh',
+  },
+  {
+    key: 'once_clear_hoang_tho_huyet_3',
+    name: 'Hoàng Thổ tam huyệt',
+    description: 'Hoàn thành phó bản Hoàng Thổ Huyệt tổng cộng 3 lần.',
+    period: 'ONCE',
+    goalKind: 'CLEAR_DUNGEON',
+    goalAmount: 3,
+    requiredRealmOrder: 4,
+    quality: 'TIEN',
+    rewards: {
+      linhThach: 22000,
+      items: [{ itemKey: 'tien_kim_sa', qty: 4 }],
+    },
+    element: 'tho',
+    regionKey: 'hoang_tho_huyet',
+    storyChainKey: 'tho_chronicle',
+    realmTier: 'nguyen_anh',
+  },
+
+  // ---------- ONCE — Endgame chain ----------
+  {
+    key: 'once_clear_cuu_la_dien_first',
+    name: 'Cửu La Điện chấn động',
+    description: 'Hoàn thành phó bản Cửu La Điện lần đầu (single-boss endgame).',
+    period: 'ONCE',
+    goalKind: 'CLEAR_DUNGEON',
+    goalAmount: 1,
+    requiredRealmOrder: 4,
+    quality: 'THAN',
+    rewards: {
+      linhThach: 50000,
+      exp: 80000,
+      items: [{ itemKey: 'cuu_la_dien_phu', qty: 2 }],
+    },
+    element: null,
+    regionKey: 'cuu_la_dien',
+    storyChainKey: 'endgame',
+    realmTier: 'nguyen_anh',
+  },
+  {
+    key: 'once_clear_cuu_la_dien_3',
+    name: 'Cửu La Điện tam chấn',
+    description: 'Hoàn thành phó bản Cửu La Điện tổng cộng 3 lần.',
+    period: 'ONCE',
+    goalKind: 'CLEAR_DUNGEON',
+    goalAmount: 3,
+    requiredRealmOrder: 4,
+    quality: 'THAN',
+    rewards: {
+      linhThach: 120000,
+      exp: 250000,
+      items: [{ itemKey: 'thien_linh_ngoc', qty: 1 }],
+    },
+    element: null,
+    regionKey: 'cuu_la_dien',
+    storyChainKey: 'endgame',
+    realmTier: 'nguyen_anh',
+  },
+
+  // ---------- ONCE milestones ----------
+  {
+    key: 'once_kill_500_monster',
+    name: 'Vạn yêu trảm phong',
+    description: 'Tích luỹ hạ gục 500 yêu thú.',
+    period: 'ONCE',
+    goalKind: 'KILL_MONSTER',
+    goalAmount: 500,
+    quality: 'HUYEN',
+    rewards: { linhThach: 5000, exp: 10000 },
+  },
+  {
+    key: 'once_kill_2000_monster',
+    name: 'Bá đạo trảm yêu',
+    description: 'Tích luỹ hạ gục 2000 yêu thú.',
+    period: 'ONCE',
+    goalKind: 'KILL_MONSTER',
+    goalAmount: 2000,
+    quality: 'TIEN',
+    rewards: {
+      linhThach: 18000,
+      exp: 50000,
+      items: [{ itemKey: 'cuu_thien_dan', qty: 5 }],
+    },
+  },
+  {
+    key: 'once_kill_10000_monster',
+    name: 'Tuyệt đối trảm yêu',
+    description: 'Tích luỹ hạ gục 10000 yêu thú.',
+    period: 'ONCE',
+    goalKind: 'KILL_MONSTER',
+    goalAmount: 10000,
+    quality: 'THAN',
+    rewards: {
+      linhThach: 80000,
+      exp: 200000,
+      items: [{ itemKey: 'than_dan', qty: 5 }],
+    },
+  },
+  {
+    key: 'once_market_sell_50',
+    name: 'Phường thị thương gia',
+    description: 'Bán thành công 50 món đồ qua Phường Thị.',
+    period: 'ONCE',
+    goalKind: 'SELL_LISTING',
+    goalAmount: 50,
+    quality: 'HUYEN',
+    rewards: { linhThach: 5000, tienNgoc: 50 },
+  },
+  {
+    key: 'once_market_buy_50',
+    name: 'Phường thị thường khách',
+    description: 'Mua 50 món đồ qua Phường Thị.',
+    period: 'ONCE',
+    goalKind: 'BUY_LISTING',
+    goalAmount: 50,
+    quality: 'HUYEN',
+    rewards: { linhThach: 5000, congHien: 100 },
+  },
+  {
+    key: 'once_sect_contribute_5000',
+    name: 'Tông môn cống hiến',
+    description: 'Đóng góp tổng cộng 5000 linh thạch cho tông môn.',
+    period: 'ONCE',
+    goalKind: 'SECT_CONTRIBUTE',
+    goalAmount: 5000,
+    quality: 'HUYEN',
+    rewards: { congHien: 200, linhThach: 4000 },
+  },
+  {
+    key: 'once_sect_contribute_50000',
+    name: 'Tông môn trụ cột',
+    description: 'Đóng góp tổng cộng 50000 linh thạch cho tông môn.',
+    period: 'ONCE',
+    goalKind: 'SECT_CONTRIBUTE',
+    goalAmount: 50000,
+    quality: 'TIEN',
+    rewards: { congHien: 1000, linhThach: 25000 },
+  },
+  {
+    key: 'once_chat_100',
+    name: 'Đạo hữu thân thiết',
+    description: 'Gửi 100 tin nhắn ở kênh thế giới hoặc tông môn.',
+    period: 'ONCE',
+    goalKind: 'CHAT_MESSAGE',
+    goalAmount: 100,
+    quality: 'PHAM',
+    rewards: { linhThach: 1000 },
+  },
+  {
+    key: 'once_cultivate_360000s_total',
+    name: 'Bách giờ bế quan',
+    description: 'Tu luyện tổng cộng 100 giờ (360000 giây).',
+    period: 'ONCE',
+    goalKind: 'CULTIVATE_SECONDS',
+    goalAmount: 360000,
+    quality: 'TIEN',
+    rewards: {
+      linhThach: 15000,
+      exp: 80000,
+      items: [{ itemKey: 'van_linh_dan', qty: 3 }],
+    },
+  },
+  {
+    key: 'once_cultivate_3600000s_total',
+    name: 'Vạn giờ tu hành',
+    description: 'Tu luyện tổng cộng 1000 giờ (3600000 giây).',
+    period: 'ONCE',
+    goalKind: 'CULTIVATE_SECONDS',
+    goalAmount: 3600000,
+    quality: 'THAN',
+    rewards: {
+      linhThach: 80000,
+      exp: 500000,
+      items: [{ itemKey: 'than_dan', qty: 5 }],
+    },
+  },
+  {
+    key: 'once_boss_hit_100',
+    name: 'Boss bằng hữu',
+    description: 'Đánh trúng Thế Giới Boss tổng cộng 100 lần.',
+    period: 'ONCE',
+    goalKind: 'BOSS_HIT',
+    goalAmount: 100,
+    quality: 'HUYEN',
+    rewards: { linhThach: 8000, congHien: 300 },
+  },
+  {
+    key: 'once_boss_hit_500',
+    name: 'Boss đại địch',
+    description: 'Đánh trúng Thế Giới Boss tổng cộng 500 lần.',
+    period: 'ONCE',
+    goalKind: 'BOSS_HIT',
+    goalAmount: 500,
+    quality: 'TIEN',
+    rewards: { linhThach: 35000, congHien: 1500 },
+  },
+  {
+    key: 'once_gain_exp_1000000',
+    name: 'Bách vạn kinh nghiệm',
+    description: 'Tích luỹ 1,000,000 EXP suốt sự nghiệp tu tiên.',
+    period: 'ONCE',
+    goalKind: 'GAIN_EXP',
+    goalAmount: 1_000_000,
+    quality: 'TIEN',
+    rewards: {
+      linhThach: 25000,
+      items: [{ itemKey: 'cuu_huyen_dan', qty: 2 }],
+    },
+  },
+  {
+    key: 'once_gain_exp_10000000',
+    name: 'Thiên vạn kinh nghiệm',
+    description: 'Tích luỹ 10,000,000 EXP suốt sự nghiệp tu tiên.',
+    period: 'ONCE',
+    goalKind: 'GAIN_EXP',
+    goalAmount: 10_000_000,
+    quality: 'THAN',
+    rewards: {
+      linhThach: 120000,
+      items: [{ itemKey: 'than_dan', qty: 3 }],
+    },
+  },
+  {
+    key: 'once_clear_dungeon_50',
+    name: 'Ngũ thập trận tảo đãng',
+    description: 'Hoàn thành tổng cộng 50 phó bản bất kỳ.',
+    period: 'ONCE',
+    goalKind: 'CLEAR_DUNGEON',
+    goalAmount: 50,
+    quality: 'HUYEN',
+    rewards: {
+      linhThach: 6000,
+      items: [{ itemKey: 'thanh_lam_dan', qty: 5 }],
+    },
+  },
+  {
+    key: 'once_clear_dungeon_500',
+    name: 'Ngũ bách trận tảo đãng',
+    description: 'Hoàn thành tổng cộng 500 phó bản bất kỳ.',
+    period: 'ONCE',
+    goalKind: 'CLEAR_DUNGEON',
+    goalAmount: 500,
+    quality: 'TIEN',
+    rewards: {
+      linhThach: 50000,
+      exp: 80000,
+      items: [{ itemKey: 'cuu_huyen_dan', qty: 5 }],
+    },
+  },
 ];
 
 export function missionByKey(key: string): MissionDef | undefined {
@@ -181,4 +1024,42 @@ export function missionByKey(key: string): MissionDef | undefined {
 
 export function missionsByPeriod(period: MissionPeriod): MissionDef[] {
   return MISSIONS.filter((m) => m.period === period);
+}
+
+/**
+ * Phase 10 PR-4 — filter mission theo Ngũ Hành element. `null` element = mission
+ * vô hệ general. Runtime KHÔNG dùng (catalog only); FE/BE Phase 11+ sẽ wire
+ * element bonus reward.
+ */
+export function missionsByElement(
+  element: ElementKey | null,
+): MissionDef[] {
+  return MISSIONS.filter((m) => (m.element ?? null) === element);
+}
+
+/**
+ * Phase 10 PR-4 — filter mission theo region (kim_son_mach/moc_huyen_lam/…).
+ * Phase 11+ sẽ wire region gating + chain quest UI.
+ */
+export function missionsByRegion(regionKey: string): MissionDef[] {
+  return MISSIONS.filter((m) => m.regionKey === regionKey);
+}
+
+/**
+ * Phase 10 PR-4 — group ONCE mission theo storyChainKey để FE Phase 11+ render
+ * UI chain quest progression. Trả mission sorted by goalAmount asc (giả định
+ * step nhỏ → step lớn).
+ */
+export function missionsByStoryChain(storyChainKey: string): MissionDef[] {
+  return MISSIONS.filter((m) => m.storyChainKey === storyChainKey).slice().sort(
+    (a, b) => a.goalAmount - b.goalAmount,
+  );
+}
+
+/**
+ * Phase 10 PR-4 — filter mission theo realm tier label (luyenkhi/truc_co/…).
+ * Khác `requiredRealmOrder` runtime gate; đây là metadata UI bucket.
+ */
+export function missionsByRealmTier(realmTier: string): MissionDef[] {
+  return MISSIONS.filter((m) => m.realmTier === realmTier);
 }

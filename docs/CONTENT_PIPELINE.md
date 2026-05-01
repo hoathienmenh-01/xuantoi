@@ -18,7 +18,7 @@ Mục tiêu: thêm content **không phá CI**, **không lệch curve**, **không
 | Skill | `packages/shared/src/combat.ts` `SKILLS` | 25 skill (Phase 10 PR-2 +15 Ngũ Hành) | Phase 10-11: → 25-30 ✅ |
 | Monster | `packages/shared/src/combat.ts` `MONSTERS` | 29 monster (Phase 10 PR-3 +20 Ngũ Hành × MonsterType BEAST/HUMANOID/SPIRIT/ELITE/BOSS) | Phase 10: → 30 ✅ |
 | Dungeon | `packages/shared/src/combat.ts` `DUNGEONS` + `DUNGEON_LOOT` | 9 dungeon (Phase 10 PR-3 +6 element-thematic) | Phase 10: → 8-10 ✅ |
-| Mission | `packages/shared/src/missions.ts` | 12 mission (PR #217 Phase 10 PR-4 +54 → 66 mission, daily/weekly/once × Ngũ Hành chain quest — Pending merge) | Phase 10: → 65+ ✅ (PR-4 mở [#217](https://github.com/hoathienmenh-01/xuantoi/pull/217)) |
+| Mission | `packages/shared/src/missions.ts` | 66 mission (PR #217 Phase 10 PR-4 +54: tier daily/weekly + element chronicle + tu-tien-progression chain — this PR open) | Phase 10: → 65+ ✅ |
 | Boss | `packages/shared/src/boss.ts` | 12 boss (Phase 10 PR-5 +10 named × Ngũ Hành × realm tier kim_dan → hop_the) | Phase 10: → 10 named ✅ |
 | Topup pack | `packages/shared/src/topup.ts` | (đã có) | Tunable theo monetization |
 | Shop pack | `packages/shared/src/shop.ts` | (đã có) | Tunable |
@@ -82,7 +82,7 @@ Mỗi content type có 1 contract chung:
 | Skill | `sect?`, `atkScale`, `mpCost`, `cooldownTurns?`, `selfHealRatio?`, `selfBloodCost?`, `element?` (kim/moc/thuy/hoa/tho/null), `type?` (ACTIVE/PASSIVE), `role?` (DAMAGE/HEAL/BUFF/DEBUFF/CONTROL/UTILITY), `unlockRealm?` (REALMS key) |
 | Monster | `level`, `hp`, `atk`, `def`, `speed`, `expDrop`, `linhThachDrop` |
 | Dungeon | `recommendedRealm`, `monsters[]`, `staminaEntry` |
-| Mission | `period`, `goalKind`, `goalAmount`, `rewards`, `requiredRealmKey?` |
+| Mission | `period`, `goalKind`, `goalAmount`, `rewards`, `requiredRealmOrder?`, `element?` (Ngũ Hành), `regionKey?`, `storyChainKey?` (Phase 11+ chain quest UI), `realmTier?` (REALMS key) |
 | Boss | `level`, `maxHp`, `atk`, `def`, `rewardLinhThach`, `rewardItems[]`, `spawnIntervalMin?` |
 | Quest (phase 11) | `chainKey`, `stepIndex`, `requiredQuestKey?`, `rewards`, `dialogueKey?` |
 | Event (phase 15) | `kind`, `configJson`, `startsAt`, `endsAt`, `rewardTiers[]` |
@@ -155,11 +155,30 @@ Mỗi content type có 1 contract chung:
 ### 4.4 Mission
 
 1. Mở `packages/shared/src/missions.ts`.
-2. Append `MISSIONS` array.
-3. Reward `items[]` phải tham chiếu `itemKey` đã tồn tại.
-4. `goalKind` phải nằm trong list (xem code).
-5. **Lưu ý mission gameplay hook**: hiện chỉ catalog. Khi gameplay hook merged (phase 11+), mission service sẽ track progress theo `goalKind`. Trước đó, mission claim không trigger được (FE hiển thị greyed). Đảm bảo PR mission gameplay hook đi kèm khi nâng catalog mạnh.
-6. PR title: `feat(shared): mission pack <theme> (+N mission)`.
+2. Append `MISSIONS` array. `key` snake_case unique.
+3. Reward `items[]` phải tham chiếu `itemKey` đã tồn tại trong ITEMS catalog (verify bằng `itemByKey()`).
+4. `goalKind` phải nằm trong `MissionGoalKind` enum (xem code: `LOGIN_DAILY` / `CULTIVATE_SECONDS` / `KILL_MONSTER` / `CLEAR_DUNGEON` / `BREAKTHROUGH` / `MARKET_BUY` / `MARKET_SELL` / `SECT_DONATE` / `BOSS_HIT` / `CHAT_SEND` / `GAIN_EXP` / etc).
+5. **Phase 10 PR-4 forward-compat fields** (optional nhưng khuyến khích đặt cho mọi mission mới có theme):
+   - `element` (`'kim' | 'moc' | 'thuy' | 'hoa' | 'tho' | null`) — Ngũ Hành affinity, phase 11+ wire element bonus reward.
+   - `regionKey` (`string | null`) — tham chiếu region monster/dungeon hoặc dungeon key cụ thể (kim_son_mach/moc_huyen_lam/thuy_long_uyen/hoa_diem_son/hoang_tho_huyet/cuu_la_dien). Phase 11+ wire region gating + minimap.
+   - `storyChainKey` (`string | null`) — group ONCE mission thành narrative arc cho FE Phase 11+ quest chain UI. Ví dụ: `tu_tien_progression` (4 step breakthrough), `kim_chronicle`/`moc_chronicle`/`thuy_chronicle`/`hoa_chronicle`/`tho_chronicle` (≥ 2 step element chronicle), `endgame` (cuu_la_dien). Helper `missionsByStoryChain()` trả mission sorted by `goalAmount` asc — chain progression order.
+   - `realmTier` (`string | null`) — REALMS key (`luyenkhi`/`truc_co`/`kim_dan`/`nguyen_anh`/`hoa_than`) để FE bucket UI; **distinct từ `requiredRealmOrder`** runtime gate (cái sau enforce ở mission.service backend).
+6. **Reward budget bound** (BALANCE_MODEL §7.1, enforce bằng `missions-balance.test.ts`):
+   - Daily LT cap theo realm tier: luyenkhi 800 / truc_co 2300 / kim_dan 6000 / nguyen_anh 15000 (50% buffer trên baseline 500/1500/4000/10000).
+   - Weekly LT cap: 5× daily tier.
+   - Once LT cap tuyệt đối: 200000 (prevent runaway endgame mission).
+   - tienNgoc cap: 100 / mission.
+   - Tất cả reward number > 0 (không định nghĩa reward 0).
+7. **Story chain coverage** (test enforce): `tu_tien_progression` ≥ 4 BREAKTHROUGH mission; mỗi `{element}_chronicle` ≥ 2 ONCE mission; `endgame` chain ≥ 1 mission link `cuu_la_dien` region.
+8. **Lưu ý mission gameplay hook**: catalog hiện đã có gameplay hook qua `mission.service.ts` (track theo `goalKind` string); Phase 10 forward-compat fields (`element`/`regionKey`/`storyChainKey`/`realmTier`) là **metadata only** — runtime KHÔNG đọc, mission claim hoạt động bình thường theo `goalKind` matching. Mission không có `goalKind` hỗ trợ runtime hiện tại sẽ greyed UI cho đến khi hook thêm vào.
+9. Test pass: `pnpm --filter @xuantoi/shared test` — verify `missions.test.ts` (legacy invariant) + `missions-balance.test.ts` (Ngũ Hành coverage + budget bound + chain structure) cả hai green.
+10. PR title: `feat(shared): mission pack <theme> (+N mission)`.
+
+**Quality gate Phase 10+**:
+- `missions-balance.test.ts` pass: unique key, reward budget per tier, element/region/storyChain/realmTier validity.
+- Mỗi Ngũ Hành element có ≥ 1 mission tham chiếu.
+- Mọi reward.itemKey resolve qua `itemByKey()`.
+- Story chain mission cùng chain có cùng (element, regionKey) family hoặc shared null (consistency).
 
 ### 4.5 Boss
 
