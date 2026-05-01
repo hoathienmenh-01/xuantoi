@@ -124,6 +124,21 @@ pnpm smoke:economy     # ≤ 5 phút — ledger / reward safety (xem docs/QA_CHE
 
 Cả hai script là `.mjs` zero-install (native fetch, Node 20+). Exit `0` = pass, exit `1` = có invariant fail (stderr in step + diagnostic). **BẮT BUỘC** chạy `smoke:economy` trước khi mở Phase 10 content PR (xem [`QA_CHECKLIST.md`](./QA_CHECKLIST.md) §10).
 
+### Playwright E2E full-stack (16 spec)
+
+Chạy local với api + web dev cùng up:
+
+```bash
+PLAYWRIGHT_BASE_URL=http://localhost:5173 \
+PLAYWRIGHT_SKIP_WEBSERVER=1 \
+E2E_FULL=1 \
+pnpm --filter @xuantoi/web e2e --reporter=list
+```
+
+Yêu cầu Postgres + Redis qua `pnpm infra:up`, API qua `pnpm --filter @xuantoi/api dev`, Web qua `pnpm --filter @xuantoi/web dev`. Suite ~22–25s, xem [`QA_CHECKLIST.md`](./QA_CHECKLIST.md) §12 cho spec breakdown + env reference.
+
+CI: workflow gated `.github/workflows/e2e-full.yml` chạy 16 spec trên Postgres + Redis service container khi PR đụng `apps/web/**` / `apps/api/**` / `packages/shared/**` / `pnpm-lock.yaml` / `package.json`. Cũng có thể trigger manual qua tab Actions → "e2e-full" → "Run workflow".
+
 ## 8. Reset DB sạch
 
 ```bash

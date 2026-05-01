@@ -536,12 +536,48 @@ docker exec xuantoi-redis redis-cli --scan --pattern 'rl:register:*' \
 
 ### CI gating
 
-Playwright golden path KHÔNG vào CI flow vì cần Postgres + Redis + 2 dev server (`apps/api` + `apps/web`) cùng chạy. CI hiện chỉ chạy `pnpm test` + `pnpm build` artifact. Suite gated `E2E_FULL=1` (default skip qua `test.skip(!FULL_E2E, …)` ở describe block) → CI vẫn chạy spec smoke `AuthView` nhưng skip 10 spec full-stack. Script là **manual/gated**.
+Playwright golden path chạy trong CI qua workflow gated `.github/workflows/e2e-full.yml` — KHÔNG required mọi PR (giữ CI nhanh), nhưng tự động trigger khi PR đụng FE / BE / shared / lockfile. Workflow chính `ci.yml` vẫn giữ nguyên: `build` job (typecheck/lint/test/build, có Postgres + Redis service) + `e2e-smoke` job (build artifact `vite preview` + 1 spec `AuthView` smoke, KHÔNG cần backend) — đó là CI bắt buộc. Workflow `e2e-full.yml` là **layer thứ 2** chạy 16 spec full-stack với Postgres + Redis + API + Web dev cùng chạy.
 
-Khi PR đụng các file thuộc danh sách "BẮT BUỘC" ở §12 trên, reviewer **phải** request:
-- Output `E2E_FULL=1 pnpm --filter @xuantoi/web e2e --reporter=line` (11/11 PASS) trong PR body.
+**Trigger workflow `e2e-full.yml`** (xem `.github/workflows/e2e-full.yml`):
 
-Roadmap Phase 9: setup CI service container Postgres + Redis + spawn 2 dev server → chạy `E2E_FULL=1` mỗi PR đụng `apps/web` hoặc `apps/api`.
+| Trigger | Khi nào |
+|---|---|
+| `workflow_dispatch` | Bất kỳ ai có quyền Actions có thể chạy manual từ tab Actions → "e2e-full" → "Run workflow" (chọn branch). Dùng để smoke trước khi merge một PR docs-only / unrelated path. |
+| `pull_request` (path-filtered) | PR đụng `apps/web/**`, `apps/api/**`, `packages/shared/**`, `pnpm-lock.yaml`, `pnpm-workspace.yaml`, `package.json`, hoặc chính `.github/workflows/e2e-full.yml`. |
+| `push` to `main` (path-filtered) | Khi PR merge vào main hoặc ai đó push thẳng (KHÔNG khuyến khích). Cùng path filter với `pull_request`. |
+
+**Concurrency**: `cancel-in-progress` theo `${{ github.workflow }}-${{ github.ref }}` — push commit mới lên cùng PR sẽ huỷ run cũ, tiết kiệm CI minutes.
+
+**Workflow steps** (~5–8 phút cold cache, ~3–5 phút khi đã cache Playwright browsers):
+
+1. Checkout + setup pnpm + Node 20.
+2. `pnpm install --frozen-lockfile=false`.
+3. `pnpm --filter @xuantoi/api prisma:generate` + `pnpm --filter @xuantoi/api exec prisma migrate deploy` (no seed/bootstrap cần — sect tự upsert qua `character/onboard`, shop catalog từ `packages/shared`).
+4. `pnpm --filter @xuantoi/shared build` + `pnpm --filter @xuantoi/api build`.
+5. Cache + install Playwright Chromium (cache key dựa `apps/web/package.json` + `pnpm-lock.yaml` hash).
+6. Start API (`node apps/api/dist/src/main.js` background) → wait `/api/healthz` 60s + `/api/readyz` 30s.
+7. Start Web (`pnpm --filter @xuantoi/web dev` background, vite dev :5173 proxy `/api` + `/ws` → :3000) → wait `:5173` 60s.
+8. Run `PLAYWRIGHT_BASE_URL=http://localhost:5173 PLAYWRIGHT_SKIP_WEBSERVER=1 E2E_FULL=1 E2E_API_BASE=http://localhost:3000 pnpm --filter @xuantoi/web exec playwright test --project=chromium --reporter=list`.
+9. On failure: upload `apps/web/test-results/` + `apps/web/playwright-report/` + `.ci-logs/api.log` + `.ci-logs/web.log` thành artifact `playwright-full-{run_id}-{run_attempt}` retention 7d.
+
+**Env workflow**:
+
+- `DATABASE_URL=postgresql://mtt:mtt@localhost:5432/mtt?schema=public`
+- `REDIS_URL=redis://localhost:6379`
+- `JWT_ACCESS_SECRET` / `JWT_REFRESH_SECRET` = ephemeral CI placeholder (`ci-e2e-*-not-for-prod-*`, KHÔNG trùng `change-me-*` / `dev-*-secret` blacklist).
+- `NODE_ENV=development` → CORS dev fallback cho phép `http://localhost:5173`, helmet CSP off (vite dev cần inline script).
+- `MAIL_TRANSPORT=console` (forgot-password test chưa cover, không cần SMTP).
+- `MISSION_RESET_TZ=Asia/Ho_Chi_Minh`, `SESSION_COOKIE_DOMAIN=localhost`, `WEB_PUBLIC_URL=http://localhost:5173`.
+
+**Pass criteria CI**: workflow `e2e-full.yml` → green; `Run Playwright golden path (E2E_FULL=1)` step exit 0, dòng cuối `16 passed (<time>s)`.
+
+**Fail criteria CI**: 1+ spec fail → workflow đỏ. Reviewer download artifact `playwright-full-{run_id}-{run_attempt}` để xem trace + screenshot + server log. KHÔNG được skip spec hoặc tắt workflow để PR xanh giả; root-cause + fix trước.
+
+**Khi PR đụng `apps/web/**` / `apps/api/**` / `packages/shared/**`**: reviewer phải verify workflow `e2e-full` xanh trong PR Status Checks. Nếu workflow KHÔNG run (PR docs-only), chạy manual qua `workflow_dispatch` nếu cần xác nhận.
+
+**Roadmap (post-PR này)**:
+- Sau 2–3 tuần stable, đánh giá có nên upgrade `e2e-full` thành required check trong branch protection rules.
+- Nếu tiếp tục stable, xem xét add 1 spec `forgot-password` (cần SMTP Mailhog service container).
 
 ### Deferred sub-checks (không có trong spec hiện tại)
 

@@ -126,7 +126,7 @@ Checklist để promote beta (closed 50 users → open). Tick khi xong.
 
 ### QA + Launch
 - [ ] **Runtime smoke tích hợp**: execute `docs/QA_CHECKLIST.md` 13 section trên local hoặc staging (15 phút).
-- [x] **Playwright E2E** golden path closed beta core loop (session 9q-7 → 9q-8, manual gated `E2E_FULL=1`): **16/16 spec** pass trong ~22–25s — register → 4-step onboarding → /home → cultivate ON/OFF → daily login claim → mission tabs → shop browse disabled-buy → inventory empty → chat WORLD → leaderboard → profile → logout → **shop buy LINH_THACH** (UI) → **inventory equip** (UI) → **mail empty state** → **dungeon list + entry enabled** → **settings page load**. Xem [`QA_CHECKLIST.md`](./QA_CHECKLIST.md) §12. **Defer** (ghi rõ): cultivation breakthrough end-to-end, dungeon enter+clear+loot end-to-end (combat RNG → flaky, defer `smoke:combat`), mail claim attachment (cần admin send → defer `smoke:admin`), inventory use HP pill (fresh char hp full → no observable change), giftcode redeem (cần admin → defer `smoke:admin`). **Pending**: CI integration (Postgres + Redis service container + 2 dev server) — hiện manual gated, `e2e-smoke` CI chỉ build artifact + run 1 spec smoke `AuthView`.
+- [x] **Playwright E2E** golden path closed beta core loop (session 9q-7 → 9q-8 → 9r-1, gated CI): **16/16 spec** pass trong ~22–25s — register → 4-step onboarding → /home → cultivate ON/OFF → daily login claim → mission tabs → shop browse disabled-buy → inventory empty → chat WORLD → leaderboard → profile → logout → **shop buy LINH_THACH** (UI) → **inventory equip** (UI) → **mail empty state** → **dungeon list + entry enabled** → **settings page load**. Xem [`QA_CHECKLIST.md`](./QA_CHECKLIST.md) §12. **Defer** (ghi rõ): cultivation breakthrough end-to-end, dungeon enter+clear+loot end-to-end (combat RNG → flaky, defer `smoke:combat`), mail claim attachment (cần admin send → defer `smoke:admin`), inventory use HP pill (fresh char hp full → no observable change), giftcode redeem (cần admin → defer `smoke:admin`). **CI integration (session 9r-1)**: workflow `.github/workflows/e2e-full.yml` chạy gated trên `pull_request` + `push` to main (path filter `apps/web/**` / `apps/api/**` / `packages/shared/**` / `pnpm-lock.yaml` / `package.json`) + `workflow_dispatch` manual. PR docs-only → workflow skip. KHÔNG required mọi PR — workflow chính `ci.yml` (build + e2e-smoke) vẫn là CI bắt buộc; `e2e-full.yml` là layer 2 closed beta regression. Roadmap: sau 2–3 tuần stable → đánh giá upgrade thành required check trong branch protection rules.
 - [ ] **Load test** 1000 socket + 500 RPS (k6 / Artillery) — verify BullMQ tick scaling.
 - [ ] **A Linh onboarding** bilingual full text (placeholder hiện tại).
 - [ ] Terms of Service + Privacy Policy (legal).
@@ -149,7 +149,7 @@ Checklist để promote beta (closed 50 users → open). Tick khi xong.
 - [ ] M7 CSP review (production deploy)
 - [ ] Sentry + structured logs (production observability)
 - [ ] Backup DB daily script + restore test
-- [x] Playwright E2E golden path closed beta core loop (regression safety net) — manual gated, cần CI integration
+- [x] Playwright E2E golden path closed beta core loop (regression safety net) — gated CI workflow `.github/workflows/e2e-full.yml` (path-filtered + workflow_dispatch manual)
 - [ ] Runtime smoke tích hợp 13 section QA_CHECKLIST
 
 **Có thể defer đến sau beta**:
