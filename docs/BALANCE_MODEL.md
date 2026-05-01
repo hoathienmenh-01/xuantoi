@@ -415,6 +415,43 @@ Verify pattern (xem `items-dungeon-loot.test.ts`):
 
 **Stack interaction with all systems (Phase 11.4 + 11.5 + 11.6)**: tribulation `effectiveDamage = wave.baseDamage × elementResist(character)`, where `elementResist = 1.0 - resistPercentage`. ResistPercentage tính từ: spiritualRoot.affinity + equipment elemental gear + cultivationMethod.elementBonus. Player muốn pass kiếp phải stack toàn bộ system: linh căn + công pháp + trang bị + refine + gem cùng hệ.
 
+### 5.7 Alchemy curve (phase 11.X.A)
+
+**Phase 11.X.A catalog đã có (session 9r-10 PR — `packages/shared/src/alchemy.ts`)**:
+
+| Recipe key | Output pill | Tier | Furnace | Realm req | Inputs (qty) | Cost LinhThach | Success | E[attempts] |
+|---|---|:---:|---:|:---:|---|---:|---:|---:|
+| recipe_tieu_phuc_dan | tieu_phuc_dan (HP 35) | PHAM | L1 | — | linh_thao×2 | 50 | 0.95 | 1.05 |
+| recipe_huyet_chi_dan | huyet_chi_dan (HP 60) | PHAM | L1 | — | linh_thao×1 + huyet_tinh×1 | 100 | 0.92 | 1.09 |
+| recipe_linh_tinh_dan | linh_tinh_dan (MP 30) | PHAM | L1 | — | linh_thao×2 | 50 | 0.95 | 1.05 |
+| recipe_linh_lo_dan | linh_lo_dan (MP 80) | PHAM | L1 | — | linh_thao×3 + huyet_tinh×1 | 120 | 0.90 | 1.11 |
+| recipe_so_huyen_dan | so_huyen_dan (EXP 200) | PHAM | L1 | — | linh_thao×4 | 180 | 0.92 | 1.09 |
+| recipe_thanh_lam_dan | thanh_lam_dan (HP 200) | LINH | L3 | truc_co | huyet_tinh×3 + linh_thao×5 | 400 | 0.85 | 1.18 |
+| recipe_co_thien_dan | co_thien_dan (EXP 500) | LINH | L3 | truc_co | yeu_dan×1 + linh_thao×4 | 500 | 0.80 | 1.25 |
+| recipe_cuu_huyen_dan | cuu_huyen_dan (HP 600) | HUYEN | L5 | kim_dan | yeu_dan×2 + huyet_tinh×3 | 1500 | 0.65 | 1.54 |
+| recipe_ngoc_lien_dan | ngoc_lien_dan (MP 800) | HUYEN | L5 | kim_dan | yeu_dan×2 + tinh_thiet×3 | 1500 | 0.65 | 1.54 |
+| recipe_tien_phach_dan | tien_phach_dan (HP 2500) | TIEN | L7 | hoa_than | han_ngoc×2 + yeu_dan×3 + huyet_tinh×5 | 8000 | 0.40 | 2.50 |
+| recipe_tien_van_dan | tien_van_dan (MP 2500) | TIEN | L7 | hoa_than | han_ngoc×2 + tien_kim_sa×3 | 8000 | 0.40 | 2.50 |
+| recipe_cuu_thien_dan | cuu_thien_dan (EXP 6000) | TIEN | L7 | hoa_than | tien_kim_sa×3 + yeu_dan×4 + linh_thao×8 | 12000 | 0.35 | 2.86 |
+| recipe_nhan_tien_dan | nhan_tien_dan (EXP 18000) | THAN | L9 | do_kiep | han_ngoc×3 + tien_kim_sa×4 + yeu_dan×6 | 30000 | 0.20 | 5.00 |
+
+**Curve rule**:
+- **PHAM tier (L1)**: success ≥ 0.90, cost 50-180 LT — tân thủ luyện đan, low-friction.
+- **LINH tier (L3 + truc_co req)**: success 0.80-0.85, cost 400-500 LT — mid-early game.
+- **HUYEN tier (L5 + kim_dan req)**: success 0.65, cost 1500 LT — yêu cầu yêu đan từ săn yêu thú.
+- **TIEN tier (L7 + hoa_than req)**: success 0.35-0.40, cost 8k-12k LT + nguyên liệu hiếm Tiên (hàn ngọc/tiên kim sa) → endgame whaling.
+- **THAN tier (L9 + do_kiep req)**: success 0.20, cost 30k LT — tổng E[cost] cho 1 nhân tiên đan ≈ 150k LT (5× expected attempts).
+
+**Input balance**:
+- Convention: **input + linhThach LUÔN bị consume dù fail** (intent: anti-spam, force player invest before retry).
+- Material chain: `linh_thao` PHAM/LINH (cheap herb), `huyet_tinh` LINH (yêu thú blood mid), `tinh_thiet` LINH (metal mid), `yeu_dan` HUYEN (yêu đan rare drop), `han_ngoc` TIEN (cold ore endgame), `tien_kim_sa` TIEN (gold sand endgame).
+- Recipe gating: realmRequirement + furnaceLevel cùng nhau enforce ý "phải tu hành đủ + đúc lò đủ mới luyện được đan cao tier".
+
+**Stack interaction with progression**:
+- Phase 11.X.B sẽ thêm `Character.alchemyFurnaceLevel Int @default(1)`. Upgrade lò qua sect contribution / recipe quest / item rare.
+- Phase 11.X.B success roll: `seedrandom(attemptId)` deterministic — server replay-able + audit-able. KHÔNG dùng Math.random(), tránh server-frontend desync.
+- E[attempts] table giúp player budget linhThach + nguyên liệu trước khi luyện. UI Phase 11.X.B sẽ render expected cost dựa trên `getExpectedAlchemyAttempts(recipe)`.
+
 ---
 
 ## 6. BOSS CURVE
