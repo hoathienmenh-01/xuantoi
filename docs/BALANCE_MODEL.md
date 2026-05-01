@@ -99,6 +99,32 @@ Khi thêm runtime (Phase 11.1.B + 11.3):
 
 **Stack rule**: multiplicative cap 3.0× tổng (dial — bumped từ 2.5× để cover tien × tien hiếm-but-allowed; than × than = 1.8 × 1.8 = 3.24 → cap 3.0). Vượt → cap.
 
+### 2.6 Skill mastery curve (phase 11.2.A)
+
+**Phase 11.2.A catalog đã có (session 9r-10 PR — `packages/shared/src/skill-templates.ts`)**:
+
+| SkillTier | maxMastery | atkScaleBonus / level | mpReduction / level | cooldownReduction every | LinhThach base / multiplier | Shard base / multiplier | Has evolution |
+|---|---|---|---|---|---|---|---|
+| basic | 5 | +5% | -5% | none | 100 / ×2.0 | 0 / - | no |
+| intermediate | 7 | +5% | -4% | every 4 levels | 200 / ×2.0 | 1 / ×1.5 | no |
+| advanced | 8 | +6% | -4% | every 4 levels | 500 / ×2.0 | 2 / ×1.6 | no |
+| master | 10 | +6% | -4% | every 4 levels | 1000 / ×2.0 | 4 / ×1.6 | no |
+| legendary | 10 | +7% | -5% | every 3 levels | 2000 / ×2.1 | 8 / ×1.7 | yes (2 branches) |
+
+**Stack cap (skill mastery)**:
+
+- Per-skill max atkScaleBonus = `atkScaleBonusPerLevel × maxMastery` ≤ +100% (anti power-creep — vitest enforce).
+- Per-skill max mpCostReduction ≤ 60% (skill luôn còn cost — vitest enforce).
+- `EffectiveSkill.atkScale = baseSkill.atkScale × (1 + masteryLevel × atkScaleBonusPerLevel)` (round 2 decimals).
+- `EffectiveSkill.mpCost = max(0, round(baseSkill.mpCost × (1 - masteryLevel × mpCostReductionPerLevel)))`.
+- `EffectiveSkill.cooldownTurns = max(0, baseSkill.cooldownTurns - floor(masteryLevel / cooldownReductionEveryNLevels))`.
+
+Khi thêm runtime (Phase 11.2.B):
+
+- `CombatService.computeSkillDamage` thay vì đọc `SkillDef.atkScale` trực tiếp → call `applyMasteryEffect(template, characterSkill.masteryLevel, baseSkill)` rồi áp formula `damage = atk × effective.atkScale - def × 0.5`.
+- Stack với cultivation method `expMultiplier` (Phase 11.1.A): độc lập (skill mastery áp lên `atkScale` damage; cultivation method áp lên `cultivationRate` EXP). Không stack chung cap.
+- Skill book item drop từ dungeon/boss → consume → ItemLedger thành skillShard → `upgradeMastery` deduct.
+
 ---
 
 ## 3. POWER CURVE

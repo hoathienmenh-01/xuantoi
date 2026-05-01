@@ -228,10 +228,12 @@ Hiện trạng (`packages/shared/src/combat.ts`):
 
 **Phase 11.1.A catalog foundation đã có (session 9r-9 PR — `packages/shared/src/cultivation-methods.ts`)**: 12 method baseline (1 pham starter + 5 huyen Ngũ Hành + 3 tien sect-locked + 3 than endgame) với fields `grade/element/expMultiplier/statBonus/unlockRealm/requiredSect/source/passiveSkillKeys/forbiddenElements`. Runtime (Prisma model + service + UI) defer Phase 11.1.B PR sau.
 
-**Long-term (phase 11)**:
+**Phase 11.2.A catalog foundation đã có (session 9r-10 PR — `packages/shared/src/skill-templates.ts`)**: 26 SkillTemplate 1-1 với `SKILLS` (combat.ts) — 5 tier `basic/intermediate/advanced/master/legendary` với mastery curve generator (level 1..maxMastery), `SkillUnlockRequirement` 6-kind (`realm/sect/method/item/quest/event`), `SkillEvolutionBranch` cho legendary endgame customization, helper `applyMasteryEffect(template, masteryLevel, baseSkill)` → effective skill (atkScale/mpCost/cooldownTurns post-mastery). Runtime (Prisma `CharacterSkill` + service learn/upgradeMastery/equipSkill + UI mastery panel + wire vào CombatService) defer Phase 11.2.B PR sau.
+
+**Long-term (phase 11+)**:
 
 - **CultivationMethod** (DB model mới): công pháp người chơi đang luyện. Multiplier `cultivationRate` (1.0 pham → 1.8 than) + statBonus baseline (% hp/mp/atk/def). Phải drop từ dungeon/boss/event hoặc sect-shop để có. Sect-locked tier `tien` chỉ học khi cùng sect; `forbiddenElements` chống xung khắc Ngũ Hành.
-- **CharacterSkill** (DB model mới): skill đã unlock + level (1..10). Level qua `skill_book` item.
+- **CharacterSkill** (DB model mới): skill đã unlock + masteryLevel (1..maxMastery theo tier). Upgrade qua linhThach + skillShard (drop từ `skill_book` item consume → ItemLedger). Wire `applyMasteryEffect` vào `CombatService.computeSkillDamage` để post-mastery atkScale/mpCost effective.
 - **Talent / Thần thông**: 5-7 cái grand passive, unlock qua "ngộ đạo" milestone hoặc raid drop.
 
 ### C.6 Trang bị / Đan dược / Luyện khí / Phù lục
