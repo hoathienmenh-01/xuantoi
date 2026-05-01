@@ -18,8 +18,9 @@ Mục tiêu: thêm content **không phá CI**, **không lệch curve**, **không
 | Skill | `packages/shared/src/combat.ts` `SKILLS` | 25 skill (Phase 10 PR-2 +15 Ngũ Hành) | Phase 10-11: → 25-30 ✅ |
 | Monster | `packages/shared/src/combat.ts` `MONSTERS` | 29 monster (Phase 10 PR-3 +20 Ngũ Hành × MonsterType BEAST/HUMANOID/SPIRIT/ELITE/BOSS) | Phase 10: → 30 ✅ |
 | Dungeon | `packages/shared/src/combat.ts` `DUNGEONS` + `DUNGEON_LOOT` | 9 dungeon (Phase 10 PR-3 +6 element-thematic) | Phase 10: → 8-10 ✅ |
-| Mission | `packages/shared/src/missions.ts` | 66 mission (PR #217 Phase 10 PR-4 +54: tier daily/weekly + element chronicle + tu-tien-progression chain — this PR open) | Phase 10: → 65+ ✅ |
+| Mission | `packages/shared/src/missions.ts` | 66 mission (PR #217 Phase 10 PR-4 +54: tier daily/weekly + element chronicle + tu-tien-progression chain) | Phase 10: → 65+ ✅ |
 | Boss | `packages/shared/src/boss.ts` | 12 boss (Phase 10 PR-5 +10 named × Ngũ Hành × realm tier kim_dan → hop_the) | Phase 10: → 10 named ✅ |
+| Buff/Debuff | `packages/shared/src/buffs.ts` | 18 buff/debuff (Phase 11.8.A — this PR open: 10 buff + 8 debuff × 5 element + 8 source pill/skill/sect_aura/event/talent/boss/tribulation) | Phase 11: → 18+ ✅ catalog-only |
 | Topup pack | `packages/shared/src/topup.ts` | (đã có) | Tunable theo monetization |
 | Shop pack | `packages/shared/src/shop.ts` | (đã có) | Tunable |
 | **Quest chain** | (chưa có) | 0 | Phase 11 — DB-backed |
