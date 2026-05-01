@@ -452,6 +452,64 @@ Verify pattern (xem `items-dungeon-loot.test.ts`):
 - Phase 11.X.B success roll: `seedrandom(attemptId)` deterministic — server replay-able + audit-able. KHÔNG dùng Math.random(), tránh server-frontend desync.
 - E[attempts] table giúp player budget linhThach + nguyên liệu trước khi luyện. UI Phase 11.X.B sẽ render expected cost dựa trên `getExpectedAlchemyAttempts(recipe)`.
 
+### 5.8 Talent / Thần Thông curve (phase 11.7.A)
+
+**Phase 11.7.A catalog đã có (session 9r-10 PR — `packages/shared/src/talents.ts`)**:
+
+**Passive talents (7) — always-on khi đã học:**
+
+| Talent | Element | Realm req | Cost (pts) | Effect |
+|---|:---:|:---:|---:|---|
+| Kim Thiên Cơ | kim | kim_dan | 1 | atk × 1.10 |
+| Thuỷ Long Ấn | thuy | kim_dan | 1 | hpMax × 1.10 |
+| Mộc Linh Quy | moc | truc_co | 1 | hp regen +5/tick |
+| Hoả Tâm Đạo | hoa | kim_dan | 2 | damage × 1.15 vs enemy hệ Kim (counter) |
+| Thổ Sơn Tướng | tho | truc_co | 1 | def × 1.10 |
+| Thiên Di | — | nguyen_anh | 2 | drop rate × 1.20 |
+| Ngộ Đạo | — | hoa_than | 2 | EXP gain × 1.15 |
+
+**Active talents / Thần Thông (7) — cooldown + mp cost:**
+
+| Talent | Element | Realm req | Cost (pts) | Effect | MP | CD |
+|---|:---:|:---:|---:|---|---:|---:|
+| Kim Quang Trảm | kim | kim_dan | 2 | AOE damage 2× atk | 30 | 3 |
+| Thuỷ Yên Ngục | thuy | kim_dan | 2 | Single root 3 turns | 25 | 5 |
+| Mộc Chu Lâm | moc | truc_co | 1 | Single heal 30% | 40 | 6 |
+| Hoả Long Phún | hoa | kim_dan | 2 | Single DOT 5 turns | 35 | 4 |
+| Thổ Địa Chấn | tho | nguyen_anh | 2 | AOE stun 1 turn | 45 | 6 |
+| Thiên Lôi Trừng Trị | — | hoa_than | 3 | Single true damage 3× spirit | 50 | 7 |
+| Phong Lui Pháp Tướng | — | luyen_hu | 3 | Utility escape combat | 60 | 10 |
+
+**Curve rule**:
+- **Passive cost balance**: 1 point cho buff cá nhân (atk/def/hp/regen) — 2 points cho counter element / utility (drop/exp/anti-counter).
+- **Active cost balance**: 1 point (heal Mộc) → 2 points (damage/cc element-locked) → 3 points (neutral utility/true-damage endgame).
+- **Cooldown vs power**: damage AOE 2× atk → 3 turn cd. Single root → 5 cd. Heal → 6 cd. AOE stun → 6 cd. True damage 3× → 7 cd. Escape → 10 cd. Càng mạnh càng cooldown dài.
+- **MP cost vs role**: utility/escape (60) > heal (40) > AOE stun (45) ≈ AOE damage (30) ≈ true damage (50) > single (25-35). Heal yêu cầu reserve MP cao hơn để tránh spam.
+
+**Talent point budget**:
+
+| Realm threshold | Order | Budget (= ⌊order/3⌋) | Note |
+|---|---:|---:|---|
+| phamnhan | 0 | 0 | Tân thủ chưa có ngộ đạo |
+| luyenkhi | 1 | 0 | — |
+| truc_co | 2 | 0 | — |
+| kim_dan | 3 | 1 | First milestone |
+| nguyen_anh | 4 | 1 | — |
+| hoa_than | 5 | 1 | — |
+| luyen_hu | 6 | 2 | Second milestone |
+| hop_the | 7 | 2 | — |
+| dai_thua | 8 | 2 | — |
+| do_kiep | 9 | 3 | Third milestone |
+| ... | ... | ... | Mỗi 3 realm = 1 point |
+| chuan_thanh (~18) | ~18 | ~6 | Endgame |
+| thanh_nhan (~20) | ~20 | ~6 | — |
+
+**Stack interaction (Phase 11.7.B runtime)**:
+- Passive `composePassiveTalentMods(learnedTalentKeys)` returns multiplicative stat mods → wire vào `CharacterStatService.computeStats` SAU khi cộng base + cultivation method + spiritual root + equipment + refine + gem (= last layer).
+- Active hook qua `simulateActiveTalent(talent, atk, spirit)` deterministic → KHÔNG dùng Math.random(). Combat service apply damage/heal/cc/dot atomically với mp consume + cooldown set.
+- Element synergy: linh căn `kim` + Kim talent = double scaling atk vs Mộc enemy (counter). Linh căn primary + Hoả Tâm Đạo = anti-Kim counter strong.
+- Build paradigm: 6 budget endgame = ~2 passive (4 points) + 1 active (2 points), HOẶC 1 high-tier active (3 points) + 1 mid passive (2 points) + 1 low passive (1 point). Tradeoff stat boost vs combat power.
+
 ---
 
 ## 6. BOSS CURVE
