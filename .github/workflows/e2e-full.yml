@@ -1,0 +1,244 @@
+# Playwright full-stack golden path — closed beta core loop regression net.
+#
+# Triggers (gated, KHÔNG chạy mọi PR):
+#   - workflow_dispatch  : ai cũng có thể tự chạy manual từ tab Actions.
+#   - pull_request       : chỉ khi PR đụng FE / BE / shared / prisma / e2e
+#                          / chính file workflow này (paths filter bên dưới).
+#   - push to main       : cùng path filter — guard khi PR merge / hotfix push.
+#
+# Job spin up Postgres 16 + Redis 7 service container, build shared + API,
+# `prisma migrate deploy`, start API (`node apps/api/dist/src/main.js`) + Web
+# (`pnpm --filter @xuantoi/web dev`, vite dev với proxy `/api` → :3000), wait
+# health endpoint, rồi chạy `E2E_FULL=1 pnpm --filter @xuantoi/web e2e` →
+# 16 spec golden path (xem `apps/web/e2e/golden.spec.ts`).
+#
+# Tổng thời gian local Linux ~2–3 phút (Playwright suite ~25s). Trên CI runner
+# ubuntu-latest (cold cache) ước tính ~5–8 phút lần đầu, ~3–5 phút khi đã cache
+# pnpm + Playwright browsers.
+#
+# Job KHÔNG required cho mọi PR. Job hiện tại trong `ci.yml` (`build`,
+# `e2e-smoke`) vẫn là CI bắt buộc — workflow này bổ sung gating layer cho
+# closed beta regression. Khi job này fail, reviewer phải xem trace artifact
+# để root-cause trước khi merge.
+
+name: e2e-full
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'apps/web/**'
+      - 'apps/api/**'
+      - 'packages/shared/**'
+      - 'pnpm-lock.yaml'
+      - 'pnpm-workspace.yaml'
+      - 'package.json'
+      - '.github/workflows/e2e-full.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'apps/web/**'
+      - 'apps/api/**'
+      - 'packages/shared/**'
+      - 'pnpm-lock.yaml'
+      - 'pnpm-workspace.yaml'
+      - 'package.json'
+      - '.github/workflows/e2e-full.yml'
+
+# Cancel in-progress runs khi push commit mới lên cùng PR/branch — tiết kiệm
+# CI minutes, không block trên outdated diff.
+concurrency:
+  group: e2e-full-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  e2e-full:
+    name: Playwright golden path (full-stack)
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: mtt
+          POSTGRES_PASSWORD: mtt
+          POSTGRES_DB: mtt
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U mtt -d mtt"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+
+    env:
+      # Service container endpoint — CI scope, KHÔNG phải production.
+      DATABASE_URL: postgresql://mtt:mtt@localhost:5432/mtt?schema=public
+      TEST_DATABASE_URL: postgresql://mtt:mtt@localhost:5432/mtt?schema=public
+      REDIS_URL: redis://localhost:6379
+
+      # Ephemeral JWT secret — CI scope, không bao giờ deploy. Tránh trùng
+      # `change-me-*` / `dev-*-secret` để khỏi trigger `assertProductionSecrets`
+      # (chỉ chạy khi NODE_ENV=production, ở đây là dev nhưng vẫn để chuẩn).
+      JWT_ACCESS_SECRET: ci-e2e-access-secret-not-for-prod-aaaaaaaa
+      JWT_REFRESH_SECRET: ci-e2e-refresh-secret-not-for-prod-bbbbbbbb
+      JWT_ACCESS_TTL: '900'
+      JWT_REFRESH_TTL: '2592000'
+      SESSION_COOKIE_DOMAIN: localhost
+
+      # Mail/console transport — KHÔNG cần Mailhog cho 16 spec hiện tại
+      # (forgot-password chưa cover). `console` mode chỉ log mail body, không
+      # gửi SMTP thật — phù hợp CI.
+      MAIL_TRANSPORT: console
+      WEB_PUBLIC_URL: http://localhost:5173
+
+      # Mission reset window. Default Asia/Ho_Chi_Minh khớp với api dev.
+      MISSION_RESET_TZ: Asia/Ho_Chi_Minh
+
+      # API listen port — Vite proxy /api + /ws sang port này.
+      PORT: '3000'
+
+      # NODE_ENV=development để dev fallback CORS cho phép `http://localhost:5173`
+      # (xem `apps/api/src/main.ts` `corsConfig`). Production assert chạy lúc
+      # bootstrap nếu NODE_ENV=production sẽ throw vì secret là placeholder.
+      NODE_ENV: development
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install workspace deps
+        run: pnpm install --frozen-lockfile=false
+
+      - name: Generate Prisma client
+        working-directory: apps/api
+        run: pnpm prisma:generate
+
+      - name: Apply migrations (Postgres service)
+        working-directory: apps/api
+        run: pnpm exec prisma migrate deploy
+
+      # `@xuantoi/shared` build cần thiết cho cả api dist và web dev (dual
+      # ESM/CJS export qua tsup).
+      - name: Build shared
+        run: pnpm --filter @xuantoi/shared build
+
+      # API build → `dist/src/main.js`. Chạy node trực tiếp thay vì
+      # `nest start` để tránh ts-node overhead trên runner.
+      - name: Build API
+        run: pnpm --filter @xuantoi/api build
+
+      - name: Cache Playwright browsers
+        id: pw-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-playwright-${{ hashFiles('apps/web/package.json', 'pnpm-lock.yaml') }}
+
+      - name: Install Playwright browsers
+        if: steps.pw-cache.outputs.cache-hit != 'true'
+        run: pnpm --filter @xuantoi/web exec playwright install --with-deps chromium
+
+      - name: Install Playwright deps (cached browsers)
+        if: steps.pw-cache.outputs.cache-hit == 'true'
+        run: pnpm --filter @xuantoi/web exec playwright install-deps chromium
+
+      # Start API in background. Output → `.ci-logs/api.log` (upload on failure).
+      - name: Start API server (background)
+        run: |
+          mkdir -p .ci-logs
+          nohup node apps/api/dist/src/main.js > .ci-logs/api.log 2>&1 &
+          echo "API_PID=$!" >> "$GITHUB_ENV"
+
+      - name: Wait for API healthz
+        run: |
+          for i in $(seq 1 60); do
+            if curl -fsS http://localhost:3000/api/healthz >/dev/null 2>&1; then
+              echo "[ci-e2e] API healthz ok after ${i}s"
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "::error::API /healthz did not respond within 60s"
+          tail -200 .ci-logs/api.log || true
+          exit 1
+
+      - name: Wait for API readyz (DB + Redis)
+        run: |
+          for i in $(seq 1 30); do
+            if curl -fsS http://localhost:3000/api/readyz >/dev/null 2>&1; then
+              echo "[ci-e2e] API readyz ok after ${i}s"
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "::error::API /readyz did not pass within 30s"
+          curl -sS http://localhost:3000/api/readyz || true
+          tail -200 .ci-logs/api.log || true
+          exit 1
+
+      # Web dev server có proxy `/api` → :3000 và `/ws` → :3000 (xem
+      # `apps/web/vite.config.ts`). Vite preview KHÔNG có proxy, nên dùng
+      # dev server cho E2E.
+      - name: Start Web dev server (background)
+        run: |
+          nohup pnpm --filter @xuantoi/web dev > .ci-logs/web.log 2>&1 &
+          echo "WEB_PID=$!" >> "$GITHUB_ENV"
+
+      - name: Wait for Web :5173
+        run: |
+          for i in $(seq 1 60); do
+            if curl -fsS http://localhost:5173/ >/dev/null 2>&1; then
+              echo "[ci-e2e] Web ready after ${i}s"
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "::error::Web dev server did not bind :5173 within 60s"
+          tail -200 .ci-logs/web.log || true
+          exit 1
+
+      # Set `PLAYWRIGHT_SKIP_WEBSERVER=1` để Playwright KHÔNG spawn `vite
+      # preview` (đã có vite dev rồi). `E2E_FULL=1` activate 15 spec golden
+      # path full stack (suite skip ngoài describe nếu env unset).
+      - name: Run Playwright golden path (E2E_FULL=1)
+        env:
+          PLAYWRIGHT_BASE_URL: http://localhost:5173
+          PLAYWRIGHT_SKIP_WEBSERVER: '1'
+          E2E_FULL: '1'
+          E2E_API_BASE: http://localhost:3000
+        run: pnpm --filter @xuantoi/web exec playwright test --project=chromium --reporter=list
+
+      - name: Stop background servers
+        if: always()
+        run: |
+          if [ -n "${API_PID:-}" ]; then kill "$API_PID" 2>/dev/null || true; fi
+          if [ -n "${WEB_PID:-}" ]; then kill "$WEB_PID" 2>/dev/null || true; fi
+
+      - name: Upload Playwright + server logs on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-full-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            apps/web/test-results/
+            apps/web/playwright-report/
+            .ci-logs/
+          if-no-files-found: ignore
+          retention-days: 7
