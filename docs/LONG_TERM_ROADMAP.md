@@ -362,6 +362,37 @@ Thêm depth cho progression: công pháp, skill upgrade, linh căn, thể chất
 - REST `GET /buff/active` + `POST /buff/dispel` (cleanse skill).
 - Apply trigger qua: pill consume (existing), sect aura join (existing), event opt-in, talent active utility, boss skill, tribulation fail.
 
+#### 11.9.A PR: Title (Danh hiệu) catalog foundation — DONE ✅ (this branch / merge target)
+
+- `packages/shared/src/titles.ts` NEW catalog 24 title baseline.
+  - 9 realm milestone (luyenkhi → hu_khong_chi_ton spread, common → mythic).
+  - 5 element mastery (kim/moc/thuy/hoa/tho — all epic).
+  - 4 achievement (first kill / first dungeon / first boss / first breakthrough).
+  - 3 sect rank (initiate / inner / elder).
+  - 2 event seasonal placeholder.
+  - 1 donation tier placeholder.
+- Schema: `TitleDef { key, nameVi, nameEn, description, rarity, source, element, unlockRealmKey?, unlockAchievementKey?, unlockSectRole?, flavorStatBonus? }`.
+- 5 rarity tier: `common` / `rare` / `epic` / `legendary` / `mythic`.
+- 6 source: `realm_milestone` / `element_mastery` / `achievement` / `sect_rank` / `event` / `donation`.
+- Balance cap per rarity: common ≤ +2%, rare ≤ +3%, epic ≤ +5%, legendary ≤ +10%, mythic ≤ +15% (vitest enforce).
+- Helpers deterministic: `getTitleDef`, `titlesByRarity/Source/Element`, `titleForRealmMilestone/Achievement/SectRole`, `composeTitleMods(equippedTitleKeys[])`.
+- 51 vitest (catalog shape + curve coverage + balance cap + helper + compose + REALMS integration).
+- KHÔNG runtime / schema / Prisma migration trong PR này (`Character.title String?` đã tồn tại từ phase 0).
+
+#### 11.9.B PR: Title runtime (Pending)
+
+- Model `CharacterTitleUnlock(id, characterId, titleKey, unlockedAt, source)` Prisma migration (idempotent unique on `[characterId, titleKey]`).
+- Service `unlockTitle(characterId, titleKey, source)` (idempotent).
+- Service `equipTitle(characterId, titleKey)` (validate ownership, set `Character.title`).
+- Service `getOwnedTitles(characterId)`.
+- Auto-grant trigger:
+  - On `BreakthroughEvent` complete → `titleForRealmMilestone(newRealmKey)` → `unlockTitle`.
+  - On `AchievementCompleteEvent` (Phase 11.10) → `titleForAchievement(achievementKey)` → `unlockTitle`.
+  - On `SectRoleChangeEvent` → `titleForSectRole(role)` → `unlockTitle`.
+- Wire `composeTitleMods([Character.title])` vào `CharacterStatService.computeStats` (multi-stack ready, single-slot hiện tại).
+- REST `GET /title/owned` + `POST /title/equip` + `GET /title/available`.
+- UI character profile title selector + achievement/realm preview "next title to unlock".
+
 ### Exit criteria
 
 - [ ] Tất cả 8 sub-PR merged + CI xanh.
