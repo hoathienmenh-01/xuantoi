@@ -321,6 +321,26 @@ Verify pattern (xem `items-dungeon-loot.test.ts`):
 - Không weight = 0.
 - qtyMin ≤ qtyMax.
 
+### 5.4 Gem socket budget (phase 11.4.A)
+
+**Phase 11.4.A catalog đã có (session 9r-10 PR — `packages/shared/src/gems.ts`)**:
+
+| Element | Bonus type per gem | PHAM scale | LINH scale | HUYEN scale | TIEN scale | THAN scale |
+|---|---|---:|---:|---:|---:|---:|
+| Kim | atk + spirit | atk 3 / sp 1 | atk 5 / sp 2 | atk 8 / sp 3 | atk 13 / sp 4 | atk 20 / sp 7 |
+| Mộc | hpMax + spirit | hp 15 / sp 1 | hp 24 / sp 2 | hp 39 / sp 3 | hp 63 / sp 4 | hp 102 / sp 7 |
+| Thuỷ | mpMax + spirit | mp 12 / sp 1 | mp 19 / sp 2 | mp 31 / sp 3 | mp 50 / sp 4 | mp 82 / sp 7 |
+| Hoả | atk - def trade-off | atk 4 / def -1 | atk 6 / def -2 | atk 10 / def -3 | atk 17 / def -4 | atk 27 / def -7 |
+| Thổ | def + hpMax | def 3 / hp 8 | def 5 / hp 13 | def 8 / hp 21 | def 13 / hp 34 | def 20 / hp 54 |
+
+**Combine recipe (sink, không pure upgrade)**: 3× cùng key → 1× next-tier; geometric `gemUpgradePathCost` = `3^N` gem `from` cho 1 gem `to` (PHAM→THAN cost 81 PHAM gem).
+
+**Combine sink rule (vitest enforce)**: `3 × bonus_pham > bonus_linh` cho mọi element (e.g. Kim: 3×3 = 9 atk > 5 atk LINH; Mộc: 3×15 = 45 hp > 24 hp LINH). Mục tiêu: combine = sink linh thạch chứ không pure upgrade — real upgrade comes from drop high-tier.
+
+**Compatible slot per element**: Kim → WEAPON; Mộc → ARMOR/HAT; Thuỷ → ARTIFACT/TRAM; Hoả → WEAPON/ARTIFACT; Thổ → ARMOR/BELT/BOOTS. Phase 11.4.B `socketGem` runtime sẽ verify `canSocketGem(gemKey, slot)` trước khi push vào `Equipment.sockets[]`.
+
+**Stack budget cap (phase 11.4.B runtime)**: per-equipment `Equipment.sockets[]` cap = 3 slot (PHAM equipment 0 slot, LINH 1, HUYEN 2, TIEN/THAN 3). Per-character total gem-bonus cap = 50% baseline equipment bonus (cap enforced ở `CharacterStatService.computeStats` Phase 11.4.B). Không cap per-stat (atk/def/hp/mp), chỉ cap total contribution.
+
 ---
 
 ## 6. BOSS CURVE

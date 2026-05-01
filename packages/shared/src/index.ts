@@ -8,6 +8,7 @@ export * from './items';
 export * from './missions';
 export * from './boss';
 export * from './cultivation-methods';
+export * from './gems';
 export * from './skill-templates';
 export * from './spiritual-root';
 export * from './topup';
