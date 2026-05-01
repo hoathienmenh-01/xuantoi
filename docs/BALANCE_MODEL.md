@@ -125,6 +125,50 @@ Khi thêm runtime (Phase 11.2.B):
 - Stack với cultivation method `expMultiplier` (Phase 11.1.A): độc lập (skill mastery áp lên `atkScale` damage; cultivation method áp lên `cultivationRate` EXP). Không stack chung cap.
 - Skill book item drop từ dungeon/boss → consume → ItemLedger thành skillShard → `upgradeMastery` deduct.
 
+### 2.7 Buff / Debuff curve (phase 11.8.A)
+
+**Phase 11.8.A catalog đã có (session 9r-11 PR — `packages/shared/src/buffs.ts`)**:
+
+| Source | Buff count | Debuff count | Duration baseline | Stack rule |
+|---|---|---|---|---|
+| pill | 4 (atk/def/regen/spirit) | 0 | 30..90s | non-stackable, refresh duration |
+| sect_aura | 3 (kim/thuy/hoa) | 0 | 600s | non-stackable, non-dispellable |
+| event | 2 (double_exp/double_drop) | 0 | 3600s | non-stackable, non-dispellable |
+| talent | 1 (shield_phong) | 0 | 10s | non-stackable, dispellable |
+| skill (control) | 0 | 4 (root/stun/silence/taunt) | 3..9s (1..3 turns) | non-stackable |
+| skill (DOT) | 0 | 2 (burn/poison) | 15..24s (5..8 turns) | stackable max 3 |
+| boss_skill | 0 | 1 (atk_down) | 30s | non-stackable |
+| tribulation | 0 | 1 (taoma — atk + cultivation_block) | 3600s | non-stackable, non-dispellable |
+
+**Effect balance dial**:
+
+| Effect kind | Buff range | Debuff range | Phase 11.8.B compose semantics |
+|---|---|---|---|
+| `stat_mod` | atk +12..+18%, def +15%, hpMax +0%, mpMax +0%, spirit +18% | atk -10..-18%, others 0 | multiplicative `value^stacks` per stack |
+| `regen` | hp +5/s, mp +4/s | — | additive `value*stacks` |
+| `damage_bonus` element | +5..+6% (sect aura) | — | multiplicative `value^stacks` per element-target |
+| `damage_reduction` element | (reserved Phase 11.8.B) | — | multiplicative |
+| `control` | — | 1..3 turns | max ccTurns trong list |
+| `dot` | — | 6..8 dmg/turn × stacks | additive flat tổng dmg/tick |
+| `shield` | 30% hpMax | — | additive ratio cap 1.0 hpMax |
+| `taunt` | — | 1 (boolean) | OR flag |
+| `cultivation_block` | — | 1 (boolean) | OR flag (Tâm Ma) |
+
+**Stack cap rule** (anti power-creep):
+
+- Stat_mod: per-buff `maxStacks=1` ngoại trừ DOT (max 3) → tổng atkMul không vượt ×1.5 từ buff alone (pill 1.12 × sect 1.05 × event 2.0 = 2.35 nhưng event_double_exp áp `spirit` chứ không `atk` → atk effective ≤ 1.18 từ buff stack thực tế).
+- Combined với cultivation method (×1.8 max) + linh căn (×1.8 max) + buff (×1.5 max) → grand total cap 3.0× theo §2.5 (multiplicative).
+- DOT max 24 dmg/tick (8 × 3 stacks burn) + 18 dmg/tick (6 × 3 poison) = 42 dmg/tick total — tuân `BALANCE_MODEL.md` §4 (HP cap luyenkhi 200 → DOT giết trong 5 turn ⇒ tỉ lệ chết hợp lý).
+- Shield cap 1.0 hpMax tổng (multi-shield không vượt full HP).
+
+Khi thêm runtime (Phase 11.8.B):
+
+- `CharacterStatService.computeStats` call `composeBuffMods(activeBuffs)` → áp multiplicative cho atk/def/hpMax/mpMax/spirit + additive cho regen + element damage_bonus/reduction.
+- `CombatService.attack` consume `controlTurnsMax` trước khi cho phép action. `tauntActive` → AI nhắm target.
+- Cron `pruneBuffs` chạy 60s/lần xóa expired buff.
+- DOT tick (1s wall hoặc combat turn) gọi `dotPerTickFlat` damage qua `CombatService.applyDamage`.
+- `cultivationBlocked` → `CultivationService.tick` skip exp gain (Tâm Ma).
+
 ---
 
 ## 3. POWER CURVE

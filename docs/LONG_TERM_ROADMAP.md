@@ -337,11 +337,30 @@ Thêm depth cho progression: công pháp, skill upgrade, linh căn, thể chất
 - REST `GET /talent/available` + `POST /talent/learn` + `POST /talent/use` + `GET /talent/points`.
 - Migration + rollback note + audit log.
 
-#### 11.8 PR: Buff/Debuff system
+#### 11.8.A PR: Buff/Debuff catalog foundation — DONE ✅ (this branch / merge target)
 
-- Model `CharacterBuff(key, expiresAt, source, stackable)`.
-- Apply qua: pill, sect aura, event.
-- Decay tự động qua cron prune.
+- `packages/shared/src/buffs.ts` NEW catalog 18 buff/debuff baseline (10 buff + 8 debuff).
+  - Buff (10): pill (4 atk/def/regen/spirit), sect_aura (3 kim/thuy/hoa), event (2 double_exp/double_drop), talent (1 shield_phong).
+  - Debuff (8): skill control (4 root_thuy/stun_tho/silence_kim/taunt_moc), skill DOT (2 burn_hoa/poison_moc stackable×3), boss_skill (1 atk_down), tribulation (1 taoma cultivation_block).
+  - Schema: `BuffDef { key, polarity, element, source, durationSec, stackable, maxStacks, dispellable, effects[] }`.
+  - 10 effect kind: `stat_mod` / `regen` / `damage_bonus` / `damage_reduction` / `control` / `dot` / `shield` / `taunt` / `invuln` / `cultivation_block`.
+  - 8 source: `pill` / `skill` / `sect_aura` / `event` / `gear` / `talent` / `boss_skill` / `tribulation`.
+  - 5 element coverage `kim/moc/thuy/hoa/tho` + 8 neutral.
+  - Helper deterministic: `getBuffDef`, `buffsByPolarity/Element/Source/EffectKind`, `composeBuffMods(activeBuffs)`, `computeBuffExpiresAt`, `isBuffExpired`.
+- 56 vitest (catalog shape + curve coverage + helper + compose + expire).
+- KHÔNG runtime / schema / Prisma migration trong PR này.
+
+#### 11.8.B PR: Buff/Debuff runtime (Pending)
+
+- Model `CharacterBuff(id, characterId, buffKey, stacks, source, expiresAt, createdAt)` Prisma migration.
+- Service `applyBuff` (idempotent on key+source for non-stackable, increment stacks for stackable up to maxStacks, refresh expiresAt).
+- Service `removeBuff` / `pruneBuffs` (cron decay).
+- Wire `composeBuffMods(activeBuffs)` vào `CharacterStatService.computeStats` (multiplicative atk/def/hpMax/mpMax/spirit, element damage_bonus/reduction).
+- DOT tick task (combat turn or 1s schedule).
+- Control flag enforce vào CombatService (block action if root/stun/silence/taunt, prefer target if taunt).
+- `cultivation_block` flag enforce vào CultivationService (Tâm Ma block tu luyện).
+- REST `GET /buff/active` + `POST /buff/dispel` (cleanse skill).
+- Apply trigger qua: pill consume (existing), sect aura join (existing), event opt-in, talent active utility, boss skill, tribulation fail.
 
 ### Exit criteria
 
