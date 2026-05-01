@@ -14,7 +14,8 @@
     "backup:db": "bash scripts/backup-db.sh",
     "restore:db": "bash scripts/restore-db.sh",
     "smoke:beta": "node scripts/smoke-beta.mjs",
-    "smoke:economy": "node scripts/smoke-economy.mjs"
+    "smoke:economy": "node scripts/smoke-economy.mjs",
+    "smoke:ws": "node scripts/smoke-ws.mjs"
   },
   "engines": {
     "node": ">=20",
