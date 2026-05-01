@@ -61,7 +61,7 @@ Checklist để promote beta (closed 50 users → open). Tick khi xong.
 - [x] **CSP production** policy chặt, dev `false` (`apps/api/src/main.ts` `helmetConfig`) — chỉ cần review CDN khi prod deploy
 
 ### Testing
-- [x] **api 369** + **web 133** + **shared 55** = **557 test** (auto-snapshot 29/4 session 9d)
+- [x] **api 1133** + **web 588** + **shared 238** = **1959 vitest** (auto-snapshot 1/5 session 9r-2 — baseline đã ổn định qua 50+ PR từ 9d→9r). Stale snapshot cũ "557 test" của session 9d đã bị thay; mỗi PR mới phải verify số này không giảm.
 - [x] Real Postgres integration (CI `postgres` service, schema `mtt`)
 - [x] WS integration test (real socket.io-client)
 - [x] CI postgres + redis service xanh
@@ -134,6 +134,57 @@ Checklist để promote beta (closed 50 users → open). Tick khi xong.
 - [ ] Closed beta 50 user recruitment.
 - [ ] Feedback survey form (Google Form / Discord embed).
 - [ ] Bug bounty / log channel.
+
+## Phase 9 readiness audit
+
+> Bảng này là **single source of truth** cho trạng thái sẵn sàng closed beta theo từng nhóm gameplay/infra. Update mỗi khi merge PR đụng tới các nhóm tương ứng. Last refresh: session 9r-2 (1/5, after PR #212 merge).
+>
+> **Status legend**: **DONE** = có ≥ 2 layer test (vitest + (smoke | golden | integration)) hoặc 1 layer + manual smoke gần đây. **PARTIAL** = có vitest nhưng thiếu runtime end-to-end smoke; defer rationale ghi rõ ô "Defer / Risk". **NEEDS RUNTIME SMOKE** = chỉ có vitest, runtime smoke chưa viết, blocker khi Phase 10 expand content liên quan. **NEEDS PROD REVIEW** = chưa wire production-only (Sentry / CSP review / metrics). **BLOCKED** = có P0/P1 issue open.
+
+| # | Nhóm | Status | Vitest | Smoke / Golden / Integration | Defer / Risk |
+|---|---|---|---|---|---|
+| A | Auth / session / onboarding | **DONE** | `auth.service.test.ts`, `auth.controller.test.ts`, `auth.refresh.test.ts`, `auth.password.test.ts` | smoke:beta step 2-4, golden #2 register UI → 4-step → /home, smoke:ws step 2-3 (cookie auth + setup user) | — |
+| B | Character / home | **DONE** | `character.service.test.ts`, `character.controller.test.ts` | smoke:beta step 5-7, golden #3 cultivate toggle ON/OFF (UI label flip + API state cross-check) | — |
+| C | Cultivation start / tick / breakthrough | **PARTIAL** | `cultivation.service.test.ts`, `cultivation.processor.test.ts` (BullMQ tick) | start ✅ golden #3, tick ✅ smoke:ws step 16 gated `SMOKE_WAIT_TICK_MS=40000` | **breakthrough**: chỉ vitest. Runtime smoke yêu cầu exp ≥ realm 9 cost (impractical < 30s smoke). Defer `smoke:cultivation` với DB-direct exp inject Phase 9.5 — KHÔNG block Phase 10. |
+| D | Dungeon / combat / loot | **PARTIAL** | `combat.service.test.ts`, `combat.controller.test.ts` (RNG seeded) | dungeon list ✅ golden #15 (3 dungeon visible + Sơn Cốc enter button enabled, stamina ≥ 10) | **enter+combat+loot**: chỉ vitest. Runtime smoke combat cần RNG seed deterministic + assert HP/loot. Defer `smoke:combat` — KHÔNG block Phase 10 vì combat invariants đã cover bằng vitest seeded RNG. |
+| E | Inventory / equipment / use item | **DONE** | `inventory.service.test.ts`, `inventory.controller.test.ts` | golden #7 inventory empty state, golden #13 equip UI → equippedSlot WEAPON, smoke:economy step 17 inventory qty == SUM(ItemLedger) | use item HP pill: fresh char hp full → no observable change; defer hoặc test với damaged char. |
+| F | Shop / economy / ledger | **DONE** | `shop.service.test.ts`, `currency.service.test.ts`, `logs.controller.test.ts`, `audit-ledger.test.ts` | smoke:economy 20-step `done: 20 pass / 0 fail`, golden #6 browse + #12 buy LINH_THACH UI, audit-ledger.ts read-only verify | — |
+| G | Mail / claim attachment | **PARTIAL** | `mail.service.test.ts` (`Mail.claimedAt IS NULL` invariant) | page load + empty state ✅ golden #14 | **claim attachment**: chỉ vitest. Cần admin grant mail trước → defer `smoke:admin`. KHÔNG block Phase 10 vì idempotency đã cover ở vitest. |
+| H | Mission / daily / weekly | **PARTIAL** | `mission.service.test.ts`, `daily-login.service.test.ts`, `mission-ws.emitter.test.ts` | golden #5 mission tabs render + ≥1 mission visible, golden #4 daily login claim (claimable → claimed transition), smoke:ws step 11-12 mission:progress throttle | **claim mission end-to-end**: chỉ vitest + smoke:ws WS push. Cần wait cultivate ≥ 30s để mission complete → defer hoặc smoke long-mode. KHÔNG block Phase 10. |
+| I | Leaderboard / profile / settings | **DONE** | `leaderboard.service.test.ts`, `leaderboard.controller.test.ts`, `next-action.service.test.ts` | golden #9 leaderboard tabs Power/Topup/Sect, #10 profile/:ownId, #16 settings page load | — |
+| J | Admin / topup / giftcode | **PARTIAL** | `admin.service.test.ts`, `admin.controller.test.ts`, `topup.service.test.ts`, `giftcode.service.test.ts`, `giftcode-race.test.ts` (concurrency) | — | Admin/topup/giftcode UI flow chưa có golden spec hoặc smoke. Cần seed admin account + login để smoke. Defer `smoke:admin`. KHÔNG block Phase 10 vì admin flow không phải user-facing closed beta core. |
+| K | WebSocket realtime | **DONE** | `realtime.gateway.test.ts` (14 case unit), `mission-ws.emitter.test.ts` | smoke:ws 19-step (state isolation, broadcast, throttle, reconnect, logout), golden #8 chat WORLD send → render in feed | — |
+| L | Playwright full-stack CI | **DONE** | — | workflow `.github/workflows/e2e-full.yml` (PR #212), gated `pull_request`/`push` path-filter + `workflow_dispatch`. **Verified GREEN trên main HEAD `6fd1120`**: run 25203605650, 1m35s tổng, Playwright step 20s với browsers cache hit, 16/16 spec pass | KHÔNG required mọi PR (path-filter gating). Sau 2-3 tuần stable → đánh giá required check. |
+| M | Smoke scripts | **DONE** | — | smoke:beta 16-step (`scripts/smoke-beta.mjs`), smoke:economy 20-step (`scripts/smoke-economy.mjs`), smoke:ws 19-step (`scripts/smoke-ws.mjs`). All gated/manual, KHÔNG vào CI vì cần API + DB + Redis live cùng process. | — |
+| N | i18n / mobile / PWA | **DONE** | `LocaleSwitcher.test.ts` + 60+ component test có i18n key assertion | vue-i18n VI/EN 16+ view (incl. `activity.*` PR #91), PWA manifest + Workbox precache 47 entries 765 KiB, mobile responsive layout | i18n EN gap audit (grep `t(` keys không có trong `en.json`) deferred — không block beta vì VI default. |
+| O | Security / production readiness | **NEEDS PROD REVIEW** | `auth.service.test.ts` JWT prod assert, `auth.refresh.test.ts` reuse-detect, rate-limit Redis cover ở `chat.service.test.ts` + `auth.service.test.ts` | argon2id, JWT prod assert (`apps/api/src/main.ts`), rate-limit register/login Redis, refresh rotation reuse-detect, helmet CSP prod (dev `false`) | **Sentry DSN chưa wire**, structured logs pino chưa wire, Prometheus metrics chưa expose, backup DB daily script chưa có. Listed ở "Recommended trước beta open" — KHÔNG block closed beta 50 user; BẮT BUỘC trước beta open. |
+
+### Phase 10 content scale gate
+
+✅ **ĐỦ điều kiện mở Phase 10 PR-1..5** (items / skills / monsters / missions / boss pack) — verified session 9r-2.
+
+**Justification**:
+1. Mỗi gameplay flow core có ≥ 1 layer test (vitest unit / integration / smoke / golden path).
+2. 5 nhóm Partial chỉ thiếu **runtime smoke** chứ KHÔNG thiếu **logic test** (vitest đã cover invariant: ledger SUM, idempotency, double-claim, RNG seeded combat outcome).
+3. Không có P0/P1 issue open (`gh issue list --state all` empty 1/5).
+4. Baseline 1959 test stable qua 50+ PR.
+5. CI integration verified GREEN (PR #212 + main run 25203605650 1m35s).
+
+**Pre-gate BẮT BUỘC trước khi mở Phase 10 PR-1**: paste 3 output sau vào PR-1 body để pin baseline:
+
+```bash
+pnpm smoke:economy              # expect: done: 20 pass / 0 fail / 20 total
+pnpm smoke:ws                   # expect: done: 19 pass / 0 fail / 19 total
+E2E_FULL=1 pnpm --filter @xuantoi/web e2e  # expect: 16 passed
+```
+
+Nếu bất kỳ smoke nào fail → DỪNG Phase 10, mở PR fix root cause trước.
+
+### Optional Phase 9.5 polish (nice-to-have, không block)
+
+- `smoke:cultivation` — DB-direct exp inject + verify breakthrough event + state:update WS frame.
+- `smoke:combat` — RNG seed deterministic + verify damage formula + loot drop ledger.
+- `smoke:admin` — login admin → grant mail → user claim → verify ItemLedger; cũng cover giftcode create + redeem flow.
 
 ## Cut-line cho closed beta
 
