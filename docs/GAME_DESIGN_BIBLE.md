@@ -226,9 +226,11 @@ Hiện trạng (`packages/shared/src/combat.ts`):
 - 10 skill: `basic_attack` + 3 skill × 3 sect (Thanh Vân kiếm, Huyền Thuỷ thuỷ trị, Tu La huyết tế).
 - Mỗi character chọn skill theo `sectId`.
 
+**Phase 11.1.A catalog foundation đã có (session 9r-9 PR — `packages/shared/src/cultivation-methods.ts`)**: 12 method baseline (1 pham starter + 5 huyen Ngũ Hành + 3 tien sect-locked + 3 than endgame) với fields `grade/element/expMultiplier/statBonus/unlockRealm/requiredSect/source/passiveSkillKeys/forbiddenElements`. Runtime (Prisma model + service + UI) defer Phase 11.1.B PR sau.
+
 **Long-term (phase 11)**:
 
-- **CultivationMethod** (DB model mới): công pháp người chơi đang luyện. Multiplier `cultivationRate`, debuff/buff. Phải drop hoặc sect-shop để có.
+- **CultivationMethod** (DB model mới): công pháp người chơi đang luyện. Multiplier `cultivationRate` (1.0 pham → 1.8 than) + statBonus baseline (% hp/mp/atk/def). Phải drop từ dungeon/boss/event hoặc sect-shop để có. Sect-locked tier `tien` chỉ học khi cùng sect; `forbiddenElements` chống xung khắc Ngũ Hành.
 - **CharacterSkill** (DB model mới): skill đã unlock + level (1..10). Level qua `skill_book` item.
 - **Talent / Thần thông**: 5-7 cái grand passive, unlock qua "ngộ đạo" milestone hoặc raid drop.
 

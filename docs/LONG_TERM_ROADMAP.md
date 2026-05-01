@@ -186,13 +186,20 @@ Thêm depth cho progression: công pháp, skill upgrade, linh căn, thể chất
 
 ### Scope
 
-#### 11.0 PR: Spiritual Root catalog foundation **(DONE — session 9r-8)**
+#### 11.0 PR: Spiritual Root catalog foundation **(DONE — merged via PR #221, session 9r-8)**
 
 - `packages/shared/src/spiritual-root.ts` NEW — 5-grade tier (`pham/linh/huyen/tien/than`) + helper `elementMultiplier`/`elementGenerates`/`elementOvercomes`/`characterSkillElementBonus`/`validateSpiritualRootState`.
 - 43 vitest cover Ngũ Hành cycle (sinh/khắc), grade tier monotonic, multiplier bounds [0.7, 1.3], state validation.
 - KHÔNG schema migration, KHÔNG runtime hook (catalog-only foundation cho 11.3 runtime).
 
-#### 11.1 PR: CultivationMethod model
+#### 11.1.A PR: CultivationMethod catalog foundation **(DONE — session 9r-9, PR #222)**
+
+- `packages/shared/src/cultivation-methods.ts` NEW — 4-grade tier (`pham/huyen/tien/than`) + 12 method baseline (1 starter + 5 huyen Ngũ Hành + 3 tien sect-locked + 3 than endgame).
+- Helper: `getCultivationMethodDef(key)`, `methodsByElement(element)`, `methodsForSect(sect)`, `canLearnMethod(method, primaryElement)`.
+- 35 vitest cover catalog shape, balance (expMultiplier per grade, statBonus bounds), coverage (5 element + 3 sect + 4 grade), forbiddenElements safety.
+- KHÔNG schema migration, KHÔNG runtime hook (catalog-only foundation cho 11.1.B runtime).
+
+#### 11.1.B PR: CultivationMethod runtime (Pending)
 
 - Prisma model mới `CultivationMethod` (catalog static initially) + `CharacterCultivationMethod` (DB).
 - Service: `learnCultivationMethod(characterId, methodKey)`.

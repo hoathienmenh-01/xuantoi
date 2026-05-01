@@ -81,14 +81,23 @@ Target curve: time-to-realm tăng dần nhưng không quá 4× giữa 2 realm li
 
 ### 2.5 Buff multiplier (phase 11)
 
-Khi thêm:
+**Phase 11.1.A catalog đã có (session 9r-9 PR — `packages/shared/src/cultivation-methods.ts`)**:
 
-- Linh căn: 1.0..1.5× cultivation rate.
-- Cultivation method: 1.0..1.3× cultivation rate.
-- Sect aura: 1.0..1.2× cultivation rate.
+| Method grade | expMultiplier | Stat sum (% hp+mp+atk+def) | Source |
+|---|---|---|---|
+| pham starter (Khai Thiên Quyết) | 1.00 | 0 | starter (auto-grant) |
+| huyen Ngũ Hành (5 method) | 1.15..1.30 | -5..+30 | dungeon_drop / sect_shop |
+| tien sect-locked (3 method) | 1.40 | +30..+50 | sect_shop |
+| than endgame (3 method) | 1.60..1.80 | +60..+105 | boss_drop / event |
+
+Khi thêm runtime (Phase 11.1.B + 11.3):
+
+- Linh căn (Phase 11.0 catalog): 1.0..1.8× cultivation rate (`SPIRITUAL_ROOT_GRADE_DEFS[].cultivationMultiplier`).
+- Cultivation method (Phase 11.1.A catalog): 1.0..1.8× cultivation rate (`CULTIVATION_METHODS[].expMultiplier`).
+- Sect aura: 1.0..1.2× cultivation rate (Phase 13).
 - Pill `tu_vi_dan`: 1.5× cultivation rate trong 1h.
 
-**Stack rule**: multiplicative cap 2.5× tổng (dial). Vượt → cap.
+**Stack rule**: multiplicative cap 3.0× tổng (dial — bumped từ 2.5× để cover tien × tien hiếm-but-allowed; than × than = 1.8 × 1.8 = 3.24 → cap 3.0). Vượt → cap.
 
 ---
 
