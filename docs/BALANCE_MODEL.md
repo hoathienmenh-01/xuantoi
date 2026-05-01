@@ -187,6 +187,42 @@ damage = max(1, atk * skill.atkScale - def * 0.5)
 ```
 
 `elementMultiplier`: phase 11 thêm element kim/mộc/thuỷ/hoả/thổ vs hệ thống tu La huyết tế.
+
+**Phase 11.0 catalog foundation (session 9r-8 PR — `packages/shared/src/spiritual-root.ts`)**:
+
+```
+elementMultiplier(attacker, defender):
+  attacker = null OR defender = null  → 1.00  (neutral / vô hệ skill)
+  attacker = defender                  → 0.90  (cùng hệ — triệt một phần)
+  attacker khắc defender               → 1.30  (tương khắc, e.g. Kim → Mộc)
+  attacker sinh defender               → 1.20  (tương sinh, e.g. Mộc → Hoả)
+  defender khắc attacker               → 0.70  (bị khắc, e.g. Mộc → Kim)
+  defender sinh attacker               → 0.85  (bị sinh — defender hấp thụ)
+```
+
+Chu kỳ tương khắc cổ điển (clockwise): Kim → Mộc → Thổ → Thuỷ → Hoả → Kim.
+Chu kỳ tương sinh (clockwise): Kim → Thuỷ → Mộc → Hoả → Thổ → Kim.
+
+Linh căn character bonus (top of base multiplier) — `characterSkillElementBonus`:
+
+```
++ 0.10 nếu skillElement === character.primaryElement
++ 0.05 nếu skillElement ∈ character.secondaryElements
++ 0.00 nếu vô hệ skill (skillElement = null)
+```
+
+5 grade Linh căn — `SPIRITUAL_ROOT_GRADE_DEFS`:
+
+| Grade | Cultivation × | Stat % | Secondary | Roll weight |
+|---|---|---|---|---|
+| pham (Phàm) | 1.00 | +0% | 0 | 60 |
+| linh (Linh) | 1.15 | +5% | 1 | 25 |
+| huyen (Huyền) | 1.30 | +10% | 2 | 10 |
+| tien (Tiên) | 1.50 | +18% | 3 | 4 |
+| than (Thần) | 1.80 | +30% | 4 (toàn) | 1 |
+
+Hiện trạng: chỉ catalog metadata + helper. Combat runtime KHÔNG đọc `element`. Phase 11.2 (Elemental Combat MVP) sẽ wire `elementMultiplier` + `characterSkillElementBonus` vào `CombatService.applySkillDamage`. Phase 11.3 (Cultivation Method MVP) sẽ wire `cultivationMultiplier` + `statBonusPercent` vào `CultivationService.tickExp` + `CharacterStatService.computeStats`.
+
 `critMultiplier`: roll 1-100 ≤ critChance(luck) → ×1.5..2.0.
 
 ### 4.3 Skill cooldown

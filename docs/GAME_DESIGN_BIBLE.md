@@ -207,10 +207,15 @@ Hiện trạng: stage 9 break sang realm kế chỉ check EXP. Không có thiên
 
 ### C.4 Linh căn & Thể chất
 
-Chưa có trong code. Đề xuất phase 11:
+**Phase 11.0 catalog foundation đã có (session 9r-8 PR — `packages/shared/src/spiritual-root.ts`)**: 5 grade `pham/linh/huyen/tien/than` + helper `elementMultiplier`/`elementGenerates`/`elementOvercomes`/`characterSkillElementBonus`/`validateSpiritualRootState`. Runtime (schema migration + onboarding roll service + cultivation/combat wire) defer Phase 11.1+ runtime PR.
 
-- **Linh căn** (`spiritualRoot`): roll 1 lần khi tạo character, 5 grade (`pham`, `linh`, `huyen`, `tien`, `than`). Ảnh hưởng `cultivationRate` multiplier (e.g. `pham` 1.0×, `than` 1.5×). Re-roll bằng item `linh_can_dan` (cost cao, drop hiếm).
-- **Thể chất** (`physique`): static, gain qua quest milestone. Ảnh hưởng `hpMax`, `staminaMax`, `def` base.
+- **Linh căn** (`spiritualRoot`): roll 1 lần khi tạo character, 5 grade (`pham`, `linh`, `huyen`, `tien`, `than`). Ảnh hưởng `cultivationMultiplier` (1.0× phàm → 1.8× thần) + `statBonusPercent` (+0% phàm → +30% thần) + `secondaryElementCount` (0 phàm → 4 thần — toàn linh căn). Re-roll bằng item `linh_can_dan` (cost cao, drop hiếm endgame). Roll RNG distribution: pham 60% / linh 25% / huyen 10% / tien 4% / than 1% (`SPIRITUAL_ROOT_GRADE_DEFS[].rollWeight`). Re-roll chỉ TĂNG grade, không giảm (server-authoritative anti-cheese).
+- **Element multiplier** Ngũ Hành (catalog-level wired phase 11.0):
+  - Tương khắc 1.30 (Kim → Mộc → Thổ → Thuỷ → Hoả → Kim).
+  - Tương sinh 1.20 (Kim → Thuỷ → Mộc → Hoả → Thổ → Kim).
+  - Bị khắc 0.70 / Bị sinh 0.85 / Cùng hệ 0.90 / Vô hệ 1.00.
+  - Bonus character: +0.10 nếu skill cùng `primaryElement`, +0.05 nếu skill ∈ `secondaryElements`.
+- **Thể chất** (`physique`): static, gain qua quest milestone. Ảnh hưởng `hpMax`, `staminaMax`, `def` base. Phase 11+ TBD.
 
 Lý do tách 2 cái: **linh căn = lottery** (RNG khi tạo), **thể chất = grindable** (quest milestone) → tránh gating người không may mắn.
 
