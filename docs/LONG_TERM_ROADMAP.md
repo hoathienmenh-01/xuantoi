@@ -231,25 +231,43 @@ Thêm depth cho progression: công pháp, skill upgrade, linh căn, thể chất
 - Item `linh_can_dan` reroll (cost cao).
 - Migration + rollback.
 
-#### 11.4 PR: Thiên kiếp + Tâm ma
+#### 11.4.A PR: Gem catalog foundation **(this PR — session 9r-10, P11-4 Gem MVP catalog half)**
+
+- `packages/shared/src/gems.ts` NEW (~310 lines) — 25 gem baseline (5 Ngũ Hành × 5 grade `PHAM/LINH/HUYEN/TIEN/THAN`) deterministic generated.
+- Schema `GemDef { key, name, description, element, grade, bonus, compatibleSlots, nextTierKey, price, source }` + `GemBonus` 5-stat + `GemSource` 6-type + `GemCompatibleSlot` 7-slot + 'ANY'.
+- Element-stat mapping: Kim → atk + spirit; Mộc → hpMax + spirit; Thuỷ → mpMax + spirit; Hoả → atk - def trade-off; Thổ → def + hpMax.
+- Combine recipe: 3× cùng key → 1× next-tier (THAN → nextTierKey null); combine sink rule `3× bonus_low > bonus_high_grade`.
+- Helper: `getGemDef`, `gemsByElement`, `gemsByGrade`, `composeSocketBonus(gemKeys[])`, `combineGems(srcKey)`, `canSocketGem(gemKey, slot)`, `gemUpgradePathCost(fromKey, toKey)` (geometric `3^N`).
+- 39 vitest cover catalog shape, 5×5 element×grade matrix, balance (price + bonus monotonic + Hoả def trade-off + combine sink rule), helpers (compose/combine/canSocket/upgradePath happy + error paths).
+- KHÔNG schema migration, KHÔNG runtime hook (catalog-only foundation cho 11.4.B runtime).
+
+#### 11.4.B PR: Gem runtime (Pending)
+
+- Prisma migration: `Equipment.sockets Json?` (list `{ slotIndex: int, gemKey: string | null }`) với default empty `[]`. Backfill nullable cho character cũ.
+- Service: `socketGem(characterId, equipmentId, slotIndex, gemKey)` deduct gem qty từ `ItemLedger`, push vào `equipment.sockets`. `unsocketGem` return gem (cost linhThach), push qty back.
+- Service: `combineGems(characterId, srcGemKey)` consume 3× gem cùng key → 1× gem next-tier theo `combineGems` catalog helper deterministic, qua `ItemLedger` atomic.
+- Wire `composeSocketBonus(equipment.sockets[].gemKey)` vào `CharacterStatService.computeStats` cho tổng equipment bonus + socket bonus.
+- Migration + rollback note + idempotency cho socketGem/combineGems.
+
+#### 11.5 PR: Refinery (Luyện khí) (P11-5 spec)
+
+- Tương tự alchemy nhưng cho weapon/armor.
+- Refine 0..15 level. % fail tăng theo level.
+- Material: `nguyenThach` + `linhThach`.
+
+#### 11.6 PR: Thiên kiếp + Tâm ma (P11-6 spec)
 
 - Trigger khi break realm `pham → nhan_tien`, `nhan_tien → tien_gioi`, `tien_gioi → hon_nguyen`.
 - Combat 1 lượt vs "Thiên Kiếp Lôi" deterministic theo character power.
 - Fail: rớt EXP về stage 9 + cooldown 1h.
 - Tâm ma: 3-10% chance set debuff `cultivating: false` 30p.
 
-#### 11.5 PR: Alchemy (Luyện đan)
+#### 11.X PR: Alchemy (Luyện đan)
 
 - Module mới `apps/api/src/modules/alchemy/`.
 - Recipe catalog static (`packages/shared/src/alchemy.ts`).
 - Process: chọn recipe + nguyên liệu (item) → consume → roll success → grant pill.
 - Ledger: `ItemLedger` consume + grant.
-
-#### 11.6 PR: Refinery (Luyện khí)
-
-- Tương tự alchemy nhưng cho weapon/armor.
-- Refine 0..15 level. % fail tăng theo level.
-- Material: `nguyenThach` + `linhThach`.
 
 #### 11.7 PR: Talent / Thần thông
 
