@@ -314,11 +314,28 @@ Thêm depth cho progression: công pháp, skill upgrade, linh căn, thể chất
 - REST `POST /alchemy/recipes` (list available) + `POST /alchemy/attempt` + `GET /alchemy/history`.
 - Migration + rollback note + audit log.
 
-#### 11.7 PR: Talent / Thần thông
+#### 11.7.A PR: Talent / Thần Thông catalog foundation **(this PR — session 9r-10)**
 
-- 5-7 talent passive grand.
-- Unlock qua "ngộ đạo" milestone (mỗi 3 realm trigger 1 ngộ đạo cho talent point).
-- DB: `CharacterTalent`.
+- `packages/shared/src/talents.ts` NEW (~440 lines) — 14 talent baseline = 7 passive + 7 active "Thần Thông".
+- Schema `TalentDef { key, name, description, type, element, realmRequirement, talentPointCost, passiveEffect xor activeEffect }` + sub-types `TalentType/PassiveTalentKind/ActiveTalentKind/StatTarget`.
+- Passive (7): Kim Thiên Cơ atk +10%, Thuỷ Long Ấn hpMax +10%, Mộc Linh Quy hp regen +5/tick, Hoả Tâm Đạo damage_bonus vs Kim +15%, Thổ Sơn Tướng def +10%, Thiên Di drop +20%, Ngộ Đạo exp +15%.
+- Active (7): Kim Quang Trảm AOE 2× atk, Thuỷ Yên Ngục root 3 turns, Mộc Chu Lâm heal 30%, Hoả Long Phún DOT 5 turns, Thổ Địa Chấn AOE stun 1 turn, Thiên Lôi Trừng Trị true damage 3× spirit, Phong Lui Pháp Tướng escape utility.
+- Realm gating: truc_co/kim_dan/nguyen_anh/hoa_than/luyen_hu cover early-mid-late.
+- Cost gating: 1/2/3 talent points per talent.
+- Talent point budget: mỗi 3 realm threshold trigger 1 ngộ-đạo point (`computeTalentPointBudget(order) = floor(order/3)`).
+- Helper: `getTalentDef`, `talentsByType/Element`, `talentsAvailableAtRealm`, `computeTalentPointBudget`, `canCharacterLearnTalent`, `composePassiveTalentMods` (multiplicative stat + additive regen + per-element damage_bonus map), `simulateActiveTalent` deterministic.
+- 70 vitest cover catalog shape + ref REALMS valid + curve sanity + helpers + sim deterministic + error paths.
+- KHÔNG schema migration, KHÔNG runtime hook (catalog-only foundation cho 11.7.B runtime).
+
+#### 11.7.B PR: Talent / Thần Thông runtime (Pending)
+
+- Module mới `apps/api/src/modules/talent/` (controller + service + DTO).
+- Prisma migration: `CharacterTalent { id, characterId, talentKey, learnedAt, mpCooldownUntil, attemptCount }` + indexed on `(characterId, talentKey)` UNIQUE.
+- Service `TalentService.learnTalent(characterId, talentKey)` → validate qua `canCharacterLearnTalent` + persist + giảm point budget.
+- Service `TalentService.useActiveTalent(characterId, talentKey, combatId)` → check cooldown + check mp + call `simulateActiveTalent` + apply damage/heal/cc/dot vào CombatService runtime + atomic mp consume + cooldown set.
+- Wire `composePassiveTalentMods(character.learnedTalentKeys)` vào `CharacterStatService.computeStats` để áp passive stat mod + drop/exp bonus.
+- REST `GET /talent/available` + `POST /talent/learn` + `POST /talent/use` + `GET /talent/points`.
+- Migration + rollback note + audit log.
 
 #### 11.8 PR: Buff/Debuff system
 
