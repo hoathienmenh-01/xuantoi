@@ -54,7 +54,7 @@ function makeController(opts: { max: number }) {
     PROFILE_RATE_LIMIT_WINDOW_MS,
     opts.max,
   );
-  const controller = new CharacterController(chars, auth, limiter);
+  const controller = new CharacterController(chars, auth, undefined, limiter);
   return {
     controller,
     limiter,

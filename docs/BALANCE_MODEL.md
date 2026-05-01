@@ -198,6 +198,31 @@ Khi thêm runtime (Phase 11.9.B):
 - `equipTitle` validate ownership trước khi set `Character.title`.
 - Wire `composeTitleMods([Character.title])` vào `CharacterStatService.computeStats`.
 
+### 2.9 Spiritual Root (Linh căn) runtime distribution (phase 11.3.A)
+
+Phase 11.3.A runtime onboard auto-roll Linh căn server-authoritative khi tạo character. Distribution lần đầu (immutable cho đến khi reroll bằng `linh_can_dan`):
+
+| Grade  | Tier name            | rollWeight | P(grade) | secondaryElementCount | cultivationMultiplier | statBonusPercent |
+| ------ | -------------------- | ---------- | -------- | --------------------- | --------------------- | ---------------- |
+| pham   | Phàm linh căn        | 60         | 60.0%    | 0                     | 1.00×                 | 0%               |
+| linh   | Linh căn             | 25         | 25.0%    | 1                     | 1.20×                 | +5%              |
+| huyen  | Huyền linh căn       | 10         | 10.0%    | 2                     | 1.50×                 | +12%             |
+| tien   | Tiên linh căn        | 4          | 4.0%     | 3                     | 1.80×                 | +25%             |
+| than   | Thần linh căn        | 1          | 1.0%     | 4                     | 2.50×                 | +50%             |
+
+- Primary element uniform distribution 5 hệ (kim/moc/thuy/hoa/tho) — 20% per hệ.
+- Secondary elements Fisher-Yates pick `secondaryElementCount` từ 4 hệ còn lại (no duplicate, no primary).
+- Purity uniform integer [80, 100] lần đầu roll. Future Phase 11.3.B: `linh_can_dan` reroll → seed mới + có thể purity > 100 nếu refine catalog support.
+- Vitest enforce: 10000 sample grade distribution ±5 percentage point của weight; 5000 sample primary element ±7 percentage point của 20% uniform.
+- Combined với cultivation method (×1.8 max) + linh căn (×2.5 max) + buff (×1.5 max) + title (×1.15 max) → grand total cap **5.0× theo §2.5** (multiplicative — bumped từ 3.5× để cover Thần linh căn × 2.5 hiếm-but-allowed). Vượt → cap.
+
+### 2.9.1 Phase 11.3.B wire điểm (Pending)
+
+- Wire `elementMultiplier(attacker.primaryElement, defender.primaryElement)` vào `CombatService.computeDamage()` — tương khắc ×1.30, tương sinh ×1.20, bị khắc ×0.70, bị sinh ×0.85, cùng hệ ×0.90, vô hệ ×1.00.
+- Wire `getSpiritualRootGradeDef(character.spiritualRootGrade).cultivationMultiplier` vào `CultivationService.tick()`.
+- Wire `getSpiritualRootGradeDef(...).statBonusPercent` vào `CharacterStatService.computeStats()`.
+- Reroll service consume `linh_can_dan` ItemLedger + insert log `source='reroll'` + `rootRerollCount++`.
+
 ---
 
 ## 3. POWER CURVE

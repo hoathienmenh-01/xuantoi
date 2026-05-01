@@ -2,6 +2,8 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { PrismaService } from '../../common/prisma.service';
 import { RealtimeService } from '../realtime/realtime.service';
 import { CharacterService } from './character.service';
+import { SpiritualRootService } from './spiritual-root.service';
+import { ELEMENTS, SPIRITUAL_ROOT_GRADES } from '@xuantoi/shared';
 import { makeUserChar, wipeAll } from '../../test-helpers';
 
 const TEST_DATABASE_URL =
@@ -11,12 +13,16 @@ const TEST_DATABASE_URL =
 
 let prisma: PrismaService;
 let chars: CharacterService;
+let charsWithRoot: CharacterService;
+let rootSvc: SpiritualRootService;
 
 beforeAll(() => {
   process.env.DATABASE_URL = TEST_DATABASE_URL;
   prisma = new PrismaService();
   const realtime = new RealtimeService();
+  rootSvc = new SpiritualRootService(prisma);
   chars = new CharacterService(prisma, realtime);
+  charsWithRoot = new CharacterService(prisma, realtime, rootSvc);
 });
 
 beforeEach(async () => {
@@ -107,5 +113,54 @@ describe('CharacterService.findPublicProfile', () => {
     const rMod = await chars.findPublicProfile(fMod.characterId);
     expect(rAdmin?.role).toBe('ADMIN');
     expect(rMod?.role).toBe('MOD');
+  });
+});
+
+describe('CharacterService.onboard with SpiritualRootService (Phase 11.3.A)', () => {
+  it('onboard tự động roll Linh căn server-side', async () => {
+    // Tạo user trống (chưa có Character) — qua prisma trực tiếp.
+    const user = await prisma.user.create({
+      data: {
+        email: `onboard_${Date.now()}@test.local`,
+        passwordHash: 'x',
+        role: 'PLAYER',
+      },
+    });
+    const state = await charsWithRoot.onboard(user.id, {
+      name: `Tester_${Date.now()}_${Math.floor(Math.random() * 9999)}`,
+      sectKey: 'thanh_van',
+    });
+    expect(state.id).toBeDefined();
+    const c = await prisma.character.findUnique({ where: { id: state.id } });
+    expect(c).not.toBeNull();
+    expect(SPIRITUAL_ROOT_GRADES).toContain(c!.spiritualRootGrade as never);
+    expect(ELEMENTS).toContain(c!.primaryElement as never);
+    expect(c!.rootPurity).toBeGreaterThanOrEqual(80);
+    expect(c!.rootPurity).toBeLessThanOrEqual(100);
+
+    // Log entry tạo với source='onboard'.
+    const logs = await prisma.spiritualRootRollLog.findMany({
+      where: { characterId: c!.id, source: 'onboard' },
+    });
+    expect(logs.length).toBe(1);
+  });
+
+  it('CharacterService không inject SpiritualRootService vẫn onboard được (backward-compat)', async () => {
+    const user = await prisma.user.create({
+      data: {
+        email: `onboard_legacy_${Date.now()}@test.local`,
+        passwordHash: 'x',
+        role: 'PLAYER',
+      },
+    });
+    const state = await chars.onboard(user.id, {
+      name: `LegacyTester_${Date.now()}_${Math.floor(Math.random() * 9999)}`,
+      sectKey: 'tu_la',
+    });
+    const c = await prisma.character.findUnique({ where: { id: state.id } });
+    expect(c).not.toBeNull();
+    // Legacy onboard (không có SpiritualRootService) → field nullable.
+    expect(c!.spiritualRootGrade).toBeNull();
+    expect(c!.primaryElement).toBeNull();
   });
 });
