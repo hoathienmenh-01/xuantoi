@@ -4,15 +4,29 @@ import type { Job } from 'bullmq';
 import {
   CULTIVATION_TICK_BASE_EXP,
   CULTIVATION_TICK_MS,
+  SPIRITUAL_ROOT_GRADES,
   STAMINA_REGEN_PER_TICK,
   cultivationRateForRealm,
   expCostForStage,
+  getSpiritualRootGradeDef,
   type CultivateTickPayload,
+  type SpiritualRootGrade,
 } from '@xuantoi/shared';
 import { PrismaService } from '../../common/prisma.service';
 import { RealtimeService } from '../realtime/realtime.service';
 import { MissionService } from '../mission/mission.service';
 import { CULTIVATION_QUEUE } from './cultivation.queue';
+
+/**
+ * Phase 11.3.C narrowing helper — kiểm tra Prisma trả về `string | null` có
+ * khớp catalog `SPIRITUAL_ROOT_GRADES` không. Legacy character pre-Phase
+ * 11.3 sẽ có `spiritualRootGrade=null` → return false → multiplier 1.0.
+ */
+function isValidSpiritualRootGrade(
+  grade: string | null,
+): grade is SpiritualRootGrade {
+  return grade !== null && (SPIRITUAL_ROOT_GRADES as readonly string[]).includes(grade);
+}
 
 @Processor(CULTIVATION_QUEUE)
 export class CultivationProcessor extends WorkerHost {
@@ -44,6 +58,7 @@ export class CultivationProcessor extends WorkerHost {
         realmStage: true,
         exp: true,
         spirit: true,
+        spiritualRootGrade: true,
       },
     });
     if (cultivating.length === 0) return;
@@ -57,7 +72,13 @@ export class CultivationProcessor extends WorkerHost {
           c.realmKey,
           CULTIVATION_TICK_BASE_EXP,
         );
-        const gain = BigInt(realmRate + Math.floor(c.spirit / 4));
+        const baseGain = realmRate + Math.floor(c.spirit / 4);
+        // Phase 11.3.C — Linh căn cultivationMultiplier wire.
+        // Legacy character (spiritualRootGrade=null) → multiplier=1.0 → backward-compat.
+        const cultivationMul = isValidSpiritualRootGrade(c.spiritualRootGrade)
+          ? getSpiritualRootGradeDef(c.spiritualRootGrade).cultivationMultiplier
+          : 1.0;
+        const gain = BigInt(Math.max(1, Math.round(baseGain * cultivationMul)));
         let exp = c.exp + gain;
         let realmKey = c.realmKey;
         let realmStage = c.realmStage;
