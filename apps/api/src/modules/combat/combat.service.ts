@@ -4,13 +4,16 @@ import {
   DUNGEONS,
   STAMINA_PER_ACTION,
   SKILL_BASIC_ATTACK,
+  characterSkillElementBonus,
   dungeonByKey,
+  elementMultiplier,
   itemByKey,
   monsterByKey,
   rollDamage,
   rollDungeonLoot,
   skillByKey,
   type DungeonDef,
+  type ElementKey,
   type MonsterDef,
   type SectKey,
   type SkillDef,
@@ -172,8 +175,26 @@ export class CombatService {
       ...((enc.log as unknown as EncounterLogLine[]) ?? []),
     ];
 
+    // Phase 11.3.B — Linh căn / Ngũ Hành element wire.
+    // characterSkillElementBonus = elementMultiplier(skill,target) + character
+    // primary +0.10 / secondary +0.05 nếu skill cùng hệ. Legacy character
+    // (primaryElement=null) → bypass character bonus, chỉ dùng base multiplier.
+    const charElementState =
+      char.primaryElement && char.spiritualRootGrade
+        ? {
+            primaryElement: char.primaryElement as ElementKey,
+            secondaryElements: char.secondaryElements as ElementKey[],
+          }
+        : null;
+    const playerElementMul = characterSkillElementBonus(
+      charElementState,
+      skill.element ?? null,
+      monster.element ?? null,
+    );
+
     // — Player attack
-    const dmg = rollDamage(effPower, monster.def, skill.atkScale);
+    const dmgBase = rollDamage(effPower, monster.def, skill.atkScale);
+    const dmg = Math.max(1, Math.round(dmgBase * playerElementMul));
     let monsterHp = state.monsterHp - dmg;
     charMp -= skill.mpCost;
     if (skill.selfBloodCost > 0) {
@@ -186,6 +207,19 @@ export class CombatService {
       text: `Đạo hữu tung ${skill.name}, gây ${dmg} sát thương lên ${monster.name}.`,
       ts: Date.now(),
     });
+    if (playerElementMul >= 1.15) {
+      log.push({
+        side: 'system',
+        text: `Ngũ Hành tương khắc/sinh — sát thương khuếch đại ×${playerElementMul.toFixed(2)}.`,
+        ts: Date.now(),
+      });
+    } else if (playerElementMul <= 0.9) {
+      log.push({
+        side: 'system',
+        text: `Ngũ Hành lệch hệ — sát thương suy giảm ×${playerElementMul.toFixed(2)}.`,
+        ts: Date.now(),
+      });
+    }
 
     let healLine: EncounterLogLine | null = null;
     if (skill.selfHealRatio > 0) {
@@ -236,8 +270,13 @@ export class CombatService {
         }
       }
     } else {
-      // — Monster counter-attack
-      const reply = rollDamage(monster.atk, char.spirit + effPower * 0.3 + effDef, 1);
+      // — Monster counter-attack (Phase 11.3.B — element vs character primary)
+      const replyBase = rollDamage(monster.atk, char.spirit + effPower * 0.3 + effDef, 1);
+      const monsterElementMul = elementMultiplier(
+        (monster.element ?? null) as ElementKey | null,
+        (char.primaryElement ?? null) as ElementKey | null,
+      );
+      const reply = Math.max(1, Math.round(replyBase * monsterElementMul));
       charHp -= reply;
       log.push({
         side: 'monster',

@@ -48,6 +48,10 @@ export async function makeUserChar(
     power?: number;
     speed?: number;
     luck?: number;
+    spiritualRootGrade?: string | null;
+    primaryElement?: string | null;
+    secondaryElements?: string[];
+    rootPurity?: number;
   },
 ): Promise<TestCharacterFixture> {
   const suffix = nextSuffix();
@@ -81,6 +85,10 @@ export async function makeUserChar(
       power: opts?.power ?? 10,
       speed: opts?.speed ?? 10,
       luck: opts?.luck ?? 5,
+      spiritualRootGrade: opts?.spiritualRootGrade ?? null,
+      primaryElement: opts?.primaryElement ?? null,
+      secondaryElements: opts?.secondaryElements ?? [],
+      rootPurity: opts?.rootPurity ?? 100,
     },
   });
   return { userId: user.id, characterId: char.id, email, name };

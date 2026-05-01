@@ -216,9 +216,33 @@ Phase 11.3.A runtime onboard auto-roll Linh căn server-authoritative khi tạo 
 - Vitest enforce: 10000 sample grade distribution ±5 percentage point của weight; 5000 sample primary element ±7 percentage point của 20% uniform.
 - Combined với cultivation method (×1.8 max) + linh căn (×2.5 max) + buff (×1.5 max) + title (×1.15 max) → grand total cap **5.0× theo §2.5** (multiplicative — bumped từ 3.5× để cover Thần linh căn × 2.5 hiếm-but-allowed). Vượt → cap.
 
-### 2.9.1 Phase 11.3.B wire điểm (Pending)
+### 2.9.1 Phase 11.3.B wire điểm — Element multiplier vào CombatService (DONE this PR)
 
-- Wire `elementMultiplier(attacker.primaryElement, defender.primaryElement)` vào `CombatService.computeDamage()` — tương khắc ×1.30, tương sinh ×1.20, bị khắc ×0.70, bị sinh ×0.85, cùng hệ ×0.90, vô hệ ×1.00.
+`CombatService.action()` wire `characterSkillElementBonus(character, skill.element, monster.element)`:
+
+```
+playerElementMul = elementMultiplier(skill.element, monster.element)  // base
+                 + (skill.element === character.primaryElement ? 0.10 : 0)
+                 + (character.secondaryElements.includes(skill.element) ? 0.05 : 0)
+
+elementMultiplier(attacker, defender):
+  null vs * | * vs null  → 1.00 (vô hệ)
+  attacker === defender  → 0.90 (cùng hệ)
+  attacker overcomes def → 1.30 (tương khắc)
+  attacker generates def → 1.20 (tương sinh)
+  defender overcomes atk → 0.70 (bị khắc)
+  defender generates atk → 0.85 (bị sinh)
+```
+
+- Tương khắc cycle: `kim → moc → tho → thuy → hoa → kim` (Kim Mộc Thổ Thuỷ Hoả).
+- Tương sinh cycle: `kim → thuy → moc → hoa → tho → kim` (kim sinh thuỷ, thuỷ sinh mộc, ...).
+- Player damage: `dmg = max(1, round(dmgBase * playerElementMul))`.
+- Monster counter: `reply = max(1, round(replyBase * elementMultiplier(monster.element, char.primaryElement)))`.
+- Legacy character (`spiritualRootGrade=null`) → `charElementState=null` → bypass character bonus, chỉ áp `elementMultiplier` base → backward-compat preserved.
+- Log line trigger: `playerElementMul ≥ 1.15` → "Ngũ Hành tương khắc/sinh — sát thương khuếch đại ×N.NN", `≤ 0.90` → "lệch hệ — sát thương suy giảm ×N.NN".
+
+### 2.9.2 Phase 11.3.C wire điểm (Pending)
+
 - Wire `getSpiritualRootGradeDef(character.spiritualRootGrade).cultivationMultiplier` vào `CultivationService.tick()`.
 - Wire `getSpiritualRootGradeDef(...).statBonusPercent` vào `CharacterStatService.computeStats()`.
 - Reroll service consume `linh_can_dan` ItemLedger + insert log `source='reroll'` + `rootRerollCount++`.

@@ -235,10 +235,18 @@ Thêm depth cho progression: công pháp, skill upgrade, linh căn, thể chất
 - 14 vitest API: 11 service test (idempotency + seeded determinism + lazy-roll + concurrent race + grade distribution 10000 sample bám sát weight ±5 percentage point + element distribution uniform 5000 sample) + 2 onboard integration test + 1 backward-compat test.
 - KHÔNG runtime wire combat/cultivation/UI — đó là Phase 11.3.B.
 
-#### 11.3.B PR: Linh căn / Spiritual Root runtime WIRE (Pending)
+#### 11.3.B PR: Linh căn element multiplier wire vào Combat **(session 9r-12 part 2, this PR open)**
 
-- Wire `elementMultiplier(attacker.primaryElement, defender.primaryElement)` vào `CombatService.computeDamage()` (tương khắc +30%, tương sinh +20%, bị khắc -30%, bị sinh -15%, cùng hệ -10%, vô hệ 1.0).
-- Wire `cultivationMethod.expMultiplier` (Phase 11.1.A catalog) vào `CultivationService.tick()` (cần `Character.cultivationMethodKey` field — sẽ thêm trong PR-B hoặc Phase 11.1.B).
+- `apps/api/src/modules/combat/combat.service.ts` import `characterSkillElementBonus + elementMultiplier + ElementKey` từ `@xuantoi/shared`.
+- Trong `action()`: player attack `dmgBase = rollDamage(...)`, multiply by `playerElementMul = characterSkillElementBonus(charElementState, skill.element, monster.element)` — `charElementState=null` cho legacy character → bypass bonus, chỉ áp Ngũ Hành base. `Math.max(1, round(dmgBase * mul))` clamp.
+- Monster counter: `replyBase = rollDamage(...)`, multiply by `elementMultiplier(monster.element, char.primaryElement)`.
+- Add log line "Ngũ Hành tương khắc/sinh — sát thương khuếch đại ×N.NN" nếu `mul ≥ 1.15`, hoặc "lệch hệ — sát thương suy giảm ×N.NN" nếu `mul ≤ 0.90`.
+- 5 vitest mới với `vi.spyOn(Math, 'random').mockReturnValue(0.5)` → variance = 1.0 deterministic: kim>moc primary kim → ×1.40 log; moc primary skill kim vs moc → ×1.30 (no character bonus); legacy null → ×1.30; basic_attack vô hệ → no log; kim vs kim cùng hệ → ×0.90 "lệch hệ".
+
+#### 11.3.C PR: Linh căn cultivation + stat bonus wire (Pending)
+
+- Wire `getSpiritualRootGradeDef(character.spiritualRootGrade).cultivationMultiplier` vào `CultivationService.tick()` — exp multiplier per tick.
+- Wire `getSpiritualRootGradeDef(...).statBonusPercent` vào `CharacterStatService.computeStats()` — atk/hp/spirit bonus dựa trên grade.
 - UI character profile display Linh căn (icon + grade tooltip + element wheel).
 - Reroll service: consume `linh_can_dan` (Phase 11.4.A item catalog có rồi) qua `ItemLedger` + cost gating + rate limit + insert log `source='reroll'` + `rootRerollCount++`.
 - E2E Playwright test onboard auto-roll display trong character profile.
