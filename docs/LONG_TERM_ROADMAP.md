@@ -206,11 +206,23 @@ Thêm depth cho progression: công pháp, skill upgrade, linh căn, thể chất
 - Effect: multiplier `cultivationRate` + skill unlock.
 - Migration + rollback note.
 
-#### 11.2 PR: SkillTemplate + CharacterSkill DB
+#### 11.2.A PR: SkillTemplate catalog foundation **(this PR — session 9r-10)**
 
-- Migrate skill từ pure static sang catalog static + DB row per character.
-- Field: `skillKey`, `level (1..10)`, `xp`.
-- Skill book item upgrade level.
+- `packages/shared/src/skill-templates.ts` NEW (~470 lines) — progression catalog 26 template 1-1 với `SKILLS` (combat.ts).
+- 5-tier `SkillTier` (`basic/intermediate/advanced/master/legendary`) với `SKILL_TIER_DEFS` table monotonic (maxMastery 5..10, atkScaleBonusPerLevel 0.05..0.07, mpCostReductionPerLevel 0.04..0.05, baseLinhThachCost 100..2000, hasEvolution chỉ legendary).
+- `SkillUnlockRequirement` 6-kind (`realm/sect/method/item/quest/event`) AND-condition + `SkillEvolutionBranch` cho legendary endgame customization.
+- 26 template baseline: 12 basic + 10 intermediate + 1 advanced + 1 master + 2 legendary với 4 evolution branches.
+- Helper: `getSkillTemplate(key)`, `templatesByTier(tier)`, `templatesByUnlock(kind, ref)`, `applyMasteryEffect(template, masteryLevel, baseSkill)` → `EffectiveSkill`, `masteryUpgradeCost(template, fromLevel, toLevel)`, `findOrphanSkills/findOrphanTemplates/findTierMismatches` integrity checks.
+- 63 vitest cover tier shape monotonic + power-creep cap, mastery curve generator, catalog coverage 1-1 với SKILLS, applyMasteryEffect (clamp/throw/monotonic), masteryUpgradeCost, balance global stack rule (atk +100% cap, mp 60% cap).
+- KHÔNG schema migration, KHÔNG runtime hook (catalog-only foundation cho 11.2.B runtime).
+
+#### 11.2.B PR: SkillTemplate runtime (Pending)
+
+- Prisma model mới `CharacterSkill { id, characterId, skillKey, masteryLevel, learnedAt, isEquipped }` (composite unique `(characterId, skillKey)`).
+- Service: `learnSkill(characterId, skillKey)` (verify SkillTemplate.unlocks AND-condition), `upgradeMastery(characterId, skillKey)` (deduct linhThach + skillShard via CurrencyLedger/ItemLedger), `equipSkill(characterId, skillKey)` (max 4 slot active + N passive).
+- Wire `applyMasteryEffect` vào `CombatService.computeSkillDamage` thay vì đọc `SkillDef` trực tiếp.
+- Skill book item drop từ dungeon/boss → consume convert thành skillShard ItemLedger.
+- Migration + rollback + idempotency cho upgradeMastery.
 
 #### 11.3 PR: Linh căn + Thể chất
 
