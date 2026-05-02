@@ -10,7 +10,35 @@ Tóm tắt **người chơi / vận hành / dev** dễ đọc, theo PR đã merg
 
 ## [Unreleased]
 
-> Pending merge: docs CHANGELOG catch-up sessions 9q–9r-25 wire batch (this PR).
+> Pending merge: docs CHANGELOG catch-up session 9r-25 part 2 — PR #258 (Phase 11.4.D Equip spiritBonus combat) + PR #259 (Phase 11.X.G Talent dropMul boss reward) (this PR).
+
+---
+
+## [session 9r-25 part 2 wire batch — PR #258 → #259, merged 2/5 2026]
+
+### Internal — Phase 11 passive consume runtime wire (no catalog/balance change)
+
+**Compose-and-fail-soft pattern** continued from session 9r-25 part 1 (PR #251–#256). 2 PR mới wire 2 gap còn lại nhận diện trong session: equip.spiritBonus runtime consume + talents.dropMul boss reward.
+
+- **Equip spiritBonus wire vào CombatService.action()** (PR #258 / Phase 11.4.D): `inventory.equipBonus.spiritBonus` (item base spirit + gem spirit socket bonus + refine multiplier — đã compute Phase 11.4.B/11.5.B) cộng additive vào `effSpirit` defense calc trong combat reply branch. Trước đó equip.spiritBonus chỉ được compute nhưng KHÔNG consume runtime — gem moc/thuy/tho spirit bonus de facto no-op cho monster reply defense. Pattern same as atk wire `(base + flat) × multipliers`. 2 vitest. `combat.service.ts` + `combat.service.test.ts`.
+- **Talent dropMul wire vào BossService reward distribution** (PR #259 / Phase 11.X.G): `talents.getMods().dropMul` × linhThach reward trong `distributeRewards`. Catalog `talent_thien_di` (passive `drop_bonus` +20%) v.v. trước đó CHỈ wire vào CombatService monster drop (PR #251). Boss world reward distribution không có wire — `talent_thien_di` de facto no-op cho boss reward. Apply BEFORE `currency.applyTx` ledger write, BigInt × float Number floor (range safe ~10M within 2^53). CurrencyLedger reflects boosted delta — single source of truth audit. 3 vitest. `boss.service.ts` + `boss.service.test.ts`.
+
+### Player-facing impact (post-merge)
+
+- **Gem spirit bonus runtime applies cho combat reply defense** (PR #258). Trước đó gem mộc/thuỷ/thổ spirit bonus chỉ display ở character profile, không ảnh hưởng combat damage taken.
+- **Talent Thiên Di "+20% drop rate" giờ apply cho world boss reward** (PR #259). Trước đó chỉ apply monster combat drop. Top1 share 50% × 1.2 = 60%, top2-3 15% × 1.2 = 18%, top4-10 2% × 1.2 = 2.4%. CurrencyLedger reflects actual granted (not base) for audit accuracy.
+
+### Tests baseline progression
+
+- Pre-PR-#258: API 1395 vitest (post 9r-25 part 1).
+- Post-PR-#258: API 1397 vitest (+2 spirit bonus tests).
+- Post-PR-#259: API 1398 vitest. Boss test file `boss.service.test.ts` 19/19 (16 baseline + 3 new dropMul cases).
+- Total full suite post-PR-#259: API 1398 + shared 954 + web 588 = **2940 vitest**.
+
+### Risks / migrations
+
+- **None breaking**: pure consume wire, no catalog/schema/migration changes.
+- BOSS_REWARD ledger.delta now reflects boosted amount — audit-accurate. Existing pre-wire ledger rows preserved (immutable history).
 
 ---
 
