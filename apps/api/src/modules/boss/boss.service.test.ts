@@ -1804,4 +1804,126 @@ describe('BossService', () => {
       );
     });
   });
+
+  // Phase 11.X.Z — Linh căn / Ngũ Hành element wire vào BossService.attack().
+  // Symmetric với Phase 11.3.B combat path (combat.service.ts L255-270).
+  // characterSkillElementBonus(charElementState, skill.element, boss.element):
+  //   - Base elementMultiplier(skill, target): kim→tho 0.85 (bị sinh),
+  //     moc→tho 1.30 (khắc), null↔* 1.0 (identity).
+  //   - + 0.10 nếu skill cùng `char.primaryElement` (Linh căn primary boost).
+  //   - + 0.05 nếu skill cùng `char.secondaryElements` (Linh căn secondary).
+  //   - Legacy (primaryElement=null hoặc spiritualRootGrade=null) → bypass
+  //     character bonus, chỉ dùng base elementMultiplier.
+  // DEF = BOSSES[0] = `yeu_vuong_tho_huyet` element=tho.
+  describe('Linh căn / Ngũ Hành playerElementMul wire (Phase 11.X.Z)', () => {
+    beforeEach(() => {
+      (boss as unknown as { cooldowns: Map<string, number> }).cooldowns.clear();
+    });
+
+    afterEach(() => {
+      vi.restoreAllMocks();
+    });
+
+    it('skill kim (`kim_quang_tram`) vs boss tho + char primaryElement=kim grade=pham → damage > char legacy primaryElement=null (Linh căn primary +0.10 boost)', async () => {
+      // baseMul(kim, tho) = 0.85 (defender tho generates kim → bị sinh).
+      // Char A có primaryElement=kim → +0.10 → playerElementMul = 0.95.
+      // Char B legacy null primaryElement → charElementState=null → 0.85.
+      // damageA > damageB.
+      vi.spyOn(Math, 'random').mockReturnValue(0.5);
+
+      const lc = await makeUserChar(prisma, {
+        mp: 100,
+        stamina: 100,
+        power: 100,
+        spirit: 100,
+        realmKey: 'luyen_hu',
+        primaryElement: 'kim',
+        spiritualRootGrade: 'pham',
+      });
+      const legacy = await makeUserChar(prisma, {
+        mp: 100,
+        stamina: 100,
+        power: 100,
+        spirit: 100,
+        realmKey: 'luyen_hu',
+        // primaryElement=null, spiritualRootGrade=null (default) → legacy.
+      });
+      await spawnBoss({ currentHp: 1_000_000n });
+
+      const lcOut = await boss.attack(lc.userId, 'kim_quang_tram');
+      const legacyOut = await boss.attack(legacy.userId, 'kim_quang_tram');
+
+      // Linh căn primary kim match → 0.95 mul vs legacy 0.85 mul.
+      expect(BigInt(lcOut.result.damageDealt)).toBeGreaterThan(
+        BigInt(legacyOut.result.damageDealt),
+      );
+    });
+
+    it('skill moc (`moc_linh_truong_dieu`) vs boss tho + char primaryElement=moc → damage > char legacy null (tương khắc 1.30 + 0.10 primary = 1.40 vs 1.30)', async () => {
+      // baseMul(moc, tho) = 1.30 (moc khắc tho — tương khắc).
+      // Char A primaryElement=moc → +0.10 → 1.40.
+      // Char B legacy null → 1.30.
+      vi.spyOn(Math, 'random').mockReturnValue(0.5);
+
+      const lc = await makeUserChar(prisma, {
+        mp: 100,
+        stamina: 100,
+        power: 100,
+        spirit: 100,
+        realmKey: 'luyen_hu',
+        primaryElement: 'moc',
+        spiritualRootGrade: 'pham',
+      });
+      const legacy = await makeUserChar(prisma, {
+        mp: 100,
+        stamina: 100,
+        power: 100,
+        spirit: 100,
+        realmKey: 'luyen_hu',
+      });
+      await spawnBoss({ currentHp: 1_000_000n });
+
+      const lcOut = await boss.attack(lc.userId, 'moc_linh_truong_dieu');
+      const legacyOut = await boss.attack(legacy.userId, 'moc_linh_truong_dieu');
+
+      // tương khắc moc→tho: 1.30 vs 1.40 (Linh căn primary moc).
+      expect(BigInt(lcOut.result.damageDealt)).toBeGreaterThan(
+        BigInt(legacyOut.result.damageDealt),
+      );
+    });
+
+    it('skill basic-attack (element=null) → identity (skill element null bypass): char primary=kim grade=pham damage = char legacy null damage', async () => {
+      // SKILL_BASIC_ATTACK có element=null → skillElement=null →
+      // characterSkillElementBonus(charState, null, 'tho') → elementMultiplier
+      // (null, 'tho') = 1.0 (early return). Char primary kim không trigger
+      // primary bonus (skillElement null). 2 char damage equal.
+      vi.spyOn(Math, 'random').mockReturnValue(0.5);
+
+      const lc = await makeUserChar(prisma, {
+        mp: 100,
+        stamina: 100,
+        power: 100,
+        spirit: 100,
+        realmKey: 'luyen_hu',
+        primaryElement: 'kim',
+        spiritualRootGrade: 'pham',
+      });
+      const legacy = await makeUserChar(prisma, {
+        mp: 100,
+        stamina: 100,
+        power: 100,
+        spirit: 100,
+        realmKey: 'luyen_hu',
+      });
+      await spawnBoss({ currentHp: 1_000_000n });
+
+      const lcOut = await boss.attack(lc.userId, undefined);
+      const legacyOut = await boss.attack(legacy.userId, undefined);
+
+      // basic-attack element=null → identity 1.0 cho cả 2 char.
+      expect(BigInt(lcOut.result.damageDealt)).toBe(
+        BigInt(legacyOut.result.damageDealt),
+      );
+    });
+  });
 });

@@ -14,6 +14,7 @@ import {
   BOSS_STAMINA_PER_HIT,
   SKILL_BASIC_ATTACK,
   bossByKey,
+  characterSkillElementBonus,
   composeBuffMods,
   composePassiveTalentMods,
   composeTitleMods,
@@ -21,6 +22,7 @@ import {
   skillByKey,
   type BossDef,
   type BuffMods,
+  type ElementKey,
   type PassiveTalentMods,
   type SectKey,
   type SkillDef,
@@ -291,9 +293,35 @@ export class BossService implements OnModuleInit, OnModuleDestroy {
       skillElement !== null
         ? buffMods.damageBonusByElement.get(skillElement) ?? 1
         : 1;
+    // Phase 11.X.Z — Linh căn / Ngũ Hành element wire vào BossService.attack().
+    // Symmetric với Phase 11.3.B combat path (combat.service.ts L255-270 — combat
+    // đã wire `characterSkillElementBonus(charElementState, skill.element, monster.element)`).
+    // Boss path giờ multiplicative compose:
+    //   damage = max(1, round(raw × playerElementMul × talentElementMul × buffElementMul)).
+    // Boss def có `element` field (e.g. yeu_vuong_tho_huyet=tho, kim_phach_long_dieu=kim).
+    // characterSkillElementBonus = elementMultiplier(skill,target) base + character
+    // primary +0.10 / secondary +0.05 nếu skill cùng hệ. Legacy character
+    // (primaryElement=null hoặc spiritualRootGrade=null) → charElementState=null →
+    // bypass character bonus, chỉ dùng base elementMultiplier(skill, boss). Nếu
+    // skill.element=null (basic attack) HOẶC boss.element=null → identity
+    // (`elementMultiplier` returns 1.0 khi either side null).
+    const charElementState =
+      char.primaryElement && char.spiritualRootGrade
+        ? {
+            primaryElement: char.primaryElement as ElementKey,
+            secondaryElements: char.secondaryElements as ElementKey[],
+          }
+        : null;
+    const playerElementMul = characterSkillElementBonus(
+      charElementState,
+      skillElement,
+      def.element ?? null,
+    );
     const damage = Math.max(
       1,
-      Math.round(raw * talentElementMul * buffElementMul),
+      Math.round(
+        raw * playerElementMul * talentElementMul * buffElementMul,
+      ),
     );
 
     // Trừ resource trước (cooldown set ngay để chống burst).
