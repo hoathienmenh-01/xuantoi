@@ -359,7 +359,12 @@ export class CombatService {
       // — Monster counter-attack (Phase 11.3.B — element vs character primary)
       // Phase 11.8.C — spiritMul buff wire vào defense calc.
       // Phase 11.9.C — title spiritMul compose (mythic/legendary title flavor).
-      const effSpirit = char.spirit * buffMods.spiritMul * titleMods.spiritMul;
+      // Phase 11.4.D — equip.spiritBonus (item base spirit + gem spirit socket
+      // bonus + refine multiplier, đã compute ở `inventory.equipBonus`) cộng
+      // additive vào base spirit, sau đó multiply với buff/title spiritMul.
+      // Cùng pattern (base + flat) × multipliers như atk: line 232.
+      const effSpirit =
+        (char.spirit + equip.spiritBonus) * buffMods.spiritMul * titleMods.spiritMul;
       const replyBase = rollDamage(monster.atk, effSpirit + effPower * 0.3 + effDef, 1);
       const monsterElementMul = elementMultiplier(
         (monster.element ?? null) as ElementKey | null,
