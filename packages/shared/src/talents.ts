@@ -18,8 +18,8 @@
  * - Passive: effect áp dụng vào `CharacterStatService.computeStats` (Phase 11.7.B).
  * - Active: combat skill flow (mp cost + cooldown turns), gọi qua `simulateActiveTalent`.
  *
- * Curve (14 talent tổng):
- * - 7 passive + 7 active.
+ * Curve (15 talent tổng):
+ * - 8 passive + 7 active.
  * - 5 element coverage (kim/moc/thuy/hoa/tho) trên cả 2 type + 4 neutral talent.
  */
 
@@ -93,12 +93,15 @@ export interface TalentDef {
 }
 
 /**
- * 14 talent baseline cover passive + active × 5 element + neutral.
+ * 15 talent baseline cover passive + active × 5 element + neutral.
+ * (Phase 11.X.AA: thêm `talent_huyen_thuy_tam` thuy +10% spirit — producer
+ * đầu tiên cho `composePassiveTalentMods.spiritMul`, activate Phase 11.4.G
+ * (boss spirit branch wire) + Phase 11.X.U (combat effSpirit defense wire).)
  *
  * Stable order: passive trước → active sau.
  */
 export const TALENTS: readonly TalentDef[] = [
-  // ===== PASSIVE TALENTS (7) =====
+  // ===== PASSIVE TALENTS (8) =====
   {
     key: 'talent_kim_thien_co',
     name: 'Kim Thiên Cơ',
@@ -127,6 +130,22 @@ export const TALENTS: readonly TalentDef[] = [
       kind: 'stat_mod',
       value: 1.1,
       statTarget: 'hpMax',
+      elementTarget: null,
+    },
+    activeEffect: null,
+  },
+  {
+    key: 'talent_huyen_thuy_tam',
+    name: 'Huyền Thuỷ Tâm',
+    description: 'Linh tâm hấp thu thuỷ khí huyền diệu, +10% linh khí công kích.',
+    type: 'passive',
+    element: 'thuy',
+    realmRequirement: 'kim_dan',
+    talentPointCost: 1,
+    passiveEffect: {
+      kind: 'stat_mod',
+      value: 1.1,
+      statTarget: 'spirit',
       elementTarget: null,
     },
     activeEffect: null,

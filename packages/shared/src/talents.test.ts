@@ -371,6 +371,26 @@ describe('composePassiveTalentMods', () => {
     expect(mods.hpMaxMul).toBeCloseTo(1.1, 5);
   });
 
+  it('huyen_thuy_tam → spiritMul = 1.1 (Phase 11.X.AA producer cho 11.4.G/11.X.U wire)', () => {
+    const mods = composePassiveTalentMods(['talent_huyen_thuy_tam']);
+    expect(mods.spiritMul).toBeCloseTo(1.1, 5);
+    // Verify isolation: chỉ statTarget=spirit bị tác động, các stat khác giữ identity.
+    expect(mods.atkMul).toBe(1);
+    expect(mods.defMul).toBe(1);
+    expect(mods.hpMaxMul).toBe(1);
+  });
+
+  it('combine kim_thien_co + huyen_thuy_tam → atk=1.1 + spirit=1.1 (multiplicative isolated by statTarget)', () => {
+    const mods = composePassiveTalentMods([
+      'talent_kim_thien_co',
+      'talent_huyen_thuy_tam',
+    ]);
+    expect(mods.atkMul).toBeCloseTo(1.1, 5);
+    expect(mods.spiritMul).toBeCloseTo(1.1, 5);
+    // Cross-stat verification: atk + spirit độc lập.
+    expect(mods.hpMaxMul).toBe(1);
+  });
+
   it('moc_linh_quy → hpRegenFlat = 5', () => {
     const mods = composePassiveTalentMods(['talent_moc_linh_quy']);
     expect(mods.hpRegenFlat).toBe(5);
