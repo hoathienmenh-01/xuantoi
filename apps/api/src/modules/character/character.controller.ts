@@ -547,8 +547,9 @@ export class CharacterController {
    *   - Apply `exp` qua `tx.character.update`.
    *   - Auto-unlock title qua `TitleService.unlockTitleTx(source='achievement')`
    *     nếu `def.rewardTitleKey` set + `titleForAchievement` match.
-   *   - `def.reward.items` non-empty → throw `ITEMS_NOT_SUPPORTED` (defer
-   *     Phase 11.10.D — current 32 baseline catalog không có items).
+   *   - Phase 11.10.D — `def.reward.items` non-empty → grant items qua
+   *     `InventoryService.grantTx` reason `'ACHIEVEMENT_REWARD'` (`ItemLedger`
+   *     audit). Identity hiện tại (32 baseline không có items) → no-op.
    */
   @Post('achievement/claim')
   @HttpCode(200)
@@ -644,8 +645,6 @@ function mapAchievementErrorStatus(
     case 'NOT_COMPLETED':
     case 'ALREADY_CLAIMED':
       return HttpStatus.CONFLICT;
-    case 'ITEMS_NOT_SUPPORTED':
-      return HttpStatus.NOT_IMPLEMENTED;
     case 'INVALID_AMOUNT':
       return HttpStatus.BAD_REQUEST;
     default:

@@ -40,7 +40,12 @@ export type ItemLedgerReason =
   // hoặc REFINE_PROTECTION (consume `refine_protection_charm` khi protection trigger).
   // KHÔNG có positive qtyDelta — refine không trả lại item dù fail.
   | 'REFINE_MATERIAL'
-  | 'REFINE_PROTECTION';
+  | 'REFINE_PROTECTION'
+  // Phase 11.10.D Achievement item rewards — claim achievement với
+  // `def.reward.items` non-empty grant items qua AchievementService.claimReward
+  // → InventoryService.grantTx (positive qtyDelta). Mirror với CurrencyLedger
+  // reason `ACHIEVEMENT_REWARD` đã wire ở Phase 11.10.C-1 cho linhThach/tienNgoc.
+  | 'ACHIEVEMENT_REWARD';
 
 export interface ItemLedgerMeta {
   reason: ItemLedgerReason;
