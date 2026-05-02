@@ -12,6 +12,7 @@ import {
   type TribulationDef,
 } from '@xuantoi/shared';
 import { PrismaService } from '../../common/prisma.service';
+import { BuffService } from './buff.service';
 import { CurrencyService } from './currency.service';
 import { TitleService } from './title.service';
 
@@ -52,6 +53,7 @@ export class TribulationService {
     private readonly prisma: PrismaService,
     private readonly currency: CurrencyService,
     private readonly titles?: TitleService,
+    private readonly buffs?: BuffService,
   ) {}
 
   /**
@@ -247,6 +249,25 @@ export class TribulationService {
           hp: 1,
         },
       });
+
+      // Phase 11.8.D-2 — atomic apply `debuff_taoma` qua BuffService cùng tx.
+      // Per-tier duration từ tribulation catalog (`taoMaDebuffDurationMinutes`)
+      // override default buff catalog `durationSec` để tier scaling chính xác
+      // (15/30/60/120 phút). Legacy `Character.taoMaUntil` field vẫn được set
+      // ở update phía trên cho backward-compat — future migration sẽ migrate
+      // tất cả readers sang BuffService rồi gỡ field legacy.
+      // Nếu BuffService không inject (constructor 3-arg backward-compat), skip
+      // — legacy field vẫn cover.
+      if (penalty.taoMaActive && penalty.taoMaExpiresAt && this.buffs) {
+        await this.buffs.applyBuffTx(
+          tx,
+          characterId,
+          'debuff_taoma',
+          'tribulation',
+          now,
+          penalty.taoMaExpiresAt,
+        );
+      }
 
       const log = await tx.tribulationAttemptLog.create({
         data: {
