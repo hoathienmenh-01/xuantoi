@@ -173,6 +173,19 @@ export interface TalentDef {
  * **5-element symmetry hoàn tất 5/5 stat_mod path** (atk + def + hpMax + spirit
  * + mpMax) — tất cả statTarget của `PassiveTalentMods` đã có 5-element
  * coverage.)
+ * (Phase 11.X.AP: thêm `talent_kim_linh_dan` (kim), `talent_thuy_linh_dan`
+ * (thuy), `talent_moc_linh_dan` (moc), `talent_hoa_linh_dan` (hoa),
+ * `talent_tho_linh_dan` (tho) +5 MP regen flat — producers thứ 1–5 cho
+ * `composePassiveTalentMods.mpRegenFlat`. **Hoàn tất 5-element mpRegen coverage
+ * roadmap** (lần đầu tiên fill mpRegenFlat path — trước đó 0/5). Symmetric
+ * structure với 5-element hpRegen producers (Phase 11.X.AN). Cùng
+ * `realmRequirement: 'truc_co'` early-game + `talentPointCost: 1` +
+ * `kind: 'regen'` + `statTarget: 'mpMax'` + `value: 5`. 5-element mpRegen ceiling
+ * = 5 × 5 = 25 flat MP regen mỗi tick combat. Additive (không multiplicative)
+ * — đối xứng với hpRegen path. **5-element symmetry hoàn tất 2/2 regen path**
+ * (hpRegen + mpRegen) và toàn bộ stat_mod + regen path của `PassiveTalentMods`
+ * (7/7 statTarget path: atkMul + defMul + hpMaxMul + spiritMul + mpMaxMul +
+ * hpRegenFlat + mpRegenFlat) đã có 5-element coverage.)
  *
  * Stable order: passive trước → active sau.
  */
@@ -296,6 +309,22 @@ export const TALENTS: readonly TalentDef[] = [
     activeEffect: null,
   },
   {
+    key: 'talent_kim_linh_dan',
+    name: 'Kim Linh Đan',
+    description: 'Kim linh đan lưu chuyển trong cơ thể, +5 MP regen mỗi tick combat.',
+    type: 'passive',
+    element: 'kim',
+    realmRequirement: 'truc_co',
+    talentPointCost: 1,
+    passiveEffect: {
+      kind: 'regen',
+      value: 5,
+      statTarget: 'mpMax',
+      elementTarget: null,
+    },
+    activeEffect: null,
+  },
+  {
     key: 'talent_thuy_long_an',
     name: 'Thuỷ Long Ấn',
     description: 'Thân thể như thuỷ long, +10% HP tối đa.',
@@ -412,6 +441,22 @@ export const TALENTS: readonly TalentDef[] = [
     activeEffect: null,
   },
   {
+    key: 'talent_thuy_linh_dan',
+    name: 'Thuỷ Linh Đan',
+    description: 'Thuỷ linh đan giọt sương tưới linh khí, +5 MP regen mỗi tick combat.',
+    type: 'passive',
+    element: 'thuy',
+    realmRequirement: 'truc_co',
+    talentPointCost: 1,
+    passiveEffect: {
+      kind: 'regen',
+      value: 5,
+      statTarget: 'mpMax',
+      elementTarget: null,
+    },
+    activeEffect: null,
+  },
+  {
     key: 'talent_moc_linh_quy',
     name: 'Mộc Linh Quy',
     description: 'Linh khí mộc tự hồi, +5 HP regen mỗi tick combat.',
@@ -439,6 +484,22 @@ export const TALENTS: readonly TalentDef[] = [
     passiveEffect: {
       kind: 'stat_mod',
       value: 1.1,
+      statTarget: 'mpMax',
+      elementTarget: null,
+    },
+    activeEffect: null,
+  },
+  {
+    key: 'talent_moc_linh_dan',
+    name: 'Mộc Linh Đan',
+    description: 'Mộc linh đan nảy lộc sinh khí lưu chuyển, +5 MP regen mỗi tick combat.',
+    type: 'passive',
+    element: 'moc',
+    realmRequirement: 'truc_co',
+    talentPointCost: 1,
+    passiveEffect: {
+      kind: 'regen',
+      value: 5,
       statTarget: 'mpMax',
       elementTarget: null,
     },
@@ -647,6 +708,22 @@ export const TALENTS: readonly TalentDef[] = [
     activeEffect: null,
   },
   {
+    key: 'talent_hoa_linh_dan',
+    name: 'Hoả Linh Đan',
+    description: 'Hoả linh đan thiêu hồi linh khí không ngừng, +5 MP regen mỗi tick combat.',
+    type: 'passive',
+    element: 'hoa',
+    realmRequirement: 'truc_co',
+    talentPointCost: 1,
+    passiveEffect: {
+      kind: 'regen',
+      value: 5,
+      statTarget: 'mpMax',
+      elementTarget: null,
+    },
+    activeEffect: null,
+  },
+  {
     key: 'talent_tho_son_tuong',
     name: 'Thổ Sơn Tướng',
     description: 'Thân giáp như thổ sơn, +10% phòng ngự.',
@@ -758,6 +835,22 @@ export const TALENTS: readonly TalentDef[] = [
     passiveEffect: {
       kind: 'stat_mod',
       value: 1.1,
+      statTarget: 'mpMax',
+      elementTarget: null,
+    },
+    activeEffect: null,
+  },
+  {
+    key: 'talent_tho_linh_dan',
+    name: 'Thổ Linh Đan',
+    description: 'Thổ linh đan vùi sâu nuôi dưỡng linh khí bền bỉ, +5 MP regen mỗi tick combat.',
+    type: 'passive',
+    element: 'tho',
+    realmRequirement: 'truc_co',
+    talentPointCost: 1,
+    passiveEffect: {
+      kind: 'regen',
+      value: 5,
       statTarget: 'mpMax',
       elementTarget: null,
     },

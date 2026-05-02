@@ -888,6 +888,115 @@ describe('composePassiveTalentMods', () => {
     expect(mods.damageBonusByElement.size).toBe(0);
   });
 
+  it('kim_linh_dan → mpRegenFlat = 5 (Phase 11.X.AP producer thứ 1 cho mpRegen, mở đầu fill 5-element mpRegen coverage)', () => {
+    const mods = composePassiveTalentMods(['talent_kim_linh_dan']);
+    expect(mods.mpRegenFlat).toBe(5);
+    // Verify isolation: chỉ mpRegen path active, các stat khác giữ identity.
+    expect(mods.atkMul).toBe(1);
+    expect(mods.defMul).toBe(1);
+    expect(mods.hpMaxMul).toBe(1);
+    expect(mods.mpMaxMul).toBe(1);
+    expect(mods.spiritMul).toBe(1);
+    expect(mods.hpRegenFlat).toBe(0);
+    expect(mods.damageBonusByElement.size).toBe(0);
+  });
+
+  it('thuy_linh_dan → mpRegenFlat = 5 (Phase 11.X.AP producer thứ 2 cho mpRegen, fill 5-element mpRegen coverage)', () => {
+    const mods = composePassiveTalentMods(['talent_thuy_linh_dan']);
+    expect(mods.mpRegenFlat).toBe(5);
+    expect(mods.atkMul).toBe(1);
+    expect(mods.defMul).toBe(1);
+    expect(mods.hpMaxMul).toBe(1);
+    expect(mods.mpMaxMul).toBe(1);
+    expect(mods.spiritMul).toBe(1);
+    expect(mods.hpRegenFlat).toBe(0);
+    expect(mods.damageBonusByElement.size).toBe(0);
+  });
+
+  it('moc_linh_dan → mpRegenFlat = 5 (Phase 11.X.AP producer thứ 3 cho mpRegen, fill 5-element mpRegen coverage)', () => {
+    const mods = composePassiveTalentMods(['talent_moc_linh_dan']);
+    expect(mods.mpRegenFlat).toBe(5);
+    expect(mods.atkMul).toBe(1);
+    expect(mods.defMul).toBe(1);
+    expect(mods.hpMaxMul).toBe(1);
+    expect(mods.mpMaxMul).toBe(1);
+    expect(mods.spiritMul).toBe(1);
+    expect(mods.hpRegenFlat).toBe(0);
+    expect(mods.damageBonusByElement.size).toBe(0);
+  });
+
+  it('hoa_linh_dan → mpRegenFlat = 5 (Phase 11.X.AP producer thứ 4 cho mpRegen, fill 5-element mpRegen coverage)', () => {
+    const mods = composePassiveTalentMods(['talent_hoa_linh_dan']);
+    expect(mods.mpRegenFlat).toBe(5);
+    expect(mods.atkMul).toBe(1);
+    expect(mods.defMul).toBe(1);
+    expect(mods.hpMaxMul).toBe(1);
+    expect(mods.mpMaxMul).toBe(1);
+    expect(mods.spiritMul).toBe(1);
+    expect(mods.hpRegenFlat).toBe(0);
+    expect(mods.damageBonusByElement.size).toBe(0);
+  });
+
+  it('tho_linh_dan → mpRegenFlat = 5 (Phase 11.X.AP producer thứ 5 cho mpRegen, hoàn tất 5-element mpRegen coverage)', () => {
+    const mods = composePassiveTalentMods(['talent_tho_linh_dan']);
+    expect(mods.mpRegenFlat).toBe(5);
+    expect(mods.atkMul).toBe(1);
+    expect(mods.defMul).toBe(1);
+    expect(mods.hpMaxMul).toBe(1);
+    expect(mods.mpMaxMul).toBe(1);
+    expect(mods.spiritMul).toBe(1);
+    expect(mods.hpRegenFlat).toBe(0);
+    expect(mods.damageBonusByElement.size).toBe(0);
+  });
+
+  it('combine all 5 mpRegen producers (kim + thuy + moc + hoa + tho) → mpRegenFlat = 5 × 5 = 25 (5-element mpRegen ceiling, hoàn tất Phase 11.X.AP + 2/2 regen path)', () => {
+    const mods = composePassiveTalentMods([
+      'talent_kim_linh_dan',
+      'talent_thuy_linh_dan',
+      'talent_moc_linh_dan',
+      'talent_hoa_linh_dan',
+      'talent_tho_linh_dan',
+    ]);
+    // Hoàn tất 5-element mpRegen coverage roadmap. Additive (không multiplicative)
+    // — đối xứng với 5-element hpRegen ceiling 25 (Phase 11.X.AN). 2/2 regen path
+    // đã có 5-element coverage.
+    expect(mods.mpRegenFlat).toBe(25);
+    // Cross-stat: stat mods + hpRegen + damage_bonus giữ identity vì chỉ mpRegen path active.
+    expect(mods.atkMul).toBe(1);
+    expect(mods.defMul).toBe(1);
+    expect(mods.hpMaxMul).toBe(1);
+    expect(mods.mpMaxMul).toBe(1);
+    expect(mods.spiritMul).toBe(1);
+    expect(mods.hpRegenFlat).toBe(0);
+    expect(mods.damageBonusByElement.size).toBe(0);
+  });
+
+  it('combine 5 hpRegen + 5 mpRegen producers → hpRegenFlat = 25 + mpRegenFlat = 25 (regen path symmetry, hpRegen + mpRegen độc lập theo statTarget)', () => {
+    // 5 hpRegen producer (Phase 11.X.AN) + 5 mpRegen producer (Phase 11.X.AP)
+    // → 2/2 regen path active đồng thời, isolated theo statTarget.
+    const mods = composePassiveTalentMods([
+      'talent_moc_linh_quy',
+      'talent_kim_linh_quy',
+      'talent_thuy_linh_quy',
+      'talent_hoa_linh_quy',
+      'talent_tho_linh_quy',
+      'talent_kim_linh_dan',
+      'talent_thuy_linh_dan',
+      'talent_moc_linh_dan',
+      'talent_hoa_linh_dan',
+      'talent_tho_linh_dan',
+    ]);
+    expect(mods.hpRegenFlat).toBe(25);
+    expect(mods.mpRegenFlat).toBe(25);
+    // Cross-stat: stat mods + damage_bonus giữ identity vì chỉ regen path active.
+    expect(mods.atkMul).toBe(1);
+    expect(mods.defMul).toBe(1);
+    expect(mods.hpMaxMul).toBe(1);
+    expect(mods.mpMaxMul).toBe(1);
+    expect(mods.spiritMul).toBe(1);
+    expect(mods.damageBonusByElement.size).toBe(0);
+  });
+
   it('thien_di → dropMul = 1.2', () => {
     const mods = composePassiveTalentMods(['talent_thien_di']);
     expect(mods.dropMul).toBeCloseTo(1.2, 5);
