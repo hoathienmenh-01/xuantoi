@@ -375,6 +375,11 @@ model InventoryItem {
   itemKey      String
   qty          Int        @default(1)
   equippedSlot EquipSlot?
+  /// Phase 11.4.B Gem MVP — danh sách gemKey đã khảm theo thứ tự slot.
+  /// Capacity tối đa = `socketCapacityForQuality(item.quality)` (PHAM=0,
+  /// LINH=1, HUYEN=2, TIEN=3, THAN=4) enforce ở `GemService.socketGem`
+  /// server-authoritative. Item non-equipment / chưa khảm giữ `[]`.
+  sockets      String[]   @default([])
   createdAt    DateTime   @default(now())
 
   @@unique([characterId, equippedSlot])

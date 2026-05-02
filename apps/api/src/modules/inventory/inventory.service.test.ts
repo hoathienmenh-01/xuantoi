@@ -251,6 +251,36 @@ describe('InventoryService', () => {
       const bonus = await inv.equipBonus(u.characterId);
       expect(bonus.atk).toBe(0);
     });
+
+    /**
+     * Phase 11.4.B Gem MVP socket bonus wire — equipBonus phải cộng thêm
+     * `composeSocketBonus(item.sockets)` cho mọi equipped item. Test verify
+     * gem PHAM kim (atk: 3, spirit: 1) socket vào weapon LINH stack đúng.
+     */
+    it('equipBonus cộng thêm socket bonus từ sockets[] của equipped item', async () => {
+      const u = await makeUserChar(prisma);
+      await inv.grant(
+        u.characterId,
+        [{ itemKey: 'huyen_kiem', qty: 1 }],
+        { reason: 'ADMIN_GRANT' },
+      );
+      const weapon = await prisma.inventoryItem.findFirstOrThrow({
+        where: { characterId: u.characterId, itemKey: 'huyen_kiem' },
+      });
+      await inv.equip(u.userId, weapon.id);
+      // Set sockets directly (mô phỏng sau khi GemService.socketGem chạy).
+      await prisma.inventoryItem.update({
+        where: { id: weapon.id },
+        data: { sockets: ['gem_kim_pham'] },
+      });
+
+      const bonus = await inv.equipBonus(u.characterId);
+      // huyen_kiem base: atk +12, spirit +2 (per items.ts).
+      // gem_kim_pham (PHAM scale 1.0): atk: 3, spirit: 1.
+      // Total: atk 15, spirit 3.
+      expect(bonus.atk).toBe(12 + 3);
+      expect(bonus.spiritBonus).toBe(2 + 1);
+    });
   });
 
   describe('grantTx', () => {

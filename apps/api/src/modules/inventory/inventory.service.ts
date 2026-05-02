@@ -1,6 +1,11 @@
 import { Injectable } from '@nestjs/common';
 import type { EquipSlot, Prisma } from '@prisma/client';
-import { itemByKey, type ItemDef, type RolledLoot } from '@xuantoi/shared';
+import {
+  composeSocketBonus,
+  itemByKey,
+  type ItemDef,
+  type RolledLoot,
+} from '@xuantoi/shared';
 import { PrismaService } from '../../common/prisma.service';
 import { RealtimeService } from '../realtime/realtime.service';
 import { CharacterService } from '../character/character.service';
@@ -22,7 +27,13 @@ export type ItemLedgerReason =
   | 'SHOP_BUY'
   | 'ADMIN_GRANT'
   | 'ADMIN_REVOKE'
-  | 'USE';
+  | 'USE'
+  // Phase 11.4.B Gem MVP runtime — socket / unsocket / combine ops.
+  // Negative qtyDelta: GEM_SOCKET (consume gem) / GEM_COMBINE (consume 3 src).
+  // Positive qtyDelta: GEM_UNSOCKET (return gem) / GEM_COMBINE (grant 1 next-tier).
+  | 'GEM_SOCKET'
+  | 'GEM_UNSOCKET'
+  | 'GEM_COMBINE';
 
 export interface ItemLedgerMeta {
   reason: ItemLedgerReason;
@@ -54,6 +65,8 @@ export interface InventoryView {
   qty: number;
   equippedSlot: EquipSlot | null;
   item: ItemDef;
+  /** Phase 11.4.B Gem MVP — danh sách gemKey đã khảm theo thứ tự slot. */
+  sockets: string[];
 }
 
 export interface EquipBonusSummary {
@@ -87,12 +100,20 @@ export class InventoryService {
         qty: r.qty,
         equippedSlot: r.equippedSlot,
         item,
+        sockets: r.sockets,
       });
     }
     return out;
   }
 
-  /** Tổng bonus từ trang bị đang đeo của 1 character. Dùng trong combat. */
+  /**
+   * Tổng bonus từ trang bị đang đeo của 1 character. Dùng trong combat.
+   *
+   * Phase 11.4.B: cộng thêm `composeSocketBonus(item.sockets)` cho mọi
+   * equipped item — socket bonus stack additive với base bonus, không cap
+   * ở service này (cap ở `BALANCE_MODEL.md` §6 enforce qua quality
+   * → `socketCapacityForQuality()` cap số lượng gem mỗi item).
+   */
   async equipBonus(characterId: string): Promise<EquipBonusSummary> {
     const equipped = await this.prisma.inventoryItem.findMany({
       where: { characterId, equippedSlot: { not: null } },
@@ -104,12 +125,23 @@ export class InventoryService {
     let spiritBonus = 0;
     for (const r of equipped) {
       const def_ = itemByKey(r.itemKey);
-      if (!def_?.bonuses) continue;
-      atk += def_.bonuses.atk ?? 0;
-      def += def_.bonuses.def ?? 0;
-      hpMaxBonus += def_.bonuses.hpMax ?? 0;
-      mpMaxBonus += def_.bonuses.mpMax ?? 0;
-      spiritBonus += def_.bonuses.spirit ?? 0;
+      if (!def_) continue;
+      if (def_.bonuses) {
+        atk += def_.bonuses.atk ?? 0;
+        def += def_.bonuses.def ?? 0;
+        hpMaxBonus += def_.bonuses.hpMax ?? 0;
+        mpMaxBonus += def_.bonuses.mpMax ?? 0;
+        spiritBonus += def_.bonuses.spirit ?? 0;
+      }
+      // Phase 11.4.B socket bonus.
+      if (r.sockets.length > 0) {
+        const sb = composeSocketBonus(r.sockets);
+        atk += sb.atk ?? 0;
+        def += sb.def ?? 0;
+        hpMaxBonus += sb.hpMax ?? 0;
+        mpMaxBonus += sb.mpMax ?? 0;
+        spiritBonus += sb.spirit ?? 0;
+      }
     }
     return { atk, def, hpMaxBonus, mpMaxBonus, spiritBonus };
   }
