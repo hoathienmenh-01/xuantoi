@@ -622,6 +622,57 @@ describe('composePassiveTalentMods', () => {
     expect(mods.hpMaxMul).toBe(1);
   });
 
+  it('kim_thach_thai → hpMaxMul = 1.1 (Phase 11.X.AK kim hpMax producer)', () => {
+    const mods = composePassiveTalentMods(['talent_kim_thach_thai']);
+    expect(mods.hpMaxMul).toBeCloseTo(1.1, 5);
+    expect(mods.atkMul).toBe(1);
+    expect(mods.spiritMul).toBe(1);
+    expect(mods.defMul).toBe(1);
+    expect(mods.damageBonusByElement.size).toBe(0);
+  });
+
+  it('moc_phach_thai → hpMaxMul = 1.1 (Phase 11.X.AK moc hpMax producer)', () => {
+    const mods = composePassiveTalentMods(['talent_moc_phach_thai']);
+    expect(mods.hpMaxMul).toBeCloseTo(1.1, 5);
+    expect(mods.atkMul).toBe(1);
+    expect(mods.spiritMul).toBe(1);
+    expect(mods.defMul).toBe(1);
+    expect(mods.damageBonusByElement.size).toBe(0);
+  });
+
+  it('hoa_huyet_thai → hpMaxMul = 1.1 (Phase 11.X.AK hoa hpMax producer)', () => {
+    const mods = composePassiveTalentMods(['talent_hoa_huyet_thai']);
+    expect(mods.hpMaxMul).toBeCloseTo(1.1, 5);
+    expect(mods.atkMul).toBe(1);
+    expect(mods.spiritMul).toBe(1);
+    expect(mods.defMul).toBe(1);
+    expect(mods.damageBonusByElement.size).toBe(0);
+  });
+
+  it('tho_son_thai → hpMaxMul = 1.1 (Phase 11.X.AK tho hpMax producer)', () => {
+    const mods = composePassiveTalentMods(['talent_tho_son_thai']);
+    expect(mods.hpMaxMul).toBeCloseTo(1.1, 5);
+    expect(mods.atkMul).toBe(1);
+    expect(mods.spiritMul).toBe(1);
+    expect(mods.defMul).toBe(1);
+    expect(mods.damageBonusByElement.size).toBe(0);
+  });
+
+  it('combine all 5 hpMax producers (kim + moc + thuy + hoa + tho) → hpMaxMul = 1.1⁵ = 1.61051 (5-element hpMax ceiling, hoàn tất Phase 11.X.AK)', () => {
+    const mods = composePassiveTalentMods([
+      'talent_kim_thach_thai',
+      'talent_moc_phach_thai',
+      'talent_thuy_long_an',
+      'talent_hoa_huyet_thai',
+      'talent_tho_son_thai',
+    ]);
+    // Hoàn tất 5-element hpMax coverage roadmap, khớp 5-element atk + spirit + def ceiling.
+    expect(mods.hpMaxMul).toBeCloseTo(1.61051, 5);
+    expect(mods.atkMul).toBe(1);
+    expect(mods.spiritMul).toBe(1);
+    expect(mods.defMul).toBe(1);
+  });
+
   it('hoa_tam_dao → damageBonusByElement[kim] = 1.15', () => {
     const mods = composePassiveTalentMods(['talent_hoa_tam_dao']);
     expect(mods.damageBonusByElement.get('kim')).toBeCloseTo(1.15, 5);
