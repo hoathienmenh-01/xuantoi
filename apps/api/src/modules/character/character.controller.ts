@@ -25,6 +25,10 @@ import {
 } from './character-skill.service';
 import { GemError, GemService } from './gem.service';
 import { RefineError, RefineService } from './refine.service';
+import {
+  TribulationError,
+  TribulationService,
+} from './tribulation.service';
 import { AuthService } from '../auth/auth.service';
 import {
   InMemorySlidingWindowRateLimiter,
@@ -84,6 +88,12 @@ const RefineEquipmentInput = z.object({
   useProtection: z.boolean().optional().default(false),
 });
 
+/**
+ * `POST /character/tribulation` body — không có input field. Server-authoritative
+ * resolve transition từ `c.realmKey` → `nextRealm(c.realmKey)`. Tránh client
+ * spoof `toRealmKey` (defence-in-depth ngoài DTO Zod).
+ */
+
 function fail(code: string, status = HttpStatus.BAD_REQUEST): never {
   throw new HttpException({ ok: false, error: { code, message: code } }, status);
 }
@@ -100,6 +110,7 @@ export class CharacterController {
     @Optional() private readonly characterSkill?: CharacterSkillService,
     @Optional() private readonly gem?: GemService,
     @Optional() private readonly refine?: RefineService,
+    @Optional() private readonly tribulation?: TribulationService,
     @Optional() @Inject(PROFILE_RATE_LIMITER) profileLimiter?: RateLimiter,
   ) {
     this.profileLimiter =
@@ -479,6 +490,40 @@ export class CharacterController {
       throw e;
     }
   }
+
+  /**
+   * Phase 11.6.B Tribulation MVP — manual breakthrough qua kiếp.
+   * Server-authoritative deterministic kiếp:
+   *   - Verify peak gate (stage 9 + đủ EXP cost) giống `breakthrough`.
+   *   - Verify catalog `getTribulationForBreakthrough(c.realmKey, next.key)`
+   *     có def. Nếu KHÔNG (low-tier transition) → 409 NO_TRIBULATION_FOR_TRANSITION
+   *     để client biết phải dùng `POST /character/breakthrough` thay vì
+   *     route này.
+   *   - Verify cooldown chưa active.
+   *   - Resolve sim qua `simulateTribulation`. Success → realm advance + linhThach
+   *     reward qua `CurrencyLedger.TRIBULATION_REWARD`. Fail → EXP loss + cooldown
+   *     + optional Tâm Ma debuff (`taoMaUntil`).
+   *   - Audit qua `TribulationAttemptLog` (1 row mỗi attempt).
+   */
+  @Post('tribulation')
+  @HttpCode(200)
+  async tribulationAttempt(@Req() req: Request) {
+    const userId = await this.requireUserId(req);
+    if (!this.tribulation) {
+      fail('TRIBULATION_UNAVAILABLE', HttpStatus.NOT_IMPLEMENTED);
+    }
+    const character = await this.chars.findByUser(userId);
+    if (!character) fail('NO_CHARACTER', HttpStatus.NOT_FOUND);
+    try {
+      const result = await this.tribulation.attemptTribulation(character.id);
+      return { ok: true, data: { tribulation: result } };
+    } catch (e) {
+      if (e instanceof TribulationError) {
+        fail(e.code, mapTribulationErrorStatus(e.code));
+      }
+      throw e;
+    }
+  }
 }
 
 /** Map GemError code → HTTP status. */
@@ -513,6 +558,25 @@ function mapRefineErrorStatus(code: RefineError['code']): HttpStatus {
     case 'INSUFFICIENT_PROTECTION':
     case 'INSUFFICIENT_FUNDS':
       return HttpStatus.CONFLICT;
+    default:
+      return HttpStatus.BAD_REQUEST;
+  }
+}
+
+/** Map TribulationError code → HTTP status. */
+function mapTribulationErrorStatus(
+  code: TribulationError['code'],
+): HttpStatus {
+  switch (code) {
+    case 'CHARACTER_NOT_FOUND':
+      return HttpStatus.NOT_FOUND;
+    case 'NOT_AT_PEAK':
+    case 'NO_NEXT_REALM':
+    case 'NO_TRIBULATION_FOR_TRANSITION':
+    case 'COOLDOWN_ACTIVE':
+      return HttpStatus.CONFLICT;
+    case 'INVALID_RNG':
+      return HttpStatus.INTERNAL_SERVER_ERROR;
     default:
       return HttpStatus.BAD_REQUEST;
   }

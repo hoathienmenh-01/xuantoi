@@ -101,6 +101,7 @@ export async function wipeAll(prisma: PrismaService): Promise<void> {
   // Thứ tự: con trước cha (FK cascade phần lớn rồi nhưng explicit cho rõ).
   await prisma.itemLedger.deleteMany({});
   await prisma.currencyLedger.deleteMany({});
+  await prisma.tribulationAttemptLog.deleteMany({});
   await prisma.characterCultivationMethod.deleteMany({});
   await prisma.characterSkill.deleteMany({});
   await prisma.spiritualRootRollLog.deleteMany({});

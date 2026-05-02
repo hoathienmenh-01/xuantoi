@@ -28,7 +28,8 @@ export type LedgerReason =
   | 'SHOP_BUY'
   | 'DAILY_LOGIN'
   | 'SKILL_UPGRADE'
-  | 'REFINE';
+  | 'REFINE'
+  | 'TRIBULATION_REWARD';
 
 export interface CurrencyApplyInput {
   characterId: string;
