@@ -8,6 +8,7 @@ import { CurrencyService } from '../character/currency.service';
 import { InventoryService } from '../inventory/inventory.service';
 import { TalentService } from '../character/talent.service';
 import { BuffService } from '../character/buff.service';
+import { TitleService } from '../character/title.service';
 import { BossError, BossService } from './boss.service';
 import {
   TEST_DATABASE_URL,
@@ -1445,6 +1446,209 @@ describe('BossService', () => {
       // ignored. atkMul=1.0 (pill_spirit_buff_t1 không có atkMul effect).
       // → 2 char damage equal.
       expect(BigInt(buffedOut.result.damageDealt)).toBe(
+        BigInt(baselineOut.result.damageDealt),
+      );
+    });
+  });
+
+  // ── Phase 11.X.X — Title atkMul/spiritMul wire vào BossService.attack() ──
+  // Wire `titleMods.atkMul` × `titleMods.spiritMul` multiplicative compose với
+  // `talentMods.atkMul`/`spiritMul` × `buffMods.atkMul`/`spiritMul`. Symmetric
+  // với Phase 11.X.S/U combat path (PR #274) — combat đã wire titleMods.
+  // Inject `TitleService` (10th positional `@Optional()`). Service không inject
+  // → `composeTitleMods([])` identity (atkMul=1.0, spiritMul=1.0, no-op).
+  // Catalog producer atkMul: `element_kim_blade_master` (epic +5% kim),
+  // `element_hoa_phoenix_flame` (epic +5% hoa), `realm_thien_tien_celestial`
+  // (legendary +7%), `realm_hu_khong_chi_ton` (mythic +12%).
+  // Catalog producer spiritMul: `realm_nguyen_anh_master` (rare +2%),
+  // `realm_hoa_than_sage` (epic +4%), `realm_thanh_nhan_sage` (legendary +8%).
+  describe('Title atkMul/spiritMul wire (Phase 11.X.X)', () => {
+    let bossWithTitlesX: BossService;
+    let titleSvcX: TitleService;
+
+    beforeAll(() => {
+      const realtime = new RealtimeService();
+      const chars = new CharacterService(prisma, realtime);
+      const inventory = new InventoryService(prisma, realtime, chars);
+      const currency = new CurrencyService(prisma);
+      const missions = makeMissionService(prisma);
+      titleSvcX = new TitleService(prisma);
+      bossWithTitlesX = new BossService(
+        prisma,
+        realtime,
+        chars,
+        inventory,
+        currency,
+        missions,
+        undefined, // achievements
+        undefined, // talents
+        undefined, // buffs
+        titleSvcX,
+      );
+    });
+
+    beforeEach(() => {
+      (bossWithTitlesX as unknown as { cooldowns: Map<string, number> })
+        .cooldowns.clear();
+    });
+
+    afterEach(() => {
+      vi.restoreAllMocks();
+    });
+
+    it('atkScale=1 basic skill + title `element_kim_blade_master` (+5% atk) → damage cao hơn baseline', async () => {
+      // Pattern: 2 char giống nhau, 1 không equip title (baseline) + 1 equip
+      // `element_kim_blade_master` (epic, +5% atk). Boss attack basic skill
+      // (atkScale=1) → chỉ atkMul tác động.
+      vi.spyOn(Math, 'random').mockReturnValue(0.5);
+
+      const baseline = await makeUserChar(prisma, {
+        mp: 100,
+        stamina: 100,
+        power: 100,
+        spirit: 100,
+        realmKey: 'kim_dan',
+      });
+      await spawnBoss({ currentHp: 1_000_000n });
+      const baselineOut = await bossWithTitlesX.attack(baseline.userId, undefined);
+
+      const titled = await makeUserChar(prisma, {
+        mp: 100,
+        stamina: 100,
+        power: 100,
+        spirit: 100,
+        realmKey: 'kim_dan',
+      });
+      await titleSvcX.unlockTitle(
+        titled.characterId,
+        'element_kim_blade_master',
+        'element_mastery',
+      );
+      await titleSvcX.equipTitle(titled.characterId, 'element_kim_blade_master');
+      const titledOut = await bossWithTitlesX.attack(titled.userId, undefined);
+
+      // element_kim_blade_master: atkMul=1.05. effPower titled > baseline → damage cao hơn.
+      expect(BigInt(titledOut.result.damageDealt)).toBeGreaterThan(
+        BigInt(baselineOut.result.damageDealt),
+      );
+    });
+
+    it('atkScale > 1 (ngung_thien_chuong) + title `realm_thanh_nhan_sage` (+8% spirit) → damage cao hơn baseline', async () => {
+      // Spirit branch (atkScale > 1): spiritMul tác động lên (char.spirit + equip.spiritBonus).
+      // realm_thanh_nhan_sage: spiritMul=1.08 (legendary, source=realm_milestone).
+      vi.spyOn(Math, 'random').mockReturnValue(0.5);
+
+      const baseline = await makeUserChar(prisma, {
+        mp: 100,
+        stamina: 100,
+        power: 0, // power=0 để loại bỏ atk component, isolate spirit branch.
+        spirit: 100,
+        realmKey: 'kim_dan',
+      });
+      await spawnBoss({ currentHp: 1_000_000n });
+      const baselineOut = await bossWithTitlesX.attack(
+        baseline.userId,
+        'ngung_thien_chuong',
+      );
+
+      const titled = await makeUserChar(prisma, {
+        mp: 100,
+        stamina: 100,
+        power: 0,
+        spirit: 100,
+        realmKey: 'kim_dan',
+      });
+      await titleSvcX.unlockTitle(
+        titled.characterId,
+        'realm_thanh_nhan_sage',
+        'realm_milestone',
+      );
+      await titleSvcX.equipTitle(titled.characterId, 'realm_thanh_nhan_sage');
+      const titledOut = await bossWithTitlesX.attack(
+        titled.userId,
+        'ngung_thien_chuong',
+      );
+
+      // spiritMul=1.08 → spirit component titled > baseline → damage cao hơn.
+      expect(BigInt(titledOut.result.damageDealt)).toBeGreaterThan(
+        BigInt(baselineOut.result.damageDealt),
+      );
+    });
+
+    it('TitleService không inject vào BossService → identity baseline (no atkMul boost despite equipped title)', async () => {
+      // Top-level `boss` instance KHÔNG inject TitleService → titleMods =
+      // composeTitleMods([]) identity. Equip title trong DB nhưng `boss`
+      // bypass fetch → 2 char damage equal.
+      vi.spyOn(Math, 'random').mockReturnValue(0.5);
+
+      const a = await makeUserChar(prisma, {
+        mp: 100,
+        stamina: 100,
+        power: 100,
+        spirit: 100,
+        realmKey: 'kim_dan',
+      });
+      const b = await makeUserChar(prisma, {
+        mp: 100,
+        stamina: 100,
+        power: 100,
+        spirit: 100,
+        realmKey: 'kim_dan',
+      });
+      // Equip title cho `b` qua fixture service — top-level `boss` không inject
+      // TitleService → titleMods identity → title không có hiệu lực boss damage.
+      await titleSvcX.unlockTitle(
+        b.characterId,
+        'element_kim_blade_master',
+        'element_mastery',
+      );
+      await titleSvcX.equipTitle(b.characterId, 'element_kim_blade_master');
+      await spawnBoss({ currentHp: 1_000_000n });
+
+      const outA = await boss.attack(a.userId, undefined);
+      const outB = await boss.attack(b.userId, undefined);
+
+      // No title inject → 2 char damage equal (composeTitleMods([]) identity).
+      expect(BigInt(outA.result.damageDealt)).toBe(
+        BigInt(outB.result.damageDealt),
+      );
+    });
+
+    it('atkScale=1 basic skill + spiritMul title (+8%) KHÔNG ảnh hưởng (spirit branch không active)', async () => {
+      // Verify isolation: basic-skill (atkScale=1) → spirit branch dormant →
+      // spiritMul ignored. Equip realm_thanh_nhan_sage (chỉ có spiritMul effect)
+      // nhưng damage equal vì atkMul=1.0.
+      vi.spyOn(Math, 'random').mockReturnValue(0.5);
+
+      const baseline = await makeUserChar(prisma, {
+        mp: 100,
+        stamina: 100,
+        power: 100,
+        spirit: 100,
+        realmKey: 'kim_dan',
+      });
+      await spawnBoss({ currentHp: 1_000_000n });
+      const baselineOut = await bossWithTitlesX.attack(baseline.userId, undefined);
+
+      const titled = await makeUserChar(prisma, {
+        mp: 100,
+        stamina: 100,
+        power: 100,
+        spirit: 100,
+        realmKey: 'kim_dan',
+      });
+      await titleSvcX.unlockTitle(
+        titled.characterId,
+        'realm_thanh_nhan_sage',
+        'realm_milestone',
+      );
+      await titleSvcX.equipTitle(titled.characterId, 'realm_thanh_nhan_sage');
+      const titledOut = await bossWithTitlesX.attack(titled.userId, undefined);
+
+      // basic-skill: atkScale=1 → spirit branch không active. spiritMul=1.08
+      // ignored. atkMul=1.0 (realm_thanh_nhan_sage không có atkMul effect).
+      // → 2 char damage equal.
+      expect(BigInt(titledOut.result.damageDealt)).toBe(
         BigInt(baselineOut.result.damageDealt),
       );
     });

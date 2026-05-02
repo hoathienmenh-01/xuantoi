@@ -16,6 +16,7 @@ import {
   bossByKey,
   composeBuffMods,
   composePassiveTalentMods,
+  composeTitleMods,
   rollDamage,
   skillByKey,
   type BossDef,
@@ -23,6 +24,7 @@ import {
   type PassiveTalentMods,
   type SectKey,
   type SkillDef,
+  type TitleMods,
 } from '@xuantoi/shared';
 import { PrismaService } from '../../common/prisma.service';
 import { RealtimeService } from '../realtime/realtime.service';
@@ -31,6 +33,7 @@ import { CurrencyService } from '../character/currency.service';
 import { AchievementService } from '../character/achievement.service';
 import { TalentService } from '../character/talent.service';
 import { BuffService } from '../character/buff.service';
+import { TitleService } from '../character/title.service';
 import { InventoryService } from '../inventory/inventory.service';
 import { MissionService } from '../mission/mission.service';
 
@@ -125,6 +128,7 @@ export class BossService implements OnModuleInit, OnModuleDestroy {
     @Optional() private readonly achievements?: AchievementService,
     @Optional() private readonly talents?: TalentService,
     @Optional() private readonly buffs?: BuffService,
+    @Optional() private readonly titles?: TitleService,
   ) {}
 
   onModuleInit(): void {
@@ -229,27 +233,41 @@ export class BossService implements OnModuleInit, OnModuleDestroy {
     // Phase 11.4.F — Talent atkMul wire vào BossService.attack().
     // Phase 11.4.G — Talent spiritMul wire vào BossService.attack() spirit branch.
     // Phase 11.X.W — Buff atkMul/spiritMul wire vào BossService.attack().
-    // Symmetric với Phase 11.X.S/U combat path (talentMods.atkMul/spiritMul +
-    // buffMods.atkMul/spiritMul). Multiplicative compose talent × buff — vd
-    // talent_kim_thien_co (+10% atk) + pill_atk_buff_t1 (+12% atk) =
-    // 1.10 × 1.12 = 1.232 atk multiplier. Catalog producer atkMul:
-    // `talent_kim_thien_co` (passive +10% kim, stat_mod), `pill_atk_buff_t1`
-    // (+12%), `sect_aura_hoa` (+5%), `debuff_boss_atk_down` (0.82, debuff).
-    // Catalog producer spiritMul: `talent_huyen_thuy_tam` (+10% thuy, Phase
-    // 11.X.AA), `pill_spirit_buff_t1` (+18%), `event_double_exp` (×2.0).
-    // Service không inject (legacy DI / test fixture without `talents`/`buffs`)
-    // → identity baseline (atkMul=1.0, spiritMul=1.0, no-op).
-    // Title atkMul/spiritMul còn defer (Phase 11.X.X — cần inject TitleService).
+    // Phase 11.X.X — Title atkMul/spiritMul wire vào BossService.attack().
+    // Symmetric với Phase 11.X.S/U/Title combat path (talentMods.atkMul/spiritMul
+    // + buffMods.atkMul/spiritMul + titleMods.atkMul/spiritMul). Multiplicative
+    // compose talent × buff × title — vd `talent_kim_thien_co` (+10% atk) +
+    // `pill_atk_buff_t1` (+12% atk) + `realm_thien_tien_celestial` (+7% atk) =
+    // 1.10 × 1.12 × 1.07 = ~1.319 atk multiplier. Catalog producer atkMul:
+    // talent (`talent_kim_thien_co` +10% kim), buff (`pill_atk_buff_t1` +12%,
+    // `sect_aura_hoa` +5%, `debuff_boss_atk_down` ×0.82), title
+    // (`element_kim_blade_master` +5%, `realm_thien_tien_celestial` +7%,
+    // `realm_hu_khong_chi_ton` +12%, `element_hoa_phoenix_flame` +5%, etc.).
+    // Catalog producer spiritMul: talent (`talent_huyen_thuy_tam` +10% thuy),
+    // buff (`pill_spirit_buff_t1` +18%, `event_double_exp` ×2.0), title
+    // (`realm_nguyen_anh_master` +2%, `realm_hoa_than_sage` +4%,
+    // `realm_thanh_nhan_sage` +8%, etc.).
+    // Service không inject (legacy DI / test fixture without `talents`/`buffs`/
+    // `titles`) → identity baseline (atkMul=1.0, spiritMul=1.0, no-op).
     const talentMods: PassiveTalentMods = this.talents
       ? await this.talents.getMods(char.id)
       : composePassiveTalentMods([]);
+    const titleMods: TitleMods = this.titles
+      ? await this.titles.getMods(char.id)
+      : composeTitleMods([]);
     const charAtk =
-      Math.floor((char.power + equip.atk) * talentMods.atkMul * buffMods.atkMul) +
+      Math.floor(
+        (char.power + equip.atk) *
+          talentMods.atkMul *
+          buffMods.atkMul *
+          titleMods.atkMul,
+      ) +
       (skill.atkScale > 1
         ? Math.floor(
             (char.spirit + equip.spiritBonus) *
               talentMods.spiritMul *
-              buffMods.spiritMul,
+              buffMods.spiritMul *
+              titleMods.spiritMul,
           )
         : 0);
     const raw = rollDamage(charAtk, def.def, skill.atkScale);
