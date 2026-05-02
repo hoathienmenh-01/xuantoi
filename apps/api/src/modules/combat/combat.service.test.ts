@@ -1339,4 +1339,159 @@ describe('CombatService', () => {
       expect(c.hp).toBe(999);
     });
   });
+
+  // ── Phase 11.X.O — Buff control (root/stun/silence) ─────────────────────
+  // Wire `buffMods.controlTurnsMax > 0` block player action sau khi buff mods
+  // composed. Throw `CombatError('CONTROLLED')` EARLY — encounter status,
+  // character HP/MP/stamina, ledger row đều không đụng tới.
+  describe('Buff control wire (Phase 11.X.O)', () => {
+    let combatWithControl: CombatService;
+    let buffSvc: BuffService;
+
+    beforeAll(() => {
+      const realtime = new RealtimeService();
+      const chars = new CharacterService(prisma, realtime);
+      const inventory = new InventoryService(prisma, realtime, chars);
+      const currency = new CurrencyService(prisma);
+      const missions = makeMissionService(prisma);
+      buffSvc = new BuffService(prisma);
+      combatWithControl = new CombatService(
+        prisma,
+        realtime,
+        chars,
+        inventory,
+        currency,
+        missions,
+        undefined, // characterSkill
+        undefined, // achievements
+        undefined, // talents
+        buffSvc,
+      );
+    });
+
+    afterEach(() => {
+      vi.restoreAllMocks();
+    });
+
+    it('character có debuff_stun_tho (control 1 turn) → throw CONTROLLED', async () => {
+      vi.spyOn(Math, 'random').mockReturnValue(0.5);
+      const u = await makeUserChar(prisma, {
+        realmKey: 'kim_dan',
+        stamina: 100,
+        power: 20,
+        spirit: 100,
+        hp: 1000,
+        hpMax: 1000,
+        mp: 1000,
+        mpMax: 1000,
+      });
+      await buffSvc.applyBuff(u.characterId, 'debuff_stun_tho', 'skill');
+      const enc = await combatWithControl.start(u.userId, 'son_coc');
+      await expect(
+        combatWithControl.action(u.userId, enc.id, {}),
+      ).rejects.toThrow('CONTROLLED');
+
+      // Encounter còn ACTIVE, character HP/MP/stamina không đổi sau throw.
+      const encAfter = await prisma.encounter.findUniqueOrThrow({
+        where: { id: enc.id },
+      });
+      expect(encAfter.status).toBe(EncounterStatus.ACTIVE);
+      const c = await prisma.character.findUniqueOrThrow({
+        where: { id: u.characterId },
+      });
+      expect(c.hp).toBe(1000);
+      expect(c.mp).toBe(1000);
+      // start() đã trừ stamina dungeon entry (son_coc=10); action() không trừ
+      // thêm khi throw.
+      expect(c.stamina).toBe(100 - 10);
+    });
+
+    it('character có debuff_root_thuy (control 3 turns) → throw CONTROLLED', async () => {
+      vi.spyOn(Math, 'random').mockReturnValue(0.5);
+      const u = await makeUserChar(prisma, {
+        realmKey: 'kim_dan',
+        stamina: 100,
+        power: 20,
+        spirit: 100,
+        hp: 1000,
+        hpMax: 1000,
+        mp: 1000,
+        mpMax: 1000,
+      });
+      await buffSvc.applyBuff(u.characterId, 'debuff_root_thuy', 'skill');
+      const enc = await combatWithControl.start(u.userId, 'son_coc');
+      await expect(
+        combatWithControl.action(u.userId, enc.id, {}),
+      ).rejects.toThrow('CONTROLLED');
+    });
+
+    it('character có debuff_burn_hoa (DOT, không control) → action proceeds', async () => {
+      vi.spyOn(Math, 'random').mockReturnValue(0.5);
+      const u = await makeUserChar(prisma, {
+        realmKey: 'kim_dan',
+        stamina: 100,
+        power: 20,
+        spirit: 100,
+        hp: 1000,
+        hpMax: 1000,
+        mp: 1000,
+        mpMax: 1000,
+      });
+      // DOT debuff không có effect kind 'control' → controlTurnsMax = 0.
+      await buffSvc.applyBuff(u.characterId, 'debuff_burn_hoa', 'skill');
+      const enc = await combatWithControl.start(u.userId, 'son_coc');
+      await combatWithControl.action(u.userId, enc.id, {});
+      // Action proceeds: monster reply 1 + DOT 8 → 1000 - 9 = 991.
+      const c = await prisma.character.findUniqueOrThrow({
+        where: { id: u.characterId },
+      });
+      expect(c.hp).toBe(991);
+    });
+
+    it('character KHÔNG buff → composeBuffMods identity (controlTurnsMax=0) → action proceeds', async () => {
+      vi.spyOn(Math, 'random').mockReturnValue(0.5);
+      const u = await makeUserChar(prisma, {
+        realmKey: 'kim_dan',
+        stamina: 100,
+        power: 20,
+        spirit: 100,
+        hp: 1000,
+        hpMax: 1000,
+        mp: 1000,
+        mpMax: 1000,
+      });
+      const enc = await combatWithControl.start(u.userId, 'son_coc');
+      await combatWithControl.action(u.userId, enc.id, {});
+      const c = await prisma.character.findUniqueOrThrow({
+        where: { id: u.characterId },
+      });
+      // No buff → no control, no DOT. Reply 1 dmg → 999.
+      expect(c.hp).toBe(999);
+    });
+
+    it('BuffService không inject vào CombatService → identity baseline (no CONTROLLED throw)', async () => {
+      vi.spyOn(Math, 'random').mockReturnValue(0.5);
+      const u = await makeUserChar(prisma, {
+        realmKey: 'kim_dan',
+        stamina: 100,
+        power: 20,
+        spirit: 100,
+        hp: 1000,
+        hpMax: 1000,
+        mp: 1000,
+        mpMax: 1000,
+      });
+      // grant control debuff vào DB
+      await buffSvc.applyBuff(u.characterId, 'debuff_stun_tho', 'skill');
+      // dùng top-level `combat` instance (no BuffService injected) →
+      // composeBuffMods([]) → controlTurnsMax = 0 → no throw despite DB row.
+      const enc = await combat.start(u.userId, 'son_coc');
+      await combat.action(u.userId, enc.id, {});
+      const c = await prisma.character.findUniqueOrThrow({
+        where: { id: u.characterId },
+      });
+      // Action proceeds. Reply 1 dmg → 999.
+      expect(c.hp).toBe(999);
+    });
+  });
 });
