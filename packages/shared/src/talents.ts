@@ -93,7 +93,7 @@ export interface TalentDef {
 }
 
 /**
- * 19 talent baseline cover passive + active × 5 element + neutral.
+ * 20 talent baseline cover passive + active × 5 element + neutral.
  * (Phase 11.X.AA: thêm `talent_huyen_thuy_tam` thuy +10% spirit — producer
  * đầu tiên cho `composePassiveTalentMods.spiritMul`, activate Phase 11.4.G
  * (boss spirit branch wire) + Phase 11.X.U (combat effSpirit defense wire).)
@@ -115,6 +115,11 @@ export interface TalentDef {
  * +10% — PR #288): hai talent kim element độc lập, atk path vs spirit path.
  * Flavor: kim linh tâm hấp thu kim khí tinh nguyên, tâm cảnh không nhiễm bụi
  * trần.)
+ * (Phase 11.X.AF: thêm `talent_moc_lam_phach` moc +10% atk — producer thứ 2
+ * cho `composePassiveTalentMods.atkMul` (cùng path với `talent_kim_thien_co`),
+ * mở đầu fill 5-element atk coverage roadmap (kim ✅ + moc ✅, còn thuy ⏳
+ * hoa ⏳ tho ⏳). Symmetric structure với `talent_kim_thien_co`. Flavor: linh
+ * khí mộc lâm cuốn vào kiếm pháp, sát thương vật lý cường hoá.)
  *
  * Stable order: passive trước → active sau.
  */
@@ -214,6 +219,23 @@ export const TALENTS: readonly TalentDef[] = [
       kind: 'stat_mod',
       value: 1.1,
       statTarget: 'spirit',
+      elementTarget: null,
+    },
+    activeEffect: null,
+  },
+  {
+    key: 'talent_moc_lam_phach',
+    name: 'Mộc Lâm Phách',
+    description:
+      'Linh khí mộc lâm cuốn vào kiếm pháp, +10% sát thương vật lý.',
+    type: 'passive',
+    element: 'moc',
+    realmRequirement: 'kim_dan',
+    talentPointCost: 1,
+    passiveEffect: {
+      kind: 'stat_mod',
+      value: 1.1,
+      statTarget: 'atk',
       elementTarget: null,
     },
     activeEffect: null,

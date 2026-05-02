@@ -504,6 +504,31 @@ describe('composePassiveTalentMods', () => {
     expect(mods.hpMaxMul).toBe(1);
   });
 
+  it('moc_lam_phach → atkMul = 1.1 (Phase 11.X.AF producer thứ 2 cho atkMul, mở đầu fill 5-element atk coverage)', () => {
+    const mods = composePassiveTalentMods(['talent_moc_lam_phach']);
+    expect(mods.atkMul).toBeCloseTo(1.1, 5);
+    // Verify isolation: chỉ statTarget=atk bị tác động, các stat khác giữ identity.
+    expect(mods.spiritMul).toBe(1);
+    expect(mods.defMul).toBe(1);
+    expect(mods.hpMaxMul).toBe(1);
+    expect(mods.hpRegenFlat).toBe(0);
+    // damageBonusByElement không bị set bởi atk producer.
+    expect(mods.damageBonusByElement.size).toBe(0);
+  });
+
+  it('combine kim_thien_co + moc_lam_phach → atkMul = 1.1² = 1.21 (2-element atk multiplicative stack)', () => {
+    const mods = composePassiveTalentMods([
+      'talent_kim_thien_co',
+      'talent_moc_lam_phach',
+    ]);
+    // 2 atk producers cùng statTarget=atk → multiplicative compose 1.1 × 1.1.
+    expect(mods.atkMul).toBeCloseTo(1.21, 5);
+    // Cross-stat: spirit/hpMax/def giữ identity.
+    expect(mods.spiritMul).toBe(1);
+    expect(mods.hpMaxMul).toBe(1);
+    expect(mods.defMul).toBe(1);
+  });
+
   it('hoa_tam_dao → damageBonusByElement[kim] = 1.15', () => {
     const mods = composePassiveTalentMods(['talent_hoa_tam_dao']);
     expect(mods.damageBonusByElement.get('kim')).toBeCloseTo(1.15, 5);
@@ -519,9 +544,9 @@ describe('composePassiveTalentMods', () => {
     expect(mods.expMul).toBeCloseTo(1.15, 5);
   });
 
-  it('combine 2 stat_mod cùng target → multiplicative', () => {
-    // Giả lập: nếu có 2 talent +10% atk thì 1.1 × 1.1 = 1.21
-    // Nhưng catalog hiện chỉ có 1 atk passive. Ta test = stack với hp.
+  it('combine 2 stat_mod khác target → cùng multiplicative path nhưng isolated by statTarget', () => {
+    // 2 talent khác statTarget (atk vs hpMax) → mỗi statTarget multiplicative
+    // độc lập: atkMul=1.1, hpMaxMul=1.1, không cross-stat overlap.
     const mods = composePassiveTalentMods([
       'talent_kim_thien_co', // atk × 1.1
       'talent_thuy_long_an', // hpMax × 1.1
