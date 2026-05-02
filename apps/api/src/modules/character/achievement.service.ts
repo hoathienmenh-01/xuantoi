@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { forwardRef, Inject, Injectable } from '@nestjs/common';
 import { CurrencyKind } from '@prisma/client';
 import {
   ACHIEVEMENTS,
@@ -11,6 +11,7 @@ import {
 import { PrismaService } from '../../common/prisma.service';
 import { CurrencyService } from './currency.service';
 import { TitleService } from './title.service';
+import { InventoryService } from '../inventory/inventory.service';
 
 /**
  * Phase 11.10.B/C-1 Achievement (Thành Tựu) runtime — progress + completion
@@ -35,14 +36,19 @@ import { TitleService } from './title.service';
  *     (`titleForAchievement(achievementKey)`). CAS guard `claimedAt: null`
  *     đảm bảo idempotent (concurrent call chỉ 1 winner).
  *
- * Wire FUTURE (NOT in scope 11.10.C-1):
- *   - Item rewards (`def.reward.items`) — current 32 baseline không có items;
- *     khi catalog cần sẽ extract AchievementModule + add `ItemLedger` reason
- *     `ACHIEVEMENT_REWARD` (Phase 11.10.D, tránh circular dep CharacterModule
- *     ↔ InventoryModule).
+ * Phase 11.10.D Item rewards — `claimReward` grant `def.reward.items` qua
+ * `InventoryService.grantTx` reason `'ACHIEVEMENT_REWARD'` (`ItemLedger` audit).
+ * Inject `InventoryService` qua `forwardRef` để tránh circular dep với
+ * `CharacterModule` ↔ `InventoryModule` (đã set forwardRef cả 2 module).
+ * Identity hiện tại: 32 baseline catalog không có achievement với items, nên
+ * code path không activate. Future-proof khi catalog thêm achievement với
+ * `reward.items`.
+ *
+ * Wire FUTURE (NOT in scope 11.10.D):
  *   - Event listener wire vào combat/dungeon/breakthrough/cultivate/market
  *     /chat/sect cho mỗi `goalKind` để auto-call `incrementProgress` (Phase
- *     11.10.C-2).
+ *     11.10.C-2 đã wire một phần — combat/cultivate; dungeon/breakthrough
+ *     /market/chat/sect defer).
  */
 @Injectable()
 export class AchievementService {
@@ -50,6 +56,8 @@ export class AchievementService {
     private readonly prisma: PrismaService,
     private readonly currency: CurrencyService,
     private readonly title: TitleService,
+    @Inject(forwardRef(() => InventoryService))
+    private readonly inventory: InventoryService,
   ) {}
 
   /**
@@ -324,17 +332,16 @@ export class AchievementService {
    *   5. Grant `exp` qua `tx.character.update({ exp: increment })`.
    *   6. Nếu `def.rewardTitleKey` set + `titleForAchievement` match →
    *      `TitleService.unlockTitleTx(source='achievement')` idempotent.
-   *   7. Nếu `def.reward.items` non-empty → throw `ITEMS_NOT_SUPPORTED`
-   *      (defensive guard — current 32 baseline catalog không có items;
-   *      Phase 11.10.D sẽ add khi extract AchievementModule).
+   *   7. Phase 11.10.D — Nếu `def.reward.items` non-empty → grant via
+   *      `InventoryService.grantTx` reason `'ACHIEVEMENT_REWARD'` (`ItemLedger`
+   *      audit, idempotent qua CAS guard `claimedAt`). Identity hiện tại
+   *      (32 baseline catalog không có items) → no-op. Future-proof.
    *
    * @throws AchievementError('ACHIEVEMENT_NOT_FOUND') key không trong catalog.
    * @throws AchievementError('CHARACTER_NOT_FOUND') character không tồn tại.
    * @throws AchievementError('NOT_FOUND_PROGRESS') chưa từng track row.
    * @throws AchievementError('NOT_COMPLETED') row.completedAt đang null.
    * @throws AchievementError('ALREADY_CLAIMED') row.claimedAt đã set.
-   * @throws AchievementError('ITEMS_NOT_SUPPORTED') def.reward.items non-empty
-   *   (defer Phase 11.10.D — current catalog không đụng).
    */
   async claimReward(
     characterId: string,
@@ -347,14 +354,11 @@ export class AchievementService {
       tienNgoc: number;
       exp: number;
       titleKey: string | null;
+      items: Array<{ itemKey: string; qty: number }>;
     };
   }> {
     const def = getAchievementDef(achievementKey);
     if (!def) throw new AchievementError('ACHIEVEMENT_NOT_FOUND');
-
-    if (def.reward.items && def.reward.items.length > 0) {
-      throw new AchievementError('ITEMS_NOT_SUPPORTED');
-    }
 
     return this.prisma.$transaction(async (tx) => {
       const character = await tx.character.findUnique({
@@ -431,6 +435,25 @@ export class AchievementService {
         }
       }
 
+      // Phase 11.10.D — Item rewards. Grant qua InventoryService.grantTx
+      // (positive qtyDelta + ItemLedger reason 'ACHIEVEMENT_REWARD'). CAS
+      // claim guard ở trên đảm bảo idempotent (concurrent claim chỉ 1 winner
+      // → grant 1 lần). Identity: 32 baseline catalog không có items, nên
+      // wire này future-proof.
+      const items: Array<{ itemKey: string; qty: number }> = [];
+      if (def.reward.items && def.reward.items.length > 0) {
+        const grantList = def.reward.items.map((it) => ({
+          itemKey: it.itemKey,
+          qty: it.qty,
+        }));
+        await this.inventory.grantTx(tx, characterId, grantList, {
+          reason: 'ACHIEVEMENT_REWARD',
+          refType: 'Achievement',
+          refId: achievementKey,
+        });
+        items.push(...grantList);
+      }
+
       return {
         achievementKey,
         claimedAt,
@@ -439,6 +462,7 @@ export class AchievementService {
           tienNgoc,
           exp,
           titleKey: unlockedTitleKey,
+          items,
         },
       };
     });
@@ -482,8 +506,7 @@ export type AchievementErrorCode =
   | 'INVALID_AMOUNT'
   | 'NOT_FOUND_PROGRESS'
   | 'NOT_COMPLETED'
-  | 'ALREADY_CLAIMED'
-  | 'ITEMS_NOT_SUPPORTED';
+  | 'ALREADY_CLAIMED';
 
 export class AchievementError extends Error {
   readonly name = 'AchievementError';

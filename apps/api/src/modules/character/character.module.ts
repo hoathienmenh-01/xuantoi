@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { forwardRef, Module } from '@nestjs/common';
 import type { Redis } from 'ioredis';
 import {
   CharacterController,
@@ -21,6 +21,7 @@ import { AchievementService } from './achievement.service';
 import { PrismaService } from '../../common/prisma.service';
 import { AuthModule } from '../auth/auth.module';
 import { RealtimeModule } from '../realtime/realtime.module';
+import { InventoryModule } from '../inventory/inventory.module';
 import {
   InMemorySlidingWindowRateLimiter,
   RedisSlidingWindowRateLimiter,
@@ -47,8 +48,12 @@ const profileLimiterProvider = {
   },
 };
 
+// Phase 11.10.D Achievement item rewards — inject `InventoryService` vào
+// `AchievementService.claimReward` qua `forwardRef` để grant items khi
+// `def.reward.items` non-empty. Cycle: CharacterModule ↔ InventoryModule
+// (InventoryModule imports CharacterModule cho CharacterService/CurrencyService).
 @Module({
-  imports: [AuthModule, RealtimeModule],
+  imports: [AuthModule, RealtimeModule, forwardRef(() => InventoryModule)],
   controllers: [CharacterController],
   providers: [
     CharacterService,

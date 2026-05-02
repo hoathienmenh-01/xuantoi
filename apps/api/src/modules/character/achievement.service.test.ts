@@ -1,4 +1,13 @@
-import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import {
+  afterAll,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from 'vitest';
+import * as shared from '@xuantoi/shared';
 import {
   achievementsByGoalKind,
   getAchievementDef,
@@ -11,6 +20,9 @@ import {
 } from './achievement.service';
 import { CurrencyService } from './currency.service';
 import { TitleService } from './title.service';
+import { InventoryService } from '../inventory/inventory.service';
+import { CharacterService } from './character.service';
+import { RealtimeService } from '../realtime/realtime.service';
 import { makeUserChar, wipeAll } from '../../test-helpers';
 
 const TEST_DATABASE_URL =
@@ -22,13 +34,17 @@ let prisma: PrismaService;
 let svc: AchievementService;
 let currency: CurrencyService;
 let title: TitleService;
+let inventory: InventoryService;
 
 beforeAll(() => {
   process.env.DATABASE_URL = TEST_DATABASE_URL;
   prisma = new PrismaService();
   currency = new CurrencyService(prisma);
   title = new TitleService(prisma);
-  svc = new AchievementService(prisma, currency, title);
+  const realtime = new RealtimeService();
+  const chars = new CharacterService(prisma, realtime);
+  inventory = new InventoryService(prisma, realtime, chars);
+  svc = new AchievementService(prisma, currency, title, inventory);
 });
 
 beforeEach(async () => {
@@ -590,6 +606,113 @@ describe('AchievementService.claimReward — Phase 11.10.C-1', () => {
     expect(afterRow!.progress).toBe(beforeRow!.progress);
     expect(afterRow!.claimedAt).not.toBeNull();
     expect(afterRow!.claimedAt).toBeInstanceOf(Date);
+  });
+});
+
+describe('AchievementService.claimReward item rewards (Phase 11.10.D)', () => {
+  // Spy `getAchievementDef` để inject fake def với `reward.items` non-empty.
+  // 32 baseline catalog không có items, nên runtime path identity. Wire này
+  // future-proof — khi catalog thêm achievement với `reward.items`, claim sẽ
+  // grant qua `InventoryService.grantTx` reason `'ACHIEVEMENT_REWARD'`.
+  it('claim achievement với reward.items non-empty → grant items + InventoryItem row + ItemLedger entry', async () => {
+    const ctx = await makeUserChar(prisma);
+    const realDef = getAchievementDef('first_monster_kill');
+    expect(realDef).toBeDefined();
+    const spy = vi.spyOn(shared, 'getAchievementDef').mockReturnValue({
+      ...realDef!,
+      reward: {
+        ...realDef!.reward,
+        items: [{ itemKey: 'huyet_chi_dan', qty: 3 }],
+      },
+    });
+    try {
+      // Track progress qua call thực — nhưng `getAchievementDef` đã spy.
+      // `incrementProgress` sẽ gọi spy → fake def. Goal 1 → ngay complete.
+      await svc.incrementProgress(ctx.characterId, 'first_monster_kill', 1);
+
+      const result = await svc.claimReward(ctx.characterId, 'first_monster_kill');
+
+      expect(result.granted.items).toHaveLength(1);
+      expect(result.granted.items[0]).toEqual({
+        itemKey: 'huyet_chi_dan',
+        qty: 3,
+      });
+
+      // Verify InventoryItem row tạo.
+      const invRows = await prisma.inventoryItem.findMany({
+        where: { characterId: ctx.characterId, itemKey: 'huyet_chi_dan' },
+      });
+      expect(invRows).toHaveLength(1);
+      expect(invRows[0].qty).toBe(3);
+
+      // Verify ItemLedger entry — reason ACHIEVEMENT_REWARD + refType +
+      // refId match achievementKey.
+      const ledger = await prisma.itemLedger.findMany({
+        where: {
+          characterId: ctx.characterId,
+          reason: 'ACHIEVEMENT_REWARD',
+        },
+      });
+      expect(ledger).toHaveLength(1);
+      expect(ledger[0].itemKey).toBe('huyet_chi_dan');
+      expect(ledger[0].qtyDelta).toBe(3);
+      expect(ledger[0].refType).toBe('Achievement');
+      expect(ledger[0].refId).toBe('first_monster_kill');
+    } finally {
+      spy.mockRestore();
+    }
+  });
+
+  it('claim achievement với reward.items empty → granted.items rỗng, không InventoryItem/ItemLedger entry', async () => {
+    const ctx = await makeUserChar(prisma);
+    // Real catalog `first_monster_kill` không có items → identity path.
+    await svc.incrementProgress(ctx.characterId, 'first_monster_kill', 1);
+    const result = await svc.claimReward(ctx.characterId, 'first_monster_kill');
+
+    expect(result.granted.items).toEqual([]);
+    const invRows = await prisma.inventoryItem.findMany({
+      where: { characterId: ctx.characterId },
+    });
+    expect(invRows).toHaveLength(0);
+    const ledger = await prisma.itemLedger.findMany({
+      where: { characterId: ctx.characterId, reason: 'ACHIEVEMENT_REWARD' },
+    });
+    expect(ledger).toHaveLength(0);
+  });
+
+  it('claim 2 lần liên tiếp với reward.items → lần 2 throw ALREADY_CLAIMED, không grant double items', async () => {
+    const ctx = await makeUserChar(prisma);
+    const realDef = getAchievementDef('first_monster_kill');
+    const spy = vi.spyOn(shared, 'getAchievementDef').mockReturnValue({
+      ...realDef!,
+      reward: {
+        ...realDef!.reward,
+        items: [{ itemKey: 'huyet_chi_dan', qty: 2 }],
+      },
+    });
+    try {
+      await svc.incrementProgress(ctx.characterId, 'first_monster_kill', 1);
+      await svc.claimReward(ctx.characterId, 'first_monster_kill');
+      await expect(
+        svc.claimReward(ctx.characterId, 'first_monster_kill'),
+      ).rejects.toMatchObject({ code: 'ALREADY_CLAIMED' });
+
+      // Inventory + ledger chỉ 1 grant (qty 2), không double.
+      const invRows = await prisma.inventoryItem.findMany({
+        where: { characterId: ctx.characterId, itemKey: 'huyet_chi_dan' },
+      });
+      expect(invRows).toHaveLength(1);
+      expect(invRows[0].qty).toBe(2);
+      const ledger = await prisma.itemLedger.findMany({
+        where: {
+          characterId: ctx.characterId,
+          reason: 'ACHIEVEMENT_REWARD',
+        },
+      });
+      expect(ledger).toHaveLength(1);
+    } finally {
+      spy.mockRestore();
+    }
   });
 });
 

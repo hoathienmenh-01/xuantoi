@@ -482,7 +482,12 @@ describe('CombatService', () => {
       const inventory = new InventoryService(prisma, realtime, chars);
       const currency = new CurrencyService(prisma);
       const title = new TitleService(prisma);
-      const achievements = new AchievementService(prisma, currency, title);
+      const achievements = new AchievementService(
+        prisma,
+        currency,
+        title,
+        inventory,
+      );
       const missions = makeMissionService(prisma);
       combatWithAchievements = new CombatService(
         prisma,
