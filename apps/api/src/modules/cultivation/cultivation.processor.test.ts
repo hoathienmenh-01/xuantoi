@@ -427,4 +427,143 @@ describe('CultivationProcessor.process (tick)', () => {
       expect(c.exp).toBe(BigInt(baseGain));
     });
   });
+
+  // — Phase 11.8.E — Buff hp/mpRegenFlat wire vào cultivation tick ----
+  describe('Buff hp/mpRegenFlat wire (Phase 11.8.E)', () => {
+    let processorWithBuffs: CultivationProcessor;
+    let buffSvc: BuffService;
+
+    beforeAll(() => {
+      const realtime = new RealtimeService();
+      const missions = makeMissionService(prisma);
+      buffSvc = new BuffService(prisma);
+      processorWithBuffs = new CultivationProcessor(
+        prisma,
+        realtime,
+        missions,
+        undefined, // achievements
+        undefined, // talents
+        buffSvc,
+      );
+    });
+
+    it('character có pill_hp_regen_t1 (5 HP/sec × 30s = 150 HP) → hp += 150 (cap hpMax)', async () => {
+      const f = await makeUserChar(prisma, {
+        cultivating: true,
+        spirit: 8,
+        hp: 100,
+        hpMax: 500,
+        mp: 50,
+        mpMax: 50,
+      });
+      await buffSvc.applyBuff(f.characterId, 'pill_hp_regen_t1', 'pill');
+
+      await processorWithBuffs.process(tickJob());
+      const c = await prisma.character.findUniqueOrThrow({
+        where: { id: f.characterId },
+      });
+      expect(c.hp).toBe(250); // 100 + 5*30 = 250 (≤ hpMax 500)
+      expect(c.mp).toBe(50); // không có mp regen
+    });
+
+    it('character có sect_aura_thuy (4 MP/sec × 30s = 120 MP) → mp += 120 (cap mpMax)', async () => {
+      const f = await makeUserChar(prisma, {
+        cultivating: true,
+        spirit: 8,
+        hp: 100,
+        hpMax: 100,
+        mp: 50,
+        mpMax: 200,
+      });
+      await buffSvc.applyBuff(f.characterId, 'sect_aura_thuy', 'sect_aura');
+
+      await processorWithBuffs.process(tickJob());
+      const c = await prisma.character.findUniqueOrThrow({
+        where: { id: f.characterId },
+      });
+      expect(c.hp).toBe(100); // không có hp regen
+      expect(c.mp).toBe(170); // 50 + 4*30 = 170 (≤ mpMax 200)
+    });
+
+    it('hp regen vượt cap → cap LEAST(hpMax)', async () => {
+      const f = await makeUserChar(prisma, {
+        cultivating: true,
+        spirit: 8,
+        hp: 90,
+        hpMax: 100,
+        mp: 50,
+        mpMax: 50,
+      });
+      await buffSvc.applyBuff(f.characterId, 'pill_hp_regen_t1', 'pill');
+
+      await processorWithBuffs.process(tickJob());
+      const c = await prisma.character.findUniqueOrThrow({
+        where: { id: f.characterId },
+      });
+      // 90 + 150 = 240 → cap 100 (hpMax).
+      expect(c.hp).toBe(100);
+    });
+
+    it('character KHÔNG có buff regen → hp/mp không đổi', async () => {
+      const f = await makeUserChar(prisma, {
+        cultivating: true,
+        spirit: 8,
+        hp: 100,
+        hpMax: 500,
+        mp: 50,
+        mpMax: 200,
+      });
+
+      await processorWithBuffs.process(tickJob());
+      const c = await prisma.character.findUniqueOrThrow({
+        where: { id: f.characterId },
+      });
+      expect(c.hp).toBe(100);
+      expect(c.mp).toBe(50);
+    });
+
+    it('không inject BuffService (legacy DI) → hp/mp identity (không regen)', async () => {
+      // Default `processor` instance không inject BuffService — character có
+      // buff applied vẫn không được hồi hp/mp ở cultivation tick.
+      const f = await makeUserChar(prisma, {
+        cultivating: true,
+        spirit: 8,
+        hp: 100,
+        hpMax: 500,
+        mp: 50,
+        mpMax: 200,
+      });
+      await buffSvc.applyBuff(f.characterId, 'pill_hp_regen_t1', 'pill');
+
+      await processor.process(tickJob());
+      const c = await prisma.character.findUniqueOrThrow({
+        where: { id: f.characterId },
+      });
+      expect(c.hp).toBe(100);
+      expect(c.mp).toBe(50);
+    });
+
+    it('character có debuff_taoma + buff regen → cultivationBlocked → hp/mp KHÔNG regen', async () => {
+      // Tâm Ma block cả EXP gain LẪN hp/mp regen (continue skip toàn bộ).
+      const f = await makeUserChar(prisma, {
+        cultivating: true,
+        spirit: 8,
+        hp: 100,
+        hpMax: 500,
+        mp: 50,
+        mpMax: 200,
+      });
+      await buffSvc.applyBuff(f.characterId, 'debuff_taoma', 'tribulation');
+      await buffSvc.applyBuff(f.characterId, 'pill_hp_regen_t1', 'pill');
+
+      await processorWithBuffs.process(tickJob());
+      const c = await prisma.character.findUniqueOrThrow({
+        where: { id: f.characterId },
+      });
+      // Tâm Ma block → hp/mp KHÔNG đổi (continue skip toàn bộ tick).
+      expect(c.hp).toBe(100);
+      expect(c.mp).toBe(50);
+      expect(c.exp).toBe(0n);
+    });
+  });
 });
