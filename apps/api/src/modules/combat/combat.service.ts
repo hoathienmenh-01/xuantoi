@@ -28,8 +28,10 @@ import { CharacterService } from '../character/character.service';
 import { CharacterSkillService } from '../character/character-skill.service';
 import { CurrencyService } from '../character/currency.service';
 import { AchievementService } from '../character/achievement.service';
+import { TalentService } from '../character/talent.service';
 import { InventoryService } from '../inventory/inventory.service';
 import { MissionService } from '../mission/mission.service';
+import { composePassiveTalentMods, type PassiveTalentMods } from '@xuantoi/shared';
 
 export interface EncounterState {
   monsterIndex: number;
@@ -103,6 +105,7 @@ export class CombatService {
     private readonly missions: MissionService,
     @Optional() private readonly characterSkill?: CharacterSkillService,
     @Optional() private readonly achievements?: AchievementService,
+    @Optional() private readonly talents?: TalentService,
   ) {}
 
   listDungeons() {
@@ -200,8 +203,14 @@ export class CombatService {
     const statMul = isValidSpiritualRootGrade(char.spiritualRootGrade)
       ? 1 + getSpiritualRootGradeDef(char.spiritualRootGrade).statBonusPercent / 100
       : 1.0;
-    const effPower = (char.power + equip.atk) * statMul;
-    const effDef = equip.def * statMul;
+    // Phase 11.7.C — Talent passive mods compose. Legacy character (no
+    // talent learned) → all multipliers identity (1.0). Service không
+    // injected (legacy DI hoặc test fixture) → fallback identity baseline.
+    const talentMods: PassiveTalentMods = this.talents
+      ? await this.talents.getMods(char.id)
+      : composePassiveTalentMods([]);
+    const effPower = (char.power + equip.atk) * statMul * talentMods.atkMul;
+    const effDef = equip.def * statMul * talentMods.defMul;
 
     const log: EncounterLogLine[] = [
       ...((enc.log as unknown as EncounterLogLine[]) ?? []),
@@ -223,10 +232,17 @@ export class CombatService {
       skill.element ?? null,
       monster.element ?? null,
     );
+    // Phase 11.7.C — Talent damage_bonus theo element. Compound multiplicative
+    // với element bonus (Linh căn) — talent passive ngộ đạo theo hệ.
+    const skillElement = skill.element ?? null;
+    const talentElementMul =
+      skillElement !== null
+        ? talentMods.damageBonusByElement.get(skillElement) ?? 1
+        : 1;
 
     // — Player attack (Phase 11.2.B — atkScale + mpCost từ mastery curve)
     const dmgBase = rollDamage(effPower, monster.def, effective.atkScale);
-    const dmg = Math.max(1, Math.round(dmgBase * playerElementMul));
+    const dmg = Math.max(1, Math.round(dmgBase * playerElementMul * talentElementMul));
     let monsterHp = state.monsterHp - dmg;
     charMp -= effective.mpCost;
     if (skill.selfBloodCost > 0) {
@@ -273,13 +289,20 @@ export class CombatService {
     let linhThachGain = 0n;
 
     if (monsterHp <= 0) {
+      // Phase 11.7.C — Talent expMul (exp_bonus) + dropMul (drop_bonus) wire.
+      // Floor để giữ BigInt deterministic, mul = 1 → identity (no change).
+      const expDropEff = Math.max(0, Math.floor(monster.expDrop * talentMods.expMul));
+      const linhThachDropEff = Math.max(
+        0,
+        Math.floor(monster.linhThachDrop * talentMods.dropMul),
+      );
       log.push({
         side: 'system',
-        text: `${monster.name} đổ xuống — đắc thủ ${monster.expDrop} EXP, ${monster.linhThachDrop} linh thạch.`,
+        text: `${monster.name} đổ xuống — đắc thủ ${expDropEff} EXP, ${linhThachDropEff} linh thạch.`,
         ts: Date.now(),
       });
-      expGain += BigInt(monster.expDrop);
-      linhThachGain += BigInt(monster.linhThachDrop);
+      expGain += BigInt(expDropEff);
+      linhThachGain += BigInt(linhThachDropEff);
 
       const nextIdx = state.monsterIndex + 1;
       if (nextIdx >= dungeon.monsters.length) {
