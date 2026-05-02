@@ -10,7 +10,35 @@ Tóm tắt **người chơi / vận hành / dev** dễ đọc, theo PR đã merg
 
 ## [Unreleased]
 
-> Pending merge: docs CHANGELOG catch-up sessions 9o + 9p (this PR).
+> Pending merge: docs CHANGELOG catch-up sessions 9q–9r-25 wire batch (this PR).
+
+---
+
+## [session 9r-25 wire batch — PR #251 → #256, merged 1/5–2/5 2026]
+
+### Internal — Phase 11 passive systems runtime wire (no catalog/balance change)
+
+**Compose-and-fail-soft pattern**: mỗi PR inject `@Optional()` service vào consumer (CombatService / CultivationProcessor), gọi `service.getMods()` returning multiplier object, compose multiplicatively với identity fallback (`1.0` nếu service không inject hoặc character chưa có resource active). Đặc điểm chung: pure logic + vitest cover bonus path + identity baseline + DI fallback. **Không** đổi catalog (buff/talent/title), **không** đổi schema/migration, **không** đổi ledger semantic.
+
+- **Talent passive wire vào CombatService** (PR #251 / Phase 11.7.C): `talents.getMods()` × CombatService.action() — atkMul × effPower, defMul × effDef, damageBonusByElement × dmg, expMul × monster expDrop, dropMul × linhThachDrop. 4 vitest. `apps/api/src/modules/combat/combat.service.ts` + `combat.service.test.ts`.
+- **Buff passive wire vào CombatService** (PR #252 / Phase 11.8.C): `buffs.getMods()` × CombatService.action() — atkMul × effPower, defMul × effDef, spiritMul × spirit defense, damageBonusByElement × dmg, damageReductionByElement × incoming reply. 5 vitest. `combat.service.ts` + `combat.service.test.ts`.
+- **Title flavor wire vào CombatService** (PR #253 / Phase 11.9.C): `titles.getMods()` × CombatService.action() — atkMul × effPower, defMul × effDef, spiritMul × spirit defense. 5 vitest. `combat.service.ts` + `combat.service.test.ts`.
+- **Talent expMul wire vào CultivationProcessor** (PR #254 / Phase 11.7.D): `talents.getMods().expMul` × cultivation tick gain. Catalog `talent_ngo_dao` "+15% EXP tu vi mỗi lần tu luyện" giờ thực sự apply cho cả cultivation EXP, không chỉ monster EXP drop. Compose multiplicatively với cultivationMul (Linh căn) × methodMul (Công pháp): `gain = max(1, round(baseGain × cultivationMul × methodMul × talentExpMul))`. 4 vitest. `cultivation.processor.ts` + `cultivation.processor.test.ts`.
+- **Buff cultivationBlocked (Tâm Ma) wire vào CultivationProcessor** (PR #255 / Phase 11.8.D): `buffs.getMods().cultivationBlocked` flag check ở đầu loop iter — character có debuff `debuff_taoma` (Tâm Ma Triền Thân, 1h duration sau khi vượt kiếp FAIL) → tick skip toàn bộ EXP gain + mission/achievement track + realtime emit. Stamina regen ở top vẫn áp dụng. 4 vitest. `cultivation.processor.ts` + `cultivation.processor.test.ts`.
+- **Buff hp/mpRegenFlat wire vào CultivationProcessor** (PR #256 / Phase 11.8.E): `buffs.getMods().hpRegenFlat` / `mpRegenFlat` (per-second values) × tickSeconds (30s) → raw SQL `LEAST("hpMax", hp + delta)` cap update. Catalog `pill_hp_regen_t1` (5 HP/s) + `sect_aura_thuy` (4 MP/s) etc giờ thực sự hồi HP/MP per cultivation tick. Refactor: buffMods fetch ONCE per character per tick (reuse cho cultivationBlocked check + regen). 6 vitest covering cap clamp + Tâm Ma priority + DI fallback. `cultivation.processor.ts` + `cultivation.processor.test.ts`.
+
+### Player-facing impact (post-merge)
+
+- **Tâm Ma debuff giờ thực sự block tu luyện** runtime (PR #255). Trước đó là design intent only.
+- **Talent Ngộ Đạo +15% EXP tu vi giờ áp dụng cho cultivation tick** (PR #254). Trước đó chỉ áp dụng monster EXP drop (PR #251).
+- **Sect aura Thuỷ (sect_aura_thuy) "+4 MP/s trong tu luyện" giờ thực sự hồi MP** mỗi tick (PR #256). Trước đó chỉ là metadata.
+- **Pill hồi HP/MP buffs giờ áp dụng trong cultivation context** (PR #256). Combat HP/MP regen chưa wire (defer).
+
+### Tests baseline progression
+
+- Post-PR-#250 (session 9r-22 base): API 1376 vitest.
+- Post-PR-#256: API 1395 vitest (+19 across 6 PRs). Shared 954 vitest (no change). Web 588 vitest (no change). **Total 2937 vitest**.
+- All CI 5/5 GREEN at merge time (PR #254 had typecheck regression caught by CI on first push, fixed in same PR commit `62a269f`).
 
 ---
 
