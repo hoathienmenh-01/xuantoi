@@ -396,6 +396,30 @@ export class CombatService {
       }
     }
 
+    // Phase 11.X.M — Buff DOT (debuff_burn_hoa, debuff_poison_moc) per-turn HP
+    // loss. Áp end-of-turn cho encounter còn ACTIVE (đã không WON/LOST do
+    // player attack / monster reply). `dotPerTickFlat` đã tính theo stack
+    // (composeBuffMods stack handler: value × stacks). Service không inject
+    // hoặc no dot debuff active → identity (0, no-op).
+    const dotDmg = Math.floor(buffMods.dotPerTickFlat);
+    if (dotDmg > 0 && nextStatus === EncounterStatus.ACTIVE) {
+      charHp = Math.max(0, charHp - dotDmg);
+      log.push({
+        side: 'system',
+        text: `Độc/bỏng phát tác — chịu ${dotDmg} sát thương DOT.`,
+        ts: Date.now(),
+      });
+      if (charHp <= 0) {
+        nextStatus = EncounterStatus.LOST;
+        charHp = 1;
+        log.push({
+          side: 'system',
+          text: `Đạo hữu hôn mê do độc/bỏng — chiến đấu thất bại.`,
+          ts: Date.now(),
+        });
+      }
+    }
+
     // Persist encounter & character.
     await this.prisma.encounter.update({
       where: { id: enc.id },
