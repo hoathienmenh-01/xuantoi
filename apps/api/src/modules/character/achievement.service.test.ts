@@ -9,6 +9,8 @@ import {
   ACHIEVEMENT_CATALOG_COUNT,
   AchievementService,
 } from './achievement.service';
+import { CurrencyService } from './currency.service';
+import { TitleService } from './title.service';
 import { makeUserChar, wipeAll } from '../../test-helpers';
 
 const TEST_DATABASE_URL =
@@ -18,11 +20,15 @@ const TEST_DATABASE_URL =
 
 let prisma: PrismaService;
 let svc: AchievementService;
+let currency: CurrencyService;
+let title: TitleService;
 
 beforeAll(() => {
   process.env.DATABASE_URL = TEST_DATABASE_URL;
   prisma = new PrismaService();
-  svc = new AchievementService(prisma);
+  currency = new CurrencyService(prisma);
+  title = new TitleService(prisma);
+  svc = new AchievementService(prisma, currency, title);
 });
 
 beforeEach(async () => {
@@ -382,6 +388,208 @@ describe('AchievementError class', () => {
     const err = new AchievementError('INVALID_AMOUNT', 'amount must be positive');
     expect(err.code).toBe('INVALID_AMOUNT');
     expect(err.message).toBe('amount must be positive');
+  });
+});
+
+describe('AchievementService.claimReward — Phase 11.10.C-1', () => {
+  it('claim achievement đã complete với rewardTitleKey → grant linhThach + exp + auto-unlock title', async () => {
+    const ctx = await makeUserChar(prisma);
+    const before = await prisma.character.findUnique({
+      where: { id: ctx.characterId },
+      select: { linhThach: true, exp: true },
+    });
+    const beforeLinhThach = BigInt(before!.linhThach);
+    const beforeExp = BigInt(before!.exp);
+
+    // Complete `first_monster_kill` (goal 1, reward linhThach 100 + exp 50,
+    // rewardTitleKey 'achievement_first_kill').
+    await svc.incrementProgress(ctx.characterId, 'first_monster_kill', 1);
+
+    const result = await svc.claimReward(ctx.characterId, 'first_monster_kill');
+
+    expect(result.achievementKey).toBe('first_monster_kill');
+    expect(result.claimedAt).toBeInstanceOf(Date);
+    expect(result.granted.linhThach).toBe(100);
+    expect(result.granted.tienNgoc).toBe(0);
+    expect(result.granted.exp).toBe(50);
+    expect(result.granted.titleKey).toBe('achievement_first_kill');
+
+    const after = await prisma.character.findUnique({
+      where: { id: ctx.characterId },
+      select: { linhThach: true, exp: true },
+    });
+    expect(BigInt(after!.linhThach) - beforeLinhThach).toBe(100n);
+    expect(BigInt(after!.exp) - beforeExp).toBe(50n);
+
+    const titleRow = await prisma.characterTitleUnlock.findUnique({
+      where: {
+        characterId_titleKey: {
+          characterId: ctx.characterId,
+          titleKey: 'achievement_first_kill',
+        },
+      },
+    });
+    expect(titleRow).not.toBeNull();
+    expect(titleRow?.source).toBe('achievement');
+
+    const ledger = await prisma.currencyLedger.findMany({
+      where: { characterId: ctx.characterId, reason: 'ACHIEVEMENT_REWARD' },
+    });
+    expect(ledger).toHaveLength(1);
+    expect(ledger[0].refType).toBe('Achievement');
+    expect(ledger[0].refId).toBe('first_monster_kill');
+    expect(BigInt(ledger[0].delta)).toBe(100n);
+  });
+
+  it('claim achievement không có rewardTitleKey → grant currency/exp, không unlock title', async () => {
+    const ctx = await makeUserChar(prisma);
+    // `kill_100_monsters` goal 100, reward linhThach 1000 + exp 500,
+    // rewardTitleKey null.
+    await svc.incrementProgress(ctx.characterId, 'kill_100_monsters', 100);
+
+    const result = await svc.claimReward(ctx.characterId, 'kill_100_monsters');
+    expect(result.granted.linhThach).toBe(1000);
+    expect(result.granted.exp).toBe(500);
+    expect(result.granted.titleKey).toBeNull();
+
+    const titles = await prisma.characterTitleUnlock.findMany({
+      where: { characterId: ctx.characterId },
+    });
+    expect(titles).toHaveLength(0);
+  });
+
+  it('claim 2 lần liên tiếp → lần 2 throw ALREADY_CLAIMED, không grant double', async () => {
+    const ctx = await makeUserChar(prisma);
+    await svc.incrementProgress(ctx.characterId, 'first_monster_kill', 1);
+
+    await svc.claimReward(ctx.characterId, 'first_monster_kill');
+    const before = await prisma.character.findUnique({
+      where: { id: ctx.characterId },
+      select: { linhThach: true },
+    });
+
+    await expect(
+      svc.claimReward(ctx.characterId, 'first_monster_kill'),
+    ).rejects.toMatchObject({ code: 'ALREADY_CLAIMED' });
+
+    const after = await prisma.character.findUnique({
+      where: { id: ctx.characterId },
+      select: { linhThach: true },
+    });
+    expect(BigInt(after!.linhThach)).toBe(BigInt(before!.linhThach));
+
+    // Title unlock vẫn idempotent — chỉ 1 row.
+    const titles = await prisma.characterTitleUnlock.findMany({
+      where: { characterId: ctx.characterId },
+    });
+    expect(titles).toHaveLength(1);
+
+    // Ledger entry vẫn chỉ 1.
+    const ledger = await prisma.currencyLedger.findMany({
+      where: { characterId: ctx.characterId, reason: 'ACHIEVEMENT_REWARD' },
+    });
+    expect(ledger).toHaveLength(1);
+  });
+
+  it('claim achievement chưa complete → throw NOT_COMPLETED', async () => {
+    const ctx = await makeUserChar(prisma);
+    // Chỉ track 50/100 — chưa đạt goal.
+    await svc.incrementProgress(ctx.characterId, 'kill_100_monsters', 50);
+
+    await expect(
+      svc.claimReward(ctx.characterId, 'kill_100_monsters'),
+    ).rejects.toMatchObject({ code: 'NOT_COMPLETED' });
+
+    // Không grant gì.
+    const ledger = await prisma.currencyLedger.findMany({
+      where: { characterId: ctx.characterId, reason: 'ACHIEVEMENT_REWARD' },
+    });
+    expect(ledger).toHaveLength(0);
+  });
+
+  it('claim achievement chưa từng track → throw NOT_FOUND_PROGRESS', async () => {
+    const ctx = await makeUserChar(prisma);
+    await expect(
+      svc.claimReward(ctx.characterId, 'first_monster_kill'),
+    ).rejects.toMatchObject({ code: 'NOT_FOUND_PROGRESS' });
+  });
+
+  it('claim achievementKey không có catalog → throw ACHIEVEMENT_NOT_FOUND', async () => {
+    const ctx = await makeUserChar(prisma);
+    await expect(
+      svc.claimReward(ctx.characterId, 'achievement_does_not_exist'),
+    ).rejects.toMatchObject({ code: 'ACHIEVEMENT_NOT_FOUND' });
+  });
+
+  it('claim với character không tồn tại → throw CHARACTER_NOT_FOUND', async () => {
+    await expect(
+      svc.claimReward('char_does_not_exist', 'first_monster_kill'),
+    ).rejects.toMatchObject({ code: 'CHARACTER_NOT_FOUND' });
+  });
+
+  it('claim concurrent x2 → 1 winner, 1 loser ALREADY_CLAIMED, ledger 1 dòng', async () => {
+    const ctx = await makeUserChar(prisma);
+    await svc.incrementProgress(ctx.characterId, 'first_monster_kill', 1);
+
+    const [r1, r2] = await Promise.allSettled([
+      svc.claimReward(ctx.characterId, 'first_monster_kill'),
+      svc.claimReward(ctx.characterId, 'first_monster_kill'),
+    ]);
+    const fulfilled = [r1, r2].filter((r) => r.status === 'fulfilled');
+    const rejected = [r1, r2].filter((r) => r.status === 'rejected');
+    expect(fulfilled).toHaveLength(1);
+    expect(rejected).toHaveLength(1);
+    expect((rejected[0] as PromiseRejectedResult).reason).toMatchObject({
+      code: 'ALREADY_CLAIMED',
+    });
+
+    const ledger = await prisma.currencyLedger.findMany({
+      where: { characterId: ctx.characterId, reason: 'ACHIEVEMENT_REWARD' },
+    });
+    expect(ledger).toHaveLength(1);
+
+    const after = await prisma.character.findUnique({
+      where: { id: ctx.characterId },
+    });
+    // Linh thạch chỉ tăng 100 (1 grant), không phải 200.
+    const meta = (await prisma.character.findUnique({
+      where: { id: ctx.characterId },
+      select: { linhThach: true },
+    }))!;
+    // Verify value matches the single grant of 100. We can't compare absolute
+    // value reliably without baseline, so just compare via the ledger.
+    const sum = ledger.reduce((s, l) => s + BigInt(l.delta), 0n);
+    expect(sum).toBe(100n);
+    expect(after).not.toBeNull();
+    void meta;
+  });
+
+  it('row trạng thái sau claim: completedAt giữ nguyên, claimedAt set, progress giữ nguyên', async () => {
+    const ctx = await makeUserChar(prisma);
+    await svc.incrementProgress(ctx.characterId, 'first_monster_kill', 1);
+    const beforeRow = await prisma.characterAchievement.findUnique({
+      where: {
+        characterId_achievementKey: {
+          characterId: ctx.characterId,
+          achievementKey: 'first_monster_kill',
+        },
+      },
+    });
+
+    await svc.claimReward(ctx.characterId, 'first_monster_kill');
+
+    const afterRow = await prisma.characterAchievement.findUnique({
+      where: {
+        characterId_achievementKey: {
+          characterId: ctx.characterId,
+          achievementKey: 'first_monster_kill',
+        },
+      },
+    });
+    expect(afterRow!.completedAt).toEqual(beforeRow!.completedAt);
+    expect(afterRow!.progress).toBe(beforeRow!.progress);
+    expect(afterRow!.claimedAt).not.toBeNull();
+    expect(afterRow!.claimedAt).toBeInstanceOf(Date);
   });
 });
 

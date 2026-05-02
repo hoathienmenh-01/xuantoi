@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import type { Prisma } from '@prisma/client';
 import {
   composeTitleMods,
   getTitleDef,
@@ -52,36 +53,57 @@ export class TitleService {
     titleKey: string,
     source: TitleSource,
   ): Promise<{ titleKey: string; source: TitleSource; unlockedAt: Date }> {
+    return this.prisma.$transaction((tx) =>
+      this.unlockTitleTx(tx, characterId, titleKey, source),
+    );
+  }
+
+  /**
+   * Tx-aware variant của `unlockTitle` — dùng từ INSIDE 1 `$transaction` đã
+   * có sẵn. Giữ nguyên ngữ nghĩa idempotent.
+   *
+   * Phase 11.10.C-1 dùng method này khi `AchievementService.claimReward`
+   * auto-unlock title qua `titleForAchievement(achievementKey)` — cần atomic
+   * cùng tx với CAS update `claimedAt` để rollback toàn bộ nếu currency grant
+   * fail.
+   *
+   * @throws TitleError('TITLE_NOT_FOUND') nếu titleKey không có trong catalog.
+   * @throws TitleError('CHARACTER_NOT_FOUND') nếu character không tồn tại.
+   */
+  async unlockTitleTx(
+    tx: Prisma.TransactionClient,
+    characterId: string,
+    titleKey: string,
+    source: TitleSource,
+  ): Promise<{ titleKey: string; source: TitleSource; unlockedAt: Date }> {
     const def = getTitleDef(titleKey);
     if (!def) throw new TitleError('TITLE_NOT_FOUND');
 
-    return this.prisma.$transaction(async (tx) => {
-      const character = await tx.character.findUnique({
-        where: { id: characterId },
-        select: { id: true },
-      });
-      if (!character) throw new TitleError('CHARACTER_NOT_FOUND');
-
-      const existing = await tx.characterTitleUnlock.findUnique({
-        where: { characterId_titleKey: { characterId, titleKey } },
-      });
-      if (existing) {
-        return {
-          titleKey: existing.titleKey,
-          source: existing.source as TitleSource,
-          unlockedAt: existing.unlockedAt,
-        };
-      }
-
-      const created = await tx.characterTitleUnlock.create({
-        data: { characterId, titleKey, source },
-      });
-      return {
-        titleKey: created.titleKey,
-        source: created.source as TitleSource,
-        unlockedAt: created.unlockedAt,
-      };
+    const character = await tx.character.findUnique({
+      where: { id: characterId },
+      select: { id: true },
     });
+    if (!character) throw new TitleError('CHARACTER_NOT_FOUND');
+
+    const existing = await tx.characterTitleUnlock.findUnique({
+      where: { characterId_titleKey: { characterId, titleKey } },
+    });
+    if (existing) {
+      return {
+        titleKey: existing.titleKey,
+        source: existing.source as TitleSource,
+        unlockedAt: existing.unlockedAt,
+      };
+    }
+
+    const created = await tx.characterTitleUnlock.create({
+      data: { characterId, titleKey, source },
+    });
+    return {
+      titleKey: created.titleKey,
+      source: created.source as TitleSource,
+      unlockedAt: created.unlockedAt,
+    };
   }
 
   /**

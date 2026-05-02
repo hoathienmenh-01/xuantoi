@@ -29,6 +29,10 @@ import {
   TribulationError,
   TribulationService,
 } from './tribulation.service';
+import {
+  AchievementError,
+  AchievementService,
+} from './achievement.service';
 import { AuthService } from '../auth/auth.service';
 import {
   InMemorySlidingWindowRateLimiter,
@@ -88,6 +92,10 @@ const RefineEquipmentInput = z.object({
   useProtection: z.boolean().optional().default(false),
 });
 
+const AchievementClaimInput = z.object({
+  achievementKey: z.string().min(1).max(64),
+});
+
 /**
  * `POST /character/tribulation` body — không có input field. Server-authoritative
  * resolve transition từ `c.realmKey` → `nextRealm(c.realmKey)`. Tránh client
@@ -111,6 +119,7 @@ export class CharacterController {
     @Optional() private readonly gem?: GemService,
     @Optional() private readonly refine?: RefineService,
     @Optional() private readonly tribulation?: TribulationService,
+    @Optional() private readonly achievement?: AchievementService,
     @Optional() @Inject(PROFILE_RATE_LIMITER) profileLimiter?: RateLimiter,
   ) {
     this.profileLimiter =
@@ -524,6 +533,47 @@ export class CharacterController {
       throw e;
     }
   }
+
+  /**
+   * Phase 11.10.C-1 Achievement claim — atomic grant linhThach/tienNgoc/exp
+   * + auto-unlock title qua `titleForAchievement`.
+   *
+   * Server-authoritative idempotent claim:
+   *   - Verify row exists + completedAt != null + claimedAt == null.
+   *   - CAS update `where { id, claimedAt: null }` → `data { claimedAt: now }`
+   *     (race-safe: concurrent call chỉ 1 winner).
+   *   - Apply `linhThach`/`tienNgoc` qua `CurrencyService.applyTx` reason
+   *     `ACHIEVEMENT_REWARD` (CurrencyLedger audit).
+   *   - Apply `exp` qua `tx.character.update`.
+   *   - Auto-unlock title qua `TitleService.unlockTitleTx(source='achievement')`
+   *     nếu `def.rewardTitleKey` set + `titleForAchievement` match.
+   *   - `def.reward.items` non-empty → throw `ITEMS_NOT_SUPPORTED` (defer
+   *     Phase 11.10.D — current 32 baseline catalog không có items).
+   */
+  @Post('achievement/claim')
+  @HttpCode(200)
+  async achievementClaim(@Req() req: Request, @Body() body: unknown) {
+    const userId = await this.requireUserId(req);
+    if (!this.achievement) {
+      fail('ACHIEVEMENT_UNAVAILABLE', HttpStatus.NOT_IMPLEMENTED);
+    }
+    const parsed = AchievementClaimInput.safeParse(body);
+    if (!parsed.success) fail('INVALID_INPUT');
+    const character = await this.chars.findByUser(userId);
+    if (!character) fail('NO_CHARACTER', HttpStatus.NOT_FOUND);
+    try {
+      const result = await this.achievement.claimReward(
+        character.id,
+        parsed.data.achievementKey,
+      );
+      return { ok: true, data: { claim: result } };
+    } catch (e) {
+      if (e instanceof AchievementError) {
+        fail(e.code, mapAchievementErrorStatus(e.code));
+      }
+      throw e;
+    }
+  }
 }
 
 /** Map GemError code → HTTP status. */
@@ -577,6 +627,27 @@ function mapTribulationErrorStatus(
       return HttpStatus.CONFLICT;
     case 'INVALID_RNG':
       return HttpStatus.INTERNAL_SERVER_ERROR;
+    default:
+      return HttpStatus.BAD_REQUEST;
+  }
+}
+
+/** Map AchievementError code → HTTP status. */
+function mapAchievementErrorStatus(
+  code: AchievementError['code'],
+): HttpStatus {
+  switch (code) {
+    case 'ACHIEVEMENT_NOT_FOUND':
+    case 'CHARACTER_NOT_FOUND':
+    case 'NOT_FOUND_PROGRESS':
+      return HttpStatus.NOT_FOUND;
+    case 'NOT_COMPLETED':
+    case 'ALREADY_CLAIMED':
+      return HttpStatus.CONFLICT;
+    case 'ITEMS_NOT_SUPPORTED':
+      return HttpStatus.NOT_IMPLEMENTED;
+    case 'INVALID_AMOUNT':
+      return HttpStatus.BAD_REQUEST;
     default:
       return HttpStatus.BAD_REQUEST;
   }

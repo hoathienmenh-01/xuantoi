@@ -63,6 +63,7 @@ function makeController(opts: { max: number }) {
     undefined,
     undefined,
     undefined,
+    undefined,
     limiter,
   );
   return {

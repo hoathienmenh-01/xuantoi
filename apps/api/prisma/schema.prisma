@@ -226,20 +226,20 @@ model Character {
   sectId String?
   sect   Sect?   @relation(fields: [sectId], references: [id])
 
-  inventory                   InventoryItem[]
-  ledger                      CurrencyLedger[]
-  itemLedger                  ItemLedger[]
-  missionProgress             MissionProgress[]
-  mails                       Mail[]
-  dailyLoginClaims            DailyLoginClaim[]
-  spiritualRootRollLogs       SpiritualRootRollLog[]
-  cultivationMethods          CharacterCultivationMethod[]
-  characterSkills             CharacterSkill[]
-  tribulationAttemptLogs      TribulationAttemptLog[]
-  buffs                       CharacterBuff[]
-  talents                     CharacterTalent[]
-  titleUnlocks                CharacterTitleUnlock[]
-  achievements                CharacterAchievement[]
+  inventory              InventoryItem[]
+  ledger                 CurrencyLedger[]
+  itemLedger             ItemLedger[]
+  missionProgress        MissionProgress[]
+  mails                  Mail[]
+  dailyLoginClaims       DailyLoginClaim[]
+  spiritualRootRollLogs  SpiritualRootRollLog[]
+  cultivationMethods     CharacterCultivationMethod[]
+  characterSkills        CharacterSkill[]
+  tribulationAttemptLogs TribulationAttemptLog[]
+  buffs                  CharacterBuff[]
+  talents                CharacterTalent[]
+  titleUnlocks           CharacterTitleUnlock[]
+  achievements           CharacterAchievement[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -482,13 +482,20 @@ model CharacterTitleUnlock {
 /// `progress` capped tại `def.goalAmount` (service-side enforce — schema
 /// không có CHECK constraint vì goalAmount đến từ catalog runtime).
 ///
-/// Wire FUTURE PR (out of scope 11.10.B):
-///   - `claimedAt DateTime?` field + `claimReward(charId, achievementKey)`
-///     atomic grant linhThach/tienNgoc/exp via CurrencyService.applyTx + items
-///     via ItemLedger reason='ACHIEVEMENT_REWARD' + auto-unlock title qua
-///     TitleService.unlockTitle (titleForAchievement(achievementKey)).
+/// Phase 11.10.C-1 (PR-pending) thêm `claimedAt DateTime?` + index để
+/// `claimReward(charId, achievementKey)` atomic grant via CurrencyService.applyTx
+/// (LINH_THACH/TIEN_NGOC reason='ACHIEVEMENT_REWARD') + tx.character.update
+/// (exp) + auto-unlock title qua TitleService.unlockTitleTx
+/// (`titleForAchievement(achievementKey)`).
+///
+/// Wire FUTURE PR (out of scope 11.10.C-1):
 ///   - Event listener wire vào combat/dungeon/breakthrough/cultivate/market
-///     /chat/sect cho mỗi `goalKind` để auto-call `incrementProgress`.
+///     /chat/sect cho mỗi `goalKind` để auto-call `incrementProgress` (Phase
+///     11.10.C-2).
+///   - Item rewards (`def.reward.items`) — defer khi catalog cần (current 32
+///     baseline không có items); sẽ cần extract AchievementModule + ItemLedger
+///     reason='ACHIEVEMENT_REWARD' để tránh circular dep CharacterModule ↔
+///     InventoryModule (Phase 11.10.D).
 model CharacterAchievement {
   id             String    @id @default(cuid())
   characterId    String
@@ -499,11 +506,16 @@ model CharacterAchievement {
   progress       Int       @default(0)
   /// Set một lần khi `progress >= def.goalAmount`. Không bao giờ unset.
   completedAt    DateTime?
+  /// Phase 11.10.C-1: set một lần khi player claim reward (linhThach/tienNgoc
+  /// /exp/title qua `claimReward`). CAS guard `where { id, claimedAt: null }`
+  /// đảm bảo idempotent — concurrent call chỉ có 1 winner. Không bao giờ unset.
+  claimedAt      DateTime?
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
 
   @@unique([characterId, achievementKey])
   @@index([characterId, completedAt])
+  @@index([characterId, claimedAt])
 }
 
 enum MissionPeriod {
