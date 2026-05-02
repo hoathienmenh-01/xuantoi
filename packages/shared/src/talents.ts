@@ -93,7 +93,7 @@ export interface TalentDef {
 }
 
 /**
- * 20 talent baseline cover passive + active × 5 element + neutral.
+ * 23 talent baseline cover passive + active × 5 element + neutral.
  * (Phase 11.X.AA: thêm `talent_huyen_thuy_tam` thuy +10% spirit — producer
  * đầu tiên cho `composePassiveTalentMods.spiritMul`, activate Phase 11.4.G
  * (boss spirit branch wire) + Phase 11.X.U (combat effSpirit defense wire).)
@@ -120,6 +120,13 @@ export interface TalentDef {
  * mở đầu fill 5-element atk coverage roadmap (kim ✅ + moc ✅, còn thuy ⏳
  * hoa ⏳ tho ⏳). Symmetric structure với `talent_kim_thien_co`. Flavor: linh
  * khí mộc lâm cuốn vào kiếm pháp, sát thương vật lý cường hoá.)
+ * (Phase 11.X.AG/AH/AI: thêm `talent_thuy_long_trao` (thuy), `talent_hoa_phen_kiem`
+ * (hoa), `talent_tho_son_phach` (tho) +10% atk — producers thứ 3/4/5 cho
+ * `composePassiveTalentMods.atkMul`, **hoàn tất 5-element atk coverage roadmap**
+ * (kim ✅ + moc ✅ + thuy ✅ + hoa ✅ + tho ✅). Symmetric structure với
+ * `talent_kim_thien_co` và `talent_moc_lam_phach`. Cùng `realmRequirement:
+ * 'kim_dan'` + `talentPointCost: 1`. 5-element atk ceiling = 1.1⁵ = 1.61051,
+ * khớp 5-element spirit ceiling.)
  *
  * Stable order: passive trước → active sau.
  */
@@ -186,6 +193,23 @@ export const TALENTS: readonly TalentDef[] = [
       kind: 'stat_mod',
       value: 1.1,
       statTarget: 'spirit',
+      elementTarget: null,
+    },
+    activeEffect: null,
+  },
+  {
+    key: 'talent_thuy_long_trao',
+    name: 'Thuỷ Long Trảo',
+    description:
+      'Vuốt thuỷ long xé toang giáp địch, +10% sát thương vật lý.',
+    type: 'passive',
+    element: 'thuy',
+    realmRequirement: 'kim_dan',
+    talentPointCost: 1,
+    passiveEffect: {
+      kind: 'stat_mod',
+      value: 1.1,
+      statTarget: 'atk',
       elementTarget: null,
     },
     activeEffect: null,
@@ -274,6 +298,23 @@ export const TALENTS: readonly TalentDef[] = [
     activeEffect: null,
   },
   {
+    key: 'talent_hoa_phen_kiem',
+    name: 'Hoả Phần Kiếm',
+    description:
+      'Kiếm khí thiêu đốt khí huyết địch nhân, +10% sát thương vật lý.',
+    type: 'passive',
+    element: 'hoa',
+    realmRequirement: 'kim_dan',
+    talentPointCost: 1,
+    passiveEffect: {
+      kind: 'stat_mod',
+      value: 1.1,
+      statTarget: 'atk',
+      elementTarget: null,
+    },
+    activeEffect: null,
+  },
+  {
     key: 'talent_tho_son_tuong',
     name: 'Thổ Sơn Tướng',
     description: 'Thân giáp như thổ sơn, +10% phòng ngự.',
@@ -302,6 +343,23 @@ export const TALENTS: readonly TalentDef[] = [
       kind: 'stat_mod',
       value: 1.1,
       statTarget: 'spirit',
+      elementTarget: null,
+    },
+    activeEffect: null,
+  },
+  {
+    key: 'talent_tho_son_phach',
+    name: 'Thổ Sơn Phách',
+    description:
+      'Lực sơn nhập quyền, đấm xuyên thiết giáp, +10% sát thương vật lý.',
+    type: 'passive',
+    element: 'tho',
+    realmRequirement: 'kim_dan',
+    talentPointCost: 1,
+    passiveEffect: {
+      kind: 'stat_mod',
+      value: 1.1,
+      statTarget: 'atk',
       elementTarget: null,
     },
     activeEffect: null,
