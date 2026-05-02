@@ -134,6 +134,138 @@ describe('BuffService.applyBuff', () => {
   });
 });
 
+describe('BuffService.applyBuffTx (Phase 11.8.D-1 tx-aware variant)', () => {
+  it('applyBuffTx atomic trong tx outer: success commit → row insert', async () => {
+    const ctx = await makeUserChar(prisma, {});
+    const now = new Date('2026-05-02T00:00:00Z');
+    const def = getBuffDef('pill_atk_buff_t1')!;
+
+    const result = await prisma.$transaction(async (tx) => {
+      return svc.applyBuffTx(
+        tx,
+        ctx.characterId,
+        'pill_atk_buff_t1',
+        'pill',
+        now,
+      );
+    });
+
+    expect(result.buffKey).toBe('pill_atk_buff_t1');
+    expect(result.stacks).toBe(1);
+    expect(result.source).toBe('pill');
+    expect(result.expiresAt.getTime()).toBe(
+      now.getTime() + def.durationSec * 1000,
+    );
+
+    const rows = await prisma.characterBuff.findMany({
+      where: { characterId: ctx.characterId },
+    });
+    expect(rows).toHaveLength(1);
+  });
+
+  it('applyBuffTx atomic trong tx outer: rollback toàn bộ nếu sibling op throw → KHÔNG insert row', async () => {
+    const ctx = await makeUserChar(prisma, {});
+    const now = new Date('2026-05-02T00:00:00Z');
+
+    await expect(
+      prisma.$transaction(async (tx) => {
+        await svc.applyBuffTx(
+          tx,
+          ctx.characterId,
+          'pill_atk_buff_t1',
+          'pill',
+          now,
+        );
+        // Sibling op throw → rollback toàn bộ tx (bao gồm applyBuffTx insert).
+        throw new Error('SIBLING_FAIL');
+      }),
+    ).rejects.toThrow('SIBLING_FAIL');
+
+    // Row KHÔNG được insert vì tx rollback.
+    const rows = await prisma.characterBuff.findMany({
+      where: { characterId: ctx.characterId },
+    });
+    expect(rows).toHaveLength(0);
+  });
+
+  it('applyBuffTx idempotent stackable trong cùng tx: 2 calls liên tiếp → stacks=2', async () => {
+    const ctx = await makeUserChar(prisma, {});
+    const now = new Date('2026-05-02T00:00:00Z');
+
+    const result = await prisma.$transaction(async (tx) => {
+      await svc.applyBuffTx(
+        tx,
+        ctx.characterId,
+        'debuff_burn_hoa',
+        'skill',
+        now,
+      );
+      return svc.applyBuffTx(
+        tx,
+        ctx.characterId,
+        'debuff_burn_hoa',
+        'skill',
+        now,
+      );
+    });
+
+    expect(result.stacks).toBe(2);
+
+    const rows = await prisma.characterBuff.findMany({
+      where: { characterId: ctx.characterId },
+    });
+    expect(rows).toHaveLength(1);
+    expect(rows[0].stacks).toBe(2);
+  });
+
+  it('applyBuffTx throws BUFF_NOT_FOUND trong tx → tx rollback, KHÔNG insert row', async () => {
+    const ctx = await makeUserChar(prisma, {});
+
+    await expect(
+      prisma.$transaction(async (tx) =>
+        svc.applyBuffTx(tx, ctx.characterId, 'nonexistent_buff', 'pill'),
+      ),
+    ).rejects.toMatchObject({ code: 'BUFF_NOT_FOUND' });
+
+    const rows = await prisma.characterBuff.findMany({
+      where: { characterId: ctx.characterId },
+    });
+    expect(rows).toHaveLength(0);
+  });
+
+  it('applyBuffTx throws CHARACTER_NOT_FOUND trong tx', async () => {
+    await expect(
+      prisma.$transaction(async (tx) =>
+        svc.applyBuffTx(tx, 'char-does-not-exist', 'pill_atk_buff_t1', 'pill'),
+      ),
+    ).rejects.toMatchObject({ code: 'CHARACTER_NOT_FOUND' });
+  });
+
+  it('applyBuff (wrapper) vẫn hoạt động sau refactor: gọi applyBuffTx qua $transaction', async () => {
+    const ctx = await makeUserChar(prisma, {});
+    const now = new Date('2026-05-02T00:00:00Z');
+    const def = getBuffDef('debuff_taoma')!;
+
+    const result = await svc.applyBuff(
+      ctx.characterId,
+      'debuff_taoma',
+      'tribulation',
+      now,
+    );
+
+    expect(result.buffKey).toBe('debuff_taoma');
+    expect(result.source).toBe('tribulation');
+    expect(result.expiresAt.getTime()).toBe(
+      now.getTime() + def.durationSec * 1000,
+    );
+
+    const rows = await prisma.characterBuff.findMany({
+      where: { characterId: ctx.characterId },
+    });
+    expect(rows).toHaveLength(1);
+  });
+});
+
 describe('BuffService.removeBuff', () => {
   it('xóa buff đã apply → return true; row không còn', async () => {
     const ctx = await makeUserChar(prisma, {});

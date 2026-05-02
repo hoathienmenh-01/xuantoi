@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import type { Prisma } from '@prisma/client';
 import {
   composeBuffMods,
   computeBuffExpiresAt,
@@ -57,67 +58,93 @@ export class BuffService {
     source: BuffSource;
     expiresAt: Date;
   }> {
+    return this.prisma.$transaction((tx) =>
+      this.applyBuffTx(tx, characterId, buffKey, source, now),
+    );
+  }
+
+  /**
+   * Tx-aware variant của `applyBuff` — dùng từ INSIDE 1 `$transaction` đã
+   * có sẵn. Giữ nguyên ngữ nghĩa idempotent + stackable cap.
+   *
+   * Phase 11.8.D wire FUTURE dùng method này khi `TribulationService.attemptTribulation()`
+   * FAIL path cần atomic apply `debuff_taoma` cùng tx với character update +
+   * `TribulationAttemptLog` write — rollback toàn bộ nếu DB fail.
+   *
+   * @throws BuffError('BUFF_NOT_FOUND') nếu buffKey không có trong catalog.
+   * @throws BuffError('CHARACTER_NOT_FOUND') nếu character không tồn tại.
+   */
+  async applyBuffTx(
+    tx: Prisma.TransactionClient,
+    characterId: string,
+    buffKey: string,
+    source: BuffSource,
+    now: Date = new Date(),
+  ): Promise<{
+    buffKey: string;
+    stacks: number;
+    source: BuffSource;
+    expiresAt: Date;
+  }> {
     const def = getBuffDef(buffKey);
     if (!def) throw new BuffError('BUFF_NOT_FOUND');
 
-    return this.prisma.$transaction(async (tx) => {
-      const character = await tx.character.findUnique({
-        where: { id: characterId },
-        select: { id: true },
-      });
-      if (!character) throw new BuffError('CHARACTER_NOT_FOUND');
-
-      const expiresAt = computeBuffExpiresAt(now, def);
-
-      const existing = await tx.characterBuff.findUnique({
-        where: {
-          characterId_buffKey: { characterId, buffKey },
-        },
-      });
-
-      if (!existing) {
-        const created = await tx.characterBuff.create({
-          data: {
-            characterId,
-            buffKey,
-            stacks: 1,
-            source,
-            expiresAt,
-          },
-        });
-        return {
-          buffKey: created.buffKey,
-          stacks: created.stacks,
-          source: created.source as BuffSource,
-          expiresAt: created.expiresAt,
-        };
-      }
-
-      // Stackable → increment cap maxStacks. Non-stackable → giữ nguyên stacks.
-      const newStacks = def.stackable
-        ? Math.min(existing.stacks + 1, def.maxStacks)
-        : existing.stacks;
-
-      const updated = await tx.characterBuff.update({
-        where: {
-          characterId_buffKey: { characterId, buffKey },
-        },
-        data: {
-          stacks: newStacks,
-          expiresAt,
-          // Source có thể đổi (vd buff stat từ pill rồi từ event refresh) —
-          // ghi nhận source mới nhất.
-          source,
-        },
-      });
-
-      return {
-        buffKey: updated.buffKey,
-        stacks: updated.stacks,
-        source: updated.source as BuffSource,
-        expiresAt: updated.expiresAt,
-      };
+    const character = await tx.character.findUnique({
+      where: { id: characterId },
+      select: { id: true },
     });
+    if (!character) throw new BuffError('CHARACTER_NOT_FOUND');
+
+    const expiresAt = computeBuffExpiresAt(now, def);
+
+    const existing = await tx.characterBuff.findUnique({
+      where: {
+        characterId_buffKey: { characterId, buffKey },
+      },
+    });
+
+    if (!existing) {
+      const created = await tx.characterBuff.create({
+        data: {
+          characterId,
+          buffKey,
+          stacks: 1,
+          source,
+          expiresAt,
+        },
+      });
+      return {
+        buffKey: created.buffKey,
+        stacks: created.stacks,
+        source: created.source as BuffSource,
+        expiresAt: created.expiresAt,
+      };
+    }
+
+    // Stackable → increment cap maxStacks. Non-stackable → giữ nguyên stacks.
+    const newStacks = def.stackable
+      ? Math.min(existing.stacks + 1, def.maxStacks)
+      : existing.stacks;
+
+    const updated = await tx.characterBuff.update({
+      where: {
+        characterId_buffKey: { characterId, buffKey },
+      },
+      data: {
+        stacks: newStacks,
+        expiresAt,
+        // Source có thể đổi (vd buff stat từ pill rồi từ event refresh) —
+        // ghi nhận source mới nhất.
+        source,
+      },
+    });
+
+    return {
+      buffKey: updated.buffKey,
+      stacks: updated.stacks,
+      source: updated.source as BuffSource,
+      expiresAt: updated.expiresAt,
+    };
   }
 
   /**
