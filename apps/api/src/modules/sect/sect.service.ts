@@ -1,10 +1,11 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Optional } from '@nestjs/common';
 import { CurrencyKind, Prisma } from '@prisma/client';
 import { PrismaService } from '../../common/prisma.service';
 import { RealtimeService } from '../realtime/realtime.service';
 import { CharacterService } from '../character/character.service';
 import { CurrencyError, CurrencyService } from '../character/currency.service';
 import { MissionService } from '../mission/mission.service';
+import { AchievementService } from '../character/achievement.service';
 
 class SectError extends Error {
   constructor(
@@ -59,6 +60,7 @@ export class SectService {
     private readonly chars: CharacterService,
     private readonly currency: CurrencyService,
     private readonly missions: MissionService,
+    @Optional() private readonly achievements?: AchievementService,
   ) {}
 
   async list(): Promise<SectListView[]> {
@@ -284,10 +286,20 @@ export class SectService {
     });
 
     await this.refreshState(userId);
+    // Phase 11.10.C-2 wire trackEvent vào achievement bằng cùng goalKind
+    // SECT_CONTRIBUTE. Fail-soft: contribute đã thành công + ledger committed,
+    // nên không rollback nếu mission/achievement lỗi.
     try {
       await this.missions.track(char.id, 'SECT_CONTRIBUTE', Number(amount));
+      if (this.achievements) {
+        await this.achievements.trackEvent(
+          char.id,
+          'SECT_CONTRIBUTE',
+          Number(amount),
+        );
+      }
     } catch {
-      // bỏ qua lỗi mission — contribute đã thành công.
+      // bỏ qua lỗi mission/achievement — contribute đã thành công.
     }
     return this.detail(sectId, char.id);
   }

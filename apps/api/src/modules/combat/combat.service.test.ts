@@ -6,6 +6,7 @@ import { CharacterService } from '../character/character.service';
 import { CharacterSkillService } from '../character/character-skill.service';
 import { InventoryService } from '../inventory/inventory.service';
 import { CurrencyService } from '../character/currency.service';
+import { AchievementService } from '../character/achievement.service';
 import { CombatService } from './combat.service';
 import {
   TEST_DATABASE_URL,
@@ -465,6 +466,85 @@ describe('CombatService', () => {
       });
       // No throw, action thực thi.
       expect(view).toBeTruthy();
+    });
+  });
+
+  // — Phase 11.10.C-2 Achievement event listener wire ----------------------
+  describe('Achievement event listener wire (Phase 11.10.C-2)', () => {
+    let combatWithAchievements: CombatService;
+
+    beforeAll(() => {
+      const realtime = new RealtimeService();
+      const chars = new CharacterService(prisma, realtime);
+      const inventory = new InventoryService(prisma, realtime, chars);
+      const currency = new CurrencyService(prisma);
+      const achievements = new AchievementService(prisma);
+      const missions = makeMissionService(prisma);
+      combatWithAchievements = new CombatService(
+        prisma,
+        realtime,
+        chars,
+        inventory,
+        currency,
+        missions,
+        undefined,
+        achievements,
+      );
+    });
+
+    it('CombatService.action với KILL_MONSTER → achievement progress KILL_MONSTER tăng đúng', async () => {
+      vi.spyOn(Math, 'random').mockReturnValue(0.99); // crit → kill chắc
+      const u = await makeUserChar(prisma, {
+        stamina: 100,
+        power: 1000, // overkill cho son_thu_lon (HP ~50)
+        hp: 1000,
+        hpMax: 1000,
+      });
+      const enc = await combatWithAchievements.start(u.userId, 'son_coc');
+      await combatWithAchievements.action(u.userId, enc.id, {});
+
+      const row = await prisma.characterAchievement.findUnique({
+        where: {
+          characterId_achievementKey: {
+            characterId: u.characterId,
+            achievementKey: 'first_monster_kill',
+          },
+        },
+      });
+      expect(row).not.toBeNull();
+      expect(row!.progress).toBeGreaterThanOrEqual(1);
+      expect(row!.completedAt).not.toBeNull();
+      vi.restoreAllMocks();
+    });
+
+    it('CombatService.action với CLEAR_DUNGEON → achievement progress CLEAR_DUNGEON tăng đúng', async () => {
+      vi.spyOn(Math, 'random').mockReturnValue(0.99);
+      const u = await makeUserChar(prisma, {
+        stamina: 100,
+        power: 100000, // overkill toàn dungeon
+        hp: 100000,
+        hpMax: 100000,
+      });
+      const enc = await combatWithAchievements.start(u.userId, 'son_coc');
+      // Clear hết toàn bộ monster trong dungeon (3-4 monster).
+      let view = enc;
+      for (let i = 0; i < 10 && view.status === EncounterStatus.ACTIVE; i++) {
+        view = await combatWithAchievements.action(u.userId, enc.id, {});
+      }
+      expect(view.status).toBe(EncounterStatus.WON);
+
+      const dungeonRow = await prisma.characterAchievement.findUnique({
+        where: {
+          characterId_achievementKey: {
+            characterId: u.characterId,
+            achievementKey: 'first_dungeon_clear',
+          },
+        },
+      });
+      expect(dungeonRow).not.toBeNull();
+      expect(dungeonRow!.progress).toBeGreaterThanOrEqual(1);
+      expect(dungeonRow!.completedAt).not.toBeNull();
+      vi.restoreAllMocks();
     });
   });
 });

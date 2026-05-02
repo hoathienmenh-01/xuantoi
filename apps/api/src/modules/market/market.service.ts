@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Optional } from '@nestjs/common';
 import { CurrencyKind, ListingStatus } from '@prisma/client';
 import { itemByKey, type ItemDef, type ItemKind } from '@xuantoi/shared';
 import { PrismaService } from '../../common/prisma.service';
@@ -6,6 +6,7 @@ import { RealtimeService } from '../realtime/realtime.service';
 import { CharacterService } from '../character/character.service';
 import { CurrencyError, CurrencyService } from '../character/currency.service';
 import { MissionService } from '../mission/mission.service';
+import { AchievementService } from '../character/achievement.service';
 
 class MarketError extends Error {
   constructor(
@@ -85,6 +86,7 @@ export class MarketService {
     private readonly chars: CharacterService,
     private readonly currency: CurrencyService,
     private readonly missions: MissionService,
+    @Optional() private readonly achievements?: AchievementService,
   ) {}
 
   async listActive(viewerCharacterId: string, kind?: ItemKind): Promise<ListingView[]> {
@@ -380,10 +382,16 @@ export class MarketService {
       }
     }
 
-    // Mission tracking — buyer BUY_LISTING +1, seller SELL_LISTING +1.
+    // Mission + Achievement tracking — buyer BUY_LISTING +1, seller SELL_LISTING
+    // +1. Phase 11.10.C-2 wire trackEvent vào achievement bằng cùng goalKind.
+    // Fail-soft: không rollback giao dịch nếu mission/achievement lỗi.
     try {
       await this.missions.track(buyer.id, 'BUY_LISTING', 1);
       await this.missions.track(l.sellerId, 'SELL_LISTING', 1);
+      if (this.achievements) {
+        await this.achievements.trackEvent(buyer.id, 'BUY_LISTING', 1);
+        await this.achievements.trackEvent(l.sellerId, 'SELL_LISTING', 1);
+      }
     } catch {
       // bỏ qua
     }

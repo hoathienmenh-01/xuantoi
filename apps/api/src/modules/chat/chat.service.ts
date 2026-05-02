@@ -3,6 +3,7 @@ import { ChatChannel } from '@prisma/client';
 import { PrismaService } from '../../common/prisma.service';
 import { RealtimeService } from '../realtime/realtime.service';
 import { MissionService } from '../mission/mission.service';
+import { AchievementService } from '../character/achievement.service';
 import {
   InMemorySlidingWindowRateLimiter,
   RateLimiter,
@@ -56,6 +57,7 @@ export class ChatService {
     private readonly realtime: RealtimeService,
     private readonly missions: MissionService,
     @Optional() @Inject(CHAT_RATE_LIMITER) limiter?: RateLimiter,
+    @Optional() private readonly achievements?: AchievementService,
   ) {
     this.limiter =
       limiter ??
@@ -167,10 +169,15 @@ export class ChatService {
       this.realtime.emitToRoom(`sect:${scopeKey}`, 'chat:msg', view);
     }
 
+    // Phase 11.10.C-2 wire trackEvent vào achievement bằng cùng goalKind
+    // CHAT_MESSAGE. Fail-soft: không rollback chat nếu mission/achievement lỗi.
     try {
       await this.missions.track(char.id, 'CHAT_MESSAGE', 1);
+      if (this.achievements) {
+        await this.achievements.trackEvent(char.id, 'CHAT_MESSAGE', 1);
+      }
     } catch {
-      // bỏ qua — chat đã thành công, mission fail không rollback.
+      // bỏ qua — chat đã thành công, mission/achievement fail không rollback.
     }
 
     return view;

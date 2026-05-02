@@ -1,5 +1,5 @@
 import { Processor, WorkerHost } from '@nestjs/bullmq';
-import { Logger } from '@nestjs/common';
+import { Logger, Optional } from '@nestjs/common';
 import type { Job } from 'bullmq';
 import {
   CULTIVATION_TICK_BASE_EXP,
@@ -15,6 +15,7 @@ import {
 import { PrismaService } from '../../common/prisma.service';
 import { RealtimeService } from '../realtime/realtime.service';
 import { MissionService } from '../mission/mission.service';
+import { AchievementService } from '../character/achievement.service';
 import { methodExpMultiplierFor } from '../character/cultivation-method.service';
 import { CULTIVATION_QUEUE } from './cultivation.queue';
 
@@ -37,6 +38,7 @@ export class CultivationProcessor extends WorkerHost {
     private readonly prisma: PrismaService,
     private readonly realtime: RealtimeService,
     private readonly missions: MissionService,
+    @Optional() private readonly achievements?: AchievementService,
   ) {
     super();
   }
@@ -106,22 +108,35 @@ export class CultivationProcessor extends WorkerHost {
           data: { exp, realmStage },
         });
 
-        // Mission tracking — mỗi tick cộng seconds và exp gained. Không throw
-        // nếu MissionService lỗi — tu luyện là core loop, không để mission
-        // chặn EXP gain.
+        // Mission + Achievement tracking — mỗi tick cộng seconds + exp gained,
+        // cộng 1 BREAKTHROUGH nếu đột phá. Không throw nếu service lỗi — tu
+        // luyện là core loop, không để mission/achievement chặn EXP gain.
+        // Phase 11.10.C-2 wire trackEvent vào achievement bằng cùng goalKind.
         try {
+          const cultivateSeconds = Math.round(CULTIVATION_TICK_MS / 1000);
           await this.missions.track(
             c.id,
             'CULTIVATE_SECONDS',
-            Math.round(CULTIVATION_TICK_MS / 1000),
+            cultivateSeconds,
           );
           await this.missions.track(c.id, 'GAIN_EXP', Number(gain));
           if (brokeThrough) {
             await this.missions.track(c.id, 'BREAKTHROUGH', 1);
           }
+          if (this.achievements) {
+            await this.achievements.trackEvent(
+              c.id,
+              'CULTIVATE_SECONDS',
+              cultivateSeconds,
+            );
+            await this.achievements.trackEvent(c.id, 'GAIN_EXP', Number(gain));
+            if (brokeThrough) {
+              await this.achievements.trackEvent(c.id, 'BREAKTHROUGH', 1);
+            }
+          }
         } catch (e) {
           this.logger.warn(
-            `mission track failed for char=${c.id}: ${(e as Error).message}`,
+            `mission/achievement track failed for char=${c.id}: ${(e as Error).message}`,
           );
         }
 
