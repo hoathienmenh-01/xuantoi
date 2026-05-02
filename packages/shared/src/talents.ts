@@ -93,10 +93,14 @@ export interface TalentDef {
 }
 
 /**
- * 15 talent baseline cover passive + active × 5 element + neutral.
+ * 16 talent baseline cover passive + active × 5 element + neutral.
  * (Phase 11.X.AA: thêm `talent_huyen_thuy_tam` thuy +10% spirit — producer
  * đầu tiên cho `composePassiveTalentMods.spiritMul`, activate Phase 11.4.G
  * (boss spirit branch wire) + Phase 11.X.U (combat effSpirit defense wire).)
+ * (Phase 11.X.AB: thêm `talent_moc_linh_co` moc +10% spirit — producer thứ 2
+ * cho spiritMul, fill 5-element coverage roadmap. Symmetric structure với
+ * `talent_huyen_thuy_tam` (thuy). Flavor: mộc linh tâm hấp thu sinh khí, dưỡng
+ * thần trí.)
  *
  * Stable order: passive trước → active sau.
  */
@@ -162,6 +166,23 @@ export const TALENTS: readonly TalentDef[] = [
       kind: 'regen',
       value: 5,
       statTarget: 'hpMax',
+      elementTarget: null,
+    },
+    activeEffect: null,
+  },
+  {
+    key: 'talent_moc_linh_co',
+    name: 'Mộc Linh Cổ',
+    description:
+      'Linh tâm hấp thu mộc khí sinh sôi, +10% linh khí công kích.',
+    type: 'passive',
+    element: 'moc',
+    realmRequirement: 'kim_dan',
+    talentPointCost: 1,
+    passiveEffect: {
+      kind: 'stat_mod',
+      value: 1.1,
+      statTarget: 'spirit',
       elementTarget: null,
     },
     activeEffect: null,
