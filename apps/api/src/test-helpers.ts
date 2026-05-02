@@ -105,6 +105,7 @@ export async function wipeAll(prisma: PrismaService): Promise<void> {
   await prisma.characterBuff.deleteMany({});
   await prisma.characterTalent.deleteMany({});
   await prisma.characterTitleUnlock.deleteMany({});
+  await prisma.characterAchievement.deleteMany({});
   await prisma.characterCultivationMethod.deleteMany({});
   await prisma.characterSkill.deleteMany({});
   await prisma.spiritualRootRollLog.deleteMany({});

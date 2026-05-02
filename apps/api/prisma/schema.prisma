@@ -239,6 +239,7 @@ model Character {
   buffs                       CharacterBuff[]
   talents                     CharacterTalent[]
   titleUnlocks                CharacterTitleUnlock[]
+  achievements                CharacterAchievement[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -469,6 +470,40 @@ model CharacterTitleUnlock {
 
   @@unique([characterId, titleKey])
   @@index([characterId, unlockedAt])
+}
+
+/// Phase 11.10.B Achievement (Thành Tựu) MVP — progress + completion
+/// persistence (no reward claim — defer to Phase 11.10.C).
+///
+/// 1 row per (`characterId`, `achievementKey`); composite UNIQUE đảm bảo
+/// idempotent progress upsert. `completedAt` set một lần khi `progress >=
+/// def.goalAmount`, không bao giờ unset (achievement permanent).
+///
+/// `progress` capped tại `def.goalAmount` (service-side enforce — schema
+/// không có CHECK constraint vì goalAmount đến từ catalog runtime).
+///
+/// Wire FUTURE PR (out of scope 11.10.B):
+///   - `claimedAt DateTime?` field + `claimReward(charId, achievementKey)`
+///     atomic grant linhThach/tienNgoc/exp via CurrencyService.applyTx + items
+///     via ItemLedger reason='ACHIEVEMENT_REWARD' + auto-unlock title qua
+///     TitleService.unlockTitle (titleForAchievement(achievementKey)).
+///   - Event listener wire vào combat/dungeon/breakthrough/cultivate/market
+///     /chat/sect cho mỗi `goalKind` để auto-call `incrementProgress`.
+model CharacterAchievement {
+  id             String    @id @default(cuid())
+  characterId    String
+  character      Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  /// Khoá tham chiếu `ACHIEVEMENTS` trong `packages/shared/src/achievements.ts`.
+  achievementKey String
+  /// Cumulative progress amount (0..`def.goalAmount`).
+  progress       Int       @default(0)
+  /// Set một lần khi `progress >= def.goalAmount`. Không bao giờ unset.
+  completedAt    DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  @@unique([characterId, achievementKey])
+  @@index([characterId, completedAt])
 }
 
 enum MissionPeriod {
