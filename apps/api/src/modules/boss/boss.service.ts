@@ -14,10 +14,12 @@ import {
   BOSS_STAMINA_PER_HIT,
   SKILL_BASIC_ATTACK,
   bossByKey,
+  composeBuffMods,
   composePassiveTalentMods,
   rollDamage,
   skillByKey,
   type BossDef,
+  type BuffMods,
   type PassiveTalentMods,
   type SectKey,
   type SkillDef,
@@ -171,14 +173,21 @@ export class BossService implements OnModuleInit, OnModuleDestroy {
     // đấu boss — block boss attack giống control. Throw `CULTIVATION_BLOCKED`
     // BEFORE state mutation. Cùng lần `getMods` với control check (consolidate
     // single buff fetch).
-    if (this.buffs) {
-      const buffMods = await this.buffs.getMods(char.id);
-      if (buffMods.controlTurnsMax > 0) {
-        throw new BossError('CONTROLLED');
-      }
-      if (buffMods.cultivationBlocked) {
-        throw new BossError('CULTIVATION_BLOCKED');
-      }
+    // Phase 11.X.W — Buff atkMul/spiritMul wire vào BossService.attack() damage
+    // calc. Move buff fetch ra ngoài `if (this.buffs)` block để reuse cho cả
+    // (a) control/cultivation throw và (b) damage compose. Service không inject
+    // → `composeBuffMods([])` identity (atkMul=1.0, spiritMul=1.0, no-op).
+    // Single fetch consolidate — không double-call DB.
+    const buffMods: BuffMods = this.buffs
+      ? await this.buffs.getMods(char.id)
+      : composeBuffMods([]);
+    // Phase 11.X.Q — Buff control wire (parallel to Phase 11.X.O combat wire).
+    if (buffMods.controlTurnsMax > 0) {
+      throw new BossError('CONTROLLED');
+    }
+    // Phase 11.X.R — Buff cultivationBlocked wire vào BossService.attack().
+    if (buffMods.cultivationBlocked) {
+      throw new BossError('CULTIVATION_BLOCKED');
     }
 
     const now = Date.now();
@@ -219,22 +228,29 @@ export class BossService implements OnModuleInit, OnModuleDestroy {
     const equip = await this.inventory.equipBonus(char.id);
     // Phase 11.4.F — Talent atkMul wire vào BossService.attack().
     // Phase 11.4.G — Talent spiritMul wire vào BossService.attack() spirit branch.
-    // Symmetric với Phase 11.X.S/U combat path (talentMods.atkMul/spiritMul).
-    // Catalog producer atkMul: `talent_kim_thien_co` (passive atkMul +10%
-    // stat_mod statTarget=atk, kim element). Catalog producer spiritMul:
-    // FUTURE talent thêm catalog (chưa có entry với statTarget='spirit' ở
-    // talents.ts; wire này future-proof + symmetric với combat path Phase
-    // 11.X.U đã wire `talentMods.spiritMul`).
-    // Service không inject (legacy DI / test fixture without `talents`) →
-    // identity baseline (atkMul=1.0, spiritMul=1.0, no-op).
-    // Buff/title atkMul/spiritMul cũng defer (Phase 11.X.W+).
+    // Phase 11.X.W — Buff atkMul/spiritMul wire vào BossService.attack().
+    // Symmetric với Phase 11.X.S/U combat path (talentMods.atkMul/spiritMul +
+    // buffMods.atkMul/spiritMul). Multiplicative compose talent × buff — vd
+    // talent_kim_thien_co (+10% atk) + pill_atk_buff_t1 (+12% atk) =
+    // 1.10 × 1.12 = 1.232 atk multiplier. Catalog producer atkMul:
+    // `talent_kim_thien_co` (passive +10% kim, stat_mod), `pill_atk_buff_t1`
+    // (+12%), `sect_aura_hoa` (+5%), `debuff_boss_atk_down` (0.82, debuff).
+    // Catalog producer spiritMul: `talent_huyen_thuy_tam` (+10% thuy, Phase
+    // 11.X.AA), `pill_spirit_buff_t1` (+18%), `event_double_exp` (×2.0).
+    // Service không inject (legacy DI / test fixture without `talents`/`buffs`)
+    // → identity baseline (atkMul=1.0, spiritMul=1.0, no-op).
+    // Title atkMul/spiritMul còn defer (Phase 11.X.X — cần inject TitleService).
     const talentMods: PassiveTalentMods = this.talents
       ? await this.talents.getMods(char.id)
       : composePassiveTalentMods([]);
     const charAtk =
-      Math.floor((char.power + equip.atk) * talentMods.atkMul) +
+      Math.floor((char.power + equip.atk) * talentMods.atkMul * buffMods.atkMul) +
       (skill.atkScale > 1
-        ? Math.floor((char.spirit + equip.spiritBonus) * talentMods.spiritMul)
+        ? Math.floor(
+            (char.spirit + equip.spiritBonus) *
+              talentMods.spiritMul *
+              buffMods.spiritMul,
+          )
         : 0);
     const raw = rollDamage(charAtk, def.def, skill.atkScale);
     // Boost theo level boss (giảm sát thương phần nào).
