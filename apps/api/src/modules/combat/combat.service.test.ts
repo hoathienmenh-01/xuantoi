@@ -1494,4 +1494,162 @@ describe('CombatService', () => {
       expect(c.hp).toBe(999);
     });
   });
+
+  describe('Buff shield wire (Phase 11.X.N)', () => {
+    let combatWithShield: CombatService;
+    let buffSvc: BuffService;
+
+    beforeAll(() => {
+      const realtime = new RealtimeService();
+      const chars = new CharacterService(prisma, realtime);
+      const inventory = new InventoryService(prisma, realtime, chars);
+      const currency = new CurrencyService(prisma);
+      const missions = makeMissionService(prisma);
+      buffSvc = new BuffService(prisma);
+      combatWithShield = new CombatService(
+        prisma,
+        realtime,
+        chars,
+        inventory,
+        currency,
+        missions,
+        undefined, // characterSkill
+        undefined, // achievements
+        undefined, // talents
+        buffSvc, // ← BuffService injected (unlike top-level `combat`).
+      );
+    });
+
+    afterEach(() => {
+      vi.restoreAllMocks();
+    });
+
+    it('character có talent_shield_phong (shield 30% hpMax) → reply absorbed', async () => {
+      vi.spyOn(Math, 'random').mockReturnValue(0.5);
+      const u = await makeUserChar(prisma, {
+        realmKey: 'kim_dan',
+        stamina: 100,
+        power: 20,
+        spirit: 100,
+        hp: 1000,
+        hpMax: 1000,
+      });
+      // talent_shield_phong: kind=shield value=0.3 statTarget=hpMax
+      // → shieldHpMaxRatio = 0.3 → shieldAbsorb = floor(1000 * 0.3) = 300.
+      await buffSvc.applyBuff(u.characterId, 'talent_shield_phong', 'talent');
+      const enc = await combatWithShield.start(u.userId, 'son_coc');
+      await combatWithShield.action(u.userId, enc.id, {});
+      const c = await prisma.character.findUniqueOrThrow({
+        where: { id: u.characterId },
+      });
+      // Baseline reply (vs son_thu_lon, mock 0.5) = 1 dmg.
+      // Shield absorb = min(300, 1) = 1 → netReply = 0 → charHp unchanged 1000.
+      expect(c.hp).toBe(1000);
+      const encAfter = await prisma.encounter.findUniqueOrThrow({
+        where: { id: enc.id },
+      });
+      const logs = encAfter.log as unknown as Array<{ side: string; text: string }>;
+      const shieldLine = logs.find((l) => l.text.includes('Khiên hấp thu'));
+      expect(shieldLine).toBeDefined();
+      expect(shieldLine?.text).toContain('1 sát thương');
+    });
+
+    it('shield > reply → reply absorbed fully (charHp unchanged)', async () => {
+      vi.spyOn(Math, 'random').mockReturnValue(0.5);
+      const u = await makeUserChar(prisma, {
+        realmKey: 'kim_dan',
+        stamina: 100,
+        power: 20,
+        spirit: 100,
+        hp: 1000,
+        hpMax: 1000,
+      });
+      await buffSvc.applyBuff(u.characterId, 'talent_shield_phong', 'talent');
+      const enc = await combatWithShield.start(u.userId, 'son_coc');
+      await combatWithShield.action(u.userId, enc.id, {});
+      const c = await prisma.character.findUniqueOrThrow({
+        where: { id: u.characterId },
+      });
+      // shieldAbsorb=300, reply=1 → fully absorbed → charHp=1000.
+      expect(c.hp).toBe(1000);
+    });
+
+    it('character KHÔNG shield buff → composeBuffMods identity (shieldHpMaxRatio=0) → no absorb', async () => {
+      vi.spyOn(Math, 'random').mockReturnValue(0.5);
+      const u = await makeUserChar(prisma, {
+        realmKey: 'kim_dan',
+        stamina: 100,
+        power: 20,
+        spirit: 100,
+        hp: 1000,
+        hpMax: 1000,
+      });
+      const enc = await combatWithShield.start(u.userId, 'son_coc');
+      await combatWithShield.action(u.userId, enc.id, {});
+      const c = await prisma.character.findUniqueOrThrow({
+        where: { id: u.characterId },
+      });
+      // No shield → reply 1 → charHp 999.
+      expect(c.hp).toBe(999);
+      const encAfter = await prisma.encounter.findUniqueOrThrow({
+        where: { id: enc.id },
+      });
+      const logs = encAfter.log as unknown as Array<{ side: string; text: string }>;
+      const shieldLine = logs.find((l) => l.text.includes('Khiên hấp thu'));
+      expect(shieldLine).toBeUndefined();
+    });
+
+    it('BuffService không inject vào CombatService → identity baseline (no absorb)', async () => {
+      vi.spyOn(Math, 'random').mockReturnValue(0.5);
+      const u = await makeUserChar(prisma, {
+        realmKey: 'kim_dan',
+        stamina: 100,
+        power: 20,
+        spirit: 100,
+        hp: 1000,
+        hpMax: 1000,
+      });
+      // grant shield buff vào DB
+      await buffSvc.applyBuff(u.characterId, 'talent_shield_phong', 'talent');
+      // dùng top-level `combat` instance (no BuffService injected) →
+      // composeBuffMods([]) → shieldHpMaxRatio = 0 → no absorb despite DB row.
+      const enc = await combat.start(u.userId, 'son_coc');
+      await combat.action(u.userId, enc.id, {});
+      const c = await prisma.character.findUniqueOrThrow({
+        where: { id: u.characterId },
+      });
+      // No shield wire active → reply 1 → charHp 999.
+      expect(c.hp).toBe(999);
+    });
+
+    it('shield + DOT cùng tồn tại → shield chỉ absorb monster reply, không absorb DOT', async () => {
+      vi.spyOn(Math, 'random').mockReturnValue(0.5);
+      const u = await makeUserChar(prisma, {
+        realmKey: 'kim_dan',
+        stamina: 100,
+        power: 20,
+        spirit: 100,
+        hp: 1000,
+        hpMax: 1000,
+      });
+      await buffSvc.applyBuff(u.characterId, 'talent_shield_phong', 'talent'); // shield 300
+      await buffSvc.applyBuff(u.characterId, 'debuff_burn_hoa', 'skill'); // DOT 8
+      const enc = await combatWithShield.start(u.userId, 'son_coc');
+      await combatWithShield.action(u.userId, enc.id, {});
+      const c = await prisma.character.findUniqueOrThrow({
+        where: { id: u.characterId },
+      });
+      // Reply 1 → shield absorb 1 → netReply 0 → charHp 1000. Then DOT 8 →
+      // charHp 992. Shield wire chỉ apply ở monster reply branch, không apply
+      // ở DOT branch (DOT là post-encounter-active end-of-turn, không phải
+      // direct hit từ monster).
+      expect(c.hp).toBe(992);
+      const encAfter = await prisma.encounter.findUniqueOrThrow({
+        where: { id: enc.id },
+      });
+      const logs = encAfter.log as unknown as Array<{ side: string; text: string }>;
+      expect(logs.find((l) => l.text.includes('Khiên hấp thu'))).toBeDefined();
+      expect(logs.find((l) => l.text.includes('Độc/bỏng phát tác'))).toBeDefined();
+    });
+  });
 });
