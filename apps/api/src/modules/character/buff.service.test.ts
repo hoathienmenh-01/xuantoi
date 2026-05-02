@@ -234,12 +234,12 @@ describe('BuffService.getMods', () => {
     expect(mods.cultivationBlocked).toBe(false);
   });
 
-  it('apply pill_atk_buff_t1 → atkMul tăng (catalog stat_mod 1.10)', async () => {
+  it('apply pill_atk_buff_t1 → atkMul tăng (catalog stat_mod 1.12)', async () => {
     const ctx = await makeUserChar(prisma, {});
     await svc.applyBuff(ctx.characterId, 'pill_atk_buff_t1', 'pill');
     const mods = await svc.getMods(ctx.characterId);
     expect(mods.atkMul).toBeGreaterThan(1.0);
-    expect(mods.atkMul).toBeCloseTo(1.1, 5);
+    expect(mods.atkMul).toBeCloseTo(1.12, 5);
   });
 
   it('apply debuff_taoma → cultivationBlocked=true + atkMul giảm', async () => {
