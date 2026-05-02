@@ -10,7 +10,39 @@ Tóm tắt **người chơi / vận hành / dev** dễ đọc, theo PR đã merg
 
 ## [Unreleased]
 
-> Pending merge: docs CHANGELOG catch-up session 9r-27 — PR #272 (CHANGELOG catch-up 9r-26 part 5) + #273 (audit refresh post #271) + #274 (Phase 11.X.U talent spiritMul combat) + #275 (Phase 11.X.V buff invuln combat) (this PR).
+> Pending merge: docs CHANGELOG catch-up session 9r-27 part 5 — PR #276 (CHANGELOG catch-up 9r-27 PR #272 → #275) + PR #277 (Phase 11.10.D Achievement item rewards via InventoryService.grantTx) (this PR).
+
+---
+
+## [session 9r-27 part 5 — Achievement item rewards wire + docs catch-up — PR #276 → #277, merged 2/5 2026]
+
+### Internal — Phase 11.10.D Achievement item rewards (no catalog change)
+
+**Compose-and-fail-soft pattern** mở rộng cho `AchievementService.claimReward` — wire grant `def.reward.items` non-empty qua `InventoryService.grantTx` reason `'ACHIEVEMENT_REWARD'` (`ItemLedger` audit). Phase 11.10.C-1 (PR #248) đã defer items với `throw AchievementError('ITEMS_NOT_SUPPORTED')` để tránh circular dep `CharacterModule ↔ InventoryModule` (InventoryModule imports CharacterModule cho `CharacterService`/`CurrencyService`). Phase 11.10.D giải quyết bằng `forwardRef` chuẩn NestJS pattern:
+
+- **Achievement item rewards via InventoryService.grantTx** (PR #277 / Phase 11.10.D): `apps/api/src/modules/inventory/inventory.service.ts` — add `'ACHIEVEMENT_REWARD'` vào `ItemLedgerReason` union (parallel với `CurrencyLedger.reason='ACHIEVEMENT_REWARD'` đã wire ở Phase 11.10.C-1). `apps/api/src/modules/character/achievement.service.ts` — import `forwardRef`, `Inject`, `InventoryService`. Constructor add 4th param `@Inject(forwardRef(() => InventoryService)) inventory: InventoryService`. `claimReward`: remove `throw AchievementError('ITEMS_NOT_SUPPORTED')` defensive guard. Inside transaction sau title unlock: nếu `def.reward.items` non-empty → `await this.inventory.grantTx(tx, characterId, [{itemKey, qty}…], { reason: 'ACHIEVEMENT_REWARD', refType: 'Achievement', refId: achievementKey })`. Update return type `granted.items: Array<{ itemKey: string; qty: number }>`. Remove `'ITEMS_NOT_SUPPORTED'` khỏi `AchievementErrorCode` union. `apps/api/src/modules/character/character.module.ts` — wrap `InventoryModule` import với `forwardRef`. `apps/api/src/modules/inventory/inventory.module.ts` — wrap `CharacterModule` import với `forwardRef` để break circular cycle. `apps/api/src/modules/character/character.controller.ts` — remove `case 'ITEMS_NOT_SUPPORTED'` từ `mapAchievementErrorStatus`. Identity hiện tại: 32 baseline catalog không có achievement với `def.reward.items` non-empty (chỉ linhThach/tienNgoc/exp/title) → runtime path identity → no-op. Future-proof khi catalog thêm. 3 vitest mới với `vi.spyOn(shared, 'getAchievementDef').mockReturnValue` fake def reward.items → grant InventoryItem + ItemLedger entry; identity path empty items; double-claim prevention CAS guard.
+
+### Docs — audit/catch-up
+
+- **CHANGELOG catch-up session 9r-27 PR #272 → #275** (PR #276): append section [session 9r-27 — combat passive wire batch + docs catch-up — PR #272 → #275] mô tả 4 PR (Phase 11.X.U talent spiritMul, Phase 11.X.V buff invuln, CHANGELOG catch-up 9r-26 part 5, audit refresh post #271). Pure docs, no code change. CI 5/5 GREEN.
+
+### Player-facing impact (post-merge)
+
+- **Zero observable gameplay change** (PR #277): identity hiện tại — 32 baseline catalog không có achievement với `reward.items` non-empty. Player với current achievement progress không thấy khác biệt.
+- **Future-proof catalog mở rộng** (PR #277): khi Phase 11.10.F catalog thêm achievement với `reward.items` (vd milestone collection achievements grant đan dược/material), claim sẽ grant items qua `InventoryItem` upsert + `ItemLedger` audit, idempotent qua CAS `claimedAt: null` guard.
+- **Closer wire parity** (PR #277): `AchievementService.claimReward` giờ wire toàn bộ reward channels — `linhThach`/`tienNgoc` (CurrencyService), `exp` (PrismaService), `title` (TitleService), `items` (InventoryService). Tất cả 4 reward types unified pattern: ledger entry với `reason='ACHIEVEMENT_REWARD'`, `refType='Achievement'`, `refId=achievementKey` cho audit/idempotency.
+
+### Risk / rollback
+
+- 🟢 zero balance impact — identity path (no current catalog producer with items).
+- Backward-compat 100% với existing claims (linhThach/tienNgoc/exp/title vẫn hoạt động). Module DI restructure dùng `forwardRef` chuẩn NestJS — không phá runtime DI graph (verified qua full api test 1441 ✓).
+- API contract change: `'ITEMS_NOT_SUPPORTED'` (HTTP 501) error code removed — không ai reachable trong production vì current catalog không trigger.
+- Rollback: revert PR (8 file change). Module DI revert về `CharacterModule` không import `InventoryModule` + `AchievementService` 3-arg constructor + throw `ITEMS_NOT_SUPPORTED`. Không cần DB migration revert (DB schema không đổi).
+
+### CI status
+
+- PR #276: 5/5 GREEN ✓
+- PR #277: 5/5 GREEN ✓ (+3 new vitest tổng 2983)
 
 ---
 
