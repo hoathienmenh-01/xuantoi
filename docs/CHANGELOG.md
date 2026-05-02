@@ -10,7 +10,41 @@ Tóm tắt **người chơi / vận hành / dev** dễ đọc, theo PR đã merg
 
 ## [Unreleased]
 
-> Pending merge: docs CHANGELOG catch-up session 9r-26 part 5 — PR #267 (Phase 11.7.E talent regen) + #268 (Phase 11.X.Q boss control) + #270 (Phase 11.X.R boss cultivationBlocked) + #271 (Phase 11.4.E boss equip atk) (this PR).
+> Pending merge: docs CHANGELOG catch-up session 9r-27 — PR #272 (CHANGELOG catch-up 9r-26 part 5) + #273 (audit refresh post #271) + #274 (Phase 11.X.U talent spiritMul combat) + #275 (Phase 11.X.V buff invuln combat) (this PR).
+
+---
+
+## [session 9r-27 — combat passive wire batch + docs catch-up — PR #272 → #275, merged 2/5 2026]
+
+### Internal — Phase 11 combat passive wires (no catalog change)
+
+**Compose-and-fail-soft pattern** tiếp tục cho monster reply branch. 2 PR runtime wire mới fix gap pattern coverage:
+
+- **Talent spiritMul wire vào CombatService.action() effSpirit defense calc** (PR #274 / Phase 11.X.U): wire `talentMods.spiritMul × effSpirit` ở monster reply branch (`combat.service.ts:386-390`). `composePassiveTalentMods` đã produce `spiritMul` (kind=stat_mod, statTarget=spirit) trong package shared, nhưng catalog hiện tại không có talent với `statTarget=spirit` (talent_kim_thien_co=atk, talent_thuy_long_an=hpMax, talent_tho_son_tuong=def, talent_moc_linh_quy=regen, talent_hoa_tam_dao=damage_bonus, talent_thien_di=drop, talent_ngo_dao=exp). Identity 1.0 → zero balance impact. Wire để pattern coverage nhất quán với `atkMul/defMul/damageBonusByElement/dropMul/expMul` đã wire (#251) + future-proof cho talent spirit producer (vd `talent_huyen_thuy_tam` future +50% spirit). 3 vitest mới với `vi.spyOn(TalentService.prototype, 'getMods')` để cover wire path. `combat.service.ts` + `combat.service.test.ts` + `AI_HANDOFF_REPORT.md`.
+- **Buff invuln wire vào CombatService.action() override damage** (PR #275 / Phase 11.X.V): wire `buffMods.invulnActive` (kind=invuln) PRE-shield gate trong reply branch (`combat.service.ts:404-438`) + DOT branch (line 449). Spec `invuln`: ignore all damage (rất hiếm — ngắn duration), nên wire skip cả monster reply (PRE-shield) lẫn DOT (end-of-turn). `composeBuffMods` đã produce `invulnActive` trong package shared, nhưng catalog hiện tại không có buff với `kind=invuln` (talent_shield_phong=shield, debuff_burn_hoa=dot, debuff_root_thuy=control, debuff_taoma=cultivation_block). Identity false → zero balance impact. Pattern coverage nhất quán với cultivationBlocked (#270) + control (#264) — boolean buff state gates damage path. Future-proof cho buff invuln producer trong catalog tương lai (vd `buff_kim_than_shield` ngắn duration). 4 vitest mới với `vi.spyOn(BuffService.prototype, 'getMods')` invulnActive=true cover reply nullified + DOT cũng skip + identity baselines. `combat.service.ts` + `combat.service.test.ts` + `AI_HANDOFF_REPORT.md`.
+
+### Docs — audit/catch-up
+
+- **CHANGELOG catch-up session 9r-26 part 5** (PR #272): append section cho PR #267 (Phase 11.7.E talent regen) + #268 (Phase 11.X.Q boss control) + #270 (Phase 11.X.R boss cultivationBlocked) + #271 (Phase 11.4.E boss equip atk). Pure docs, no code change. CI 4/4 GREEN.
+- **AI_HANDOFF_REPORT refresh post PR #271 merged + PR #272 open** (PR #273): bump main pointer `df52a1d` → audit refresh; promote PR #271 → "Latest merged PR", demote PR #270 → "Previous merged PR"; update Open PRs line; add session 9r-27 snapshot. Pure docs, no code change. CI 4/4 GREEN.
+
+### Player-facing impact (post-merge)
+
+- **Zero observable gameplay change** (PR #274, #275): cả hai wire đều identity hiện tại (catalog không có producer cho `talent.spiritMul` hoặc `buff.invulnActive`). Player với current builds không thấy khác biệt. Future-proof cho catalog mở rộng — khi thêm talent spirit producer hoặc buff invuln, runtime sẽ activate đúng pattern.
+- **Closer pattern parity** (PR #274, #275): combat reply branch giờ wire toàn bộ talent/buff/title stat multipliers (atk/def/spirit/damageElement) + boolean gates (control/cultivationBlocked/invuln). Phù hợp với combat compose-and-fail-soft design — tất cả passive mods compute-but-not-consumed gap đã đóng cho `CombatService.action()` reply path.
+
+### Risk / rollback
+
+- 🟢 zero balance impact — identity multipliers/booleans (no current catalog producer).
+- Backward-compat 100% với character không có talent/buff matching wire / TalentService/BuffService không inject (compose-and-fail-soft).
+- Rollback: revert PR scope (combat.service.ts + test). Wire chỉ thêm 1-2 multiply factor hoặc 1 boolean guard — không có data migration.
+
+### CI status
+
+- PR #272: 4/4 GREEN ✓
+- PR #273: 4/4 GREEN ✓
+- PR #274: 5/5 GREEN ✓
+- PR #275: 5/5 GREEN ✓
 
 ---
 
