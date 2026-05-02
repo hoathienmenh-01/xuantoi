@@ -12,6 +12,7 @@ import { CurrencyService } from './currency.service';
 import { SpiritualRootService } from './spiritual-root.service';
 import { CultivationMethodService } from './cultivation-method.service';
 import { GemService } from './gem.service';
+import { RefineService } from './refine.service';
 import { PrismaService } from '../../common/prisma.service';
 import { AuthModule } from '../auth/auth.module';
 import { RealtimeModule } from '../realtime/realtime.module';
@@ -51,6 +52,7 @@ const profileLimiterProvider = {
     CultivationMethodService,
     CharacterSkillService,
     GemService,
+    RefineService,
     PrismaService,
     profileLimiterProvider,
   ],
@@ -61,6 +63,7 @@ const profileLimiterProvider = {
     CultivationMethodService,
     CharacterSkillService,
     GemService,
+    RefineService,
   ],
 })
 export class CharacterModule {}

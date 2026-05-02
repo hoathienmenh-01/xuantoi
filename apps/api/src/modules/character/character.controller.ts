@@ -24,6 +24,7 @@ import {
   CharacterSkillService,
 } from './character-skill.service';
 import { GemError, GemService } from './gem.service';
+import { RefineError, RefineService } from './refine.service';
 import { AuthService } from '../auth/auth.service';
 import {
   InMemorySlidingWindowRateLimiter,
@@ -78,6 +79,11 @@ const GemCombineInput = z.object({
   srcGemKey: z.string().min(1).max(64),
 });
 
+const RefineEquipmentInput = z.object({
+  equipmentInventoryItemId: z.string().min(1).max(64),
+  useProtection: z.boolean().optional().default(false),
+});
+
 function fail(code: string, status = HttpStatus.BAD_REQUEST): never {
   throw new HttpException({ ok: false, error: { code, message: code } }, status);
 }
@@ -93,6 +99,7 @@ export class CharacterController {
     @Optional() private readonly cultivationMethod?: CultivationMethodService,
     @Optional() private readonly characterSkill?: CharacterSkillService,
     @Optional() private readonly gem?: GemService,
+    @Optional() private readonly refine?: RefineService,
     @Optional() @Inject(PROFILE_RATE_LIMITER) profileLimiter?: RateLimiter,
   ) {
     this.profileLimiter =
@@ -441,6 +448,37 @@ export class CharacterController {
       throw e;
     }
   }
+
+  /**
+   * Phase 11.5.B Refine MVP — luyện khí 1 attempt cho equipment.
+   * Server-authoritative: verify cost (`linhThachCost` + `materialQty`),
+   * roll deterministic RNG, apply outcome (success +1 / fail risky -1 / fail
+   * extreme break = delete row), consume protection charm nếu trigger.
+   * Tất cả qua `prisma.$transaction` + `ItemLedger`/`CurrencyLedger` audit.
+   */
+  @Post('refine')
+  @HttpCode(200)
+  async refineEquipment(@Req() req: Request, @Body() body: unknown) {
+    const userId = await this.requireUserId(req);
+    if (!this.refine) fail('REFINE_UNAVAILABLE', HttpStatus.NOT_IMPLEMENTED);
+    const parsed = RefineEquipmentInput.safeParse(body);
+    if (!parsed.success) fail('INVALID_INPUT');
+    const character = await this.chars.findByUser(userId);
+    if (!character) fail('NO_CHARACTER', HttpStatus.NOT_FOUND);
+    try {
+      const result = await this.refine.refineEquipment(
+        character.id,
+        parsed.data.equipmentInventoryItemId,
+        parsed.data.useProtection,
+      );
+      return { ok: true, data: { refine: result } };
+    } catch (e) {
+      if (e instanceof RefineError) {
+        fail(e.code, mapRefineErrorStatus(e.code));
+      }
+      throw e;
+    }
+  }
 }
 
 /** Map GemError code → HTTP status. */
@@ -459,6 +497,22 @@ function mapGemErrorStatus(code: GemError['code']): HttpStatus {
       return HttpStatus.CONFLICT;
     case 'INVALID_SLOT_INDEX':
       return HttpStatus.BAD_REQUEST;
+    default:
+      return HttpStatus.BAD_REQUEST;
+  }
+}
+
+/** Map RefineError code → HTTP status. */
+function mapRefineErrorStatus(code: RefineError['code']): HttpStatus {
+  switch (code) {
+    case 'EQUIPMENT_NOT_FOUND':
+      return HttpStatus.NOT_FOUND;
+    case 'NOT_REFINABLE':
+    case 'MAX_LEVEL_REACHED':
+    case 'INSUFFICIENT_MATERIAL':
+    case 'INSUFFICIENT_PROTECTION':
+    case 'INSUFFICIENT_FUNDS':
+      return HttpStatus.CONFLICT;
     default:
       return HttpStatus.BAD_REQUEST;
   }

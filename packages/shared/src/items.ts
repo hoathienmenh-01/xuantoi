@@ -1021,6 +1021,20 @@ export const ITEMS: readonly ItemDef[] = [
     stackable: true,
     price: 3200,
   },
+
+  // ----- Phase 11.5.B Refine MVP runtime — protection charm -----
+  // Consume khi refine fail ở stage `risky` / `extreme` (no-break path) để
+  // ngăn level-loss. KHÔNG cứu được break ở extreme stage. Server-authoritative
+  // qua `RefineService.refineEquipment(useProtection=true)`.
+  {
+    key: 'refine_protection_charm',
+    name: 'Hộ Khí Phù',
+    description: 'Phù bảo hộ luyện khí — miễn 1 lần rớt cấp khi refine fail. Không cứu được break ở extreme stage.',
+    kind: 'MISC',
+    quality: 'HUYEN',
+    stackable: true,
+    price: 500,
+  },
 ];
 
 export function itemByKey(key: string): ItemDef | undefined {

@@ -380,6 +380,12 @@ model InventoryItem {
   /// LINH=1, HUYEN=2, TIEN=3, THAN=4) enforce ở `GemService.socketGem`
   /// server-authoritative. Item non-equipment / chưa khảm giữ `[]`.
   sockets      String[]   @default([])
+  /// Phase 11.5.B Refine MVP — cấp luyện khí 0..15 (`REFINE_MAX_LEVEL`).
+  /// Stat multiplier = `getRefineStatMultiplier(refineLevel)` áp dụng lên
+  /// `bonuses` + socket bonus của trang bị khi tính `equipBonus()`.
+  /// Item non-equipment / chưa luyện giữ `0`. Server-authoritative qua
+  /// `RefineService.refineEquipment` (no client mutation).
+  refineLevel  Int        @default(0)
   createdAt    DateTime   @default(now())
 
   @@unique([characterId, equippedSlot])
