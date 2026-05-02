@@ -93,7 +93,7 @@ export interface TalentDef {
 }
 
 /**
- * 18 talent baseline cover passive + active × 5 element + neutral.
+ * 19 talent baseline cover passive + active × 5 element + neutral.
  * (Phase 11.X.AA: thêm `talent_huyen_thuy_tam` thuy +10% spirit — producer
  * đầu tiên cho `composePassiveTalentMods.spiritMul`, activate Phase 11.4.G
  * (boss spirit branch wire) + Phase 11.X.U (combat effSpirit defense wire).)
@@ -106,10 +106,15 @@ export interface TalentDef {
  * Symmetric structure với `talent_huyen_thuy_tam`, `talent_moc_linh_co`.
  * Flavor: hoả đan tâm thiêu hoá tạp niệm, tinh thần minh mẫn.)
  * (Phase 11.X.AD: thêm `talent_tho_linh_an` tho +10% spirit — producer thứ 4
- * cho spiritMul tiếp tục fill 5-element coverage roadmap (thuy ✅ + moc ✅ +
- * hoa ✅ + tho ✅; kim còn defer — kim đã có atk producer
- * `talent_kim_thien_co`). Symmetric structure với thuy/moc/hoa producers.
- * Flavor: thổ địa ấn chú trấn an linh hồn, dưỡng tinh thần.)
+ * cho spiritMul tiếp tục fill 5-element coverage roadmap. Symmetric structure
+ * với thuy/moc/hoa producers. Flavor: thổ địa ấn chú trấn an linh hồn, dưỡng
+ * tinh thần.)
+ * (Phase 11.X.AE: thêm `talent_kim_linh_tam` kim +10% spirit — producer thứ 5
+ * cho spiritMul, hoàn tất 5-element spirit coverage roadmap (thuy ✅ + moc ✅
+ * + hoa ✅ + tho ✅ + kim ✅). Distinct khỏi `talent_kim_thien_co` (kim atk
+ * +10% — PR #288): hai talent kim element độc lập, atk path vs spirit path.
+ * Flavor: kim linh tâm hấp thu kim khí tinh nguyên, tâm cảnh không nhiễm bụi
+ * trần.)
  *
  * Stable order: passive trước → active sau.
  */
@@ -127,6 +132,23 @@ export const TALENTS: readonly TalentDef[] = [
       kind: 'stat_mod',
       value: 1.1,
       statTarget: 'atk',
+      elementTarget: null,
+    },
+    activeEffect: null,
+  },
+  {
+    key: 'talent_kim_linh_tam',
+    name: 'Kim Linh Tâm',
+    description:
+      'Linh tâm hấp thu kim khí tinh nguyên, +10% linh khí công kích.',
+    type: 'passive',
+    element: 'kim',
+    realmRequirement: 'kim_dan',
+    talentPointCost: 1,
+    passiveEffect: {
+      kind: 'stat_mod',
+      value: 1.1,
+      statTarget: 'spirit',
       elementTarget: null,
     },
     activeEffect: null,

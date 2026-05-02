@@ -465,6 +465,45 @@ describe('composePassiveTalentMods', () => {
     expect(mods.hpMaxMul).toBe(1);
   });
 
+  it('kim_linh_tam → spiritMul = 1.1 (Phase 11.X.AE producer thứ 5 cho 11.4.G/11.X.U/11.X.X/11.X.Y wire, hoàn tất 5-element coverage)', () => {
+    const mods = composePassiveTalentMods(['talent_kim_linh_tam']);
+    expect(mods.spiritMul).toBeCloseTo(1.1, 5);
+    // Verify isolation: chỉ statTarget=spirit bị tác động, các stat khác giữ identity.
+    expect(mods.atkMul).toBe(1);
+    expect(mods.defMul).toBe(1);
+    expect(mods.hpMaxMul).toBe(1);
+    expect(mods.hpRegenFlat).toBe(0);
+    // damageBonusByElement không bị set bởi spirit producer.
+    expect(mods.damageBonusByElement.size).toBe(0);
+  });
+
+  it('combine kim_thien_co (atk) + kim_linh_tam (spirit) → atkMul = 1.1 × spiritMul = 1.1 (cross-stat kim, no overlap)', () => {
+    const mods = composePassiveTalentMods([
+      'talent_kim_thien_co',
+      'talent_kim_linh_tam',
+    ]);
+    // Hai kim talent độc lập: atk path vs spirit path, không overlap.
+    expect(mods.atkMul).toBeCloseTo(1.1, 5);
+    expect(mods.spiritMul).toBeCloseTo(1.1, 5);
+    // Cross-stat: hpMax/def giữ identity vì cả hai đều không touch.
+    expect(mods.hpMaxMul).toBe(1);
+    expect(mods.defMul).toBe(1);
+  });
+
+  it('combine all 5 spirit producers (thuy + moc + hoa + tho + kim) → spiritMul = 1.1⁵ = 1.61051 (5-element ceiling)', () => {
+    const mods = composePassiveTalentMods([
+      'talent_huyen_thuy_tam',
+      'talent_moc_linh_co',
+      'talent_hoa_dan_tam',
+      'talent_tho_linh_an',
+      'talent_kim_linh_tam',
+    ]);
+    // Hoàn tất 5-element spirit coverage roadmap.
+    expect(mods.spiritMul).toBeCloseTo(1.61051, 5);
+    expect(mods.atkMul).toBe(1);
+    expect(mods.hpMaxMul).toBe(1);
+  });
+
   it('hoa_tam_dao → damageBonusByElement[kim] = 1.15', () => {
     const mods = composePassiveTalentMods(['talent_hoa_tam_dao']);
     expect(mods.damageBonusByElement.get('kim')).toBeCloseTo(1.15, 5);
