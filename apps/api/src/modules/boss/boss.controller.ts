@@ -115,6 +115,7 @@ export class BossController {
         case 'HP_LOW':
         case 'BOSS_ALREADY_ACTIVE':
         case 'CONTROLLED':
+        case 'CULTIVATION_BLOCKED':
           fail(e.code, HttpStatus.CONFLICT);
       }
     }
