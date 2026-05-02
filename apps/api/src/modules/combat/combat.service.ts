@@ -92,7 +92,8 @@ class CombatError extends Error {
       | 'ENCOUNTER_NOT_FOUND'
       | 'ENCOUNTER_ENDED'
       | 'SKILL_NOT_USABLE'
-      | 'MP_LOW',
+      | 'MP_LOW'
+      | 'CONTROLLED',
   ) {
     super(code);
   }
@@ -220,6 +221,16 @@ export class CombatService {
     const buffMods: BuffMods = this.buffs
       ? await this.buffs.getMods(char.id)
       : composeBuffMods([]);
+    // Phase 11.X.O — Buff control (root/stun/silence) block player action.
+    // `controlTurnsMax > 0` khi có active control debuff trong DB
+    // (`debuff_root_thuy` 3 turns, `debuff_stun_tho` 1 turn, `debuff_silence_kim`
+    // 2 turns). Identity (0, no-op) khi service không injected hoặc không có
+    // control debuff. Throw EARLY trước mọi state mutation: encounter status,
+    // character HP/MP/stamina, ledger row đều không đụng tới. Player nhận lại
+    // CombatError('CONTROLLED') và phải chờ debuff hết hạn (expiresAt sweep).
+    if (buffMods.controlTurnsMax > 0) {
+      throw new CombatError('CONTROLLED');
+    }
     // Phase 11.9.C — Title flavor stat mods compose. No equipped title or
     // service không injected → identity baseline (atkMul=defMul=spiritMul=1).
     // Multiplicative compose với linh căn × talent × buff (Phase 11.3.C/11.7.C/11.8.C).
