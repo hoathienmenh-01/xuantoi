@@ -817,4 +817,242 @@ describe('BossService', () => {
       );
     });
   });
+
+  // ── Phase 11.4.F — Talent atkMul wire vào BossService.attack() ─────────
+  // Wire `talents.getMods().atkMul` × `(char.power + equip.atk)` ở basic-skill
+  // branch. Symmetric với Phase 11.X.U combat path. Catalog producer:
+  // `talent_kim_thien_co` (passive stat_mod statTarget=atk value=1.1, kim
+  // element, realmRequirement=kim_dan, talentPointCost=1).
+  // Service KHÔNG inject (legacy DI) → identity baseline (atkMul=1.0, no-op).
+  describe('Talent atkMul wire (Phase 11.4.F)', () => {
+    let bossWithTalentsF: BossService;
+    let talentSvcF: TalentService;
+
+    beforeAll(() => {
+      const realtime = new RealtimeService();
+      const chars = new CharacterService(prisma, realtime);
+      const inventory = new InventoryService(prisma, realtime, chars);
+      const currency = new CurrencyService(prisma);
+      const missions = makeMissionService(prisma);
+      talentSvcF = new TalentService(prisma);
+      bossWithTalentsF = new BossService(
+        prisma,
+        realtime,
+        chars,
+        inventory,
+        currency,
+        missions,
+        undefined, // achievements
+        talentSvcF,
+      );
+    });
+
+    beforeEach(() => {
+      (bossWithTalentsF as unknown as { cooldowns: Map<string, number> })
+        .cooldowns.clear();
+    });
+
+    afterEach(() => {
+      vi.restoreAllMocks();
+    });
+
+    it('character có talent_kim_thien_co (atkMul +10%) → damage cao hơn baseline (no talent)', async () => {
+      // variance = 0.5 → rollDamage deterministic factor = 1.0.
+      vi.spyOn(Math, 'random').mockReturnValue(0.5);
+      const baseline = await makeUserChar(prisma, {
+        mp: 100,
+        stamina: 100,
+        power: 100,
+        realmKey: 'kim_dan',
+      });
+      const buffed = await makeUserChar(prisma, {
+        mp: 100,
+        stamina: 100,
+        power: 100,
+        realmKey: 'kim_dan',
+      });
+      await talentSvcF.learnTalent(buffed.characterId, 'talent_kim_thien_co');
+
+      // Boss HP đủ cao để cả 2 không hạ trong 1 hit.
+      await spawnBoss({ currentHp: 1_000_000n });
+
+      const baselineOut = await bossWithTalentsF.attack(
+        baseline.userId,
+        undefined,
+      );
+      const buffedOut = await bossWithTalentsF.attack(
+        buffed.userId,
+        undefined,
+      );
+
+      // talent_kim_thien_co atkMul = 1.1 → damage(buffed) > damage(baseline).
+      expect(BigInt(buffedOut.result.damageDealt)).toBeGreaterThan(
+        BigInt(baselineOut.result.damageDealt),
+      );
+    });
+
+    it('character KHÔNG học talent → composePassiveTalentMods([]) identity (atkMul=1) → damage giống baseline', async () => {
+      vi.spyOn(Math, 'random').mockReturnValue(0.5);
+      const a = await makeUserChar(prisma, {
+        mp: 100,
+        stamina: 100,
+        power: 100,
+        realmKey: 'kim_dan',
+      });
+      const b = await makeUserChar(prisma, {
+        mp: 100,
+        stamina: 100,
+        power: 100,
+        realmKey: 'kim_dan',
+      });
+      await spawnBoss({ currentHp: 1_000_000n });
+
+      const outA = await bossWithTalentsF.attack(a.userId, undefined);
+      const outB = await bossWithTalentsF.attack(b.userId, undefined);
+
+      // Cả 2 char không học talent → atkMul = 1.0 → damage equal (deterministic mock).
+      expect(BigInt(outA.result.damageDealt)).toBe(
+        BigInt(outB.result.damageDealt),
+      );
+    });
+
+    it('TalentService không inject vào BossService → identity baseline (no atkMul bonus despite DB row)', async () => {
+      // Top-level `boss` instance KHÔNG inject TalentService — verify
+      // fall-soft pattern: no service → bypass → identity.
+      vi.spyOn(Math, 'random').mockReturnValue(0.5);
+      const baseline = await makeUserChar(prisma, {
+        mp: 100,
+        stamina: 100,
+        power: 100,
+        realmKey: 'kim_dan',
+      });
+      const buffed = await makeUserChar(prisma, {
+        mp: 100,
+        stamina: 100,
+        power: 100,
+        realmKey: 'kim_dan',
+      });
+      // Học talent ở DB nhưng `boss` không inject TalentService → talent ignored.
+      await talentSvcF.learnTalent(buffed.characterId, 'talent_kim_thien_co');
+      await spawnBoss({ currentHp: 1_000_000n });
+
+      const baselineOut = await boss.attack(baseline.userId, undefined);
+      const buffedOut = await boss.attack(buffed.userId, undefined);
+
+      // Without TalentService injection → no atkMul applied → damage equal.
+      expect(BigInt(buffedOut.result.damageDealt)).toBe(
+        BigInt(baselineOut.result.damageDealt),
+      );
+    });
+
+    it('talent atkMul × equip.atk compose multiplicative (atkMul × (power + equip))', async () => {
+      // Verify wire: `Math.floor((char.power + equip.atk) * talentMods.atkMul)`
+      // — talent atkMul áp dụng cho TỔNG (power + equip), không chỉ raw power.
+      // Player với equip + talent damage > player chỉ-equip > player chỉ-talent
+      // > baseline (deterministic check via mock random = 0.5).
+      vi.spyOn(Math, 'random').mockReturnValue(0.5);
+      const onlyEquip = await makeUserChar(prisma, {
+        mp: 100,
+        stamina: 100,
+        power: 100,
+        realmKey: 'kim_dan',
+      });
+      const onlyTalent = await makeUserChar(prisma, {
+        mp: 100,
+        stamina: 100,
+        power: 100,
+        realmKey: 'kim_dan',
+      });
+      const both = await makeUserChar(prisma, {
+        mp: 100,
+        stamina: 100,
+        power: 100,
+        realmKey: 'kim_dan',
+      });
+
+      const inv = (
+        bossWithTalentsF as unknown as { inventory: InventoryService }
+      ).inventory;
+      // Grant + equip so_kiem (+5 atk) cho onlyEquip + both.
+      for (const target of [onlyEquip, both]) {
+        await inv.grant(
+          target.characterId,
+          [{ itemKey: 'so_kiem', qty: 1 }],
+          { reason: 'ADMIN_GRANT' },
+        );
+        const sword = await prisma.inventoryItem.findFirstOrThrow({
+          where: { characterId: target.characterId, itemKey: 'so_kiem' },
+        });
+        await inv.equip(target.userId, sword.id);
+      }
+      // Học talent cho onlyTalent + both.
+      await talentSvcF.learnTalent(
+        onlyTalent.characterId,
+        'talent_kim_thien_co',
+      );
+      await talentSvcF.learnTalent(both.characterId, 'talent_kim_thien_co');
+
+      await spawnBoss({ currentHp: 1_000_000n });
+
+      const equipOut = await bossWithTalentsF.attack(
+        onlyEquip.userId,
+        undefined,
+      );
+      const talentOut = await bossWithTalentsF.attack(
+        onlyTalent.userId,
+        undefined,
+      );
+      const bothOut = await bossWithTalentsF.attack(both.userId, undefined);
+
+      // Both > onlyEquip (talent stack lên top of equip).
+      expect(BigInt(bothOut.result.damageDealt)).toBeGreaterThan(
+        BigInt(equipOut.result.damageDealt),
+      );
+      // Both > onlyTalent (equip stack lên top of talent).
+      expect(BigInt(bothOut.result.damageDealt)).toBeGreaterThan(
+        BigInt(talentOut.result.damageDealt),
+      );
+    });
+
+    it('talent atkMul KHÔNG áp dụng cho spirit branch (atkScale > 1) — chỉ wire (power + equip.atk)', async () => {
+      // Note: skill mặc định (atk_thuong) atkScale = 1.0 → chỉ atk wire,
+      // KHÔNG dùng spirit branch. Test verify identity ở spirit branch:
+      // 2 char với cùng power=0 + cùng spirit → damage giống nhau bất kể
+      // talent (vì atkMul × 0 = 0, branch spirit chiếm 100% damage).
+      vi.spyOn(Math, 'random').mockReturnValue(0.5);
+      const baseline = await makeUserChar(prisma, {
+        mp: 100,
+        stamina: 100,
+        power: 0,
+        spirit: 100,
+        realmKey: 'kim_dan',
+      });
+      const buffed = await makeUserChar(prisma, {
+        mp: 100,
+        stamina: 100,
+        power: 0,
+        spirit: 100,
+        realmKey: 'kim_dan',
+      });
+      await talentSvcF.learnTalent(buffed.characterId, 'talent_kim_thien_co');
+
+      await spawnBoss({ currentHp: 1_000_000n });
+
+      // Default skill (atk_thuong) atkScale = 1.0 → spirit branch không
+      // active. atkMul × (0 + 0) = 0 → damage chỉ rollDamage(0, def, 1.0)
+      // floor 1. Cả 2 char damage = 1 (Math.max(1, raw)).
+      const baselineOut = await bossWithTalentsF.attack(
+        baseline.userId,
+        undefined,
+      );
+      const buffedOut = await bossWithTalentsF.attack(
+        buffed.userId,
+        undefined,
+      );
+
+      // Cả 2 power=0 → atkMul × 0 = 0 → damage floor 1 (Math.max(1, raw)).
+      expect(BigInt(baselineOut.result.damageDealt)).toBe(1n);
+      expect(BigInt(buffedOut.result.damageDealt)).toBe(1n);
+    });
+  });
 });

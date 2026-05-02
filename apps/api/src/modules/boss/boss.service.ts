@@ -14,9 +14,11 @@ import {
   BOSS_STAMINA_PER_HIT,
   SKILL_BASIC_ATTACK,
   bossByKey,
+  composePassiveTalentMods,
   rollDamage,
   skillByKey,
   type BossDef,
+  type PassiveTalentMods,
   type SectKey,
   type SkillDef,
 } from '@xuantoi/shared';
@@ -215,9 +217,21 @@ export class BossService implements OnModuleInit, OnModuleDestroy {
     // wire talent/buff/title atkMul (defer scope balance review). Element
     // bonus / Linh căn statMul cũng defer Phase 11.X.S/T.
     const equip = await this.inventory.equipBonus(char.id);
+    // Phase 11.4.F — Talent atkMul wire vào BossService.attack().
+    // Symmetric với Phase 11.X.S/U combat path (talentMods.atkMul/spiritMul).
+    // Catalog producer: `talent_kim_thien_co` (passive atkMul +10% stat_mod
+    // statTarget=atk, kim element). Service không inject (legacy DI / test
+    // fixture without `talents`) → identity baseline (atkMul=1.0, no-op).
+    // Wire `(char.power + equip.atk) × atkMul` ở basic-skill branch; spirit
+    // branch (atkScale > 1) KHÔNG cộng atkMul cho `spirit + spiritBonus` —
+    // talent spiritMul wire cho boss defer Phase 11.4.G (giữ scope PR nhỏ +
+    // tránh double-count với Phase 11.X.U combat spiritMul đã wire).
+    // Buff/title atkMul cũng defer (Phase 11.X.W+).
+    const talentMods: PassiveTalentMods = this.talents
+      ? await this.talents.getMods(char.id)
+      : composePassiveTalentMods([]);
     const charAtk =
-      char.power +
-      equip.atk +
+      Math.floor((char.power + equip.atk) * talentMods.atkMul) +
       (skill.atkScale > 1 ? char.spirit + equip.spiritBonus : 0);
     const raw = rollDamage(charAtk, def.def, skill.atkScale);
     // Boost theo level boss (giảm sát thương phần nào).
