@@ -13,6 +13,7 @@ import { SpiritualRootService } from './spiritual-root.service';
 import { CultivationMethodService } from './cultivation-method.service';
 import { GemService } from './gem.service';
 import { RefineService } from './refine.service';
+import { TribulationService } from './tribulation.service';
 import { PrismaService } from '../../common/prisma.service';
 import { AuthModule } from '../auth/auth.module';
 import { RealtimeModule } from '../realtime/realtime.module';
@@ -53,6 +54,7 @@ const profileLimiterProvider = {
     CharacterSkillService,
     GemService,
     RefineService,
+    TribulationService,
     PrismaService,
     profileLimiterProvider,
   ],
@@ -64,6 +66,7 @@ const profileLimiterProvider = {
     CharacterSkillService,
     GemService,
     RefineService,
+    TribulationService,
   ],
 })
 export class CharacterModule {}

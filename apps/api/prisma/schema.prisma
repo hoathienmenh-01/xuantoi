@@ -214,6 +214,15 @@ model Character {
   /// `khai_thien_quyet` starter.
   equippedCultivationMethodKey String?
 
+  /// Phase 11.6.B Tribulation MVP — server-authoritative deterministic kiếp.
+  /// `tribulationCooldownAt` set khi attempt FAIL → block retry tới khi
+  /// `now >= tribulationCooldownAt`. Cleared khi SUCCESS (realm advance).
+  /// `taoMaUntil` set khi FAIL + RNG roll dưới `taoMaDebuffChance` →
+  /// Tâm Ma debuff active. Future Phase 11.8 (Buff runtime) sẽ áp dụng
+  /// modifier vào combat. MVP chỉ persist + audit.
+  tribulationCooldownAt DateTime?
+  taoMaUntil            DateTime?
+
   sectId String?
   sect   Sect?   @relation(fields: [sectId], references: [id])
 
@@ -226,6 +235,7 @@ model Character {
   spiritualRootRollLogs       SpiritualRootRollLog[]
   cultivationMethods          CharacterCultivationMethod[]
   characterSkills             CharacterSkill[]
+  tribulationAttemptLogs      TribulationAttemptLog[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -312,6 +322,59 @@ model CharacterSkill {
   @@unique([characterId, skillKey])
   @@index([characterId])
   @@index([characterId, isEquipped])
+}
+
+/// Phase 11.6.B — Audit log cho mỗi attempt Tribulation/Tâm Ma.
+/// Server-authoritative deterministic kiếp:
+///   - `tribulationKey` ref `TRIBULATIONS` trong `packages/shared/src/tribulation.ts`.
+///   - `fromRealmKey`/`toRealmKey` snapshot (catalog có thể đổi sau).
+///   - `success` true → realm đã advance + reward đã grant qua `CurrencyLedger.TRIBULATION_REWARD`.
+///   - `success` false → `expLoss` áp dụng (`computeTribulationFailurePenalty`),
+///     `cooldownAt` set vào `Character.tribulationCooldownAt`, optional Tâm Ma
+///     debuff (`taoMaActive=true` + `taoMaExpiresAt`).
+///   - `taoMaRoll` = RNG snapshot cho replay determinism.
+///   - `attemptIndex` = thứ tự attempt cho transition này (1..N).
+/// Idempotency: KHÔNG có natural unique key — caller phải debounce. Mỗi attempt
+/// = 1 row mới (audit replay). Wipe cascade khi character xoá.
+model TribulationAttemptLog {
+  id              String    @id @default(cuid())
+  characterId     String
+  character       Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  tribulationKey  String
+  fromRealmKey    String
+  toRealmKey      String
+  /// `TribulationSeverity` ∈ {minor, major, heavenly, saint}.
+  severity        String
+  /// `TribulationType` ∈ {lei, phong, bang, hoa, tam}.
+  type            String
+  success         Boolean
+  wavesCompleted  Int
+  totalDamage     Int
+  finalHp         Int
+  hpInitial       Int
+  /// EXP snapshot trước attempt (BigInt, có thể vượt Number.MAX_SAFE_INTEGER).
+  expBefore       BigInt
+  /// EXP sau attempt — success: `expBefore - cost(stage9) + bonus`; fail:
+  /// `computeTribulationFailurePenalty(...).expAfter`.
+  expAfter        BigInt
+  /// Nếu fail: `expBefore - expAfter`. Nếu success: 0 (không loss).
+  expLoss         BigInt    @default(0)
+  /// Tâm Ma debuff trigger (chỉ khi fail + RNG roll trúng).
+  taoMaActive     Boolean   @default(false)
+  taoMaExpiresAt  DateTime?
+  /// Cooldown gate cho retry (chỉ khi fail).
+  cooldownAt      DateTime?
+  /// Reward — chỉ set khi success.
+  linhThachReward Int       @default(0)
+  expBonusReward  BigInt    @default(0)
+  titleKeyReward  String?
+  attemptIndex    Int
+  /// RNG roll [0,1] cho `taoMaDebuffChance` check; persist cho replay.
+  taoMaRoll       Float
+  createdAt       DateTime  @default(now())
+
+  @@index([characterId, createdAt])
+  @@index([tribulationKey, createdAt])
 }
 
 enum MissionPeriod {
