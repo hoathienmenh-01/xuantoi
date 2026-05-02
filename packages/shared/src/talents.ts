@@ -93,7 +93,7 @@ export interface TalentDef {
 }
 
 /**
- * 31 talent baseline cover passive + active × 5 element + neutral.
+ * 35 talent baseline cover passive + active × 5 element + neutral.
  * (Phase 11.X.AA: thêm `talent_huyen_thuy_tam` thuy +10% spirit — producer
  * đầu tiên cho `composePassiveTalentMods.spiritMul`, activate Phase 11.4.G
  * (boss spirit branch wire) + Phase 11.X.U (combat effSpirit defense wire).)
@@ -143,6 +143,15 @@ export interface TalentDef {
  * Cùng `realmRequirement: 'kim_dan'` + `talentPointCost: 1`. 5-element hpMax
  * ceiling = 1.1⁵ = 1.61051, khớp atk + spirit + def ceiling. **5-element
  * symmetry hoàn tất 4/4 stat path** (atk + spirit + def + hpMax).)
+ * (Phase 11.X.AM: thêm `talent_kim_phach_dao` (kim → moc), `talent_moc_xuyen_dao`
+ * (moc → tho), `talent_thuy_diet_dao` (thuy → hoa), `talent_tho_chan_dao`
+ * (tho → thuy) +15% damage vs target element — producers thứ 2/3/4/5 cho
+ * `composePassiveTalentMods.damageBonusByElement`. **Hoàn tất 5-element
+ * tương khắc chain damage_bonus coverage roadmap** (hoa → kim ✅ qua
+ * `talent_hoa_tam_dao` từ trước, + 4 element tương khắc chain còn lại).
+ * Tương khắc chain: kim khắc moc, moc khắc tho, tho khắc thuy, thuy khắc hoa,
+ * hoa khắc kim. Symmetric structure với `talent_hoa_tam_dao`. Cùng
+ * `realmRequirement: 'kim_dan'` + `talentPointCost: 2` + `value: 1.15`.)
  *
  * Stable order: passive trước → active sau.
  */
@@ -216,6 +225,23 @@ export const TALENTS: readonly TalentDef[] = [
     activeEffect: null,
   },
   {
+    key: 'talent_kim_phach_dao',
+    name: 'Kim Phách Đạo',
+    description:
+      'Kim khí bổ thẳng cắt đứt mộc hệ, +15% sát thương lên kẻ thù hệ Mộc (tương khắc).',
+    type: 'passive',
+    element: 'kim',
+    realmRequirement: 'kim_dan',
+    talentPointCost: 2,
+    passiveEffect: {
+      kind: 'damage_bonus',
+      value: 1.15,
+      statTarget: null,
+      elementTarget: 'moc',
+    },
+    activeEffect: null,
+  },
+  {
     key: 'talent_thuy_long_an',
     name: 'Thuỷ Long Ấn',
     description: 'Thân thể như thuỷ long, +10% HP tối đa.',
@@ -278,6 +304,23 @@ export const TALENTS: readonly TalentDef[] = [
       value: 1.1,
       statTarget: 'def',
       elementTarget: null,
+    },
+    activeEffect: null,
+  },
+  {
+    key: 'talent_thuy_diet_dao',
+    name: 'Thuỷ Diệt Đạo',
+    description:
+      'Thuỷ bàng bạc dập tắt hoả diêm, +15% sát thương lên kẻ thù hệ Hoả (tương khắc).',
+    type: 'passive',
+    element: 'thuy',
+    realmRequirement: 'kim_dan',
+    talentPointCost: 2,
+    passiveEffect: {
+      kind: 'damage_bonus',
+      value: 1.15,
+      statTarget: null,
+      elementTarget: 'hoa',
     },
     activeEffect: null,
   },
@@ -362,6 +405,23 @@ export const TALENTS: readonly TalentDef[] = [
       value: 1.1,
       statTarget: 'hpMax',
       elementTarget: null,
+    },
+    activeEffect: null,
+  },
+  {
+    key: 'talent_moc_xuyen_dao',
+    name: 'Mộc Xuyên Đạo',
+    description:
+      'Mộc căn xuyên thấu thổ địa, +15% sát thương lên kẻ thù hệ Thổ (tương khắc).',
+    type: 'passive',
+    element: 'moc',
+    realmRequirement: 'kim_dan',
+    talentPointCost: 2,
+    passiveEffect: {
+      kind: 'damage_bonus',
+      value: 1.15,
+      statTarget: null,
+      elementTarget: 'tho',
     },
     activeEffect: null,
   },
@@ -513,6 +573,23 @@ export const TALENTS: readonly TalentDef[] = [
       value: 1.1,
       statTarget: 'hpMax',
       elementTarget: null,
+    },
+    activeEffect: null,
+  },
+  {
+    key: 'talent_tho_chan_dao',
+    name: 'Thổ Chấn Đạo',
+    description:
+      'Thổ chấn làm đục dòng thuỷ, +15% sát thương lên kẻ thù hệ Thuỷ (tương khắc).',
+    type: 'passive',
+    element: 'tho',
+    realmRequirement: 'kim_dan',
+    talentPointCost: 2,
+    passiveEffect: {
+      kind: 'damage_bonus',
+      value: 1.15,
+      statTarget: null,
+      elementTarget: 'thuy',
     },
     activeEffect: null,
   },
