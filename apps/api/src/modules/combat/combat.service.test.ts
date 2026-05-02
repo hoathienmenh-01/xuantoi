@@ -704,6 +704,151 @@ describe('CombatService', () => {
     });
   });
 
+  // — Phase 11.X.U Talent spiritMul wire vào effSpirit defense calc ----
+  // composePassiveTalentMods produces `spiritMul` (kind=stat_mod,
+  // statTarget=spirit) but no current catalog talent produces it
+  // (talent_kim_thien_co=atk, talent_thuy_long_an=hpMax,
+  // talent_tho_son_tuong=def, talent_moc_linh_quy=regen, talent_hoa_tam_dao
+  // =damage_bonus, talent_thien_di=drop, talent_ngo_dao=exp). Identity
+  // baseline (1.0) → zero balance impact. Wire để pattern coverage nhất
+  // quán với atkMul/defMul/damageBonusByElement/dropMul/expMul (#251).
+  describe('Talent spiritMul wire (Phase 11.X.U)', () => {
+    let combatWithTalents: CombatService;
+
+    beforeAll(() => {
+      const realtime = new RealtimeService();
+      const chars = new CharacterService(prisma, realtime);
+      const inventory = new InventoryService(prisma, realtime, chars);
+      const currency = new CurrencyService(prisma);
+      const missions = makeMissionService(prisma);
+      const talents = new TalentService(prisma);
+      combatWithTalents = new CombatService(
+        prisma,
+        realtime,
+        chars,
+        inventory,
+        currency,
+        missions,
+        undefined,
+        undefined,
+        talents,
+      );
+    });
+
+    afterEach(() => {
+      vi.restoreAllMocks();
+    });
+
+    it('TalentService injected + no learned talent → spiritMul=1 identity (reply damage = baseline no-talent-service)', async () => {
+      vi.spyOn(Math, 'random').mockReturnValue(0.5);
+      // Baseline: combat (no TalentService) — identity behavior.
+      const baseUser = await makeUserChar(prisma, {
+        realmKey: 'kim_dan',
+        stamina: 100,
+        power: 5,
+        spirit: 50,
+        hp: 1000,
+        hpMax: 1000,
+      });
+      const baseEnc = await combat.start(baseUser.userId, 'son_coc');
+      await combat.action(baseUser.userId, baseEnc.id, {});
+      const baseChar = await prisma.character.findUniqueOrThrow({
+        where: { id: baseUser.characterId },
+      });
+      const baseHpLost = 1000 - baseChar.hp;
+
+      // With TalentService injected, no learned talent → spiritMul=1 identity.
+      const talentUser = await makeUserChar(prisma, {
+        realmKey: 'kim_dan',
+        stamina: 100,
+        power: 5,
+        spirit: 50,
+        hp: 1000,
+        hpMax: 1000,
+      });
+      const talentEnc = await combatWithTalents.start(talentUser.userId, 'son_coc');
+      await combatWithTalents.action(talentUser.userId, talentEnc.id, {});
+      const talentChar = await prisma.character.findUniqueOrThrow({
+        where: { id: talentUser.characterId },
+      });
+      const talentHpLost = 1000 - talentChar.hp;
+      // Identity: hp lost identical between (no service) and (service + no talent).
+      expect(talentHpLost).toBe(baseHpLost);
+    });
+
+    it('spy TalentService.getMods → spiritMul=1.5 → effSpirit lớn hơn → reply damage <= identity baseline', async () => {
+      vi.spyOn(Math, 'random').mockReturnValue(0.5);
+      // Identity baseline: TalentService injected, no learned talent.
+      const baseUser = await makeUserChar(prisma, {
+        realmKey: 'kim_dan',
+        stamina: 100,
+        power: 5,
+        spirit: 50,
+        hp: 1000,
+        hpMax: 1000,
+      });
+      const baseEnc = await combatWithTalents.start(baseUser.userId, 'son_coc');
+      await combatWithTalents.action(baseUser.userId, baseEnc.id, {});
+      const baseChar = await prisma.character.findUniqueOrThrow({
+        where: { id: baseUser.characterId },
+      });
+      const baseHpLost = 1000 - baseChar.hp;
+
+      // Future-proof spy: TalentService.getMods returns spiritMul=1.5 (future
+      // talent producer like `talent_huyen_thuy_tam` +50% spirit).
+      vi.spyOn(TalentService.prototype, 'getMods').mockResolvedValue({
+        atkMul: 1,
+        defMul: 1,
+        hpMaxMul: 1,
+        mpMaxMul: 1,
+        spiritMul: 1.5,
+        hpRegenFlat: 0,
+        mpRegenFlat: 0,
+        dropMul: 1,
+        expMul: 1,
+        damageBonusByElement: new Map(),
+      });
+
+      const buffedUser = await makeUserChar(prisma, {
+        realmKey: 'kim_dan',
+        stamina: 100,
+        power: 5,
+        spirit: 50,
+        hp: 1000,
+        hpMax: 1000,
+      });
+      const buffedEnc = await combatWithTalents.start(buffedUser.userId, 'son_coc');
+      await combatWithTalents.action(buffedUser.userId, buffedEnc.id, {});
+      const buffedChar = await prisma.character.findUniqueOrThrow({
+        where: { id: buffedUser.characterId },
+      });
+      const buffedHpLost = 1000 - buffedChar.hp;
+      // Higher effSpirit → lower (hoặc bằng) incoming reply damage via defense.
+      expect(buffedHpLost).toBeLessThanOrEqual(baseHpLost);
+    });
+
+    it('TalentService không inject → identity baseline (no-op, fail-soft)', async () => {
+      vi.spyOn(Math, 'random').mockReturnValue(0.5);
+      // Top-level `combat` (no TalentService) — talentMods fall back to
+      // composePassiveTalentMods([]) → spiritMul=1.0 → effSpirit unchanged.
+      const u = await makeUserChar(prisma, {
+        realmKey: 'kim_dan',
+        stamina: 100,
+        power: 5,
+        spirit: 50,
+        hp: 1000,
+        hpMax: 1000,
+      });
+      const enc = await combat.start(u.userId, 'son_coc');
+      await combat.action(u.userId, enc.id, {});
+      const c = await prisma.character.findUniqueOrThrow({
+        where: { id: u.characterId },
+      });
+      // Encounter completed: monster reply 1 dmg vs spirit=50 → hp 999.
+      expect(c.hp).toBe(999);
+    });
+  });
+
   // — Phase 11.8.C Buff wire (stat mods + element damage compose vào combat) ----
   describe('Buff wire (Phase 11.8.C)', () => {
     let combatWithBuffs: CombatService;
