@@ -186,6 +186,19 @@ export interface TalentDef {
  * (hpRegen + mpRegen) và toàn bộ stat_mod + regen path của `PassiveTalentMods`
  * (7/7 statTarget path: atkMul + defMul + hpMaxMul + spiritMul + mpMaxMul +
  * hpRegenFlat + mpRegenFlat) đã có 5-element coverage.)
+ * (Phase 11.X.AQ: thêm `talent_kim_sinh_dao` (kim sinh thuỷ),
+ * `talent_thuy_sinh_dao` (thuỷ sinh mộc), `talent_moc_sinh_dao` (mộc sinh hoả),
+ * `talent_hoa_sinh_dao` (hoả sinh thổ), `talent_tho_sinh_dao` (thổ sinh kim)
+ * +10% damage vs target element — 5 producers cho `composePassiveTalentMods
+ * .damageBonusByElement` theo chain tương sinh. **Hoàn tất 5-element tương sinh
+ * chain damage_bonus coverage roadmap**, counterpart đối xứng với tương khắc
+ * chain Phase 11.X.AM. Chain tương sinh: kim sinh thuỷ, thuỷ sinh mộc, mộc
+ * sinh hoả, hoả sinh thổ, thổ sinh kim. Cùng `realmRequirement: 'kim_dan'`
+ * + `talentPointCost: 1` (so với tương khắc cost 2) + `value: 1.1` (so với
+ * tương khắc 1.15) — tương sinh nhẹ hơn cost lẫn bonus, đối xứng vai trò secondary
+ * damage_bonus path. Lore: tu sĩ thấu hiểu đạo tương sinh, hoá khí hệ mình
+ * sinh ra trong đường công, đả thương kẻ địch hệ đó dễ dàng hơn. Sau PR này
+ * **2/2 damage_bonus chain complete** (tương khắc 5/5 + tương sinh 5/5).)
  *
  * Stable order: passive trước → active sau.
  */
@@ -272,6 +285,23 @@ export const TALENTS: readonly TalentDef[] = [
       value: 1.15,
       statTarget: null,
       elementTarget: 'moc',
+    },
+    activeEffect: null,
+  },
+  {
+    key: 'talent_kim_sinh_dao',
+    name: 'Kim Sinh Đạo',
+    description:
+      'Kim ngưng thuỷ tính trong đường công (kim sinh thuỷ), +10% sát thương lên kẻ thù hệ Thuỷ (tương sinh).',
+    type: 'passive',
+    element: 'kim',
+    realmRequirement: 'kim_dan',
+    talentPointCost: 1,
+    passiveEffect: {
+      kind: 'damage_bonus',
+      value: 1.1,
+      statTarget: null,
+      elementTarget: 'thuy',
     },
     activeEffect: null,
   },
@@ -404,6 +434,23 @@ export const TALENTS: readonly TalentDef[] = [
       value: 1.15,
       statTarget: null,
       elementTarget: 'hoa',
+    },
+    activeEffect: null,
+  },
+  {
+    key: 'talent_thuy_sinh_dao',
+    name: 'Thuỷ Sinh Đạo',
+    description:
+      'Thuỷ dưỡng mộc khí sinh cơ (thuỷ sinh mộc), +10% sát thương lên kẻ thù hệ Mộc (tương sinh).',
+    type: 'passive',
+    element: 'thuy',
+    realmRequirement: 'kim_dan',
+    talentPointCost: 1,
+    passiveEffect: {
+      kind: 'damage_bonus',
+      value: 1.1,
+      statTarget: null,
+      elementTarget: 'moc',
     },
     activeEffect: null,
   },
@@ -591,6 +638,23 @@ export const TALENTS: readonly TalentDef[] = [
     activeEffect: null,
   },
   {
+    key: 'talent_moc_sinh_dao',
+    name: 'Mộc Sinh Đạo',
+    description:
+      'Mộc sinh hoả diêm thiêu đốt (mộc sinh hoả), +10% sát thương lên kẻ thù hệ Hoả (tương sinh).',
+    type: 'passive',
+    element: 'moc',
+    realmRequirement: 'kim_dan',
+    talentPointCost: 1,
+    passiveEffect: {
+      kind: 'damage_bonus',
+      value: 1.1,
+      statTarget: null,
+      elementTarget: 'hoa',
+    },
+    activeEffect: null,
+  },
+  {
     key: 'talent_hoa_tam_dao',
     name: 'Hoả Tâm Đạo',
     description: 'Tâm tựa hoả thiêu, +15% sát thương lên kẻ thù hệ Kim (tương khắc).',
@@ -603,6 +667,23 @@ export const TALENTS: readonly TalentDef[] = [
       value: 1.15,
       statTarget: null,
       elementTarget: 'kim',
+    },
+    activeEffect: null,
+  },
+  {
+    key: 'talent_hoa_sinh_dao',
+    name: 'Hoả Sinh Đạo',
+    description:
+      'Hoả sinh thổ đổi phương hệ Thổ phù hợp đường công (hoả sinh thổ), +10% sát thương lên kẻ thù hệ Thổ (tương sinh).',
+    type: 'passive',
+    element: 'hoa',
+    realmRequirement: 'kim_dan',
+    talentPointCost: 1,
+    passiveEffect: {
+      kind: 'damage_bonus',
+      value: 1.1,
+      statTarget: null,
+      elementTarget: 'tho',
     },
     activeEffect: null,
   },
@@ -804,6 +885,23 @@ export const TALENTS: readonly TalentDef[] = [
       value: 1.15,
       statTarget: null,
       elementTarget: 'thuy',
+    },
+    activeEffect: null,
+  },
+  {
+    key: 'talent_tho_sinh_dao',
+    name: 'Thổ Sinh Đạo',
+    description:
+      'Thổ ngưng kim kim quặng tinh nguyên (thổ sinh kim), +10% sát thương lên kẻ thù hệ Kim (tương sinh).',
+    type: 'passive',
+    element: 'tho',
+    realmRequirement: 'kim_dan',
+    talentPointCost: 1,
+    passiveEffect: {
+      kind: 'damage_bonus',
+      value: 1.1,
+      statTarget: null,
+      elementTarget: 'kim',
     },
     activeEffect: null,
   },
