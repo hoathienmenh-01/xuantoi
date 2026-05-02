@@ -271,8 +271,30 @@ export class BossService implements OnModuleInit, OnModuleDestroy {
           )
         : 0);
     const raw = rollDamage(charAtk, def.def, skill.atkScale);
-    // Boost theo level boss (giảm sát thương phần nào).
-    const damage = Math.max(1, raw);
+    // Phase 11.X.Y — Talent + Buff `damageBonusByElement` wire vào BossService.attack().
+    // Symmetric với Phase 11.7.C/11.8.C combat path (combat.service.ts L271-283
+    // — combat đã wire `talentMods.damageBonusByElement.get(skillElement)` và
+    // `buffMods.damageBonusByElement.get(skillElement)`). Boss path giờ
+    // multiplicative compose `raw × talentElementMul × buffElementMul`.
+    // Catalog producer talent damage_bonus theo element: `talent_hoa_tam_dao`
+    // (+15% sát thương vs kim, tương khắc). Catalog producer buff: `buff_*`
+    // damage_bonus có `elementTarget`. Khi `skill.element === null` (basic
+    // attack / utility) → identity (no element bonus). Service không inject
+    // talents/buffs → identity (compose*Mods empty Map → get() = undefined →
+    // ?? 1 fallback). Title KHÔNG có damageBonusByElement (skip).
+    const skillElement = skill.element ?? null;
+    const talentElementMul =
+      skillElement !== null
+        ? talentMods.damageBonusByElement.get(skillElement) ?? 1
+        : 1;
+    const buffElementMul =
+      skillElement !== null
+        ? buffMods.damageBonusByElement.get(skillElement) ?? 1
+        : 1;
+    const damage = Math.max(
+      1,
+      Math.round(raw * talentElementMul * buffElementMul),
+    );
 
     // Trừ resource trước (cooldown set ngay để chống burst).
     this.cooldowns.set(char.id, now);
