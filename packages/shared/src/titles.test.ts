@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
+import { ACHIEVEMENTS } from './achievements';
 import { ELEMENTS } from './combat';
 import { REALMS } from './realms';
 
@@ -97,6 +98,22 @@ describe('TITLES catalog shape', () => {
         expect(t.unlockAchievementKey).not.toBeNull();
       } else {
         expect(t.unlockAchievementKey).toBeNull();
+      }
+    }
+  });
+
+  // Phase 11.10.G-2 catalog cross-ref hardening — verify referential integrity
+  // titles.unlockAchievementKey → ACHIEVEMENTS catalog. Bảo vệ
+  // `titleForAchievement(achievementKey)` lookup khỏi catalog drift / typo
+  // rename ở 1 catalog mà không cập nhật catalog kia.
+  it('source=achievement: unlockAchievementKey PHẢI tồn tại trong ACHIEVEMENTS catalog', () => {
+    const achievementKeys = new Set(ACHIEVEMENTS.map((a) => a.key));
+    for (const t of TITLES) {
+      if (t.source === 'achievement' && t.unlockAchievementKey !== null) {
+        expect(
+          achievementKeys.has(t.unlockAchievementKey),
+          `title ${t.key} unlockAchievementKey='${t.unlockAchievementKey}' không tồn tại trong ACHIEVEMENTS catalog`,
+        ).toBe(true);
       }
     }
   });

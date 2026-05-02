@@ -164,6 +164,34 @@ describe('ACHIEVEMENTS catalog shape', () => {
       }
     }
   });
+
+  // Phase 11.10.G-2 — Bidirectional reciprocity invariant. Nếu achievement
+  // A có `rewardTitleKey = T`, thì title T PHẢI có `source='achievement'`
+  // VÀ `unlockAchievementKey = A.key`. Bảo vệ `titleForAchievement(A.key)`
+  // lookup trong `claimReward` luôn match đúng title đã reference.
+  // Detect mismatch khi designer rename achievement key mà quên update
+  // `unlockAchievementKey` ở title catalog (hoặc ngược lại).
+  it('rewardTitleKey reciprocity: title được reference PHẢI có source=achievement + unlockAchievementKey = achievement.key', () => {
+    for (const a of ACHIEVEMENTS) {
+      if (a.rewardTitleKey === null) continue;
+      const title = TITLES.find((t) => t.key === a.rewardTitleKey);
+      // Existence already checked in previous test; re-asserting để safe-guard
+      // nếu suite chạy isolated.
+      expect(
+        title,
+        `achievement ${a.key} rewardTitleKey '${a.rewardTitleKey}' không tồn tại trong TITLES`,
+      ).toBeDefined();
+      if (!title) continue;
+      expect(
+        title.source,
+        `title ${title.key} bị reference bởi achievement ${a.key} qua rewardTitleKey nhưng có source='${title.source}', expect 'achievement'`,
+      ).toBe('achievement');
+      expect(
+        title.unlockAchievementKey,
+        `title ${title.key} bị reference bởi achievement ${a.key} nhưng unlockAchievementKey='${title.unlockAchievementKey}', expect '${a.key}'`,
+      ).toBe(a.key);
+    }
+  });
 });
 
 describe('ACHIEVEMENTS curve coverage', () => {
