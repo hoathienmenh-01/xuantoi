@@ -6,6 +6,7 @@ import { CharacterService } from '../character/character.service';
 import { CharacterSkillService } from '../character/character-skill.service';
 import { InventoryService } from '../inventory/inventory.service';
 import { CurrencyService } from '../character/currency.service';
+import { TitleService } from '../character/title.service';
 import { AchievementService } from '../character/achievement.service';
 import { CombatService } from './combat.service';
 import {
@@ -478,7 +479,8 @@ describe('CombatService', () => {
       const chars = new CharacterService(prisma, realtime);
       const inventory = new InventoryService(prisma, realtime, chars);
       const currency = new CurrencyService(prisma);
-      const achievements = new AchievementService(prisma);
+      const title = new TitleService(prisma);
+      const achievements = new AchievementService(prisma, currency, title);
       const missions = makeMissionService(prisma);
       combatWithAchievements = new CombatService(
         prisma,
