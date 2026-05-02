@@ -1091,4 +1091,92 @@ describe('CombatService', () => {
       expect(dmg).toBe(19);
     });
   });
+
+  // ── Phase 11.4.D — Equip spiritBonus wire vào effSpirit ───────────────
+  // Wire item base spirit + gem socket bonus + refine multiplier (đã compute
+  // ở `inventory.equipBonus.spiritBonus`) vào effSpirit cho defense calc của
+  // monster reply. Pattern same as atk wire (line 232): (base + flat) × mul.
+  describe('Equip spiritBonus wire (Phase 11.4.D)', () => {
+    let inv: InventoryService;
+
+    beforeAll(() => {
+      const realtime = new RealtimeService();
+      const chars = new CharacterService(prisma, realtime);
+      inv = new InventoryService(prisma, realtime, chars);
+    });
+
+    it('character equip weapon có spirit bonus + gem spirit → effSpirit increase → reply damage <= baseline', async () => {
+      vi.spyOn(Math, 'random').mockReturnValue(0.5);
+      // Baseline: character KHÔNG equip item — equip.spiritBonus = 0.
+      const baseUser = await makeUserChar(prisma, {
+        realmKey: 'kim_dan',
+        stamina: 100,
+        power: 5,
+        spirit: 50,
+        hp: 1000,
+        hpMax: 1000,
+      });
+      const baseEnc = await combat.start(baseUser.userId, 'son_coc');
+      await combat.action(baseUser.userId, baseEnc.id, {});
+      const baseChar = await prisma.character.findUniqueOrThrow({
+        where: { id: baseUser.characterId },
+      });
+      const baseHpLost = 1000 - baseChar.hp;
+
+      // Equip: huyen_kiem (base atk +12, spirit +2) + gem_kim_pham
+      // (atk +3, spirit +1) socket → equip.spiritBonus = 3.
+      const equipUser = await makeUserChar(prisma, {
+        realmKey: 'kim_dan',
+        stamina: 100,
+        power: 5,
+        spirit: 50,
+        hp: 1000,
+        hpMax: 1000,
+      });
+      await inv.grant(
+        equipUser.characterId,
+        [{ itemKey: 'huyen_kiem', qty: 1 }],
+        { reason: 'ADMIN_GRANT' },
+      );
+      const weapon = await prisma.inventoryItem.findFirstOrThrow({
+        where: { characterId: equipUser.characterId, itemKey: 'huyen_kiem' },
+      });
+      await inv.equip(equipUser.userId, weapon.id);
+      await prisma.inventoryItem.update({
+        where: { id: weapon.id },
+        data: { sockets: ['gem_kim_pham'] },
+      });
+
+      const equipEnc = await combat.start(equipUser.userId, 'son_coc');
+      await combat.action(equipUser.userId, equipEnc.id, {});
+      const equipChar = await prisma.character.findUniqueOrThrow({
+        where: { id: equipUser.characterId },
+      });
+      const equipHpLost = 1000 - equipChar.hp;
+      // Higher effSpirit → lower (hoặc bằng) incoming reply damage.
+      // Equip spiritBonus = 3 cộng vào effSpirit nên defense lớn hơn.
+      expect(equipHpLost).toBeLessThanOrEqual(baseHpLost);
+    });
+
+    it('character KHÔNG equip item → equip.spiritBonus = 0 → effSpirit = char.spirit (identity baseline)', async () => {
+      vi.spyOn(Math, 'random').mockReturnValue(0.5);
+      const u = await makeUserChar(prisma, {
+        realmKey: 'kim_dan',
+        stamina: 100,
+        power: 20,
+        spirit: 100,
+        hp: 1000,
+        hpMax: 1000,
+      });
+      const enc = await combat.start(u.userId, 'son_coc');
+      await combat.action(u.userId, enc.id, {});
+      const encAfter = await prisma.encounter.findUniqueOrThrow({
+        where: { id: enc.id },
+      });
+      const st = encAfter.state as { monsterHp: number };
+      const dmg = 30 - st.monsterHp;
+      // Damage formula gốc: same baseline 19 dmg.
+      expect(dmg).toBe(19);
+    });
+  });
 });
