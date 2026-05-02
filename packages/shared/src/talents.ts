@@ -93,7 +93,7 @@ export interface TalentDef {
 }
 
 /**
- * 23 talent baseline cover passive + active × 5 element + neutral.
+ * 27 talent baseline cover passive + active × 5 element + neutral.
  * (Phase 11.X.AA: thêm `talent_huyen_thuy_tam` thuy +10% spirit — producer
  * đầu tiên cho `composePassiveTalentMods.spiritMul`, activate Phase 11.4.G
  * (boss spirit branch wire) + Phase 11.X.U (combat effSpirit defense wire).)
@@ -127,6 +127,14 @@ export interface TalentDef {
  * `talent_kim_thien_co` và `talent_moc_lam_phach`. Cùng `realmRequirement:
  * 'kim_dan'` + `talentPointCost: 1`. 5-element atk ceiling = 1.1⁵ = 1.61051,
  * khớp 5-element spirit ceiling.)
+ * (Phase 11.X.AJ: thêm `talent_kim_thiet_giap` (kim), `talent_moc_dan_giap`
+ * (moc), `talent_thuy_kien_giap` (thuy), `talent_hoa_phap_giap` (hoa) +10% def
+ * — producers thứ 2/3/4/5 cho `composePassiveTalentMods.defMul`. **Hoàn tất
+ * 5-element def coverage roadmap** (tho ✅ qua `talent_tho_son_tuong` từ trước,
+ * + 4 element còn lại). Symmetric structure với `talent_tho_son_tuong`. Cùng
+ * `realmRequirement: 'kim_dan'` + `talentPointCost: 1` (tho son tuong có
+ * `realmRequirement: 'truc_co'` early-game; 4 talent mới tier kim_dan giống atk
+ * tier). 5-element def ceiling = 1.1⁵ = 1.61051, khớp atk + spirit ceiling.)
  *
  * Stable order: passive trước → active sau.
  */
@@ -161,6 +169,23 @@ export const TALENTS: readonly TalentDef[] = [
       kind: 'stat_mod',
       value: 1.1,
       statTarget: 'spirit',
+      elementTarget: null,
+    },
+    activeEffect: null,
+  },
+  {
+    key: 'talent_kim_thiet_giap',
+    name: 'Kim Thiết Giáp',
+    description:
+      'Kim khí luyện thành thiết giáp phủ thân, +10% phòng ngự.',
+    type: 'passive',
+    element: 'kim',
+    realmRequirement: 'kim_dan',
+    talentPointCost: 1,
+    passiveEffect: {
+      kind: 'stat_mod',
+      value: 1.1,
+      statTarget: 'def',
       elementTarget: null,
     },
     activeEffect: null,
@@ -210,6 +235,23 @@ export const TALENTS: readonly TalentDef[] = [
       kind: 'stat_mod',
       value: 1.1,
       statTarget: 'atk',
+      elementTarget: null,
+    },
+    activeEffect: null,
+  },
+  {
+    key: 'talent_thuy_kien_giap',
+    name: 'Thuỷ Kiên Giáp',
+    description:
+      'Thuỷ khí đông kết thành kiên giáp, +10% phòng ngự.',
+    type: 'passive',
+    element: 'thuy',
+    realmRequirement: 'kim_dan',
+    talentPointCost: 1,
+    passiveEffect: {
+      kind: 'stat_mod',
+      value: 1.1,
+      statTarget: 'def',
       elementTarget: null,
     },
     activeEffect: null,
@@ -265,6 +307,23 @@ export const TALENTS: readonly TalentDef[] = [
     activeEffect: null,
   },
   {
+    key: 'talent_moc_dan_giap',
+    name: 'Mộc Đan Giáp',
+    description:
+      'Mộc đan luyện thành giáp siêu dẻo dai, +10% phòng ngự.',
+    type: 'passive',
+    element: 'moc',
+    realmRequirement: 'kim_dan',
+    talentPointCost: 1,
+    passiveEffect: {
+      kind: 'stat_mod',
+      value: 1.1,
+      statTarget: 'def',
+      elementTarget: null,
+    },
+    activeEffect: null,
+  },
+  {
     key: 'talent_hoa_tam_dao',
     name: 'Hoả Tâm Đạo',
     description: 'Tâm tựa hoả thiêu, +15% sát thương lên kẻ thù hệ Kim (tương khắc).',
@@ -310,6 +369,23 @@ export const TALENTS: readonly TalentDef[] = [
       kind: 'stat_mod',
       value: 1.1,
       statTarget: 'atk',
+      elementTarget: null,
+    },
+    activeEffect: null,
+  },
+  {
+    key: 'talent_hoa_phap_giap',
+    name: 'Hoả Pháp Giáp',
+    description:
+      'Pháp lực hoả tí thiêu tổn công pháp, +10% phòng ngự.',
+    type: 'passive',
+    element: 'hoa',
+    realmRequirement: 'kim_dan',
+    talentPointCost: 1,
+    passiveEffect: {
+      kind: 'stat_mod',
+      value: 1.1,
+      statTarget: 'def',
       elementTarget: null,
     },
     activeEffect: null,
