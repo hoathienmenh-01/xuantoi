@@ -9,6 +9,7 @@ import { CurrencyService } from '../character/currency.service';
 import { TitleService } from '../character/title.service';
 import { AchievementService } from '../character/achievement.service';
 import { TalentService } from '../character/talent.service';
+import { BuffService } from '../character/buff.service';
 import { CombatService } from './combat.service';
 import {
   TEST_DATABASE_URL,
@@ -700,6 +701,185 @@ describe('CombatService', () => {
       });
       expect(ledger).toHaveLength(1);
       expect(ledger[0].delta).toBe(5n);
+    });
+  });
+
+  // — Phase 11.8.C Buff wire (stat mods + element damage compose vào combat) ----
+  describe('Buff wire (Phase 11.8.C)', () => {
+    let combatWithBuffs: CombatService;
+    let buffSvc: BuffService;
+
+    beforeAll(() => {
+      const realtime = new RealtimeService();
+      const chars = new CharacterService(prisma, realtime);
+      const inventory = new InventoryService(prisma, realtime, chars);
+      const currency = new CurrencyService(prisma);
+      const missions = makeMissionService(prisma);
+      buffSvc = new BuffService(prisma);
+      combatWithBuffs = new CombatService(
+        prisma,
+        realtime,
+        chars,
+        inventory,
+        currency,
+        missions,
+        undefined, // characterSkill
+        undefined, // achievements
+        undefined, // talents
+        buffSvc,
+      );
+    });
+
+    afterEach(() => {
+      vi.restoreAllMocks();
+    });
+
+    it('pill_atk_buff_t1 (atk*1.12) → effPower 20→22.4 → dmg 19→21', async () => {
+      vi.spyOn(Math, 'random').mockReturnValue(0.5);
+      // Baseline — no buff.
+      const baseUser = await makeUserChar(prisma, {
+        realmKey: 'kim_dan',
+        stamina: 100,
+        power: 20,
+        spirit: 100,
+        hp: 1000,
+        hpMax: 1000,
+      });
+      const baseEnc = await combatWithBuffs.start(baseUser.userId, 'son_coc');
+      await combatWithBuffs.action(baseUser.userId, baseEnc.id, {});
+      const baseEncAfter = await prisma.encounter.findUniqueOrThrow({
+        where: { id: baseEnc.id },
+      });
+      const baseState = baseEncAfter.state as { monsterHp: number };
+      const baseDmg = 30 - baseState.monsterHp; // son_thu_lon hp=30
+      expect(baseDmg).toBe(19);
+
+      // With pill_atk_buff_t1 → atkMul=1.12.
+      const buffUser = await makeUserChar(prisma, {
+        realmKey: 'kim_dan',
+        stamina: 100,
+        power: 20,
+        spirit: 100,
+        hp: 1000,
+        hpMax: 1000,
+      });
+      await buffSvc.applyBuff(buffUser.characterId, 'pill_atk_buff_t1', 'pill');
+      const buffEnc = await combatWithBuffs.start(buffUser.userId, 'son_coc');
+      await combatWithBuffs.action(buffUser.userId, buffEnc.id, {});
+      const buffEncAfter = await prisma.encounter.findUniqueOrThrow({
+        where: { id: buffEnc.id },
+      });
+      const buffState = buffEncAfter.state as { monsterHp: number };
+      const buffDmg = 30 - buffState.monsterHp;
+      // effPower = 20 * 1.12 = 22.4. rollDamage(22.4, 2, 1) = round(21.4) = 21.
+      expect(buffDmg).toBe(21);
+      expect(buffDmg).toBeGreaterThan(baseDmg);
+    });
+
+    it('debuff_boss_atk_down (atk*0.82) → effPower 20→16.4 → dmg 19→15', async () => {
+      vi.spyOn(Math, 'random').mockReturnValue(0.5);
+      const u = await makeUserChar(prisma, {
+        realmKey: 'kim_dan',
+        stamina: 100,
+        power: 20,
+        spirit: 100,
+        hp: 1000,
+        hpMax: 1000,
+      });
+      await buffSvc.applyBuff(u.characterId, 'debuff_boss_atk_down', 'boss_skill');
+      const enc = await combatWithBuffs.start(u.userId, 'son_coc');
+      await combatWithBuffs.action(u.userId, enc.id, {});
+      const encAfter = await prisma.encounter.findUniqueOrThrow({
+        where: { id: enc.id },
+      });
+      const st = encAfter.state as { monsterHp: number };
+      const dmg = 30 - st.monsterHp;
+      // effPower = 20 * 0.82 = 16.4. rollDamage(16.4, 2, 1) = round(15.4) = 15.
+      expect(dmg).toBe(15);
+    });
+
+    it('pill_def_buff_t1 (def*1.15) → incoming monster damage reduced', async () => {
+      vi.spyOn(Math, 'random').mockReturnValue(0.5);
+      // Baseline — no buff, monster hits back. Power low enough so monster
+      // survives → counter-attack happens.
+      const baseUser = await makeUserChar(prisma, {
+        realmKey: 'kim_dan',
+        stamina: 100,
+        power: 5,
+        spirit: 10,
+        hp: 1000,
+        hpMax: 1000,
+      });
+      const baseEnc = await combatWithBuffs.start(baseUser.userId, 'son_coc');
+      await combatWithBuffs.action(baseUser.userId, baseEnc.id, {});
+      const baseChar = await prisma.character.findUniqueOrThrow({
+        where: { id: baseUser.characterId },
+      });
+      const baseHpLost = 1000 - baseChar.hp;
+
+      // With pill_def_buff_t1 → defMul=1.15.
+      const buffUser = await makeUserChar(prisma, {
+        realmKey: 'kim_dan',
+        stamina: 100,
+        power: 5,
+        spirit: 10,
+        hp: 1000,
+        hpMax: 1000,
+      });
+      await buffSvc.applyBuff(buffUser.characterId, 'pill_def_buff_t1', 'pill');
+      const buffEnc = await combatWithBuffs.start(buffUser.userId, 'son_coc');
+      await combatWithBuffs.action(buffUser.userId, buffEnc.id, {});
+      const buffChar = await prisma.character.findUniqueOrThrow({
+        where: { id: buffUser.characterId },
+      });
+      const buffHpLost = 1000 - buffChar.hp;
+      // Higher effDef → lower incoming damage → HP lost should be ≤ baseline.
+      expect(buffHpLost).toBeLessThanOrEqual(baseHpLost);
+    });
+
+    it('không inject BuffService → identity baseline (dmg = 19, same as no-buff)', async () => {
+      vi.spyOn(Math, 'random').mockReturnValue(0.5);
+      // combat (no BuffService) — identity behavior via main `combat` instance.
+      const u = await makeUserChar(prisma, {
+        realmKey: 'kim_dan',
+        stamina: 100,
+        power: 20,
+        spirit: 100,
+        hp: 1000,
+        hpMax: 1000,
+      });
+      const enc = await combat.start(u.userId, 'son_coc');
+      await combat.action(u.userId, enc.id, {});
+      const encAfter = await prisma.encounter.findUniqueOrThrow({
+        where: { id: enc.id },
+      });
+      const st = encAfter.state as { monsterHp: number };
+      const dmg = 30 - st.monsterHp;
+      expect(dmg).toBe(19);
+    });
+
+    it('expired buff is pruned and has no effect', async () => {
+      vi.spyOn(Math, 'random').mockReturnValue(0.5);
+      const u = await makeUserChar(prisma, {
+        realmKey: 'kim_dan',
+        stamina: 100,
+        power: 20,
+        spirit: 100,
+        hp: 1000,
+        hpMax: 1000,
+      });
+      // Apply buff with a past timestamp so it's already expired.
+      const pastDate = new Date(Date.now() - 120_000); // 2 min ago
+      await buffSvc.applyBuff(u.characterId, 'pill_atk_buff_t1', 'pill', pastDate);
+      const enc = await combatWithBuffs.start(u.userId, 'son_coc');
+      await combatWithBuffs.action(u.userId, enc.id, {});
+      const encAfter = await prisma.encounter.findUniqueOrThrow({
+        where: { id: enc.id },
+      });
+      const st = encAfter.state as { monsterHp: number };
+      const dmg = 30 - st.monsterHp;
+      // Expired buff pruned → identity baseline → dmg = 19 (same as no-buff).
+      expect(dmg).toBe(19);
     });
   });
 });

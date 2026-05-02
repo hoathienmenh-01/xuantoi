@@ -29,9 +29,11 @@ import { CharacterSkillService } from '../character/character-skill.service';
 import { CurrencyService } from '../character/currency.service';
 import { AchievementService } from '../character/achievement.service';
 import { TalentService } from '../character/talent.service';
+import { BuffService } from '../character/buff.service';
 import { InventoryService } from '../inventory/inventory.service';
 import { MissionService } from '../mission/mission.service';
 import { composePassiveTalentMods, type PassiveTalentMods } from '@xuantoi/shared';
+import { composeBuffMods, type BuffMods } from '@xuantoi/shared';
 
 export interface EncounterState {
   monsterIndex: number;
@@ -106,6 +108,7 @@ export class CombatService {
     @Optional() private readonly characterSkill?: CharacterSkillService,
     @Optional() private readonly achievements?: AchievementService,
     @Optional() private readonly talents?: TalentService,
+    @Optional() private readonly buffs?: BuffService,
   ) {}
 
   listDungeons() {
@@ -209,8 +212,13 @@ export class CombatService {
     const talentMods: PassiveTalentMods = this.talents
       ? await this.talents.getMods(char.id)
       : composePassiveTalentMods([]);
-    const effPower = (char.power + equip.atk) * statMul * talentMods.atkMul;
-    const effDef = equip.def * statMul * talentMods.defMul;
+    // Phase 11.8.C — Buff/debuff stat mods compose. No active buffs or service
+    // not injected → identity baseline (all mul = 1.0, all flat = 0).
+    const buffMods: BuffMods = this.buffs
+      ? await this.buffs.getMods(char.id)
+      : composeBuffMods([]);
+    const effPower = (char.power + equip.atk) * statMul * talentMods.atkMul * buffMods.atkMul;
+    const effDef = equip.def * statMul * talentMods.defMul * buffMods.defMul;
 
     const log: EncounterLogLine[] = [
       ...((enc.log as unknown as EncounterLogLine[]) ?? []),
@@ -239,10 +247,16 @@ export class CombatService {
       skillElement !== null
         ? talentMods.damageBonusByElement.get(skillElement) ?? 1
         : 1;
+    // Phase 11.8.C — Buff damage_bonus theo element. Compound multiplicative
+    // với talent + linh căn element bonus.
+    const buffElementMul =
+      skillElement !== null
+        ? buffMods.damageBonusByElement.get(skillElement) ?? 1
+        : 1;
 
     // — Player attack (Phase 11.2.B — atkScale + mpCost từ mastery curve)
     const dmgBase = rollDamage(effPower, monster.def, effective.atkScale);
-    const dmg = Math.max(1, Math.round(dmgBase * playerElementMul * talentElementMul));
+    const dmg = Math.max(1, Math.round(dmgBase * playerElementMul * talentElementMul * buffElementMul));
     let monsterHp = state.monsterHp - dmg;
     charMp -= effective.mpCost;
     if (skill.selfBloodCost > 0) {
@@ -326,12 +340,22 @@ export class CombatService {
       }
     } else {
       // — Monster counter-attack (Phase 11.3.B — element vs character primary)
-      const replyBase = rollDamage(monster.atk, char.spirit + effPower * 0.3 + effDef, 1);
+      // Phase 11.8.C — spiritMul buff wire vào defense calc.
+      const effSpirit = char.spirit * buffMods.spiritMul;
+      const replyBase = rollDamage(monster.atk, effSpirit + effPower * 0.3 + effDef, 1);
       const monsterElementMul = elementMultiplier(
         (monster.element ?? null) as ElementKey | null,
         (char.primaryElement ?? null) as ElementKey | null,
       );
-      const reply = Math.max(1, Math.round(replyBase * monsterElementMul));
+      // Phase 11.8.C — damageReductionByElement buff wire: reduce incoming
+      // damage from monster's element. Identity (1.0) khi no buff hoặc
+      // monster element không match.
+      const monsterElemKey = (monster.element ?? null) as ElementKey | null;
+      const buffDmgReduction =
+        monsterElemKey !== null
+          ? buffMods.damageReductionByElement.get(monsterElemKey) ?? 1
+          : 1;
+      const reply = Math.max(1, Math.round(replyBase * monsterElementMul * buffDmgReduction));
       charHp -= reply;
       log.push({
         side: 'monster',
