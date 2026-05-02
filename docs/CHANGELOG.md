@@ -10,7 +10,43 @@ Tóm tắt **người chơi / vận hành / dev** dễ đọc, theo PR đã merg
 
 ## [Unreleased]
 
-> Pending merge: docs CHANGELOG catch-up session 9r-25 part 3 + 9r-26 — PR #261 (audit) + #262 (Phase 11.X.M DOT) + #263 (audit) + #264 (Phase 11.X.O control) + #265 (Phase 11.X.N shield) (this PR).
+> Pending merge: docs CHANGELOG catch-up session 9r-26 part 5 — PR #267 (Phase 11.7.E talent regen) + #268 (Phase 11.X.Q boss control) + #270 (Phase 11.X.R boss cultivationBlocked) + #271 (Phase 11.4.E boss equip atk) (this PR).
+
+---
+
+## [session 9r-26 part 5 — boss wire batch — PR #267 → #271, merged 2/5 2026]
+
+### Internal — Phase 11 boss/cultivation passive wires (no catalog change)
+
+**Compose-and-fail-soft pattern** tiếp tục. 4 PR runtime wire mới fix gap real:
+
+- **Talent hp/mpRegenFlat wire vào CultivationProcessor** (PR #267 / Phase 11.7.E): `talentMods.hpRegenFlat` / `mpRegenFlat` cộng additively với `buffMods.hpRegenFlat` / `mpRegenFlat` ở cultivation tick regen branch. Catalog `talent_moc_linh_quy` (Mộc Linh Quy passive 5 HP regen mỗi tick) trước đó compute trong `composePassiveTalentMods` nhưng KHÔNG consume runtime — `cultivation.processor.ts` chỉ wire `buffMods.hpRegenFlat`, talent regen de facto no-op. Refactor `talentMods` fetch ONCE per character per tick, share giữa expMul (Phase 11.7.D) và regen (Phase 11.7.E). 5 vitest mới: lone talent (5/sec × 30s = 150 HP), talent + buff additive (10/sec × 30s = 300 HP), no-talent identity, no-service identity, debuff_taoma block. `cultivation.processor.ts` + `cultivation.processor.test.ts` + `AI_HANDOFF_REPORT.md`.
+- **Buff control wire vào BossService.attack()** (PR #268 / Phase 11.X.Q): parallel to Phase 11.X.O combat wire (PR #264). `buffMods.controlTurnsMax > 0` → throw `BossError('CONTROLLED')` BEFORE state mutation (cooldown set, mp/stamina/hp deduct, ledger). Catalog producer giống combat: `debuff_root_thuy` (3t), `debuff_stun_tho` (1t), `debuff_silence_kim` (2t). Inject `@Optional() buffs?: BuffService` vào BossService DI. Map `CONTROLLED` → HTTP 409 CONFLICT trong `BossController.handleErr`. 5 vitest mới: stun + state-unchanged, root, silence, no-debuff identity, no-service identity. `boss.service.ts` + `boss.controller.ts` + `boss.service.test.ts`.
+- **Buff cultivationBlocked wire vào BossService.attack()** (PR #270 / Phase 11.X.R; PR #269 v1 auto-closed do chained base deleted khi PR #268 merge → recreated): `buffMods.cultivationBlocked` (Tâm Ma `debuff_taoma`) → throw `BossError('CULTIVATION_BLOCKED')` BEFORE state mutation. Tâm Ma'd char đã bị block tu luyện EXP (Phase 11.8.D wire ở `CultivationProcessor`) giờ cũng bị block boss attack — semantically nhất quán. Cùng lần `getMods` với Phase 11.X.Q control check (consolidate single buff fetch). Map `CULTIVATION_BLOCKED` → HTTP 409. 3 vitest mới: taoma throw + state unchanged, no debuff identity, no service identity. `boss.service.ts` + `boss.controller.ts` + `boss.service.test.ts`.
+- **Equipment atk/spirit bonus wire vào BossService.attack()** (PR #271 / Phase 11.4.E): wire `inventory.equipBonus().atk` cộng vào `charAtk` + `equipBonus().spiritBonus` cộng vào `char.spirit` cho atkScale > 1 skill. Trước đây boss attack chỉ dùng `char.power`/`char.spirit` raw, hoàn toàn bỏ qua equip bonus (atk + sockets từ Phase 11.4.B + refine từ Phase 11.5.B). Player full equip có DPS boss thấp hơn nhiều so với combat (combat đã wire `equipBonus` + `statMul` + `talentMods` + `buffMods` + `titleMods` + element). Subset của Phase 11.X.S full stat wire — chỉ wire equip (low-risk balance), KHÔNG wire talent/buff/title atkMul (defer). 3 vitest mới với `vi.spyOn(Math, 'random').mockReturnValue(0.5)` deterministic: so_kiem +5 atk → damage cao hơn baseline, no-equip identity, huyen_kiem +12 atk +2 spirit. `boss.service.ts` + `boss.service.test.ts`.
+
+### Player-facing impact (post-merge)
+
+- **Tu luyện talent regen thực sự cộng HP/MP** (PR #267): player với `talent_moc_linh_quy` (Mộc Linh Quy) học được trong sect-tree giờ ăn 5 HP regen mỗi tick cultivation (~150 HP / 30s). Trước đó học talent này không có hiệu quả runtime nào. Stack additive với buff regen (potion / formation).
+- **Player bị control debuff không thể tấn công boss** (PR #268). Trước đó `debuff_root_thuy` / `debuff_stun_tho` / `debuff_silence_kim` chỉ block combat (Phase 11.X.O), boss vẫn cho phép → semantically inconsistent. Giờ throw `BossError('CONTROLLED')` HTTP 409, frontend hiển thị "Đang bị khống chế, không thể tấn công boss". State (cooldown / mp / stamina / hp) KHÔNG mutate khi throw.
+- **Player Tâm Ma không thể tấn công boss** (PR #270). Trước đó `debuff_taoma` chỉ block tu luyện EXP (Phase 11.8.D), boss vẫn cho phép. Giờ throw `BossError('CULTIVATION_BLOCKED')` HTTP 409. Semantically Tâm Ma'd char không tập trung được nên không tu luyện ↔ không boss-attack.
+- **Player full bộ equip có DPS boss tăng** (PR #271). Trước đó equip atk/spiritBonus + sockets + refine hoàn toàn bị bỏ qua trong boss damage formula — player không equip và player full equip có DPS boss bằng nhau, FIX gap real. Giờ equip atk cộng vào `charAtk`, equip spiritBonus cộng vào `char.spirit` cho skill atkScale > 1.
+
+### Tests baseline progression
+
+- Pre-PR-#267: API 1415 vitest (post-PR-#266).
+- Post-PR-#267: API 1420 vitest (+5 talent regen wire tests).
+- Post-PR-#268: API 1425 vitest (+5 boss control wire tests).
+- Post-PR-#270: API 1428 vitest (+3 boss cultivationBlocked wire tests).
+- Post-PR-#271: API 1431 vitest (+3 boss equip atk wire tests).
+- Total full suite post-PR-#271: API 1431 + shared 954 + web 588 = **2973 vitest**.
+
+### Risks / migrations
+
+- **None breaking schema/catalog**: pure consume wire, no schema/migration/catalog changes.
+- PR #268/#270 wire throws BEFORE state mutation → cooldown / character / ledger an toàn.
+- PR #271 balance impact: boss DPS tăng cho player có equip — đúng với expectation, fix gap thật. Damage tăng tỷ lệ với equip bonus existing trong DB (player chưa có equip không đổi).
+- PR #267 talent regen catalog hiện chỉ có 1 producer (`talent_moc_linh_quy` 5 HP/tick) → balance impact low, có thể nerf catalog `value` nếu cần.
 
 ---
 
