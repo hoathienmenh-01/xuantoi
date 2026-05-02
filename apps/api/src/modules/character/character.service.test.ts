@@ -402,3 +402,77 @@ describe('CharacterService.breakthrough with TitleService (Phase 11.9.C)', () =>
     expect(rows.length).toBe(0);
   });
 });
+
+describe('CharacterService.onboard with TitleService (Phase 11.9.C-3)', () => {
+  it('onboard tự auto-unlock title khởi đầu `realm_luyenkhi_initiate`', async () => {
+    const user = await prisma.user.create({
+      data: {
+        email: `onboard_title_${Date.now()}@test.local`,
+        passwordHash: 'x',
+        role: 'PLAYER',
+      },
+    });
+
+    const expectedTitle = titleForRealmMilestone('luyenkhi');
+    expect(expectedTitle).toBeDefined();
+    expect(expectedTitle!.key).toBe('realm_luyenkhi_initiate');
+
+    const state = await charsWithTitles.onboard(user.id, {
+      name: `OnboardTitle_${Date.now()}_${Math.floor(Math.random() * 9999)}`,
+      sectKey: 'thanh_van',
+    });
+
+    const rows = await prisma.characterTitleUnlock.findMany({
+      where: { characterId: state.id },
+    });
+    expect(rows.length).toBe(1);
+    expect(rows[0].titleKey).toBe('realm_luyenkhi_initiate');
+    expect(rows[0].source).toBe('realm_milestone');
+  });
+
+  it('onboard idempotent: pre-unlock manual rồi onboard → KHÔNG dup row', async () => {
+    // Tạo user + char qua charsWithTitles.onboard, manual unlock thêm 1 lần
+    // (mô phỏng retry / double-call) — vẫn 1 row.
+    const user = await prisma.user.create({
+      data: {
+        email: `onboard_title_idem_${Date.now()}@test.local`,
+        passwordHash: 'x',
+        role: 'PLAYER',
+      },
+    });
+    const state = await charsWithTitles.onboard(user.id, {
+      name: `OnboardIdem_${Date.now()}_${Math.floor(Math.random() * 9999)}`,
+      sectKey: 'tu_la',
+    });
+
+    // Manual unlock cùng key — phải idempotent.
+    await titleSvc.unlockTitle(
+      state.id,
+      'realm_luyenkhi_initiate',
+      'realm_milestone',
+    );
+    const rows = await prisma.characterTitleUnlock.findMany({
+      where: { characterId: state.id },
+    });
+    expect(rows.length).toBe(1);
+  });
+
+  it('onboard KHÔNG inject TitleService → vẫn create character (backward-compat)', async () => {
+    const user = await prisma.user.create({
+      data: {
+        email: `onboard_title_legacy_${Date.now()}@test.local`,
+        passwordHash: 'x',
+        role: 'PLAYER',
+      },
+    });
+    const state = await chars.onboard(user.id, {
+      name: `OnboardLegacy_${Date.now()}_${Math.floor(Math.random() * 9999)}`,
+      sectKey: 'huyen_thuy',
+    });
+
+    const rows = await prisma.characterTitleUnlock.findMany({
+      where: { characterId: state.id },
+    });
+    expect(rows.length).toBe(0);
+  });
+});
