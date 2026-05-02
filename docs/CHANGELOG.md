@@ -10,7 +10,44 @@ Tóm tắt **người chơi / vận hành / dev** dễ đọc, theo PR đã merg
 
 ## [Unreleased]
 
-> Pending merge: docs CHANGELOG catch-up session 9r-27 part 5 — PR #276 (CHANGELOG catch-up 9r-27 PR #272 → #275) + PR #277 (Phase 11.10.D Achievement item rewards via InventoryService.grantTx) (this PR).
+> Pending merge: docs CHANGELOG catch-up session 9r-28 — PR #279 (achievement catalog cross-ref test) + PR #280 (Phase 11.9.C breakthrough title wire) + PR #281 (Phase 11.9.C-2 tribulation title wire) (this PR).
+
+---
+
+## [session 9r-28 — Title auto-unlock trilogy (breakthrough + tribulation + onboard) + docs catch-up — PR #279 → #281, merged 2/5 2026]
+
+### Internal — Phase 11.9.C trilogy: Title auto-unlock realm milestone wire
+
+Sau Phase 11.9.B PR #245 đã có `TitleService.unlockTitle()` + `unlockTitleTx()` runtime persistence + `CharacterTitleUnlock` Prisma model với composite UNIQUE `(characterId, titleKey)`, **trilogy 11.9.C** wire helper `titleForRealmMilestone(realmKey)` từ shared catalog vào 3 character life-cycle event sites:
+
+- **Breakthrough low-tier title wire** (PR #280 / Phase 11.9.C): `apps/api/src/modules/character/character.service.ts` — import `Logger` + `titleForRealmMilestone` + `TitleService`. Constructor add `titles?: TitleService` 6th positional optional (NestJS DI auto-resolve). Sau `prisma.character.update` trong `breakthrough()` thành công, gate `if (this.titles && next)` rồi lookup `titleForRealmMilestone(newRealm)` → call `titles.unlockTitle(charId, def.key, 'realm_milestone')` trong try/catch. Fail-soft: title unlock lỗi KHÔNG fail breakthrough core path. Idempotent qua composite UNIQUE. 4 vitest mới (1441 → 1445 api).
+
+- **Tribulation high-tier title wire** (PR #281 / Phase 11.9.C-2): `apps/api/src/modules/character/tribulation.service.ts` — import `Logger` + `titleForRealmMilestone` + `TitleService`. Constructor add `titles?: TitleService` 3rd positional optional. Sau `currency.applyTx` trong SUCCESS branch (cùng `prisma.$transaction` đã có), gate `if (this.titles)` rồi lookup `titleForRealmMilestone(next.key)` → call `titles.unlockTitleTx(tx, charId, def.key, 'realm_milestone')` — TX-AWARE variant (KHÔNG mở tx mới). **Khác Phase 11.9.C low-tier**: KHÔNG fail-soft DB error (rollback toàn bộ tx) — chỉ catch `TITLE_NOT_FOUND` (catalog drift) → `Logger.warn`. Tribulation success path tx-atomic — nếu title unlock fail vì DB constraint thật, rollback better than partial state. 5 vitest mới (1445 → 1450 api).
+
+### Internal — Phase 11.10.G test hardening (no catalog change)
+
+- **Achievement catalog cross-ref invariants** (PR #279 / Phase 11.10.G): `packages/shared/src/achievements.test.ts` — add 2 vitest invariant: (1) `mọi reward.items[*].itemKey PHẢI tồn tại trong ITEMS catalog`, (2) `mọi rewardTitleKey PHẢI tồn tại trong TITLES catalog`. Bảo vệ Phase 11.10.D `claimReward` items grant path từ catalog drift (vd ai đó đổi item key trong items.ts mà quên update achievements.ts → test sẽ fail trước CI merge). Test-only, no runtime change.
+
+### Player-facing impact (post-merge)
+
+- **Auto-unlock title milestone sau breakthrough thành công** (PR #280): khi nhân vật đột phá thành công lên realm mới có milestone title (vd luyenkhi 9/9 → truc_co 1 → unlock `realm_truc_co_pillar` "Trúc Cơ Trụ Đạo"). 9/28 realm có title trong catalog (luyenkhi/truc_co/kim_dan/nguyen_anh/hoa_than/do_kiep/thien_tien/thanh_nhan/hu_khong_chi_ton). UI surfacing chưa có scope (Phase 11.9.D defer).
+
+- **Auto-unlock title milestone sau vượt kiếp thành công** (PR #281): khi nhân vật vượt kiếp thành công lên realm cao hơn có milestone title (vd kim_dan 9/9 → nguyen_anh 1 → unlock `realm_nguyen_anh_master` "Nguyên Anh Đại Sư"). Atomic-trong-tx: nếu kiếp success nhưng DB lỗi unlock title (không phải catalog drift), rollback toàn bộ — KHÔNG bao giờ realm advance mà thiếu title.
+
+- **Zero observable change cho realm transition không có title** (PR #280, #281): hoa_than → luyen_hu, luyen_hu → hop_the, hop_the → dai_thua, do_kiep → nhan_tien (4/7 tribulation transitions) không có milestone title trong catalog → wire skip, KHÔNG insert row. Future catalog mở rộng có thể bù.
+
+### Risk / rollback
+
+- 🟢 **PR #279**: zero runtime impact (test-only). Nếu fail trong tương lai, fix catalog references rồi commit lại.
+- 🟢 **PR #280**: low — fail-soft try/catch quanh `unlockTitle`. Backward-compat test confirm `chars` không inject titles vẫn breakthrough bình thường. Idempotent qua composite UNIQUE.
+- 🟢 **PR #281**: low — atomic guarantee qua tx, idempotent qua composite UNIQUE. Backward-compat test confirm. Tribulation high-tier transitions có 2/7 với title (kim_dan→nguyen_anh, nguyen_anh→hoa_than, dai_thua→do_kiep) → wire chỉ active 3 path; còn 4/7 transition không có title → skip silently.
+
+### Tests / CI
+
+- **PR #279**: 956 shared vitest (954 baseline + 2 invariant). CI 5/5 GREEN.
+- **PR #280**: 1445 api vitest (1441 baseline + 4 breakthrough title test). CI 5/5 GREEN.
+- **PR #281**: 1450 api vitest (1445 baseline + 5 tribulation title test). CI 5/5 GREEN.
+- Total monorepo baseline post-PR-#281: **2994 vitest** = shared 956 + api 1450 + web 588.
 
 ---
 
