@@ -236,6 +236,7 @@ model Character {
   cultivationMethods          CharacterCultivationMethod[]
   characterSkills             CharacterSkill[]
   tribulationAttemptLogs      TribulationAttemptLog[]
+  buffs                       CharacterBuff[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -375,6 +376,44 @@ model TribulationAttemptLog {
 
   @@index([characterId, createdAt])
   @@index([tribulationKey, createdAt])
+}
+
+/// Phase 11.8.B Buff MVP — duration-based buff/debuff persistence.
+/// 1 row per (`characterId`, `buffKey`). `BuffService.applyBuff` dùng upsert:
+///   - non-stackable: refresh `expiresAt` (catalog `BuffDef.stackable=false`).
+///   - stackable: increment `stacks` capped tại `BuffDef.maxStacks` + refresh
+///     `expiresAt`.
+/// `BuffService.removeBuff` xóa row explicit. `BuffService.pruneExpired(now)`
+/// xóa row có `expiresAt <= now` (cron sweep). `BuffService.listActive(charId,
+/// now)` auto-prune trước khi return. `BuffService.getMods(charId, now)` rely
+/// vào `composeBuffMods(activeBuffs)` từ `packages/shared/src/buffs.ts`.
+///
+/// Source ref `BuffSource` ∈ {pill, sect_aura, event, equipment, skill, talent,
+/// boss_skill, tribulation}. Không enum để giữ catalog flexible (catalog có
+/// thể mở rộng source mới mà không cần migration).
+///
+/// Wire FUTURE PR (out of scope 11.8.B):
+///   - tribulation FAIL Tâm Ma → `applyBuff('debuff_taoma','tribulation')`.
+///   - alchemy pill consume → `applyBuff('buff_pill_*', 'pill')`.
+///   - skill DOT/CC → applyBuff('debuff_*', 'skill')` trong combat tick.
+///   - `composeBuffMods` wire vào `CharacterStatService.computeStats` để stat
+///     mod (atk/def/hpMax/mpMax/spirit) áp dụng vào combat + cultivation tick.
+model CharacterBuff {
+  id          String    @id @default(cuid())
+  characterId String
+  character   Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  /// Khoá tham chiếu `BUFFS` trong `packages/shared/src/buffs.ts`.
+  buffKey     String
+  /// Stack count hiện tại (1..`def.maxStacks`). Non-stackable luôn = 1.
+  stacks      Int       @default(1)
+  /// `BuffSource` snapshot — audit nguồn gốc (catalog có thể đổi sau).
+  source      String
+  expiresAt   DateTime
+  createdAt   DateTime  @default(now())
+
+  @@unique([characterId, buffKey])
+  @@index([expiresAt])
+  @@index([characterId, expiresAt])
 }
 
 enum MissionPeriod {
