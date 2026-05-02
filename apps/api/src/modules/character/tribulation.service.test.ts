@@ -4,9 +4,11 @@ import {
   expCostForStage,
   getTribulationForBreakthrough,
   simulateTribulation,
+  titleForRealmMilestone,
 } from '@xuantoi/shared';
 import { PrismaService } from '../../common/prisma.service';
 import { CurrencyService } from './currency.service';
+import { TitleService } from './title.service';
 import { TribulationError, TribulationService } from './tribulation.service';
 import { makeUserChar, wipeAll } from '../../test-helpers';
 
@@ -18,12 +20,16 @@ const TEST_DATABASE_URL =
 let prisma: PrismaService;
 let currency: CurrencyService;
 let svc: TribulationService;
+let titleSvc: TitleService;
+let svcWithTitles: TribulationService;
 
 beforeAll(() => {
   process.env.DATABASE_URL = TEST_DATABASE_URL;
   prisma = new PrismaService();
   currency = new CurrencyService(prisma);
+  titleSvc = new TitleService(prisma);
   svc = new TribulationService(prisma, currency);
+  svcWithTitles = new TribulationService(prisma, currency, titleSvc);
 });
 
 beforeEach(async () => {
@@ -399,5 +405,109 @@ describe('TribulationService.attemptTribulation — atomicity', () => {
       expect(e).toBeInstanceOf(TribulationError);
       expect((e as TribulationError).code).toBe('NOT_AT_PEAK');
     }
+  });
+});
+
+describe('TribulationService.attemptTribulation with TitleService (Phase 11.9.C-2)', () => {
+  it('SUCCESS kim_dan → nguyen_anh tự auto-unlock title `realm_nguyen_anh_master` (atomic trong tx)', async () => {
+    const ctx = await setupCharAtKimDanPeak({ hpMax: 10_000 });
+    const expected = titleForRealmMilestone('nguyen_anh');
+    expect(expected).toBeDefined();
+    expect(expected!.key).toBe('realm_nguyen_anh_master');
+
+    const out = await svcWithTitles.attemptTribulation(
+      ctx.characterId,
+      () => 0.0,
+    );
+    expect(out.success).toBe(true);
+    expect(out.toRealmKey).toBe('nguyen_anh');
+
+    const rows = await prisma.characterTitleUnlock.findMany({
+      where: { characterId: ctx.characterId },
+    });
+    expect(rows.length).toBe(1);
+    expect(rows[0].titleKey).toBe('realm_nguyen_anh_master');
+    expect(rows[0].source).toBe('realm_milestone');
+  });
+
+  it('SUCCESS hoa_than → luyen_hu (luyen_hu KHÔNG có title milestone) → KHÔNG insert row', async () => {
+    const HOA_THAN_COST_9 = expCostForStage('hoa_than', 9) ?? 0n;
+    const ctx = await makeUserChar(prisma, {
+      realmKey: 'hoa_than',
+      realmStage: 9,
+      exp: HOA_THAN_COST_9 + 1000n,
+      hp: 1_000_000,
+      hpMax: 1_000_000, // major sev wave có dmg cao, set hpMax đủ pass.
+      mp: 200,
+      mpMax: 200,
+      linhThach: 0n,
+    });
+    expect(titleForRealmMilestone('luyen_hu')).toBeUndefined();
+
+    const out = await svcWithTitles.attemptTribulation(
+      ctx.characterId,
+      () => 0.99, // không trigger taoMa.
+    );
+    expect(out.success).toBe(true);
+    expect(out.toRealmKey).toBe('luyen_hu');
+
+    const rows = await prisma.characterTitleUnlock.findMany({
+      where: { characterId: ctx.characterId },
+    });
+    expect(rows.length).toBe(0);
+  });
+
+  it('SUCCESS idempotent: title đã unlock trước → KHÔNG dup row (composite UNIQUE)', async () => {
+    const ctx = await setupCharAtKimDanPeak({ hpMax: 10_000 });
+    // Pre-unlock title qua TitleService để giả lập đã có sẵn.
+    await titleSvc.unlockTitle(
+      ctx.characterId,
+      'realm_nguyen_anh_master',
+      'realm_milestone',
+    );
+    const before = await prisma.characterTitleUnlock.findMany({
+      where: { characterId: ctx.characterId },
+    });
+    expect(before.length).toBe(1);
+
+    const out = await svcWithTitles.attemptTribulation(
+      ctx.characterId,
+      () => 0.0,
+    );
+    expect(out.success).toBe(true);
+
+    const after = await prisma.characterTitleUnlock.findMany({
+      where: { characterId: ctx.characterId },
+    });
+    expect(after.length).toBe(1);
+  });
+
+  it('SUCCESS KHÔNG inject TitleService → vẫn advance realm + grant reward (backward-compat)', async () => {
+    const ctx = await setupCharAtKimDanPeak({ hpMax: 10_000 });
+    const out = await svc.attemptTribulation(ctx.characterId, () => 0.0);
+    expect(out.success).toBe(true);
+    expect(out.toRealmKey).toBe('nguyen_anh');
+
+    const rows = await prisma.characterTitleUnlock.findMany({
+      where: { characterId: ctx.characterId },
+    });
+    expect(rows.length).toBe(0);
+  });
+
+  it('FAIL path KHÔNG trigger title unlock (chỉ SUCCESS path mới unlock)', async () => {
+    const ctx = await setupCharAtKimDanPeak({
+      hpMax: 2_000,
+      exp: KIM_DAN_COST_9 + 100_000n,
+    });
+    const out = await svcWithTitles.attemptTribulation(
+      ctx.characterId,
+      () => 0.99,
+    );
+    expect(out.success).toBe(false);
+
+    const rows = await prisma.characterTitleUnlock.findMany({
+      where: { characterId: ctx.characterId },
+    });
+    expect(rows.length).toBe(0);
   });
 });
