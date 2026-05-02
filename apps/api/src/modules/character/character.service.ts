@@ -164,6 +164,27 @@ export class CharacterService {
       if (this.characterSkill) {
         await this.characterSkill.grantStarterIfMissing(c.id);
       }
+      // Phase 11.9.C-3 — auto-unlock realm milestone title
+      // `realm_luyenkhi_initiate` cho character mới (luyenkhi là realm khởi
+      // đầu, mọi nhân vật unlock 1 lần). Fail-soft: title unlock lỗi KHÔNG
+      // fail onboard core path (giống breakthrough Phase 11.9.C). Idempotent
+      // qua `CharacterTitleUnlock` composite UNIQUE — retry-safe.
+      if (this.titles) {
+        const titleDef = titleForRealmMilestone('luyenkhi');
+        if (titleDef) {
+          try {
+            await this.titles.unlockTitle(
+              c.id,
+              titleDef.key,
+              'realm_milestone',
+            );
+          } catch (err) {
+            this.logger.warn(
+              `onboard: failed to auto-unlock title ${titleDef.key} for char ${c.id}: ${(err as Error).message}`,
+            );
+          }
+        }
+      }
       const fresh = await this.prisma.character.findUnique({
         where: { id: c.id },
         include: { sect: true, user: true },
