@@ -103,6 +103,7 @@ export async function wipeAll(prisma: PrismaService): Promise<void> {
   await prisma.currencyLedger.deleteMany({});
   await prisma.tribulationAttemptLog.deleteMany({});
   await prisma.characterBuff.deleteMany({});
+  await prisma.characterTalent.deleteMany({});
   await prisma.characterCultivationMethod.deleteMany({});
   await prisma.characterSkill.deleteMany({});
   await prisma.spiritualRootRollLog.deleteMany({});

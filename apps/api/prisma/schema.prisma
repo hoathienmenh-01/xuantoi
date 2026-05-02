@@ -237,6 +237,7 @@ model Character {
   characterSkills             CharacterSkill[]
   tribulationAttemptLogs      TribulationAttemptLog[]
   buffs                       CharacterBuff[]
+  talents                     CharacterTalent[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -378,6 +379,7 @@ model TribulationAttemptLog {
   @@index([tribulationKey, createdAt])
 }
 
+<<<<<<< HEAD
 /// Phase 11.8.B Buff MVP — duration-based buff/debuff persistence.
 /// 1 row per (`characterId`, `buffKey`). `BuffService.applyBuff` dùng upsert:
 ///   - non-stackable: refresh `expiresAt` (catalog `BuffDef.stackable=false`).
@@ -414,6 +416,29 @@ model CharacterBuff {
   @@unique([characterId, buffKey])
   @@index([expiresAt])
   @@index([characterId, expiresAt])
+}
+
+/// Phase 11.7.B Talent (Thần Thông) MVP — passive/active talent persistence.
+/// 1 row per (`characterId`, `talentKey`); composite UNIQUE đảm bảo mỗi
+/// character học mỗi talent tối đa 1 lần. Talent point budget tính từ realm
+/// order qua `computeTalentPointBudget(currentRealmOrder)` (3 realm = 1 điểm
+/// ngộ đạo); spent points = sum `talentPointCost` of learned rows.
+///
+/// Wire FUTURE PR (out of scope 11.7.B):
+///   - `composePassiveTalentMods` vào `CharacterStatService.computeStats`
+///     → atk/def/hpMax/mpMax/spirit + drop/exp multiplier + element damage_bonus.
+///   - Active talent ("thần thông") execution `useActiveTalent` qua mp
+///     consume + cooldown turns enforce trong combat tick (Phase 11.7.C).
+model CharacterTalent {
+  id          String    @id @default(cuid())
+  characterId String
+  character   Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  /// Khoá tham chiếu `TALENTS` trong `packages/shared/src/talents.ts`.
+  talentKey   String
+  learnedAt   DateTime  @default(now())
+
+  @@unique([characterId, talentKey])
+  @@index([characterId, learnedAt])
 }
 
 enum MissionPeriod {
