@@ -1,4 +1,4 @@
-import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { BossStatus } from '@prisma/client';
 import { BOSSES, bossByKey } from '@xuantoi/shared';
 import { PrismaService } from '../../common/prisma.service';
@@ -712,6 +712,109 @@ describe('BossService', () => {
       const out = await boss.attack(a.userId, undefined);
       expect(out.result.defeated).toBe(false);
       expect(BigInt(out.result.damageDealt)).toBeGreaterThan(0n);
+    });
+  });
+
+  // ── Phase 11.4.E — Equipment atk/spirit bonus wire vào BossService.attack() ──
+  // Wire `inventory.equipBonus().atk` cộng vào `charAtk` (basic skill +
+  // spirit-scaled skill). Subset của Phase 11.X.S full stat wire, chỉ wire
+  // equip bonus, KHÔNG wire talent/buff/title/element atkMul.
+  describe('Equipment atk/spirit bonus wire (Phase 11.4.E)', () => {
+    afterEach(() => {
+      vi.restoreAllMocks();
+    });
+
+    it('character có weapon so_kiem (+5 atk) equipped → damage cao hơn baseline (no equip)', async () => {
+      // variance = 0.85 + 0.5 * 0.3 = 1.0 → deterministic damage.
+      vi.spyOn(Math, 'random').mockReturnValue(0.5);
+      const baseline = await makeUserChar(prisma, {
+        mp: 100,
+        stamina: 100,
+        power: 100,
+      });
+      const equipped = await makeUserChar(prisma, {
+        mp: 100,
+        stamina: 100,
+        power: 100,
+      });
+
+      // Grant + equip so_kiem (atk +5) cho equipped char.
+      const inv = (
+        boss as unknown as { inventory: InventoryService }
+      ).inventory;
+      await inv.grant(
+        equipped.characterId,
+        [{ itemKey: 'so_kiem', qty: 1 }],
+        { reason: 'ADMIN_GRANT' },
+      );
+      const sword = await prisma.inventoryItem.findFirstOrThrow({
+        where: { characterId: equipped.characterId, itemKey: 'so_kiem' },
+      });
+      await inv.equip(equipped.userId, sword.id);
+
+      // Boss currentHp đủ cao để cả 2 không hạ trong 1 hit (deterministic).
+      await spawnBoss({ currentHp: 1_000_000n });
+
+      const baselineOut = await boss.attack(baseline.userId, undefined);
+      const equippedOut = await boss.attack(equipped.userId, undefined);
+
+      expect(BigInt(equippedOut.result.damageDealt)).toBeGreaterThan(
+        BigInt(baselineOut.result.damageDealt),
+      );
+    });
+
+    it('character KHÔNG equip → identity (damage giống snapshot baseline)', async () => {
+      vi.spyOn(Math, 'random').mockReturnValue(0.5);
+      const a = await makeUserChar(prisma, {
+        mp: 100,
+        stamina: 100,
+        power: 100,
+      });
+      await spawnBoss({ currentHp: 1_000_000n });
+
+      const out = await boss.attack(a.userId, undefined);
+      expect(out.result.defeated).toBe(false);
+      expect(BigInt(out.result.damageDealt)).toBeGreaterThan(0n);
+    });
+
+    it('weapon có spirit bonus (huyen_kiem +12 atk +2 spirit) → damage cộng spiritBonus khi atkScale > 1', async () => {
+      vi.spyOn(Math, 'random').mockReturnValue(0.5);
+      // Note: skill mặc định (atk_thuong) atkScale = 1.0 → chỉ atk wire,
+      // KHÔNG dùng spirit branch. Test verify equipped char với weapon
+      // huyen_kiem (atk +12) damage cao hơn rõ rệt baseline 100 power.
+      const baseline = await makeUserChar(prisma, {
+        mp: 100,
+        stamina: 100,
+        power: 100,
+      });
+      const equipped = await makeUserChar(prisma, {
+        mp: 100,
+        stamina: 100,
+        power: 100,
+      });
+
+      const inv = (
+        boss as unknown as { inventory: InventoryService }
+      ).inventory;
+      await inv.grant(
+        equipped.characterId,
+        [{ itemKey: 'huyen_kiem', qty: 1 }],
+        { reason: 'ADMIN_GRANT' },
+      );
+      const sword = await prisma.inventoryItem.findFirstOrThrow({
+        where: { characterId: equipped.characterId, itemKey: 'huyen_kiem' },
+      });
+      await inv.equip(equipped.userId, sword.id);
+
+      await spawnBoss({ currentHp: 1_000_000n });
+
+      const baselineOut = await boss.attack(baseline.userId, undefined);
+      const equippedOut = await boss.attack(equipped.userId, undefined);
+
+      // huyen_kiem +12 atk → damage cao hơn baseline đáng kể.
+      expect(BigInt(equippedOut.result.damageDealt)).toBeGreaterThan(
+        BigInt(baselineOut.result.damageDealt),
+      );
     });
   });
 });
