@@ -618,4 +618,100 @@ describe('BossService', () => {
       expect(BigInt(out.result.damageDealt)).toBeGreaterThan(0n);
     });
   });
+
+  // ── Phase 11.X.R — Buff cultivationBlocked wire vào BossService.attack() ──
+  // Wire `buffMods.cultivationBlocked` (Tâm Ma debuff_taoma) throw `BossError
+  // ('CULTIVATION_BLOCKED')` BEFORE state mutation. Tâm Ma'd char không thể
+  // tu luyện EXP (đã wire ở CultivationProcessor) cũng không thể đánh boss.
+  describe('Buff cultivationBlocked wire (Phase 11.X.R)', () => {
+    let bossWithBuffsR: BossService;
+    let buffSvcR: BuffService;
+
+    beforeAll(() => {
+      const realtime = new RealtimeService();
+      const chars = new CharacterService(prisma, realtime);
+      const inventory = new InventoryService(prisma, realtime, chars);
+      const currency = new CurrencyService(prisma);
+      const missions = makeMissionService(prisma);
+      buffSvcR = new BuffService(prisma);
+      bossWithBuffsR = new BossService(
+        prisma,
+        realtime,
+        chars,
+        inventory,
+        currency,
+        missions,
+        undefined, // achievements
+        undefined, // talents
+        buffSvcR,
+      );
+    });
+
+    beforeEach(() => {
+      (bossWithBuffsR as unknown as { cooldowns: Map<string, number> })
+        .cooldowns.clear();
+    });
+
+    it('character có debuff_taoma (cultivationBlocked) → BossError CULTIVATION_BLOCKED, KHÔNG mutate state', async () => {
+      const a = await makeUserChar(prisma, {
+        mp: 100,
+        stamina: 100,
+        hp: 1000,
+        hpMax: 1000,
+      });
+      await buffSvcR.applyBuff(a.characterId, 'debuff_taoma', 'tribulation');
+      const w = await spawnBoss({ currentHp: 10000n });
+
+      let caught: BossError | null = null;
+      try {
+        await bossWithBuffsR.attack(a.userId, undefined);
+      } catch (e) {
+        if (e instanceof BossError) caught = e;
+      }
+      expect(caught).not.toBeNull();
+      expect(caught?.code).toBe('CULTIVATION_BLOCKED');
+
+      // Verify state UNCHANGED.
+      const after = await prisma.worldBoss.findUniqueOrThrow({
+        where: { id: w.id },
+      });
+      expect(after.currentHp).toBe(10000n);
+      const c = await prisma.character.findUniqueOrThrow({
+        where: { id: a.characterId },
+      });
+      expect(c.mp).toBe(100);
+      expect(c.stamina).toBe(100);
+      expect(c.hp).toBe(1000);
+      const cd = (
+        bossWithBuffsR as unknown as { cooldowns: Map<string, number> }
+      ).cooldowns.get(a.characterId);
+      expect(cd).toBeUndefined();
+    });
+
+    it('character KHÔNG có debuff_taoma → identity (no throw, attack succeeds)', async () => {
+      const a = await makeUserChar(prisma, {
+        mp: 100,
+        stamina: 100,
+      });
+      await spawnBoss({ currentHp: 10000n });
+
+      const out = await bossWithBuffsR.attack(a.userId, undefined);
+      expect(out.result.defeated).toBe(false);
+      expect(BigInt(out.result.damageDealt)).toBeGreaterThan(0n);
+    });
+
+    it('BuffService không inject vào BossService → identity baseline (no throw despite DB row)', async () => {
+      const a = await makeUserChar(prisma, {
+        mp: 100,
+        stamina: 100,
+      });
+      await buffSvcR.applyBuff(a.characterId, 'debuff_taoma', 'tribulation');
+      await spawnBoss({ currentHp: 10000n });
+
+      // Top-level `boss` instance không inject BuffService → bypass check.
+      const out = await boss.attack(a.userId, undefined);
+      expect(out.result.defeated).toBe(false);
+      expect(BigInt(out.result.damageDealt)).toBeGreaterThan(0n);
+    });
+  });
 });

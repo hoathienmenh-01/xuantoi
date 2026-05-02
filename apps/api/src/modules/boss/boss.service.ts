@@ -44,7 +44,8 @@ export class BossError extends Error {
       | 'BOSS_ALREADY_ACTIVE'
       | 'INVALID_BOSS_KEY'
       | 'INVALID_LEVEL'
-      | 'CONTROLLED',
+      | 'CONTROLLED'
+      | 'CULTIVATION_BLOCKED',
   ) {
     super(code);
   }
@@ -162,10 +163,19 @@ export class BossService implements OnModuleInit, OnModuleDestroy {
     // injected (legacy DI / test fixture without `buffs`) → identity (no
     // throw). Player bị root/stun/silence không thể boss-attack — frontend
     // hiển thị "Đang bị khống chế, không thể tấn công boss."
+    // Phase 11.X.R — Buff cultivationBlocked wire vào BossService.attack().
+    // Catalog producer: `debuff_taoma` (Tâm Ma — block cultivation EXP gain).
+    // Semantically Tâm Ma'd character không thể tập trung tu luyện hoặc chiến
+    // đấu boss — block boss attack giống control. Throw `CULTIVATION_BLOCKED`
+    // BEFORE state mutation. Cùng lần `getMods` với control check (consolidate
+    // single buff fetch).
     if (this.buffs) {
       const buffMods = await this.buffs.getMods(char.id);
       if (buffMods.controlTurnsMax > 0) {
         throw new BossError('CONTROLLED');
+      }
+      if (buffMods.cultivationBlocked) {
+        throw new BossError('CULTIVATION_BLOCKED');
       }
     }
 
