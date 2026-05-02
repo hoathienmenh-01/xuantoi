@@ -207,8 +207,18 @@ export class BossService implements OnModuleInit, OnModuleDestroy {
     const bloodCost = Math.floor(char.hpMax * skill.selfBloodCost);
     if (bloodCost > 0 && char.hp <= bloodCost) throw new BossError('HP_LOW');
 
-    // Sát thương: atk gốc + bonus power, scale theo skill, def boss.
-    const charAtk = char.power + (skill.atkScale > 1 ? char.spirit : 0);
+    // Phase 11.4.E — Equipment atk/spirit bonus wire vào BossService.attack().
+    // Trước đây boss attack chỉ dùng `char.power` raw + `char.spirit` raw, bỏ
+    // qua hoàn toàn equip bonus (atk/spiritBonus từ trang bị + sockets +
+    // refine). Player với full bộ equip giảm DPS boss đáng kể so với combat.
+    // Subset của Phase 11.X.S full stat wire — chỉ wire equip bonus, KHÔNG
+    // wire talent/buff/title atkMul (defer scope balance review). Element
+    // bonus / Linh căn statMul cũng defer Phase 11.X.S/T.
+    const equip = await this.inventory.equipBonus(char.id);
+    const charAtk =
+      char.power +
+      equip.atk +
+      (skill.atkScale > 1 ? char.spirit + equip.spiritBonus : 0);
     const raw = rollDamage(charAtk, def.def, skill.atkScale);
     // Boost theo level boss (giảm sát thương phần nào).
     const damage = Math.max(1, raw);
