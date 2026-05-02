@@ -230,13 +230,14 @@ Thêm depth cho progression: công pháp, skill upgrade, linh căn, thể chất
 - 63 vitest cover tier shape monotonic + power-creep cap, mastery curve generator, catalog coverage 1-1 với SKILLS, applyMasteryEffect (clamp/throw/monotonic), masteryUpgradeCost, balance global stack rule (atk +100% cap, mp 60% cap).
 - KHÔNG schema migration, KHÔNG runtime hook (catalog-only foundation cho 11.2.B runtime).
 
-#### 11.2.B PR: SkillTemplate runtime (Pending)
+#### 11.2.B PR: SkillTemplate runtime **(session 9r-12 part 5, this PR open)**
 
-- Prisma model mới `CharacterSkill { id, characterId, skillKey, masteryLevel, learnedAt, isEquipped }` (composite unique `(characterId, skillKey)`).
-- Service: `learnSkill(characterId, skillKey)` (verify SkillTemplate.unlocks AND-condition), `upgradeMastery(characterId, skillKey)` (deduct linhThach + skillShard via CurrencyLedger/ItemLedger), `equipSkill(characterId, skillKey)` (max 4 slot active + N passive).
-- Wire `applyMasteryEffect` vào `CombatService.computeSkillDamage` thay vì đọc `SkillDef` trực tiếp.
-- Skill book item drop từ dungeon/boss → consume convert thành skillShard ItemLedger.
-- Migration + rollback + idempotency cho upgradeMastery.
+- Prisma model mới `CharacterSkill { id, characterId, skillKey, masteryLevel (default 1), isEquipped (default false), source, learnedAt }` (composite unique `(characterId, skillKey)`). Migration `20260503000000_phase_11_2_b_character_skill`.
+- `CharacterSkillService` (NestJS, 534 LOC) — server-authoritative 7 method: `learn(charId, skillKey, source)` validate `SkillTemplate.unlocks[]` AND-condition (kind='realm'/'sect'/'method'; item/quest/event deferred 11.2.C), idempotent qua P2002 catch. `upgradeMastery(charId, skillKey)` atomic transaction: validate `< maxMastery` + deduct `linhThachCost` qua `CurrencyService.applyTx({reason:'SKILL_UPGRADE'})` + increment `masteryLevel`. `equip(charId, skillKey)` cap `MAX_EQUIPPED_SKILLS=4` (basic_attack exempt). `unequip(charId, skillKey)` idempotent. `getState(charId)` return effective view với `applyMasteryEffect` adjusted (lazy-grant `basic_attack` cho legacy). `grantStarterIfMissing(charId)` idempotent auto-grant + auto-equip. `getEffectiveSkillFor(charId, baseSkill)` helper cho CombatService.
+- Wire `applyMasteryEffect` vào `CombatService.action()`: inject `@Optional() CharacterSkillService` → replace direct `skill.atkScale`/`skill.mpCost` đọc baseline → `effective = await characterSkill.getEffectiveSkillFor(char.id, baseSkill)` (fallback `baselineEffective(baseSkill)` khi service không inject).
+- `CharacterService.onboard()` gọi `characterSkill.grantStarterIfMissing(c.id)` sau `cultivationMethod.grantStarterIfMissing` — character mới luôn có `basic_attack` mastery=1 equipped.
+- Controller endpoints `GET /character/skill` + `POST /character/skill/equip` + `POST /character/skill/unequip` + `POST /character/skill/upgrade-mastery` (Zod validation, error mapping `mapSkillErrorStatus`).
+- `+34 vitest` (27 service + 4 combat mastery wire + 3 onboard hook). Skill book drop/consume via `ItemLedger` deferred Phase 11.2.C.
 
 #### 11.3.A PR: Linh căn / Spiritual Root runtime FOUNDATION **(session 9r-12, this PR open — Phase 11.3 first runtime PR)**
 

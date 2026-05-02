@@ -19,6 +19,10 @@ import {
   CultivationMethodError,
   CultivationMethodService,
 } from './cultivation-method.service';
+import {
+  CharacterSkillError,
+  CharacterSkillService,
+} from './character-skill.service';
 import { AuthService } from '../auth/auth.service';
 import {
   InMemorySlidingWindowRateLimiter,
@@ -55,6 +59,10 @@ const CultivationMethodEquipInput = z.object({
   methodKey: z.string().min(1).max(64),
 });
 
+const SkillKeyInput = z.object({
+  skillKey: z.string().min(1).max(64),
+});
+
 function fail(code: string, status = HttpStatus.BAD_REQUEST): never {
   throw new HttpException({ ok: false, error: { code, message: code } }, status);
 }
@@ -68,6 +76,7 @@ export class CharacterController {
     private readonly auth: AuthService,
     @Optional() private readonly spiritualRoot?: SpiritualRootService,
     @Optional() private readonly cultivationMethod?: CultivationMethodService,
+    @Optional() private readonly characterSkill?: CharacterSkillService,
     @Optional() @Inject(PROFILE_RATE_LIMITER) profileLimiter?: RateLimiter,
   ) {
     this.profileLimiter =
@@ -228,5 +237,129 @@ export class CharacterController {
       }
       throw e;
     }
+  }
+
+  /**
+   * Phase 11.2.B — Đọc state skill mastery (đã học + isEquipped + effective
+   * atkScale/mpCost). Auto-grant `basic_attack` cho legacy character
+   * (idempotent qua getState).
+   */
+  @Get('skill')
+  async skillState(@Req() req: Request) {
+    const userId = await this.requireUserId(req);
+    if (!this.characterSkill) {
+      fail('CHARACTER_SKILL_UNAVAILABLE', HttpStatus.NOT_IMPLEMENTED);
+    }
+    const character = await this.chars.findByUser(userId);
+    if (!character) fail('NO_CHARACTER', HttpStatus.NOT_FOUND);
+    const state = await this.characterSkill.getState(character.id);
+    return { ok: true, data: { skill: state } };
+  }
+
+  /**
+   * Phase 11.2.B — Equip skill đã học. Cap MAX_EQUIPPED_SKILLS = 4 (basic
+   * attack ngoại lệ — luôn usable).
+   */
+  @Post('skill/equip')
+  @HttpCode(200)
+  async skillEquip(@Req() req: Request, @Body() body: unknown) {
+    const userId = await this.requireUserId(req);
+    if (!this.characterSkill) {
+      fail('CHARACTER_SKILL_UNAVAILABLE', HttpStatus.NOT_IMPLEMENTED);
+    }
+    const parsed = SkillKeyInput.safeParse(body);
+    if (!parsed.success) fail('INVALID_INPUT');
+    const character = await this.chars.findByUser(userId);
+    if (!character) fail('NO_CHARACTER', HttpStatus.NOT_FOUND);
+    try {
+      const state = await this.characterSkill.equip(
+        character.id,
+        parsed.data.skillKey,
+      );
+      return { ok: true, data: { skill: state } };
+    } catch (e) {
+      if (e instanceof CharacterSkillError) {
+        fail(e.code, mapSkillErrorStatus(e.code));
+      }
+      throw e;
+    }
+  }
+
+  /**
+   * Phase 11.2.B — Unequip skill đã học.
+   */
+  @Post('skill/unequip')
+  @HttpCode(200)
+  async skillUnequip(@Req() req: Request, @Body() body: unknown) {
+    const userId = await this.requireUserId(req);
+    if (!this.characterSkill) {
+      fail('CHARACTER_SKILL_UNAVAILABLE', HttpStatus.NOT_IMPLEMENTED);
+    }
+    const parsed = SkillKeyInput.safeParse(body);
+    if (!parsed.success) fail('INVALID_INPUT');
+    const character = await this.chars.findByUser(userId);
+    if (!character) fail('NO_CHARACTER', HttpStatus.NOT_FOUND);
+    try {
+      const state = await this.characterSkill.unequip(
+        character.id,
+        parsed.data.skillKey,
+      );
+      return { ok: true, data: { skill: state } };
+    } catch (e) {
+      if (e instanceof CharacterSkillError) {
+        fail(e.code, mapSkillErrorStatus(e.code));
+      }
+      throw e;
+    }
+  }
+
+  /**
+   * Phase 11.2.B — Upgrade mastery +1 level. Trừ LinhThach atomic. Throws
+   * INSUFFICIENT_FUNDS, MASTERY_MAX, NOT_LEARNED.
+   */
+  @Post('skill/upgrade-mastery')
+  @HttpCode(200)
+  async skillUpgradeMastery(@Req() req: Request, @Body() body: unknown) {
+    const userId = await this.requireUserId(req);
+    if (!this.characterSkill) {
+      fail('CHARACTER_SKILL_UNAVAILABLE', HttpStatus.NOT_IMPLEMENTED);
+    }
+    const parsed = SkillKeyInput.safeParse(body);
+    if (!parsed.success) fail('INVALID_INPUT');
+    const character = await this.chars.findByUser(userId);
+    if (!character) fail('NO_CHARACTER', HttpStatus.NOT_FOUND);
+    try {
+      const result = await this.characterSkill.upgradeMastery(
+        character.id,
+        parsed.data.skillKey,
+      );
+      return { ok: true, data: { upgrade: result } };
+    } catch (e) {
+      if (e instanceof CharacterSkillError) {
+        fail(e.code, mapSkillErrorStatus(e.code));
+      }
+      throw e;
+    }
+  }
+}
+
+/** Map CharacterSkillError code → HTTP status. */
+function mapSkillErrorStatus(code: CharacterSkillError['code']): HttpStatus {
+  switch (code) {
+    case 'SKILL_NOT_FOUND':
+    case 'CHARACTER_NOT_FOUND':
+    case 'REALM_NOT_FOUND':
+      return HttpStatus.NOT_FOUND;
+    case 'NOT_LEARNED':
+    case 'METHOD_NOT_LEARNED':
+    case 'TOO_MANY_EQUIPPED':
+    case 'MASTERY_MAX':
+    case 'REALM_TOO_LOW':
+    case 'WRONG_SECT':
+      return HttpStatus.CONFLICT;
+    case 'INSUFFICIENT_FUNDS':
+      return HttpStatus.PAYMENT_REQUIRED;
+    default:
+      return HttpStatus.BAD_REQUEST;
   }
 }

@@ -4,6 +4,8 @@ import { RealtimeService } from '../realtime/realtime.service';
 import { CharacterService } from './character.service';
 import { SpiritualRootService } from './spiritual-root.service';
 import { CultivationMethodService } from './cultivation-method.service';
+import { CharacterSkillService } from './character-skill.service';
+import { CurrencyService } from './currency.service';
 import {
   ELEMENTS,
   SPIRITUAL_ROOT_GRADES,
@@ -20,15 +22,19 @@ let prisma: PrismaService;
 let chars: CharacterService;
 let charsWithRoot: CharacterService;
 let charsWithMethod: CharacterService;
+let charsWithSkill: CharacterService;
 let rootSvc: SpiritualRootService;
 let methodSvc: CultivationMethodService;
+let skillSvc: CharacterSkillService;
 
 beforeAll(() => {
   process.env.DATABASE_URL = TEST_DATABASE_URL;
   prisma = new PrismaService();
   const realtime = new RealtimeService();
+  const currency = new CurrencyService(prisma);
   rootSvc = new SpiritualRootService(prisma);
   methodSvc = new CultivationMethodService(prisma);
+  skillSvc = new CharacterSkillService(prisma, currency);
   chars = new CharacterService(prisma, realtime);
   charsWithRoot = new CharacterService(prisma, realtime, rootSvc);
   charsWithMethod = new CharacterService(
@@ -36,6 +42,13 @@ beforeAll(() => {
     realtime,
     rootSvc,
     methodSvc,
+  );
+  charsWithSkill = new CharacterService(
+    prisma,
+    realtime,
+    rootSvc,
+    methodSvc,
+    skillSvc,
   );
 });
 
@@ -220,5 +233,68 @@ describe('CharacterService.onboard with CultivationMethodService (Phase 11.1.B)'
       where: { id: state.id },
     });
     expect(c.equippedCultivationMethodKey).toBeNull();
+  });
+});
+
+describe('CharacterService.onboard with CharacterSkillService (Phase 11.2.B)', () => {
+  it('onboard tự động grant + equip starter `basic_attack`', async () => {
+    const user = await prisma.user.create({
+      data: {
+        email: `onboard_skill_${Date.now()}@test.local`,
+        passwordHash: 'x',
+        role: 'PLAYER',
+      },
+    });
+    const state = await charsWithSkill.onboard(user.id, {
+      name: `SkillTester_${Date.now()}_${Math.floor(Math.random() * 9999)}`,
+      sectKey: 'thanh_van',
+    });
+    const rows = await prisma.characterSkill.findMany({
+      where: { characterId: state.id },
+    });
+    expect(rows.length).toBe(1);
+    expect(rows[0].skillKey).toBe('basic_attack');
+    expect(rows[0].masteryLevel).toBe(1);
+    expect(rows[0].isEquipped).toBe(true);
+    expect(rows[0].source).toBe('starter');
+  });
+
+  it('CharacterService không inject CharacterSkillService vẫn onboard được (backward-compat)', async () => {
+    const user = await prisma.user.create({
+      data: {
+        email: `onboard_no_skill_${Date.now()}@test.local`,
+        passwordHash: 'x',
+        role: 'PLAYER',
+      },
+    });
+    const state = await charsWithRoot.onboard(user.id, {
+      name: `NoSkill_${Date.now()}_${Math.floor(Math.random() * 9999)}`,
+      sectKey: 'huyen_thuy',
+    });
+    const rows = await prisma.characterSkill.findMany({
+      where: { characterId: state.id },
+    });
+    expect(rows.length).toBe(0);
+  });
+
+  it('onboard idempotent: chạy 2 lần (giả lập retry) → KHÔNG dup row skill', async () => {
+    const user = await prisma.user.create({
+      data: {
+        email: `onboard_skill_idem_${Date.now()}@test.local`,
+        passwordHash: 'x',
+        role: 'PLAYER',
+      },
+    });
+    const state = await charsWithSkill.onboard(user.id, {
+      name: `IdemSkill_${Date.now()}_${Math.floor(Math.random() * 9999)}`,
+      sectKey: 'tu_la',
+    });
+    // Re-call grantStarterIfMissing — must be safe.
+    await skillSvc.grantStarterIfMissing(state.id);
+    await skillSvc.grantStarterIfMissing(state.id);
+    const rows = await prisma.characterSkill.findMany({
+      where: { characterId: state.id },
+    });
+    expect(rows.length).toBe(1);
   });
 });

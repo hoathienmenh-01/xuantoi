@@ -225,6 +225,7 @@ model Character {
   dailyLoginClaims            DailyLoginClaim[]
   spiritualRootRollLogs       SpiritualRootRollLog[]
   cultivationMethods          CharacterCultivationMethod[]
+  characterSkills             CharacterSkill[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -279,6 +280,38 @@ model CharacterCultivationMethod {
 
   @@unique([characterId, methodKey])
   @@index([characterId])
+}
+
+/// Phase 11.2.B — Skill mastery progression. Mỗi cặp (characterId, skillKey)
+/// duy nhất 1 row. `learn()` rely on `@@unique` cho idempotency (P2002 →
+/// return existing). `upgradeMastery()` increment `masteryLevel` + deduct
+/// LinhThach via CurrencyLedger. `equip()` toggle `isEquipped` (cap số skill
+/// active đồng thời). Combat runtime đọc row này để compose
+/// `applyMasteryEffect(template, masteryLevel, baseSkill)` thay vì dùng
+/// SkillDef thô. Legacy character (không row) → masteryLevel=0 → hành vi
+/// identical baseline pre-11.2.B.
+model CharacterSkill {
+  id           String    @id @default(cuid())
+  characterId  String
+  character    Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  /// Khoá tham chiếu `SKILLS` trong `packages/shared/src/combat.ts` + `SKILL_TEMPLATES`
+  /// trong `packages/shared/src/skill-templates.ts` (1-1 mapping).
+  skillKey     String
+  /// Level mastery hiện tại — 1 sau khi `learn`, increment bởi
+  /// `upgradeMastery`, clamp tới `SKILL_TIER_DEFS[tier].maxMastery`.
+  masteryLevel Int       @default(1)
+  /// Skill có đang được trang bị (active slot) hay không. Cap MVP = 4 active
+  /// đồng thời (kiểm tra trong service `equip`).
+  isEquipped   Boolean   @default(false)
+  /// Nguồn học skill: `starter` (basic_attack auto-grant) | `realm_unlock`
+  /// (đột phá tự động học skill mở khi đạt realm) | `sect_shop` | `quest_milestone`
+  /// | `boss_drop` | `event` | `admin_grant`.
+  source       String
+  learnedAt    DateTime  @default(now())
+
+  @@unique([characterId, skillKey])
+  @@index([characterId])
+  @@index([characterId, isEquipped])
 }
 
 enum MissionPeriod {

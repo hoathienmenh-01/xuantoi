@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Optional } from '@nestjs/common';
 import { CurrencyKind, Prisma, EncounterStatus } from '@prisma/client';
 import {
   DUNGEONS,
@@ -16,6 +16,7 @@ import {
   skillByKey,
   type DungeonDef,
   type ElementKey,
+  type EffectiveSkill,
   type MonsterDef,
   type SectKey,
   type SkillDef,
@@ -24,6 +25,7 @@ import {
 import { PrismaService } from '../../common/prisma.service';
 import { RealtimeService } from '../realtime/realtime.service';
 import { CharacterService } from '../character/character.service';
+import { CharacterSkillService } from '../character/character-skill.service';
 import { CurrencyService } from '../character/currency.service';
 import { InventoryService } from '../inventory/inventory.service';
 import { MissionService } from '../mission/mission.service';
@@ -98,6 +100,7 @@ export class CombatService {
     private readonly inventory: InventoryService,
     private readonly currency: CurrencyService,
     private readonly missions: MissionService,
+    @Optional() private readonly characterSkill?: CharacterSkillService,
   ) {}
 
   listDungeons() {
@@ -178,9 +181,16 @@ export class CombatService {
       throw new CombatError('SKILL_NOT_USABLE');
     }
 
+    // Phase 11.2.B — compose mastery effect. Legacy character (no
+    // CharacterSkill row) → masteryLevel = 0 → no bonus. Service không
+    // injected (legacy DI) → fallback baseline.
+    const effective: EffectiveSkill = this.characterSkill
+      ? await this.characterSkill.getEffectiveSkillFor(char.id, skill)
+      : baselineEffective(skill);
+
     let charHp = char.hp;
     let charMp = char.mp;
-    if (charMp < skill.mpCost) throw new CombatError('MP_LOW');
+    if (charMp < effective.mpCost) throw new CombatError('MP_LOW');
 
     const equip = await this.inventory.equipBonus(char.id);
     // Phase 11.3.C — Linh căn statBonusPercent wire vào atk/def.
@@ -212,11 +222,11 @@ export class CombatService {
       monster.element ?? null,
     );
 
-    // — Player attack
-    const dmgBase = rollDamage(effPower, monster.def, skill.atkScale);
+    // — Player attack (Phase 11.2.B — atkScale + mpCost từ mastery curve)
+    const dmgBase = rollDamage(effPower, monster.def, effective.atkScale);
     const dmg = Math.max(1, Math.round(dmgBase * playerElementMul));
     let monsterHp = state.monsterHp - dmg;
-    charMp -= skill.mpCost;
+    charMp -= effective.mpCost;
     if (skill.selfBloodCost > 0) {
       const lose = Math.max(1, Math.floor(char.hpMax * skill.selfBloodCost));
       charHp = Math.max(1, charHp - lose);
@@ -471,6 +481,27 @@ export class CombatService {
     if (sect.name === 'Tu La Tông') return 'tu_la';
     return null;
   }
+}
+
+/**
+ * Phase 11.2.B fallback — khi `CharacterSkillService` không inject (legacy
+ * test setup, integration không cần mastery), trả EffectiveSkill từ
+ * baseline `SkillDef` không bonus. Tránh CombatService bị break khi
+ * service vắng mặt.
+ */
+function baselineEffective(skill: SkillDef): EffectiveSkill {
+  return {
+    key: skill.key,
+    atkScale: skill.atkScale,
+    mpCost: skill.mpCost,
+    selfHealRatio: skill.selfHealRatio,
+    selfBloodCost: skill.selfBloodCost,
+    cooldownTurns: skill.cooldownTurns ?? 0,
+    element: skill.element ?? null,
+    sect: skill.sect,
+    masteryLevel: 0,
+    tier: 'basic',
+  };
 }
 
 export { CombatError };
