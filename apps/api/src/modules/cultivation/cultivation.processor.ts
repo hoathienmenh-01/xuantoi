@@ -73,17 +73,18 @@ export class CultivationProcessor extends WorkerHost {
 
     for (const c of cultivating) {
       try {
-        // Phase 11.8.D — Buff `cultivationBlocked` (Tâm Ma) wire.
-        // Catalog `debuff_taoma` description "công kích -10% và không thể tu
-        // luyện" → khi character đang dính debuff_taoma (sau khi vượt kiếp
-        // FAIL), tick này skip toàn bộ EXP gain + mission/achievement track
-        // + realtime emit. Stamina regen ở trên vẫn áp dụng (không phụ thuộc
-        // cultivating flag). Service không inject → identity (không block).
-        if (this.buffs) {
-          const buffMods = await this.buffs.getMods(c.id);
-          if (buffMods.cultivationBlocked) {
-            continue;
-          }
+        // Phase 11.8.D + 11.8.E — Buff mods fetch once per character per tick:
+        //   - `cultivationBlocked` (Tâm Ma) → skip toàn bộ EXP gain (continue).
+        //   - `hpRegenFlat` / `mpRegenFlat` (per-second values) → multiply
+        //     `tickSeconds` apply trên hp/mp (cap LEAST hpMax/mpMax).
+        // Service không inject → identity (không block, không regen).
+        const buffMods = this.buffs ? await this.buffs.getMods(c.id) : null;
+        if (buffMods?.cultivationBlocked) {
+          // Catalog `debuff_taoma` description "công kích -10% và không thể tu
+          // luyện" → tick này skip EXP gain + mission/achievement track +
+          // realtime emit. Stamina regen ở trên vẫn áp dụng (không phụ thuộc).
+          // Hp/mp regen cũng skip — character đang Tâm Ma không hồi phục.
+          continue;
         }
         // EXP gain = rateForRealm(realm) + floor(spirit/4).
         // rateForRealm scale 1.45^order → tu luyện ở cảnh giới cao có base rate
@@ -135,6 +136,25 @@ export class CultivationProcessor extends WorkerHost {
           where: { id: c.id },
           data: { exp, realmStage },
         });
+
+        // Phase 11.8.E — Buff `hpRegenFlat` / `mpRegenFlat` wire.
+        // Catalog values là per-second (vd `pill_hp_regen_t1` "+5 HP/giây",
+        // `sect_aura_thuy` "+4 MP/giây trong tu luyện"). Mỗi tick = 30s →
+        // tổng hồi = `value × tickSeconds`. Cap LEAST(hp+delta, hpMax) qua raw
+        // SQL để không vượt cap. Skip nếu cả hp/mp regen = 0 (avoid no-op write).
+        if (buffMods && (buffMods.hpRegenFlat > 0 || buffMods.mpRegenFlat > 0)) {
+          const tickSeconds = Math.round(CULTIVATION_TICK_MS / 1000);
+          const hpDelta = Math.floor(buffMods.hpRegenFlat * tickSeconds);
+          const mpDelta = Math.floor(buffMods.mpRegenFlat * tickSeconds);
+          if (hpDelta > 0 || mpDelta > 0) {
+            await this.prisma.$executeRawUnsafe(
+              `UPDATE "Character" SET hp = LEAST("hpMax", hp + $1), mp = LEAST("mpMax", mp + $2) WHERE id = $3`,
+              hpDelta,
+              mpDelta,
+              c.id,
+            );
+          }
+        }
 
         // Mission + Achievement tracking — mỗi tick cộng seconds + exp gained,
         // cộng 1 BREAKTHROUGH nếu đột phá. Không throw nếu service lỗi — tu
