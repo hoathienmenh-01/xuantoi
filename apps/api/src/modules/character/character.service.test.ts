@@ -6,10 +6,13 @@ import { SpiritualRootService } from './spiritual-root.service';
 import { CultivationMethodService } from './cultivation-method.service';
 import { CharacterSkillService } from './character-skill.service';
 import { CurrencyService } from './currency.service';
+import { TitleService } from './title.service';
 import {
   ELEMENTS,
   SPIRITUAL_ROOT_GRADES,
   STARTER_CULTIVATION_METHOD_KEY,
+  expCostForStage,
+  titleForRealmMilestone,
 } from '@xuantoi/shared';
 import { makeUserChar, wipeAll } from '../../test-helpers';
 
@@ -23,9 +26,11 @@ let chars: CharacterService;
 let charsWithRoot: CharacterService;
 let charsWithMethod: CharacterService;
 let charsWithSkill: CharacterService;
+let charsWithTitles: CharacterService;
 let rootSvc: SpiritualRootService;
 let methodSvc: CultivationMethodService;
 let skillSvc: CharacterSkillService;
+let titleSvc: TitleService;
 
 beforeAll(() => {
   process.env.DATABASE_URL = TEST_DATABASE_URL;
@@ -35,6 +40,7 @@ beforeAll(() => {
   rootSvc = new SpiritualRootService(prisma);
   methodSvc = new CultivationMethodService(prisma);
   skillSvc = new CharacterSkillService(prisma, currency);
+  titleSvc = new TitleService(prisma);
   chars = new CharacterService(prisma, realtime);
   charsWithRoot = new CharacterService(prisma, realtime, rootSvc);
   charsWithMethod = new CharacterService(
@@ -49,6 +55,14 @@ beforeAll(() => {
     rootSvc,
     methodSvc,
     skillSvc,
+  );
+  charsWithTitles = new CharacterService(
+    prisma,
+    realtime,
+    undefined,
+    undefined,
+    undefined,
+    titleSvc,
   );
 });
 
@@ -296,5 +310,95 @@ describe('CharacterService.onboard with CharacterSkillService (Phase 11.2.B)', (
       where: { characterId: state.id },
     });
     expect(rows.length).toBe(1);
+  });
+});
+
+describe('CharacterService.breakthrough with TitleService (Phase 11.9.C)', () => {
+  it('breakthrough luyenkhi → truc_co tự auto-unlock title `realm_truc_co_pillar`', async () => {
+    const cost = expCostForStage('luyenkhi', 9)!;
+    const fix = await makeUserChar(prisma, {
+      realmKey: 'luyenkhi',
+      realmStage: 9,
+      exp: cost,
+    });
+
+    const expectedTitle = titleForRealmMilestone('truc_co');
+    expect(expectedTitle).toBeDefined();
+    expect(expectedTitle!.key).toBe('realm_truc_co_pillar');
+
+    const state = await charsWithTitles.breakthrough(fix.userId);
+    expect(state.realmKey).toBe('truc_co');
+    expect(state.realmStage).toBe(1);
+
+    const rows = await prisma.characterTitleUnlock.findMany({
+      where: { characterId: fix.characterId },
+    });
+    expect(rows.length).toBe(1);
+    expect(rows[0].titleKey).toBe('realm_truc_co_pillar');
+    expect(rows[0].source).toBe('realm_milestone');
+  });
+
+  it('breakthrough hoa_than → luyen_hu (không có title milestone) → KHÔNG insert row', async () => {
+    const cost = expCostForStage('hoa_than', 9)!;
+    const fix = await makeUserChar(prisma, {
+      realmKey: 'hoa_than',
+      realmStage: 9,
+      exp: cost,
+    });
+
+    expect(titleForRealmMilestone('luyen_hu')).toBeUndefined();
+
+    const state = await charsWithTitles.breakthrough(fix.userId);
+    expect(state.realmKey).toBe('luyen_hu');
+
+    const rows = await prisma.characterTitleUnlock.findMany({
+      where: { characterId: fix.characterId },
+    });
+    expect(rows.length).toBe(0);
+  });
+
+  it('breakthrough idempotent: title đã unlock → KHÔNG dup row (composite UNIQUE)', async () => {
+    // 1st: breakthrough truc_co peak → kim_dan, unlock `realm_kim_dan_adept`.
+    const cost1 = expCostForStage('truc_co', 9)!;
+    const fix = await makeUserChar(prisma, {
+      realmKey: 'truc_co',
+      realmStage: 9,
+      exp: cost1,
+    });
+
+    await charsWithTitles.breakthrough(fix.userId);
+    const after1 = await prisma.characterTitleUnlock.findMany({
+      where: { characterId: fix.characterId },
+    });
+    expect(after1.length).toBe(1);
+    expect(after1[0].titleKey).toBe('realm_kim_dan_adept');
+
+    // Manually unlock 1 lần nữa qua TitleService trực tiếp — phải idempotent.
+    await titleSvc.unlockTitle(
+      fix.characterId,
+      'realm_kim_dan_adept',
+      'realm_milestone',
+    );
+    const after2 = await prisma.characterTitleUnlock.findMany({
+      where: { characterId: fix.characterId },
+    });
+    expect(after2.length).toBe(1);
+  });
+
+  it('breakthrough KHÔNG inject TitleService → vẫn advance realm bình thường (backward-compat)', async () => {
+    const cost = expCostForStage('luyenkhi', 9)!;
+    const fix = await makeUserChar(prisma, {
+      realmKey: 'luyenkhi',
+      realmStage: 9,
+      exp: cost,
+    });
+
+    const state = await chars.breakthrough(fix.userId);
+    expect(state.realmKey).toBe('truc_co');
+
+    const rows = await prisma.characterTitleUnlock.findMany({
+      where: { characterId: fix.characterId },
+    });
+    expect(rows.length).toBe(0);
   });
 });
