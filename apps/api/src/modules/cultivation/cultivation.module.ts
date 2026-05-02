@@ -5,6 +5,7 @@ import { CultivationService } from './cultivation.service';
 import { PrismaService } from '../../common/prisma.service';
 import { RealtimeModule } from '../realtime/realtime.module';
 import { MissionModule } from '../mission/mission.module';
+import { CharacterModule } from '../character/character.module';
 import { CULTIVATION_QUEUE } from './cultivation.queue';
 
 @Module({
@@ -19,6 +20,7 @@ import { CULTIVATION_QUEUE } from './cultivation.queue';
     BullModule.registerQueue({ name: CULTIVATION_QUEUE }),
     RealtimeModule,
     MissionModule,
+    CharacterModule,
   ],
   providers: [CultivationProcessor, CultivationService, PrismaService],
   exports: [CultivationService],

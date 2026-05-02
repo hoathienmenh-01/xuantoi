@@ -27,6 +27,7 @@ import { RealtimeService } from '../realtime/realtime.service';
 import { CharacterService } from '../character/character.service';
 import { CharacterSkillService } from '../character/character-skill.service';
 import { CurrencyService } from '../character/currency.service';
+import { AchievementService } from '../character/achievement.service';
 import { InventoryService } from '../inventory/inventory.service';
 import { MissionService } from '../mission/mission.service';
 
@@ -101,6 +102,7 @@ export class CombatService {
     private readonly currency: CurrencyService,
     private readonly missions: MissionService,
     @Optional() private readonly characterSkill?: CharacterSkillService,
+    @Optional() private readonly achievements?: AchievementService,
   ) {}
 
   listDungeons() {
@@ -404,14 +406,22 @@ export class CombatService {
       };
     }
 
-    // Mission tracking — dựa trên transition. Một turn có thể vừa kill monster
-    // vừa (nếu là quái cuối) clear dungeon. Không throw nếu mission lỗi.
+    // Mission + Achievement tracking — dựa trên transition. Một turn có thể
+    // vừa kill monster vừa (nếu là quái cuối) clear dungeon. Không throw nếu
+    // mission/achievement lỗi (Phase 11.10.C-2 wire trackEvent vào achievement
+    // bằng cùng goalKind với mission — fail-soft).
     try {
       if (monsterHp <= 0) {
         await this.missions.track(char.id, 'KILL_MONSTER', 1);
+        if (this.achievements) {
+          await this.achievements.trackEvent(char.id, 'KILL_MONSTER', 1);
+        }
       }
       if (nextStatus === EncounterStatus.WON) {
         await this.missions.track(char.id, 'CLEAR_DUNGEON', 1);
+        if (this.achievements) {
+          await this.achievements.trackEvent(char.id, 'CLEAR_DUNGEON', 1);
+        }
       }
     } catch {
       // bỏ qua
