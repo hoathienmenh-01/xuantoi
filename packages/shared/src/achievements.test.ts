@@ -12,7 +12,9 @@ import {
   type AchievementTier,
 } from './achievements';
 import { ELEMENTS } from './combat';
+import { ITEMS } from './items';
 import type { MissionGoalKind } from './missions';
+import { TITLES } from './titles';
 
 const VALID_TIERS: readonly AchievementTier[] = [
   'bronze',
@@ -124,6 +126,41 @@ describe('ACHIEVEMENTS catalog shape', () => {
     for (const a of ACHIEVEMENTS) {
       if (a.rewardTitleKey !== null) {
         expect(a.rewardTitleKey).toMatch(/^[a-z][a-z0-9_]*$/);
+      }
+    }
+  });
+
+  // Phase 11.10.G — Referential integrity tests song hành với mission catalog
+  // (`missions.test.ts:101`) để bảo vệ Phase 11.10.D `claimReward` items grant
+  // path: nếu thêm achievement với `reward.items[*].itemKey` không tồn tại,
+  // `InventoryService.grantTx` sẽ throw `ITEM_NOT_FOUND` và rollback claim.
+  // Catch lỗi này ở build time qua test thay vì runtime claim error.
+  // Hiện tại 32 baseline catalog không có achievement với `reward.items` nên
+  // test pass vacuously — future-proof khi Phase 11.10.F catalog mở rộng.
+  it('mọi reward.items[*].itemKey PHẢI tồn tại trong ITEMS catalog (cross-ref invariant)', () => {
+    const itemKeys = new Set(ITEMS.map((i) => i.key));
+    for (const a of ACHIEVEMENTS) {
+      for (const it of a.reward.items ?? []) {
+        expect(
+          itemKeys.has(it.itemKey),
+          `achievement ${a.key} reward itemKey '${it.itemKey}' không tồn tại trong ITEMS`,
+        ).toBe(true);
+      }
+    }
+  });
+
+  // Phase 11.10.G — Cross-ref `rewardTitleKey` → TITLES catalog. Phase 11.10.C-1
+  // wire `TitleService.unlock` trong `AchievementService.claimReward` — nếu
+  // `rewardTitleKey` không match `titleByKey`, `unlock` sẽ throw / no-op.
+  // Bảo vệ build-time để catalog không drift sau khi xoá title definition.
+  it('mọi rewardTitleKey PHẢI tồn tại trong TITLES catalog (cross-ref invariant)', () => {
+    const titleKeys = new Set(TITLES.map((t) => t.key));
+    for (const a of ACHIEVEMENTS) {
+      if (a.rewardTitleKey !== null) {
+        expect(
+          titleKeys.has(a.rewardTitleKey),
+          `achievement ${a.key} rewardTitleKey '${a.rewardTitleKey}' không tồn tại trong TITLES`,
+        ).toBe(true);
       }
     }
   });
