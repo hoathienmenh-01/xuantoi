@@ -3,7 +3,12 @@ import { PrismaService } from '../../common/prisma.service';
 import { RealtimeService } from '../realtime/realtime.service';
 import { CharacterService } from './character.service';
 import { SpiritualRootService } from './spiritual-root.service';
-import { ELEMENTS, SPIRITUAL_ROOT_GRADES } from '@xuantoi/shared';
+import { CultivationMethodService } from './cultivation-method.service';
+import {
+  ELEMENTS,
+  SPIRITUAL_ROOT_GRADES,
+  STARTER_CULTIVATION_METHOD_KEY,
+} from '@xuantoi/shared';
 import { makeUserChar, wipeAll } from '../../test-helpers';
 
 const TEST_DATABASE_URL =
@@ -14,15 +19,24 @@ const TEST_DATABASE_URL =
 let prisma: PrismaService;
 let chars: CharacterService;
 let charsWithRoot: CharacterService;
+let charsWithMethod: CharacterService;
 let rootSvc: SpiritualRootService;
+let methodSvc: CultivationMethodService;
 
 beforeAll(() => {
   process.env.DATABASE_URL = TEST_DATABASE_URL;
   prisma = new PrismaService();
   const realtime = new RealtimeService();
   rootSvc = new SpiritualRootService(prisma);
+  methodSvc = new CultivationMethodService(prisma);
   chars = new CharacterService(prisma, realtime);
   charsWithRoot = new CharacterService(prisma, realtime, rootSvc);
+  charsWithMethod = new CharacterService(
+    prisma,
+    realtime,
+    rootSvc,
+    methodSvc,
+  );
 });
 
 beforeEach(async () => {
@@ -162,5 +176,49 @@ describe('CharacterService.onboard with SpiritualRootService (Phase 11.3.A)', ()
     // Legacy onboard (không có SpiritualRootService) → field nullable.
     expect(c!.spiritualRootGrade).toBeNull();
     expect(c!.primaryElement).toBeNull();
+  });
+});
+
+describe('CharacterService.onboard with CultivationMethodService (Phase 11.1.B)', () => {
+  it('onboard tự động grant + equip starter `khai_thien_quyet`', async () => {
+    const user = await prisma.user.create({
+      data: {
+        email: `onboard_method_${Date.now()}@test.local`,
+        passwordHash: 'x',
+        role: 'PLAYER',
+      },
+    });
+    const state = await charsWithMethod.onboard(user.id, {
+      name: `MethodTester_${Date.now()}_${Math.floor(Math.random() * 9999)}`,
+      sectKey: 'thanh_van',
+    });
+    const c = await prisma.character.findUniqueOrThrow({
+      where: { id: state.id },
+    });
+    expect(c.equippedCultivationMethodKey).toBe(STARTER_CULTIVATION_METHOD_KEY);
+    const rows = await prisma.characterCultivationMethod.findMany({
+      where: { characterId: c.id },
+    });
+    expect(rows.length).toBe(1);
+    expect(rows[0].methodKey).toBe(STARTER_CULTIVATION_METHOD_KEY);
+    expect(rows[0].source).toBe('starter');
+  });
+
+  it('CharacterService không inject CultivationMethodService vẫn onboard được (backward-compat)', async () => {
+    const user = await prisma.user.create({
+      data: {
+        email: `onboard_no_method_${Date.now()}@test.local`,
+        passwordHash: 'x',
+        role: 'PLAYER',
+      },
+    });
+    const state = await charsWithRoot.onboard(user.id, {
+      name: `NoMethod_${Date.now()}_${Math.floor(Math.random() * 9999)}`,
+      sectKey: 'huyen_thuy',
+    });
+    const c = await prisma.character.findUniqueOrThrow({
+      where: { id: state.id },
+    });
+    expect(c.equippedCultivationMethodKey).toBeNull();
   });
 });

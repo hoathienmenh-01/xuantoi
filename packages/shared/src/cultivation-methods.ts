@@ -330,6 +330,13 @@ export const CULTIVATION_METHODS: readonly CultivationMethodDef[] = [
 ];
 
 /**
+ * Starter method key — auto-grant + auto-equip khi onboard character mới
+ * (Phase 11.1.B). Mọi character bắt đầu equip method này trừ khi họ học +
+ * equip method khác.
+ */
+export const STARTER_CULTIVATION_METHOD_KEY = 'khai_thien_quyet';
+
+/**
  * Lookup method by key. Returns undefined nếu invalid (catalog level —
  * runtime sẽ wrap = throw nếu cần strict).
  */

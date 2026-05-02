@@ -8,6 +8,7 @@ import {
 import { PrismaService } from '../../common/prisma.service';
 import { RealtimeService } from '../realtime/realtime.service';
 import { SpiritualRootService } from './spiritual-root.service';
+import { CultivationMethodService } from './cultivation-method.service';
 
 interface OnboardInput {
   name: string;
@@ -66,6 +67,7 @@ export class CharacterService {
     private readonly prisma: PrismaService,
     private readonly realtime: RealtimeService,
     private readonly spiritualRoot?: SpiritualRootService,
+    private readonly cultivationMethod?: CultivationMethodService,
   ) {}
 
   async findByUser(userId: string) {
@@ -144,6 +146,11 @@ export class CharacterService {
       // Idempotent (chỉ roll lần đầu, retry an toàn).
       if (this.spiritualRoot) {
         await this.spiritualRoot.rollOnboard(c.id);
+      }
+      // Phase 11.1.B — auto-grant + auto-equip công pháp khởi đầu
+      // `khai_thien_quyet`. Idempotent.
+      if (this.cultivationMethod) {
+        await this.cultivationMethod.grantStarterIfMissing(c.id);
       }
       const fresh = await this.prisma.character.findUnique({
         where: { id: c.id },

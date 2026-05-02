@@ -183,4 +183,61 @@ describe('CultivationProcessor.process (tick)', () => {
       expect(c.exp).toBe(BigInt(Math.round(baseGain * 1.3)));
     });
   });
+
+  // — Phase 11.1.B Cultivation Method expMultiplier wire --------------------
+  describe('Cultivation method expMultiplier wire (Phase 11.1.B)', () => {
+    it('character equip method huyen `liet_hoa_phap` (1.20×) compose với root than (1.80×) → gain × 2.16', async () => {
+      const baseGain = cultivationRateForRealm('luyenkhi', CULTIVATION_TICK_BASE_EXP) + 2;
+      const f = await makeUserChar(prisma, {
+        cultivating: true,
+        spirit: 8,
+        spiritualRootGrade: 'than',
+        primaryElement: 'hoa',
+        secondaryElements: ['kim', 'moc', 'thuy', 'tho'],
+        equippedCultivationMethodKey: 'liet_hoa_phap',
+      });
+      await processor.process(tickJob());
+      const c = await prisma.character.findUniqueOrThrow({ where: { id: f.characterId } });
+      // Compose: baseGain × rootMul (1.80) × methodMul (1.20) → round.
+      expect(c.exp).toBe(BigInt(Math.round(baseGain * 1.8 * 1.2)));
+    });
+
+    it('character KHÔNG equip method (legacy null) → methodMul=1.0 (backward-compat)', async () => {
+      const baseGain = cultivationRateForRealm('luyenkhi', CULTIVATION_TICK_BASE_EXP) + 2;
+      const f = await makeUserChar(prisma, {
+        cultivating: true,
+        spirit: 8,
+        // KHÔNG set equippedCultivationMethodKey → null
+      });
+      await processor.process(tickJob());
+      const c = await prisma.character.findUniqueOrThrow({ where: { id: f.characterId } });
+      expect(c.exp).toBe(BigInt(baseGain));
+    });
+
+    it('character equip starter `khai_thien_quyet` (1.0×) → KHÔNG bonus', async () => {
+      const baseGain = cultivationRateForRealm('luyenkhi', CULTIVATION_TICK_BASE_EXP) + 2;
+      const f = await makeUserChar(prisma, {
+        cultivating: true,
+        spirit: 8,
+        equippedCultivationMethodKey: 'khai_thien_quyet',
+      });
+      await processor.process(tickJob());
+      const c = await prisma.character.findUniqueOrThrow({ where: { id: f.characterId } });
+      expect(c.exp).toBe(BigInt(baseGain));
+    });
+
+    it('character equip than-grade `thai_hu_chan_kinh` (1.60×) + root pham (1.0×) → gain × 1.60', async () => {
+      const baseGain = cultivationRateForRealm('luyenkhi', CULTIVATION_TICK_BASE_EXP) + 2;
+      const f = await makeUserChar(prisma, {
+        cultivating: true,
+        spirit: 8,
+        spiritualRootGrade: 'pham',
+        primaryElement: 'kim',
+        equippedCultivationMethodKey: 'thai_hu_chan_kinh',
+      });
+      await processor.process(tickJob());
+      const c = await prisma.character.findUniqueOrThrow({ where: { id: f.characterId } });
+      expect(c.exp).toBe(BigInt(Math.round(baseGain * 1.6)));
+    });
+  });
 });

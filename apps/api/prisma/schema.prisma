@@ -207,16 +207,24 @@ model Character {
   rootPurity         Int      @default(100)
   rootRerollCount    Int      @default(0)
 
+  /// Phase 11.1.B — Cultivation Method server-authoritative.
+  /// `equippedCultivationMethodKey` = method đang trang bị (compose `expMultiplier`
+  /// vào `CultivationProcessor.process()`). Nullable cho legacy character pre-11.1.B
+  /// (multiplier fallback 1.0). Onboard phase 11.1.B sẽ auto-grant + auto-equip
+  /// `khai_thien_quyet` starter.
+  equippedCultivationMethodKey String?
+
   sectId String?
   sect   Sect?   @relation(fields: [sectId], references: [id])
 
-  inventory             InventoryItem[]
-  ledger                CurrencyLedger[]
-  itemLedger            ItemLedger[]
-  missionProgress       MissionProgress[]
-  mails                 Mail[]
-  dailyLoginClaims      DailyLoginClaim[]
-  spiritualRootRollLogs SpiritualRootRollLog[]
+  inventory                   InventoryItem[]
+  ledger                      CurrencyLedger[]
+  itemLedger                  ItemLedger[]
+  missionProgress             MissionProgress[]
+  mails                       Mail[]
+  dailyLoginClaims            DailyLoginClaim[]
+  spiritualRootRollLogs       SpiritualRootRollLog[]
+  cultivationMethods          CharacterCultivationMethod[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -250,6 +258,27 @@ model SpiritualRootRollLog {
 
   @@index([characterId, source])
   @@index([rolledAt])
+}
+
+/// Phase 11.1.B — Sổ tay công pháp đã học của character. Mỗi cặp
+/// (characterId, methodKey) duy nhất 1 row. `learn(...)` rely on `@@unique`
+/// để đảm bảo idempotency (P2002 → return existing). `equip()` chỉ set
+/// `Character.equippedCultivationMethodKey` chứ không sửa row này.
+model CharacterCultivationMethod {
+  id          String    @id @default(cuid())
+  characterId String
+  character   Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  /// Khoá tham chiếu `CULTIVATION_METHODS` trong `packages/shared/src/cultivation-methods.ts`.
+  methodKey   String
+  /// Nguồn học method: `starter` (auto-grant onboard) | `dungeon_drop` |
+  /// `boss_drop` | `sect_shop` | `event` | `quest_milestone` | `admin_grant`.
+  /// Khớp với `CultivationMethodSource` (nhưng dùng String để forward-compat
+  /// thêm source mới khi cần).
+  source      String
+  learnedAt   DateTime  @default(now())
+
+  @@unique([characterId, methodKey])
+  @@index([characterId])
 }
 
 enum MissionPeriod {

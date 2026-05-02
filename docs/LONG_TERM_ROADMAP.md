@@ -199,12 +199,26 @@ Thêm depth cho progression: công pháp, skill upgrade, linh căn, thể chất
 - 35 vitest cover catalog shape, balance (expMultiplier per grade, statBonus bounds), coverage (5 element + 3 sect + 4 grade), forbiddenElements safety.
 - KHÔNG schema migration, KHÔNG runtime hook (catalog-only foundation cho 11.1.B runtime).
 
-#### 11.1.B PR: CultivationMethod runtime (Pending)
+#### 11.1.B PR: CultivationMethod runtime **(this PR open — session 9r-12 part 4)**
 
-- Prisma model mới `CultivationMethod` (catalog static initially) + `CharacterCultivationMethod` (DB).
-- Service: `learnCultivationMethod(characterId, methodKey)`.
-- Effect: multiplier `cultivationRate` + skill unlock.
-- Migration + rollback note.
+- `apps/api/prisma/schema.prisma` add `Character.equippedCultivationMethodKey String?` (nullable cho legacy) + new model `CharacterCultivationMethod { id, characterId, methodKey, source, learnedAt }` với `@@unique([characterId, methodKey])` (idempotent learn) + `@@index([characterId])`. Migration `20260502000000_phase_11_1_cultivation_method`.
+- `apps/api/src/modules/character/cultivation-method.service.ts` (NEW): `CultivationMethodService` 4 method:
+  - `learn(charId, methodKey, source)` validate `realmByKey(c.realmKey).order ≥ realmByKey(method.unlockRealm).order` + sect lock match (qua `SECT_NAME_TO_KEY`) + `forbiddenElements ∌ c.primaryElement`. Idempotent qua P2002 catch.
+  - `equip(charId, methodKey)` re-validate + check learned → set `Character.equippedCultivationMethodKey`. Throw `NOT_LEARNED` nếu chưa học.
+  - `getState(charId)` list learned + return equipped key. Lazy-grant starter cho legacy character.
+  - `grantStarterIfMissing(charId)` idempotent auto-grant + auto-equip `khai_thien_quyet`.
+- Pure helper `methodExpMultiplierFor(equippedMethodKey | null): number`.
+- Wire vào `CultivationProcessor.process()`: `gain = max(1, round(baseGain × cultivationMul × methodMul))`. Legacy null → methodMul 1.0.
+- Wire vào `CharacterService.onboard()`: `await this.cultivationMethod?.grantStarterIfMissing(c.id)` sau khi tạo character (idempotent).
+- Controller endpoints `GET /character/cultivation-method` + `POST /character/cultivation-method/equip`.
+- 29 vitest mới (23 service + 4 processor compose + 2 onboard hook).
+
+#### 11.1.C PR: CultivationMethod UI display + equip switcher (Pending)
+
+- UI character profile page: equipped method icon + grade + expMultiplier display + tooltip statBonus.
+- Modal "Công pháp" list learned methods (có badge tier, source, learnedAt) + button equip → call `POST /character/cultivation-method/equip`.
+- Optional 24h cooldown anti-spam re-equip (server-side check `lastEquippedAt`).
+- E2E test golden: onboard → expect starter equipped → switch sang method khác (sau khi học).
 
 #### 11.2.A PR: SkillTemplate catalog foundation **(this PR — session 9r-10)**
 
