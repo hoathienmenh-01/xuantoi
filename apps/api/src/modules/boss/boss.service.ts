@@ -218,21 +218,24 @@ export class BossService implements OnModuleInit, OnModuleDestroy {
     // bonus / Linh căn statMul cũng defer Phase 11.X.S/T.
     const equip = await this.inventory.equipBonus(char.id);
     // Phase 11.4.F — Talent atkMul wire vào BossService.attack().
+    // Phase 11.4.G — Talent spiritMul wire vào BossService.attack() spirit branch.
     // Symmetric với Phase 11.X.S/U combat path (talentMods.atkMul/spiritMul).
-    // Catalog producer: `talent_kim_thien_co` (passive atkMul +10% stat_mod
-    // statTarget=atk, kim element). Service không inject (legacy DI / test
-    // fixture without `talents`) → identity baseline (atkMul=1.0, no-op).
-    // Wire `(char.power + equip.atk) × atkMul` ở basic-skill branch; spirit
-    // branch (atkScale > 1) KHÔNG cộng atkMul cho `spirit + spiritBonus` —
-    // talent spiritMul wire cho boss defer Phase 11.4.G (giữ scope PR nhỏ +
-    // tránh double-count với Phase 11.X.U combat spiritMul đã wire).
-    // Buff/title atkMul cũng defer (Phase 11.X.W+).
+    // Catalog producer atkMul: `talent_kim_thien_co` (passive atkMul +10%
+    // stat_mod statTarget=atk, kim element). Catalog producer spiritMul:
+    // FUTURE talent thêm catalog (chưa có entry với statTarget='spirit' ở
+    // talents.ts; wire này future-proof + symmetric với combat path Phase
+    // 11.X.U đã wire `talentMods.spiritMul`).
+    // Service không inject (legacy DI / test fixture without `talents`) →
+    // identity baseline (atkMul=1.0, spiritMul=1.0, no-op).
+    // Buff/title atkMul/spiritMul cũng defer (Phase 11.X.W+).
     const talentMods: PassiveTalentMods = this.talents
       ? await this.talents.getMods(char.id)
       : composePassiveTalentMods([]);
     const charAtk =
       Math.floor((char.power + equip.atk) * talentMods.atkMul) +
-      (skill.atkScale > 1 ? char.spirit + equip.spiritBonus : 0);
+      (skill.atkScale > 1
+        ? Math.floor((char.spirit + equip.spiritBonus) * talentMods.spiritMul)
+        : 0);
     const raw = rollDamage(charAtk, def.def, skill.atkScale);
     // Boost theo level boss (giảm sát thương phần nào).
     const damage = Math.max(1, raw);
