@@ -301,6 +301,35 @@ export function canSocketGem(gemKey: string, slot: GemCompatibleSlot): boolean {
   return gem.compatibleSlots.includes('ANY') || gem.compatibleSlots.includes(slot);
 }
 
+// =====================================================================
+// Phase 11.4.B Gem MVP runtime — socket capacity per equipment quality
+// =====================================================================
+
+/**
+ * Số slot socket tối đa cho 1 equipment dựa trên `Quality` của item.
+ *
+ * Convention: PHAM = 0, LINH = 1, HUYEN = 2, TIEN = 3, THAN = 4.
+ * Equipment quality cao mới có nhiều socket → progression khuyến khích
+ * upgrade gear endgame thay vì dán đầy gem PHAM lên gear PHAM.
+ *
+ * Phase 11.4.B `GemService.socketGem` enforce server-authoritative.
+ * Total bonus per equipment cap theo `BALANCE_MODEL.md` §6.
+ */
+export function socketCapacityForQuality(quality: GemGrade): number {
+  switch (quality) {
+    case 'PHAM':
+      return 0;
+    case 'LINH':
+      return 1;
+    case 'HUYEN':
+      return 2;
+    case 'TIEN':
+      return 3;
+    case 'THAN':
+      return 4;
+  }
+}
+
 /**
  * Tính cost full upgrade từ 1 gem grade `from` sang 1 gem grade `to`
  * (cùng element). Geometric: cần `3^(to-from)` gem `from` để tạo 1 gem `to`.

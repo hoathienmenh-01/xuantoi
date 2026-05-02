@@ -10,6 +10,7 @@ import {
   combineGems,
   canSocketGem,
   gemUpgradePathCost,
+  socketCapacityForQuality,
 } from './gems';
 import { ELEMENTS, type ElementKey } from './combat';
 
@@ -332,5 +333,31 @@ describe('gemUpgradePathCost', () => {
   it('throw nếu key không tồn tại', () => {
     expect(() => gemUpgradePathCost('xxx', 'gem_kim_linh')).toThrow(/unknown fromKey/);
     expect(() => gemUpgradePathCost('gem_kim_pham', 'xxx')).toThrow(/unknown toKey/);
+  });
+});
+
+describe('socketCapacityForQuality (Phase 11.4.B)', () => {
+  it('PHAM = 0, LINH = 1, HUYEN = 2, TIEN = 3, THAN = 4', () => {
+    expect(socketCapacityForQuality('PHAM')).toBe(0);
+    expect(socketCapacityForQuality('LINH')).toBe(1);
+    expect(socketCapacityForQuality('HUYEN')).toBe(2);
+    expect(socketCapacityForQuality('TIEN')).toBe(3);
+    expect(socketCapacityForQuality('THAN')).toBe(4);
+  });
+
+  it('capacity tăng monotonically theo grade tier', () => {
+    const grades: GemGrade[] = ['PHAM', 'LINH', 'HUYEN', 'TIEN', 'THAN'];
+    for (let i = 1; i < grades.length; i++) {
+      expect(socketCapacityForQuality(grades[i])).toBeGreaterThan(
+        socketCapacityForQuality(grades[i - 1]),
+      );
+    }
+  });
+
+  it('capacity tối đa = 4 (THAN tier)', () => {
+    for (const grade of GEM_GRADES) {
+      expect(socketCapacityForQuality(grade)).toBeLessThanOrEqual(4);
+      expect(socketCapacityForQuality(grade)).toBeGreaterThanOrEqual(0);
+    }
   });
 });

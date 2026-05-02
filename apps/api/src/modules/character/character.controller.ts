@@ -23,6 +23,7 @@ import {
   CharacterSkillError,
   CharacterSkillService,
 } from './character-skill.service';
+import { GemError, GemService } from './gem.service';
 import { AuthService } from '../auth/auth.service';
 import {
   InMemorySlidingWindowRateLimiter,
@@ -63,6 +64,20 @@ const SkillKeyInput = z.object({
   skillKey: z.string().min(1).max(64),
 });
 
+const GemSocketInput = z.object({
+  equipmentInventoryItemId: z.string().min(1).max(64),
+  gemKey: z.string().min(1).max(64),
+});
+
+const GemUnsocketInput = z.object({
+  equipmentInventoryItemId: z.string().min(1).max(64),
+  slotIndex: z.number().int().min(0).max(3),
+});
+
+const GemCombineInput = z.object({
+  srcGemKey: z.string().min(1).max(64),
+});
+
 function fail(code: string, status = HttpStatus.BAD_REQUEST): never {
   throw new HttpException({ ok: false, error: { code, message: code } }, status);
 }
@@ -77,6 +92,7 @@ export class CharacterController {
     @Optional() private readonly spiritualRoot?: SpiritualRootService,
     @Optional() private readonly cultivationMethod?: CultivationMethodService,
     @Optional() private readonly characterSkill?: CharacterSkillService,
+    @Optional() private readonly gem?: GemService,
     @Optional() @Inject(PROFILE_RATE_LIMITER) profileLimiter?: RateLimiter,
   ) {
     this.profileLimiter =
@@ -340,6 +356,111 @@ export class CharacterController {
       }
       throw e;
     }
+  }
+
+  /**
+   * Phase 11.4.B Gem MVP — khảm 1 gem vào equipment slot kế tiếp.
+   * Server-authoritative: verify capacity (`socketCapacityForQuality`),
+   * verify gem `compatibleSlots` ⊇ equipment slot, deduct 1 qty qua
+   * `ItemLedger` reason `GEM_SOCKET`, append vào `sockets[]`.
+   */
+  @Post('gem/socket')
+  @HttpCode(200)
+  async gemSocket(@Req() req: Request, @Body() body: unknown) {
+    const userId = await this.requireUserId(req);
+    if (!this.gem) fail('GEM_UNAVAILABLE', HttpStatus.NOT_IMPLEMENTED);
+    const parsed = GemSocketInput.safeParse(body);
+    if (!parsed.success) fail('INVALID_INPUT');
+    const character = await this.chars.findByUser(userId);
+    if (!character) fail('NO_CHARACTER', HttpStatus.NOT_FOUND);
+    try {
+      const result = await this.gem.socketGem(
+        character.id,
+        parsed.data.equipmentInventoryItemId,
+        parsed.data.gemKey,
+      );
+      return { ok: true, data: { socket: result } };
+    } catch (e) {
+      if (e instanceof GemError) {
+        fail(e.code, mapGemErrorStatus(e.code));
+      }
+      throw e;
+    }
+  }
+
+  /**
+   * Phase 11.4.B Gem MVP — gỡ gem khỏi 1 slot. Gem qty về inventory unequipped row.
+   */
+  @Post('gem/unsocket')
+  @HttpCode(200)
+  async gemUnsocket(@Req() req: Request, @Body() body: unknown) {
+    const userId = await this.requireUserId(req);
+    if (!this.gem) fail('GEM_UNAVAILABLE', HttpStatus.NOT_IMPLEMENTED);
+    const parsed = GemUnsocketInput.safeParse(body);
+    if (!parsed.success) fail('INVALID_INPUT');
+    const character = await this.chars.findByUser(userId);
+    if (!character) fail('NO_CHARACTER', HttpStatus.NOT_FOUND);
+    try {
+      const result = await this.gem.unsocketGem(
+        character.id,
+        parsed.data.equipmentInventoryItemId,
+        parsed.data.slotIndex,
+      );
+      return { ok: true, data: { unsocket: result } };
+    } catch (e) {
+      if (e instanceof GemError) {
+        fail(e.code, mapGemErrorStatus(e.code));
+      }
+      throw e;
+    }
+  }
+
+  /**
+   * Phase 11.4.B Gem MVP — combine 3× gem cùng key thành 1× gem next-tier.
+   * Deterministic: không RNG; THAN tier không combine được.
+   */
+  @Post('gem/combine')
+  @HttpCode(200)
+  async gemCombine(@Req() req: Request, @Body() body: unknown) {
+    const userId = await this.requireUserId(req);
+    if (!this.gem) fail('GEM_UNAVAILABLE', HttpStatus.NOT_IMPLEMENTED);
+    const parsed = GemCombineInput.safeParse(body);
+    if (!parsed.success) fail('INVALID_INPUT');
+    const character = await this.chars.findByUser(userId);
+    if (!character) fail('NO_CHARACTER', HttpStatus.NOT_FOUND);
+    try {
+      const result = await this.gem.combineGems(
+        character.id,
+        parsed.data.srcGemKey,
+      );
+      return { ok: true, data: { combine: result } };
+    } catch (e) {
+      if (e instanceof GemError) {
+        fail(e.code, mapGemErrorStatus(e.code));
+      }
+      throw e;
+    }
+  }
+}
+
+/** Map GemError code → HTTP status. */
+function mapGemErrorStatus(code: GemError['code']): HttpStatus {
+  switch (code) {
+    case 'GEM_NOT_FOUND':
+    case 'EQUIPMENT_NOT_FOUND':
+      return HttpStatus.NOT_FOUND;
+    case 'NOT_EQUIPPABLE':
+    case 'GEM_INCOMPATIBLE_SLOT':
+    case 'NO_SOCKET_CAPACITY':
+    case 'SOCKETS_FULL':
+    case 'NO_NEXT_TIER':
+      return HttpStatus.CONFLICT;
+    case 'INSUFFICIENT_QTY':
+      return HttpStatus.CONFLICT;
+    case 'INVALID_SLOT_INDEX':
+      return HttpStatus.BAD_REQUEST;
+    default:
+      return HttpStatus.BAD_REQUEST;
   }
 }
 
