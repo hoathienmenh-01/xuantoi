@@ -10,7 +10,66 @@ Tóm tắt **người chơi / vận hành / dev** dễ đọc, theo PR đã merg
 
 ## [Unreleased]
 
-> Pending merge: docs CHANGELOG catch-up session 9r-25 part 2 — PR #258 (Phase 11.4.D Equip spiritBonus combat) + PR #259 (Phase 11.X.G Talent dropMul boss reward) (this PR).
+> Pending merge: docs CHANGELOG catch-up session 9r-25 part 3 + 9r-26 — PR #261 (audit) + #262 (Phase 11.X.M DOT) + #263 (audit) + #264 (Phase 11.X.O control) + #265 (Phase 11.X.N shield) (this PR).
+
+---
+
+## [session 9r-26 wire batch — PR #263 → #265, merged 2/5 2026]
+
+### Internal — Phase 11 buff consume runtime wire (no catalog/balance change)
+
+**Compose-and-fail-soft pattern** continued. 3 PR mới: 1 docs/audit + 2 buff runtime wire (control + shield) — fix gap nhận diện sau session 9r-25: control debuff (root/stun/silence) và shield buff (`talent_shield_phong`) đều compute mods nhưng KHÔNG consume runtime → de facto no-op trước PR này.
+
+- **Docs audit refresh post-PR-#262** (PR #263): pure docs/audit refresh sau khi PR #262 (Phase 11.X.M DOT) merged. Bump main pointer `ec29c2f` → `a70c733`, mark PR #262 MERGED, list 3 next-task candidates pre-analyzed (Phase 11.X.K hpMaxMul / 11.X.N shield / 11.X.O control). `docs/AI_HANDOFF_REPORT.md`.
+- **Buff control wire vào CombatService.action()** (PR #264 / Phase 11.X.O): `buffMods.controlTurnsMax > 0` → throw `CombatError('CONTROLLED')` ngay sau khi compose buffMods, TRƯỚC mọi state mutation (encounter status / character HP/MP/stamina / ledger không đụng tới khi throw). Catalog `debuff_root_thuy` (3 turns), `debuff_stun_tho` (1 turn), `debuff_silence_kim` (2 turns). 5 vitest mới: stun throw, root throw, DOT no-throw (kind != control), no buff identity, BuffService not injected identity. `combat.service.ts` + `combat.service.test.ts` + `AI_HANDOFF_REPORT.md`.
+- **Buff shield wire vào CombatService.action()** (PR #265 / Phase 11.X.N): `buffMods.shieldHpMaxRatio` damage absorb monster reply trước khi `charHp -= reply`. Per-turn refresh aura model: `shieldAbsorb = floor(char.hpMax × shieldHpMaxRatio)` recompute mỗi turn buff active. Catalog `talent_shield_phong` (kind=shield value=0.3 hpMax, source=talent, durationSec=10). 5 vitest mới: full absorb, shield > reply, no-shield identity, no-service identity, shield + DOT isolation. `combat.service.ts` + `combat.service.test.ts` + `AI_HANDOFF_REPORT.md`.
+
+### Player-facing impact (post-merge)
+
+- **Control debuffs (root/stun/silence) thực sự block player action** (PR #264). Trước đó character bị `debuff_stun_tho` etc trong DB nhưng vẫn act bình thường trong combat. Giờ nhận `CombatError('CONTROLLED')` → frontend hiển thị "Đang bị khống chế, không thể hành động" → player phải chờ debuff hết hạn. Encounter / HP / MP / stamina / ledger an toàn (throw EARLY, không mutate state).
+- **Shield buff (`talent_shield_phong` Phong Hộ Thuẫn) thực sự hấp thu damage** (PR #265). Trước đó player ăn full damage dù có "khiên" trong DB. Giờ shield absorb monster reply theo per-turn refresh model: 30% × hpMax mỗi turn buff active (~3 turns trong 10s duration). Combat log show "Khiên hấp thu N sát thương." Shield + DOT: shield không chống độc/bỏng (semantic kim bất khả phá độc).
+
+### Tests baseline progression
+
+- Pre-PR-#263: API 1405 vitest (post-PR-#262).
+- Post-PR-#263: API 1405 vitest (docs-only).
+- Post-PR-#264: API 1410 vitest (+5 control wire tests).
+- Post-PR-#265: API 1415 vitest (+5 shield wire tests).
+- Total full suite post-PR-#265: API 1415 + shared 954 + web 588 = **2957 vitest**.
+
+### Risks / migrations
+
+- **None breaking**: pure consume wire, no catalog/schema/migration changes.
+- Control wire throws BEFORE state mutation → encounter / character / ledger an toàn.
+- Shield per-turn refresh model = generous (90% over 10s duration with current catalog 30% × ~3 turns), nhưng catalog hiện chỉ có 1 producer (`talent_shield_phong`) → không break balance. Có thể nerf catalog `value` nếu cần điều chỉnh.
+
+---
+
+## [session 9r-25 part 3 wire batch — PR #261 → #262, merged 2/5 2026]
+
+### Internal — Phase 11 buff consume runtime wire (no catalog/balance change)
+
+**Compose-and-fail-soft pattern** continued from session 9r-25 part 2. 2 PR mới: 1 docs/audit + 1 buff runtime wire (DOT) — fix gap DOT debuff (`debuff_burn_hoa` / `debuff_poison_moc`) đã compute `dotPerTickFlat` nhưng KHÔNG consume runtime → de facto no-op trước PR này.
+
+- **Docs audit refresh session 9r-25 part 2 close-out** (PR #261): pure docs/audit refresh sau khi PR #258/#259 merged. Bump main pointer `b47686f` → `7244e6f`, finalize session 9r-25 part 2 audit. `docs/AI_HANDOFF_REPORT.md`.
+- **Buff DOT wire vào CombatService.action()** (PR #262 / Phase 11.X.M): `buffMods.dotPerTickFlat` (đã tính theo stack ở composeBuffMods: `value × stacks`) cộng damage cuối lượt cho encounter còn ACTIVE (đã không WON/LOST). Catalog `debuff_burn_hoa` (8 dmg × stack, hoa skill, maxStacks=3) + `debuff_poison_moc` (6 dmg × stack, moc skill, maxStacks=3). End-of-turn semantics (không phải start-of-turn) — combat turn-based, DOT ticks "cuối lượt" tương đương "đầu lượt tiếp theo". Nếu charHp ≤ 0 sau DOT → status LOST + clamp HP=1 (giống monster reply LOST handling). 5 vitest mới: 1 stack 8 dmg, 2 stack 16 dmg, dot kill (LOST + clamp), no debuff identity, no service inject identity. `combat.service.ts` + `combat.service.test.ts`.
+
+### Player-facing impact (post-merge)
+
+- **DOT debuffs (Hoả/Độc) thực sự apply runtime damage** (PR #262). Trước đó character bị `debuff_burn_hoa` 1 stack hay 3 stack đều ăn 0 DOT damage. Giờ end-of-turn trừ HP theo `value × stacks`. Combat log show "Độc/bỏng phát tác — chịu N sát thương DOT." Nếu DOT đủ kill → "hôn mê do độc/bỏng — chiến đấu thất bại."
+
+### Tests baseline progression
+
+- Pre-PR-#261: API 1400 vitest (post 9r-25 part 2).
+- Post-PR-#261: API 1400 vitest (docs-only).
+- Post-PR-#262: API 1405 vitest (+5 DOT wire tests).
+- Total full suite post-PR-#262: API 1405 + shared 954 + web 588 = **2947 vitest**.
+
+### Risks / migrations
+
+- **None breaking**: pure consume wire, no catalog/schema/migration changes.
+- DOT ticks AFTER monster reply branch — không double-apply trong cùng turn.
+- DOT respect encounter status: WON / LOST không apply (cuộc chiến đã kết thúc).
 
 ---
 
