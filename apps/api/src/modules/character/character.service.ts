@@ -1,8 +1,9 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import {
   expCostForStage,
   nextRealm,
+  titleForRealmMilestone,
   type CharacterStatePayload,
 } from '@xuantoi/shared';
 import { PrismaService } from '../../common/prisma.service';
@@ -10,6 +11,7 @@ import { RealtimeService } from '../realtime/realtime.service';
 import { SpiritualRootService } from './spiritual-root.service';
 import { CultivationMethodService } from './cultivation-method.service';
 import { CharacterSkillService } from './character-skill.service';
+import { TitleService } from './title.service';
 
 interface OnboardInput {
   name: string;
@@ -64,12 +66,15 @@ export interface PublicProfileView {
 
 @Injectable()
 export class CharacterService {
+  private readonly logger = new Logger(CharacterService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly realtime: RealtimeService,
     private readonly spiritualRoot?: SpiritualRootService,
     private readonly cultivationMethod?: CultivationMethodService,
     private readonly characterSkill?: CharacterSkillService,
+    private readonly titles?: TitleService,
   ) {}
 
   async findByUser(userId: string) {
@@ -219,6 +224,29 @@ export class CharacterService {
       },
       include: { sect: true, user: true },
     });
+
+    // Phase 11.9.C — auto-unlock realm milestone title sau breakthrough thành
+    // công. Fail-soft: title unlock lỗi KHÔNG fail breakthrough (cosmetic
+    // flavor, không phải core path). Idempotent qua `unlockTitle` composite
+    // UNIQUE `(characterId, titleKey)`. Bỏ qua nếu realm không thay đổi
+    // (`!next` = đã đạt cao nhất) hoặc realm mới không có title milestone.
+    if (this.titles && next) {
+      const titleDef = titleForRealmMilestone(newRealm);
+      if (titleDef) {
+        try {
+          await this.titles.unlockTitle(
+            updated.id,
+            titleDef.key,
+            'realm_milestone',
+          );
+        } catch (err) {
+          this.logger.warn(
+            `breakthrough: failed to auto-unlock title ${titleDef.key} for char ${updated.id}: ${(err as Error).message}`,
+          );
+        }
+      }
+    }
+
     const state = this.toState(updated);
     this.realtime.emitToUser(userId, 'state:update', state);
     return state;
