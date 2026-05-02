@@ -7,6 +7,7 @@ import {
   PROFILE_RATE_LIMIT_WINDOW_MS,
 } from './character.controller';
 import { CharacterService } from './character.service';
+import { CharacterSkillService } from './character-skill.service';
 import { CurrencyService } from './currency.service';
 import { SpiritualRootService } from './spiritual-root.service';
 import { CultivationMethodService } from './cultivation-method.service';
@@ -47,6 +48,7 @@ const profileLimiterProvider = {
     CurrencyService,
     SpiritualRootService,
     CultivationMethodService,
+    CharacterSkillService,
     PrismaService,
     profileLimiterProvider,
   ],
@@ -55,6 +57,7 @@ const profileLimiterProvider = {
     CurrencyService,
     SpiritualRootService,
     CultivationMethodService,
+    CharacterSkillService,
   ],
 })
 export class CharacterModule {}

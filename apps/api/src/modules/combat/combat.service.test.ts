@@ -3,6 +3,7 @@ import { EncounterStatus } from '@prisma/client';
 import { PrismaService } from '../../common/prisma.service';
 import { RealtimeService } from '../realtime/realtime.service';
 import { CharacterService } from '../character/character.service';
+import { CharacterSkillService } from '../character/character-skill.service';
 import { InventoryService } from '../inventory/inventory.service';
 import { CurrencyService } from '../character/currency.service';
 import { CombatService } from './combat.service';
@@ -294,6 +295,176 @@ describe('CombatService', () => {
       );
       // son_thu_lon def=2. dmgBase = round((100*1 - 2*0.5) * 1.0) = 99.
       expect(dmg).toBe(99);
+    });
+  });
+
+  // — Phase 11.2.B Skill mastery wire ----------------------------------------
+  describe('Skill mastery wire (Phase 11.2.B)', () => {
+    let combatWithMastery: CombatService;
+    let skillSvc: CharacterSkillService;
+
+    beforeAll(() => {
+      const realtime = new RealtimeService();
+      const chars = new CharacterService(prisma, realtime);
+      const inventory = new InventoryService(prisma, realtime, chars);
+      const currency = new CurrencyService(prisma);
+      const missions = makeMissionService(prisma);
+      skillSvc = new CharacterSkillService(prisma, currency);
+      combatWithMastery = new CombatService(
+        prisma,
+        realtime,
+        chars,
+        inventory,
+        currency,
+        missions,
+        skillSvc,
+      );
+    });
+
+    afterEach(() => {
+      vi.restoreAllMocks();
+    });
+
+    it('character có CharacterSkill masteryLevel=3 cho `kiem_khi_chem` → atkScale > base → damage > baseline', async () => {
+      vi.spyOn(Math, 'random').mockReturnValue(0.5);
+      const sect = await prisma.sect.upsert({
+        where: { name: 'Thanh Vân Môn' },
+        update: {},
+        create: { name: 'Thanh Vân Môn' },
+      });
+      const u = await makeUserChar(prisma, {
+        stamina: 100,
+        power: 100,
+        hp: 1000,
+        hpMax: 1000,
+        sectId: sect.id,
+      });
+      // L3 mastery — kiem_khi_chem (basic tier) +0.05 × 3 = +15% atkScale.
+      // kiem_khi_chem element=null → playerElementMul = 1.0 (skill vô hệ).
+      await prisma.characterSkill.create({
+        data: {
+          characterId: u.characterId,
+          skillKey: 'kiem_khi_chem',
+          masteryLevel: 3,
+          source: 'admin_grant',
+        },
+      });
+      const enc = await combatWithMastery.start(u.userId, 'son_coc');
+      const view = await combatWithMastery.action(u.userId, enc.id, {
+        skillKey: 'kiem_khi_chem',
+      });
+      const dmg = parseInt(
+        view.log
+          .find((l) => l.text.includes('Kiếm Khí Trảm'))!
+          .text.match(/gây (\d+)/)![1],
+        10,
+      );
+      // Base atkScale 1.7; effective = round2(1.7 * 1.15) = 1.95 (FP
+      // truncation: 1.7*1.15 = 1.95499... → round2 → 1.95).
+      // power=100, son_thu_lon def=2 → dmgBase = round((100*1.95 - 1)*1.0)
+      // = round(194) = 194.
+      // KHÔNG mastery: dmgBase = round((100 * 1.7 - 1) * 1.0) = 169.
+      expect(dmg).toBe(194);
+      expect(dmg).toBeGreaterThan(169);
+    });
+
+    it('legacy character (no row) → masteryLevel=0 → damage = baseline', async () => {
+      vi.spyOn(Math, 'random').mockReturnValue(0.5);
+      const sect = await prisma.sect.upsert({
+        where: { name: 'Thanh Vân Môn' },
+        update: {},
+        create: { name: 'Thanh Vân Môn' },
+      });
+      const u = await makeUserChar(prisma, {
+        stamina: 100,
+        power: 100,
+        hp: 1000,
+        hpMax: 1000,
+        sectId: sect.id,
+      });
+      // grantStarterIfMissing trong getEffectiveSkillFor — không lazy-grant
+      // cho non-basic_attack skill. Character có 0 row CharacterSkill cho
+      // `kiem_khi_chem` → masteryLevel = 0 → no bonus.
+      const enc = await combatWithMastery.start(u.userId, 'son_coc');
+      const view = await combatWithMastery.action(u.userId, enc.id, {
+        skillKey: 'kiem_khi_chem',
+      });
+      const dmg = parseInt(
+        view.log
+          .find((l) => l.text.includes('Kiếm Khí Trảm'))!
+          .text.match(/gây (\d+)/)![1],
+        10,
+      );
+      // No row → applyMasteryEffect masteryLevel=0 → atkScale=1.7 không đổi.
+      // dmgBase = round((100 * 1.7 - 1) * 1.0) = 169.
+      expect(dmg).toBe(169);
+    });
+
+    it('mastery mpCostReduction → dùng skill khi MP gốc thiếu nhưng đủ sau giảm', async () => {
+      vi.spyOn(Math, 'random').mockReturnValue(0.5);
+      const sect = await prisma.sect.upsert({
+        where: { name: 'Thanh Vân Môn' },
+        update: {},
+        create: { name: 'Thanh Vân Môn' },
+      });
+      // kiem_khi_chem mpCost gốc = 12. L5 basic mastery → mpCostReduction
+      // 0.05*5 = 0.25 → effective = round(12 * 0.75) = 9.
+      // Cho character mp=10 → tickled qua sau giảm.
+      const u = await makeUserChar(prisma, {
+        stamina: 100,
+        power: 100,
+        hp: 1000,
+        hpMax: 1000,
+        mp: 10,
+        mpMax: 100,
+        sectId: sect.id,
+      });
+      await prisma.characterSkill.create({
+        data: {
+          characterId: u.characterId,
+          skillKey: 'kiem_khi_chem',
+          masteryLevel: 5,
+          source: 'admin_grant',
+        },
+      });
+      const enc = await combatWithMastery.start(u.userId, 'son_coc');
+      // KHÔNG throw MP_LOW vì effective.mpCost = 9 ≤ 10.
+      const view = await combatWithMastery.action(u.userId, enc.id, {
+        skillKey: 'kiem_khi_chem',
+      });
+      expect(view.status).not.toBe(EncounterStatus.LOST);
+    });
+
+    it('mastery max-level lookup → no crash khi level vượt curve (clamped)', async () => {
+      vi.spyOn(Math, 'random').mockReturnValue(0.5);
+      const sect = await prisma.sect.upsert({
+        where: { name: 'Thanh Vân Môn' },
+        update: {},
+        create: { name: 'Thanh Vân Môn' },
+      });
+      const u = await makeUserChar(prisma, {
+        stamina: 100,
+        power: 100,
+        hp: 1000,
+        hpMax: 1000,
+        sectId: sect.id,
+      });
+      // Tạo row masteryLevel=99 (vượt max basic=5). applyMasteryEffect
+      // clamp xuống 5 — không crash.
+      await prisma.characterSkill.create({
+        data: {
+          characterId: u.characterId,
+          skillKey: 'kim_quang_tram',
+          masteryLevel: 99,
+          source: 'admin_grant',
+        },
+      });
+      const enc = await combatWithMastery.start(u.userId, 'son_coc');
+      const view = await combatWithMastery.action(u.userId, enc.id, {
+        skillKey: 'kim_quang_tram',
+      });
+      // No throw, action thực thi.
+      expect(view).toBeTruthy();
     });
   });
 });

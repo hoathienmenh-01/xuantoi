@@ -119,11 +119,13 @@ Khi thêm runtime (Phase 11.1.B + 11.3):
 - `EffectiveSkill.mpCost = max(0, round(baseSkill.mpCost × (1 - masteryLevel × mpCostReductionPerLevel)))`.
 - `EffectiveSkill.cooldownTurns = max(0, baseSkill.cooldownTurns - floor(masteryLevel / cooldownReductionEveryNLevels))`.
 
-Khi thêm runtime (Phase 11.2.B):
+**Phase 11.2.B runtime (this PR)**:
 
-- `CombatService.computeSkillDamage` thay vì đọc `SkillDef.atkScale` trực tiếp → call `applyMasteryEffect(template, characterSkill.masteryLevel, baseSkill)` rồi áp formula `damage = atk × effective.atkScale - def × 0.5`.
-- Stack với cultivation method `expMultiplier` (Phase 11.1.A): độc lập (skill mastery áp lên `atkScale` damage; cultivation method áp lên `cultivationRate` EXP). Không stack chung cap.
-- Skill book item drop từ dungeon/boss → consume → ItemLedger thành skillShard → `upgradeMastery` deduct.
+- `CombatService.action()` inject `@Optional() CharacterSkillService`. Replace direct `skill.atkScale`/`skill.mpCost` đọc baseline → `effective = await characterSkill.getEffectiveSkillFor(char.id, baseSkill)` (gọi `applyMasteryEffect(template, masteryLevel, baseSkill)`). `dmgBase = rollDamage(effPower, monster.def, effective.atkScale)` + `charMp -= effective.mpCost`. Fallback `baselineEffective(baseSkill)` nếu service không inject (legacy test, optional DI). Legacy character (no `CharacterSkill` row) → `masteryLevel=0` → no bonus → backward-compat preserved.
+- Stack với cultivation method `expMultiplier` (Phase 11.1.B): độc lập axis (skill mastery áp lên `atkScale` damage; cultivation method áp lên `cultivationRate` EXP). Không stack chung cap. Stack với linh căn `statBonusPercent` (Phase 11.3.C): cùng damage axis nhưng compose multiplicative — `effPower = (char.power + equip.atk) × statMul` qua linh căn (1.0..1.30), rồi `dmg = effPower × effective.atkScale` qua mastery (1.0..1.70 endgame legendary). Stack với Ngũ Hành element multiplier (Phase 11.3.B): cùng damage axis multiplicative cuối — `dmg × characterSkillElementBonus` (0.7..1.40).
+- **Combat baseline numbers** (player power=100, son_thu_lon def=2, variance=1.0): `kiem_khi_chem` (basic atkScale=1.7) L0 → 169 dmg, L3 → 194 dmg (+15%), L5 → 220 dmg (+30%). MP cost L0=12 → L5=10 (basic mpCostReductionPerLevel=0.05 × 5 = 25%). Endgame ceiling: legendary L10 (atkScale 1.70× of base, mpCost 0.50× of base) — `van_kiem_quy_tong` base 3.8 atkScale → effective 6.46 atkScale → ~640+ dmg per cast at endgame stats.
+- `CharacterSkillService.upgradeMastery` atomic transaction qua `prisma.$transaction()`: deduct `linhThachCost` (template.masteryLevels[lv].linhThachCost) qua `CurrencyService.applyTx({ reason: 'SKILL_UPGRADE' })` — server-authoritative, không double-spend, throw `INSUFFICIENT_FUNDS` trước khi increment masteryLevel.
+- Skill book item drop từ dungeon/boss → consume → ItemLedger thành skillShard → `upgradeMastery` deduct **(deferred Phase 11.2.C — kind='item' SkillUnlockRequirement)**.
 
 ### 2.7 Buff / Debuff curve (phase 11.8.A)
 

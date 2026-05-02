@@ -9,6 +9,7 @@ import { PrismaService } from '../../common/prisma.service';
 import { RealtimeService } from '../realtime/realtime.service';
 import { SpiritualRootService } from './spiritual-root.service';
 import { CultivationMethodService } from './cultivation-method.service';
+import { CharacterSkillService } from './character-skill.service';
 
 interface OnboardInput {
   name: string;
@@ -68,6 +69,7 @@ export class CharacterService {
     private readonly realtime: RealtimeService,
     private readonly spiritualRoot?: SpiritualRootService,
     private readonly cultivationMethod?: CultivationMethodService,
+    private readonly characterSkill?: CharacterSkillService,
   ) {}
 
   async findByUser(userId: string) {
@@ -151,6 +153,11 @@ export class CharacterService {
       // `khai_thien_quyet`. Idempotent.
       if (this.cultivationMethod) {
         await this.cultivationMethod.grantStarterIfMissing(c.id);
+      }
+      // Phase 11.2.B — auto-grant + auto-equip skill khởi đầu `basic_attack`.
+      // Idempotent — re-call an toàn.
+      if (this.characterSkill) {
+        await this.characterSkill.grantStarterIfMissing(c.id);
       }
       const fresh = await this.prisma.character.findUnique({
         where: { id: c.id },
