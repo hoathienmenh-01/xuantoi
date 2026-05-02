@@ -407,32 +407,46 @@ export class CombatService {
         text: `${monster.name} phản kích, gây ${reply} sát thương.`,
         ts: Date.now(),
       });
-      // Phase 11.X.N — Buff shield (talent_shield_phong: 30% hpMax, etc.)
-      // absorb monster reply damage. `shieldAbsorb = floor(char.hpMax *
-      // buffMods.shieldHpMaxRatio)` re-applied mỗi turn còn buff active
-      // (per-turn refresh aura model). Buff hết hạn (`expiresAt` sweep) →
-      // shieldHpMaxRatio = 0 → no absorb. Identity (0, no-op) khi service
-      // không injected hoặc no shield buff. KHÔNG mutate buff DB row —
-      // duration-based, không depletion-based.
-      const shieldAbsorb = Math.floor(char.hpMax * buffMods.shieldHpMaxRatio);
-      const absorbed = Math.min(shieldAbsorb, reply);
-      const netReply = reply - absorbed;
-      if (absorbed > 0) {
+      // Phase 11.X.V — Buff invuln (kind=invuln) override: nullify all
+      // monster reply damage. Áp PRE-shield: invuln là "ignore all damage"
+      // theo spec → không cần shield absorb tốn. Identity false → no-op
+      // (hiện tại catalog chưa có producer cho `kind=invuln`, dành future
+      // buff design). Pattern coverage nhất quán với cultivationBlocked
+      // (#270) + control (#264) — boolean buff state gates damage path.
+      if (buffMods.invulnActive) {
         log.push({
           side: 'system',
-          text: `Khiên hấp thu ${absorbed} sát thương.`,
+          text: `Bất tử — vô hiệu hóa toàn bộ sát thương phản kích.`,
           ts: Date.now(),
         });
-      }
-      charHp -= netReply;
-      if (charHp <= 0) {
-        nextStatus = EncounterStatus.LOST;
-        charHp = 1;
-        log.push({
-          side: 'system',
-          text: `Đạo hữu rơi vào hôn mê, đan điền tổn thương — phải hồi phục mới có thể chiến tiếp.`,
-          ts: Date.now(),
-        });
+      } else {
+        // Phase 11.X.N — Buff shield (talent_shield_phong: 30% hpMax, etc.)
+        // absorb monster reply damage. `shieldAbsorb = floor(char.hpMax *
+        // buffMods.shieldHpMaxRatio)` re-applied mỗi turn còn buff active
+        // (per-turn refresh aura model). Buff hết hạn (`expiresAt` sweep) →
+        // shieldHpMaxRatio = 0 → no absorb. Identity (0, no-op) khi service
+        // không injected hoặc no shield buff. KHÔNG mutate buff DB row —
+        // duration-based, không depletion-based.
+        const shieldAbsorb = Math.floor(char.hpMax * buffMods.shieldHpMaxRatio);
+        const absorbed = Math.min(shieldAbsorb, reply);
+        const netReply = reply - absorbed;
+        if (absorbed > 0) {
+          log.push({
+            side: 'system',
+            text: `Khiên hấp thu ${absorbed} sát thương.`,
+            ts: Date.now(),
+          });
+        }
+        charHp -= netReply;
+        if (charHp <= 0) {
+          nextStatus = EncounterStatus.LOST;
+          charHp = 1;
+          log.push({
+            side: 'system',
+            text: `Đạo hữu rơi vào hôn mê, đan điền tổn thương — phải hồi phục mới có thể chiến tiếp.`,
+            ts: Date.now(),
+          });
+        }
       }
     }
 
@@ -441,8 +455,10 @@ export class CombatService {
     // player attack / monster reply). `dotPerTickFlat` đã tính theo stack
     // (composeBuffMods stack handler: value × stacks). Service không inject
     // hoặc no dot debuff active → identity (0, no-op).
+    // Phase 11.X.V — invulnActive cũng skip DOT damage (spec: "ignore all
+    // damage"). Identity false → DOT vẫn áp. Future-proof.
     const dotDmg = Math.floor(buffMods.dotPerTickFlat);
-    if (dotDmg > 0 && nextStatus === EncounterStatus.ACTIVE) {
+    if (dotDmg > 0 && nextStatus === EncounterStatus.ACTIVE && !buffMods.invulnActive) {
       charHp = Math.max(0, charHp - dotDmg);
       log.push({
         side: 'system',

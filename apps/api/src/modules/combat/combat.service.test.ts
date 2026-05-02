@@ -1797,4 +1797,169 @@ describe('CombatService', () => {
       expect(logs.find((l) => l.text.includes('Độc/bỏng phát tác'))).toBeDefined();
     });
   });
+
+  // — Phase 11.X.V Buff invuln wire (kind=invuln) override damage ----
+  // Wire `buffMods.invulnActive` in CombatService.action() reply branch
+  // (combat.service.ts:404-438) and DOT branch (line 449). Identity false
+  // → no-op. Catalog hiện tại không có producer cho `kind=invuln` → wire
+  // pattern coverage + future-proof. Same pattern như cultivationBlocked
+  // (#270) + control (#264).
+  describe('Buff invuln wire (Phase 11.X.V)', () => {
+    let combatWithBuffs: CombatService;
+
+    beforeAll(() => {
+      const realtime = new RealtimeService();
+      const chars = new CharacterService(prisma, realtime);
+      const inventory = new InventoryService(prisma, realtime, chars);
+      const currency = new CurrencyService(prisma);
+      const missions = makeMissionService(prisma);
+      const buffSvc = new BuffService(prisma);
+      combatWithBuffs = new CombatService(
+        prisma,
+        realtime,
+        chars,
+        inventory,
+        currency,
+        missions,
+        undefined, // characterSkill
+        undefined, // achievements
+        undefined, // talents
+        buffSvc,
+      );
+    });
+
+    afterEach(() => {
+      vi.restoreAllMocks();
+    });
+
+    it('spy BuffService.getMods → invulnActive=true → reply nullified, charHp unchanged', async () => {
+      vi.spyOn(Math, 'random').mockReturnValue(0.5);
+      // Spy getMods to inject invulnActive=true (catalog không có producer
+      // hiện tại — future buff design).
+      vi.spyOn(BuffService.prototype, 'getMods').mockResolvedValue({
+        atkMul: 1,
+        defMul: 1,
+        hpMaxMul: 1,
+        mpMaxMul: 1,
+        spiritMul: 1,
+        hpRegenFlat: 0,
+        mpRegenFlat: 0,
+        damageBonusByElement: new Map(),
+        damageReductionByElement: new Map(),
+        dotPerTickFlat: 0,
+        shieldHpMaxRatio: 0,
+        controlTurnsMax: 0,
+        tauntActive: false,
+        invulnActive: true,
+        cultivationBlocked: false,
+      });
+
+      const u = await makeUserChar(prisma, {
+        realmKey: 'kim_dan',
+        stamina: 100,
+        power: 5, // monster sống → reply phát động
+        spirit: 10,
+        hp: 1000,
+        hpMax: 1000,
+      });
+      const enc = await combatWithBuffs.start(u.userId, 'son_coc');
+      await combatWithBuffs.action(u.userId, enc.id, {});
+      const c = await prisma.character.findUniqueOrThrow({
+        where: { id: u.characterId },
+      });
+      // Invuln → reply nullified, charHp unchanged.
+      expect(c.hp).toBe(1000);
+      const encAfter = await prisma.encounter.findUniqueOrThrow({
+        where: { id: enc.id },
+      });
+      const logs = encAfter.log as unknown as Array<{ side: string; text: string }>;
+      expect(
+        logs.find((l) => l.text.includes('Bất tử — vô hiệu hóa')),
+      ).toBeDefined();
+    });
+
+    it('spy BuffService.getMods → invulnActive=true + dotPerTickFlat=8 → DOT cũng skip, charHp unchanged', async () => {
+      vi.spyOn(Math, 'random').mockReturnValue(0.5);
+      // Invuln + DOT cùng tồn tại → invuln override cả DOT (spec: "ignore
+      // all damage"). Identity false → DOT vẫn áp.
+      vi.spyOn(BuffService.prototype, 'getMods').mockResolvedValue({
+        atkMul: 1,
+        defMul: 1,
+        hpMaxMul: 1,
+        mpMaxMul: 1,
+        spiritMul: 1,
+        hpRegenFlat: 0,
+        mpRegenFlat: 0,
+        damageBonusByElement: new Map(),
+        damageReductionByElement: new Map(),
+        dotPerTickFlat: 8,
+        shieldHpMaxRatio: 0,
+        controlTurnsMax: 0,
+        tauntActive: false,
+        invulnActive: true,
+        cultivationBlocked: false,
+      });
+
+      const u = await makeUserChar(prisma, {
+        realmKey: 'kim_dan',
+        stamina: 100,
+        power: 5,
+        spirit: 10,
+        hp: 1000,
+        hpMax: 1000,
+      });
+      const enc = await combatWithBuffs.start(u.userId, 'son_coc');
+      await combatWithBuffs.action(u.userId, enc.id, {});
+      const c = await prisma.character.findUniqueOrThrow({
+        where: { id: u.characterId },
+      });
+      // Invuln nullifies reply (1) AND DOT (8) → charHp 1000 unchanged.
+      expect(c.hp).toBe(1000);
+      const encAfter = await prisma.encounter.findUniqueOrThrow({
+        where: { id: enc.id },
+      });
+      const logs = encAfter.log as unknown as Array<{ side: string; text: string }>;
+      // No DOT log emitted khi invulnActive=true.
+      expect(logs.find((l) => l.text.includes('Độc/bỏng phát tác'))).toBeUndefined();
+    });
+
+    it('character KHÔNG buff → composeBuffMods identity (invulnActive=false) → reply applies, DOT N/A', async () => {
+      vi.spyOn(Math, 'random').mockReturnValue(0.5);
+      const u = await makeUserChar(prisma, {
+        realmKey: 'kim_dan',
+        stamina: 100,
+        power: 5,
+        spirit: 10,
+        hp: 1000,
+        hpMax: 1000,
+      });
+      const enc = await combatWithBuffs.start(u.userId, 'son_coc');
+      await combatWithBuffs.action(u.userId, enc.id, {});
+      const c = await prisma.character.findUniqueOrThrow({
+        where: { id: u.characterId },
+      });
+      // No invuln → reply 1 dmg → charHp 999.
+      expect(c.hp).toBe(999);
+    });
+
+    it('BuffService không inject vào CombatService → identity baseline (no invuln, reply applies)', async () => {
+      vi.spyOn(Math, 'random').mockReturnValue(0.5);
+      // Top-level `combat` (no BuffService) → composeBuffMods([]) →
+      // invulnActive=false → reply applies normally.
+      const u = await makeUserChar(prisma, {
+        realmKey: 'kim_dan',
+        stamina: 100,
+        power: 5,
+        spirit: 10,
+        hp: 1000,
+        hpMax: 1000,
+      });
+      const enc = await combat.start(u.userId, 'son_coc');
+      await combat.action(u.userId, enc.id, {});
+      const c = await prisma.character.findUniqueOrThrow({
+        where: { id: u.characterId },
+      });
+      expect(c.hp).toBe(999);
+    });
+  });
 });
