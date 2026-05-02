@@ -1653,4 +1653,155 @@ describe('BossService', () => {
       );
     });
   });
+
+  // ── Phase 11.X.Y — Talent damageBonusByElement wire vào BossService.attack() ──
+  // Wire `talentMods.damageBonusByElement.get(skillElement)` × `raw` damage
+  // multiplicative compose. Symmetric với Phase 11.7.C combat path
+  // (combat.service.ts L271-277). Catalog producer: `talent_hoa_tam_dao`
+  // (passive damage_bonus 1.15, elementTarget=kim) — keyed bởi map[kim] = 1.15.
+  // Khi player dùng skill element=kim (vd `kim_quang_tram`) → trigger +15%.
+  // Skill element=null (basic attack) → identity. Service không inject talents
+  // → composePassiveTalentMods([]) empty Map → identity baseline.
+  describe('Talent damageBonusByElement wire (Phase 11.X.Y)', () => {
+    let bossWithTalentsY: BossService;
+    let talentSvcY: TalentService;
+
+    beforeAll(() => {
+      const realtime = new RealtimeService();
+      const chars = new CharacterService(prisma, realtime);
+      const inventory = new InventoryService(prisma, realtime, chars);
+      const currency = new CurrencyService(prisma);
+      const missions = makeMissionService(prisma);
+      talentSvcY = new TalentService(prisma);
+      bossWithTalentsY = new BossService(
+        prisma,
+        realtime,
+        chars,
+        inventory,
+        currency,
+        missions,
+        undefined, // achievements
+        talentSvcY,
+      );
+    });
+
+    beforeEach(() => {
+      (bossWithTalentsY as unknown as { cooldowns: Map<string, number> })
+        .cooldowns.clear();
+    });
+
+    afterEach(() => {
+      vi.restoreAllMocks();
+    });
+
+    it('skill element=kim (`kim_quang_tram`) + talent_hoa_tam_dao (damageBonusByElement[kim]=1.15) → damage cao hơn baseline', async () => {
+      // Pattern: 2 char giống nhau, 1 không học talent (baseline) + 1 học
+      // `talent_hoa_tam_dao` (damageBonusByElement[kim]=1.15). Player dùng
+      // skill `kim_quang_tram` (element=kim) → look up map[kim] → 1.15.
+      vi.spyOn(Math, 'random').mockReturnValue(0.5);
+
+      const baseline = await makeUserChar(prisma, {
+        mp: 100,
+        stamina: 100,
+        power: 100,
+        spirit: 100,
+        realmKey: 'luyen_hu', // budget cao đủ talent point cost 2
+      });
+      await spawnBoss({ currentHp: 1_000_000n });
+      const baselineOut = await bossWithTalentsY.attack(
+        baseline.userId,
+        'kim_quang_tram',
+      );
+
+      const talented = await makeUserChar(prisma, {
+        mp: 100,
+        stamina: 100,
+        power: 100,
+        spirit: 100,
+        realmKey: 'luyen_hu',
+      });
+      await talentSvcY.learnTalent(talented.characterId, 'talent_hoa_tam_dao');
+      const talentedOut = await bossWithTalentsY.attack(
+        talented.userId,
+        'kim_quang_tram',
+      );
+
+      // skill element=kim, talent damageBonusByElement[kim]=1.15 → raw × 1.15.
+      // Talented damage > baseline.
+      expect(BigInt(talentedOut.result.damageDealt)).toBeGreaterThan(
+        BigInt(baselineOut.result.damageDealt),
+      );
+    });
+
+    it('skill element=null (basic attack) + talent_hoa_tam_dao → damage equal baseline (skill element null → identity)', async () => {
+      // Verify isolation: skill basic-attack (element=null) → skillElement=null
+      // → talentElementMul=1 (no map lookup). Talent learned but not triggered.
+      vi.spyOn(Math, 'random').mockReturnValue(0.5);
+
+      const baseline = await makeUserChar(prisma, {
+        mp: 100,
+        stamina: 100,
+        power: 100,
+        spirit: 100,
+        realmKey: 'luyen_hu',
+      });
+      await spawnBoss({ currentHp: 1_000_000n });
+      const baselineOut = await bossWithTalentsY.attack(
+        baseline.userId,
+        undefined,
+      );
+
+      const talented = await makeUserChar(prisma, {
+        mp: 100,
+        stamina: 100,
+        power: 100,
+        spirit: 100,
+        realmKey: 'luyen_hu',
+      });
+      await talentSvcY.learnTalent(talented.characterId, 'talent_hoa_tam_dao');
+      const talentedOut = await bossWithTalentsY.attack(
+        talented.userId,
+        undefined,
+      );
+
+      // basic-attack: skill.element=null → skillElement=null → identity multiplier.
+      // 2 char damage equal.
+      expect(BigInt(talentedOut.result.damageDealt)).toBe(
+        BigInt(baselineOut.result.damageDealt),
+      );
+    });
+
+    it('TalentService không inject vào BossService → identity baseline (skill kim, learned talent_hoa_tam_dao nhưng `boss` bypass)', async () => {
+      // Top-level `boss` instance KHÔNG inject TalentService → talentMods =
+      // composePassiveTalentMods([]) identity (empty damageBonusByElement Map
+      // → get('kim') = undefined → ?? 1). 2 char damage equal (cùng skill).
+      vi.spyOn(Math, 'random').mockReturnValue(0.5);
+
+      const a = await makeUserChar(prisma, {
+        mp: 100,
+        stamina: 100,
+        power: 100,
+        spirit: 100,
+        realmKey: 'luyen_hu',
+      });
+      const b = await makeUserChar(prisma, {
+        mp: 100,
+        stamina: 100,
+        power: 100,
+        spirit: 100,
+        realmKey: 'luyen_hu',
+      });
+      await talentSvcY.learnTalent(b.characterId, 'talent_hoa_tam_dao');
+      await spawnBoss({ currentHp: 1_000_000n });
+
+      const outA = await boss.attack(a.userId, 'kim_quang_tram');
+      const outB = await boss.attack(b.userId, 'kim_quang_tram');
+
+      // No talent inject → 2 char damage equal (composePassiveTalentMods([])
+      // identity).
+      expect(BigInt(outA.result.damageDealt)).toBe(
+        BigInt(outB.result.damageDealt),
+      );
+    });
+  });
 });
