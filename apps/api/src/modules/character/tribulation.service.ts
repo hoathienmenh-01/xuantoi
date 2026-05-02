@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { CurrencyKind } from '@prisma/client';
 import {
   computeTribulationFailurePenalty,
@@ -7,11 +7,13 @@ import {
   getTribulationForBreakthrough,
   nextRealm,
   simulateTribulation,
+  titleForRealmMilestone,
   type ElementKey,
   type TribulationDef,
 } from '@xuantoi/shared';
 import { PrismaService } from '../../common/prisma.service';
 import { CurrencyService } from './currency.service';
+import { TitleService } from './title.service';
 
 /**
  * Phase 11.6.B Tribulation/Tâm Ma MVP runtime — server-authoritative deterministic kiếp.
@@ -44,9 +46,12 @@ import { CurrencyService } from './currency.service';
  */
 @Injectable()
 export class TribulationService {
+  private readonly logger = new Logger(TribulationService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly currency: CurrencyService,
+    private readonly titles?: TitleService,
   ) {}
 
   /**
@@ -168,6 +173,38 @@ export class TribulationService {
             refType: 'TribulationAttemptLog',
             refId: log.id,
           });
+        }
+
+        // Phase 11.9.C-2 — auto-unlock realm milestone title (atomic trong
+        // cùng tx). Idempotent qua `CharacterTitleUnlock` composite UNIQUE.
+        // Skip nếu (a) `titles` chưa inject (test/legacy), (b) realm mới
+        // không có milestone title trong catalog (vd hoa_than → luyen_hu).
+        // KHÔNG fail-soft như `CharacterService.breakthrough()` low-tier:
+        // nếu unlock fail trong tx này, rollback toàn bộ (currency + log +
+        // realm advance) — atomic guarantee. Ngoại lệ: `TITLE_NOT_FOUND`
+        // (catalog drift) chỉ log warn, không rollback (tribulation success
+        // KHÔNG nên fail vì cosmetic title catalog drift).
+        if (this.titles) {
+          const titleDef = titleForRealmMilestone(next.key);
+          if (titleDef) {
+            try {
+              await this.titles.unlockTitleTx(
+                tx,
+                characterId,
+                titleDef.key,
+                'realm_milestone',
+              );
+            } catch (err) {
+              const msg = (err as Error).message;
+              if (msg === 'TITLE_NOT_FOUND') {
+                this.logger.warn(
+                  `tribulation: title catalog drift for ${titleDef.key}: ${msg}`,
+                );
+              } else {
+                throw err;
+              }
+            }
+          }
         }
 
         return {
