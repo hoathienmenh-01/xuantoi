@@ -272,7 +272,7 @@ describe('CultivationProcessor.process (tick)', () => {
         realmKey: 'luyen_hu',
         realmStage: 1,
       });
-      await talentSvc.learnTalent(f.characterId, 'talent_ngo_dao', 'realm_unlock');
+      await talentSvc.learnTalent(f.characterId, 'talent_ngo_dao');
 
       await processorWithTalents.process(tickJob());
       const c = await prisma.character.findUniqueOrThrow({
@@ -326,7 +326,7 @@ describe('CultivationProcessor.process (tick)', () => {
         primaryElement: 'kim',
         equippedCultivationMethodKey: 'thai_hu_chan_kinh',
       });
-      await talentSvc.learnTalent(f.characterId, 'talent_ngo_dao', 'realm_unlock');
+      await talentSvc.learnTalent(f.characterId, 'talent_ngo_dao');
 
       await processorWithTalents.process(tickJob());
       const c = await prisma.character.findUniqueOrThrow({
