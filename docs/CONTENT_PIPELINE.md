@@ -15,7 +15,7 @@ Mục tiêu: thêm content **không phá CI**, **không lệch curve**, **không
 | Realm | `packages/shared/src/realms.ts` | 28 đại cảnh giới | Static, ít thay đổi |
 | Proverb | `packages/shared/src/proverbs.ts` | 7 câu | Có thể thêm dần |
 | Item | `packages/shared/src/items.ts` | 81 item (Phase 10 PR-1 +50) | Phase 10: → 80-100 ✅ |
-| Skill | `packages/shared/src/combat.ts` `SKILLS` | 25 skill (Phase 10 PR-2 +15 Ngũ Hành) | Phase 10-11: → 25-30 ✅ |
+| Skill | `packages/shared/src/combat.ts` `SKILLS` | 36 skill (Phase 10 PR-2 +15 Ngũ Hành + PR-2 v2 +10 kim_dan ULT/role-gap passive) | Phase 10-11: → 25-40 ✅ |
 | Monster | `packages/shared/src/combat.ts` `MONSTERS` | 29 monster (Phase 10 PR-3 +20 Ngũ Hành × MonsterType BEAST/HUMANOID/SPIRIT/ELITE/BOSS) | Phase 10: → 30 ✅ |
 | Dungeon | `packages/shared/src/combat.ts` `DUNGEONS` + `DUNGEON_LOOT` | 9 dungeon (Phase 10 PR-3 +6 element-thematic) | Phase 10: → 8-10 ✅ |
 | Mission | `packages/shared/src/missions.ts` | 66 mission (PR #217 Phase 10 PR-4 +54: tier daily/weekly + element chronicle + tu-tien-progression chain) | Phase 10: → 65+ ✅ |
@@ -129,15 +129,16 @@ Mỗi content type có 1 contract chung:
 2. Append vào `SKILLS` với `sect: 'thanh_van' | 'huyen_thuy' | 'tu_la' | null`.
 3. Set `atkScale`, `mpCost`, `cooldownTurns` (BALANCE_MODEL §4.3 band), `selfHealRatio`, `selfBloodCost`.
 4. **Phase 10 PR-2 forward-compat fields** (optional nhưng khuyến khích đặt cho mọi skill mới): `element` (`'kim' | 'moc' | 'thuy' | 'hoa' | 'tho' | null`) — Ngũ Hành affinity; `type` (`'ACTIVE' | 'PASSIVE'`) — default ACTIVE, PASSIVE không xuất hiện ở picker FE (xem `activeSkillsForSect`); `role` (`'DAMAGE' | 'HEAL' | 'BUFF' | 'DEBUFF' | 'CONTROL' | 'UTILITY'`) — UI/AI moveset compose; `unlockRealm` (REALMS key e.g. `'luyenkhi'`/`'truc_co'`/`'kim_dan'`) — phase 11.2 sẽ enforce.
-5. Mỗi hệ Ngũ Hành nên có ≥ 1 ACTIVE + ≥ 1 PASSIVE (test `skills-balance.test.ts` enforce).
+5. Mỗi hệ Ngũ Hành nên có ≥ 2 ACTIVE + ≥ 2 PASSIVE (test `skills-balance.test.ts` enforce sau Phase 10 PR-2 v2 expansion). Coverage đảm bảo mỗi hệ ≥1 ULT tier `kim_dan` (endgame layer).
 6. Tên EN.
 7. Test pass: `pnpm --filter @xuantoi/shared test` — verify `combat.test.ts` (legacy invariant) + `skills-balance.test.ts` (Ngũ Hành coverage + stat budget) cả hai green.
 8. PR title: `feat(shared): skill pack <name> (+N skill)`.
 
 **Quality gate**:
 - `skills-balance.test.ts` pass: unique key, atkScale ≤ 5, mpCost ≤ 80, selfHeal ≤ 0.5, selfBlood ≤ 0.3, cooldown ≤ 6, element/type/role/unlockRealm hợp lệ.
-- Mỗi Ngũ Hành có active + passive (sample test).
+- Mỗi Ngũ Hành có ≥ 2 ACTIVE + ≥ 2 PASSIVE + ≥ 1 ULT tier `kim_dan` (Phase 10 PR-2 v2 enforce, depth tối thiểu ≥4 skill/element).
 - PASSIVE skill: atkScale = 0, mpCost = 0, cooldown = 0 (catalog only — runtime áp dụng phase 11.8 buff system).
+- Tương thích với `skill-templates.ts` — mỗi `SkillDef` phải có `SkillTemplate` tương ứng (`SKILL_TEMPLATES` cardinality phase 11.2.B); `inferExpectedTier()` (atkScale ≥ 3.5 → legendary) — ULT kim_dan dùng atkScale 3.4 cận cap để phân loại `advanced` thay vì `legendary`.
 
 ### 4.3 Monster + Dungeon
 

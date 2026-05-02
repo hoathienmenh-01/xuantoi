@@ -753,6 +753,183 @@ export const SKILLS: readonly SkillDef[] = [
     unlockRealm: 'luyenkhi',
     cooldownTurns: 0,
   },
+
+  // ===================================================================
+  // Phase 10 PR-2 v2 — Skill Pack Ngũ Hành expansion (+10 skill)
+  //
+  // Mục tiêu: nâng coverage mỗi hệ Ngũ Hành lên ≥ 2 ACTIVE + ≥ 2 PASSIVE
+  // và mở tier kim_dan (order=3) làm endgame layer cho Phase 11 progression
+  // (currently truc_co order=2 là tier cao nhất). Catalog-only — Phase 11.2.B
+  // `applyMasteryEffect` đã wire generic nên skill mới tự inherit mastery
+  // system + Phase 11.3.B element multiplier wire.
+  //
+  // Stat budget (BALANCE_MODEL §4):
+  //   kim_dan ULT: atkScale 3.4–3.5, mpCost 60–70, cooldown 4–5,
+  //                selfHealRatio ≤ 0.4, selfBloodCost ≤ 0.1.
+  //   mid passive: atkScale 0, mpCost 0, cooldown 0 (ràng buộc test passive).
+  //
+  // Mỗi hệ thêm: 1× kim_dan ACTIVE (ULT) + 1× mid PASSIVE bù role gap.
+  // ===================================================================
+
+  // ----- Hệ KIM — endgame ULT + mid passive sharpness -----
+  {
+    key: 'kim_kiep_luan_chuyen',
+    name: 'Kim Kiếp Luân Chuyển',
+    description: 'ULT Kim hệ Kim Đan — đại kim luân xoay vần chém vạn vật, sát thương 3.4×, tốn 70 MP.',
+    mpCost: 70,
+    atkScale: 3.4,
+    selfHealRatio: 0,
+    selfBloodCost: 0,
+    sect: null,
+    element: 'kim',
+    type: 'ACTIVE',
+    role: 'DAMAGE',
+    unlockRealm: 'kim_dan',
+    cooldownTurns: 5,
+  },
+  {
+    key: 'kim_phong_lien_hoa',
+    name: 'Kim Phong Liên Hoa',
+    description: 'Tâm pháp Kim hệ — kim quang sắc bén tự động mài giũa binh khí, tăng độ sắc bén dài hạn (passive).',
+    mpCost: 0,
+    atkScale: 0,
+    selfHealRatio: 0,
+    selfBloodCost: 0,
+    sect: null,
+    element: 'kim',
+    type: 'PASSIVE',
+    role: 'BUFF',
+    unlockRealm: 'luyenkhi',
+    cooldownTurns: 0,
+  },
+
+  // ----- Hệ MỘC — endgame heal-combo + mid passive DOT poison -----
+  {
+    key: 'moc_huyen_thien_dia',
+    name: 'Mộc Huyền Thiên Địa',
+    description: 'ULT Mộc hệ Kim Đan — sinh khí cây cối ôm trọn thiên địa, sát thương 2.0× và hồi 40% HP, tốn 65 MP.',
+    mpCost: 65,
+    atkScale: 2,
+    selfHealRatio: 0.4,
+    selfBloodCost: 0,
+    sect: null,
+    element: 'moc',
+    type: 'ACTIVE',
+    role: 'HEAL',
+    unlockRealm: 'kim_dan',
+    cooldownTurns: 4,
+  },
+  {
+    key: 'moc_lam_co_thuy',
+    name: 'Mộc Lâm Cổ Thụy',
+    description: 'Tâm pháp Mộc hệ — phun phấn mộc độc trong lúc giao đấu, gây sát thương duy trì lên đối thủ (passive).',
+    mpCost: 0,
+    atkScale: 0,
+    selfHealRatio: 0,
+    selfBloodCost: 0,
+    sect: null,
+    element: 'moc',
+    type: 'PASSIVE',
+    role: 'DEBUFF',
+    unlockRealm: 'truc_co',
+    cooldownTurns: 0,
+  },
+
+  // ----- Hệ THUỶ — endgame control combo + mid passive MP regen -----
+  {
+    key: 'thuy_long_thien_thai',
+    name: 'Thuỷ Long Thiên Thái',
+    description: 'ULT Thuỷ hệ Kim Đan — thuỷ long Thiên Thái đảo chiều dòng chảy, phong toả + sát thương 2.6×, tốn 60 MP.',
+    mpCost: 60,
+    atkScale: 2.6,
+    selfHealRatio: 0,
+    selfBloodCost: 0,
+    sect: null,
+    element: 'thuy',
+    type: 'ACTIVE',
+    role: 'CONTROL',
+    unlockRealm: 'kim_dan',
+    cooldownTurns: 5,
+  },
+  {
+    key: 'thuy_huyen_thanh_tinh',
+    name: 'Thuỷ Huyền Thanh Tịnh',
+    description: 'Tâm pháp Thuỷ hệ — thuỷ linh thanh tịnh hồi linh khí mỗi lượt, tăng tốc độ hồi MP dài hạn (passive).',
+    mpCost: 0,
+    atkScale: 0,
+    selfHealRatio: 0,
+    selfBloodCost: 0,
+    sect: null,
+    element: 'thuy',
+    type: 'PASSIVE',
+    role: 'BUFF',
+    unlockRealm: 'truc_co',
+    cooldownTurns: 0,
+  },
+
+  // ----- Hệ HOẢ — endgame burst (huyết tế nhẹ) + mid passive burn DOT -----
+  {
+    key: 'hoa_thien_chu_tuoc',
+    name: 'Hoả Thiên Chu Tước',
+    description: 'ULT Hoả hệ Kim Đan — Chu Tước thiêu trời, đốt 10% HP đổi sát thương 3.4×, tốn 70 MP.',
+    mpCost: 70,
+    atkScale: 3.4,
+    selfHealRatio: 0,
+    selfBloodCost: 0.1,
+    sect: null,
+    element: 'hoa',
+    type: 'ACTIVE',
+    role: 'DAMAGE',
+    unlockRealm: 'kim_dan',
+    cooldownTurns: 5,
+  },
+  {
+    key: 'hoa_thieu_chau_van',
+    name: 'Hoả Thiêu Chu Vân',
+    description: 'Tâm pháp Hoả hệ — hoả linh ngấm vào kinh mạch, mỗi đòn đánh đốt thêm chu vân lên đối thủ (passive).',
+    mpCost: 0,
+    atkScale: 0,
+    selfHealRatio: 0,
+    selfBloodCost: 0,
+    sect: null,
+    element: 'hoa',
+    type: 'PASSIVE',
+    role: 'DEBUFF',
+    unlockRealm: 'luyenkhi',
+    cooldownTurns: 0,
+  },
+
+  // ----- Hệ THỔ — endgame area dmg + mid passive knockback resist -----
+  {
+    key: 'tho_huyet_son_quan',
+    name: 'Thổ Huyết Sơn Quân',
+    description: 'ULT Thổ hệ Kim Đan — sơn mạch chấn động đập tan đối thủ, sát thương 2.8×, tốn 65 MP.',
+    mpCost: 65,
+    atkScale: 2.8,
+    selfHealRatio: 0,
+    selfBloodCost: 0,
+    sect: null,
+    element: 'tho',
+    type: 'ACTIVE',
+    role: 'DAMAGE',
+    unlockRealm: 'kim_dan',
+    cooldownTurns: 5,
+  },
+  {
+    key: 'tho_quan_dia_man',
+    name: 'Thổ Quán Địa Mạn',
+    description: 'Tâm pháp Thổ hệ — như sơn mạch ăn sâu vào lòng đất, kháng đẩy lùi và choáng dài hạn (passive).',
+    mpCost: 0,
+    atkScale: 0,
+    selfHealRatio: 0,
+    selfBloodCost: 0,
+    sect: null,
+    element: 'tho',
+    type: 'PASSIVE',
+    role: 'BUFF',
+    unlockRealm: 'truc_co',
+    cooldownTurns: 0,
+  },
 ];
 
 export function skillByKey(key: string): SkillDef | undefined {
