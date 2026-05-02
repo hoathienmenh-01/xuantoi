@@ -25,6 +25,7 @@ import { RealtimeService } from '../realtime/realtime.service';
 import { CharacterService } from '../character/character.service';
 import { CurrencyService } from '../character/currency.service';
 import { AchievementService } from '../character/achievement.service';
+import { TalentService } from '../character/talent.service';
 import { InventoryService } from '../inventory/inventory.service';
 import { MissionService } from '../mission/mission.service';
 
@@ -115,6 +116,7 @@ export class BossService implements OnModuleInit, OnModuleDestroy {
     private readonly currency: CurrencyService,
     private readonly missions: MissionService,
     @Optional() private readonly achievements?: AchievementService,
+    @Optional() private readonly talents?: TalentService,
   ) {}
 
   onModuleInit(): void {
@@ -610,6 +612,22 @@ export class BossService implements OnModuleInit, OnModuleDestroy {
         linhThach = top410Each;
       } else {
         linhThach = restEach;
+      }
+      // Phase 11.X.G — Talent `dropMul` (drop_bonus passive) wire vào boss
+      // reward share. Catalog `talent_phuc_van` (drop_bonus +20%) v.v. áp dụng
+      // additive multiplicatively cho linhThach reward distribution. Service
+      // không inject (legacy DI) → identity (no bonus). Apply BEFORE ghi
+      // ledger để CurrencyLedger reflects the actual delta granted.
+      if (this.talents && linhThach > 0n) {
+        const talentMods = await this.talents.getMods(row.characterId);
+        if (talentMods.dropMul !== 1) {
+          // BigInt × float compute: convert via Number rồi BigInt floor.
+          // Range safe — max boss rewardTotal ~ 10M (BigInt(baseRewardLinhThach)
+          // × BigInt(level)) within Number safe integer range (2^53).
+          linhThach = BigInt(
+            Math.floor(Number(linhThach) * talentMods.dropMul),
+          );
+        }
       }
       // Trao thưởng character (atomic + ghi ledger).
       if (linhThach > 0n) {
