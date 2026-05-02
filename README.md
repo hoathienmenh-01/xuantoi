@@ -1,6 +1,5 @@
 # Xuân Tôi (xuantoi)
 
-> Game tu tiên MUD phong cách **cổ phong thủy mặc**, web app + PWA. Clone tham khảo Mộng Tu Tiên — đã đổi tên, logo, asset để hợp pháp lý.
 
 ## Kiến trúc
 
