@@ -379,7 +379,6 @@ model TribulationAttemptLog {
   @@index([tribulationKey, createdAt])
 }
 
-<<<<<<< HEAD
 /// Phase 11.8.B Buff MVP — duration-based buff/debuff persistence.
 /// 1 row per (`characterId`, `buffKey`). `BuffService.applyBuff` dùng upsert:
 ///   - non-stackable: refresh `expiresAt` (catalog `BuffDef.stackable=false`).
