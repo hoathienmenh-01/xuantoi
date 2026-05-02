@@ -678,6 +678,69 @@ describe('composePassiveTalentMods', () => {
     expect(mods.damageBonusByElement.get('kim')).toBeCloseTo(1.15, 5);
   });
 
+  it('kim_phach_dao → damageBonusByElement[moc] = 1.15 (Phase 11.X.AM kim khắc moc)', () => {
+    const mods = composePassiveTalentMods(['talent_kim_phach_dao']);
+    expect(mods.damageBonusByElement.get('moc')).toBeCloseTo(1.15, 5);
+    expect(mods.damageBonusByElement.size).toBe(1);
+    expect(mods.atkMul).toBe(1);
+    expect(mods.defMul).toBe(1);
+    expect(mods.spiritMul).toBe(1);
+    expect(mods.hpMaxMul).toBe(1);
+  });
+
+  it('moc_xuyen_dao → damageBonusByElement[tho] = 1.15 (Phase 11.X.AM moc khắc tho)', () => {
+    const mods = composePassiveTalentMods(['talent_moc_xuyen_dao']);
+    expect(mods.damageBonusByElement.get('tho')).toBeCloseTo(1.15, 5);
+    expect(mods.damageBonusByElement.size).toBe(1);
+    expect(mods.atkMul).toBe(1);
+    expect(mods.defMul).toBe(1);
+    expect(mods.spiritMul).toBe(1);
+    expect(mods.hpMaxMul).toBe(1);
+  });
+
+  it('thuy_diet_dao → damageBonusByElement[hoa] = 1.15 (Phase 11.X.AM thuy khắc hoa)', () => {
+    const mods = composePassiveTalentMods(['talent_thuy_diet_dao']);
+    expect(mods.damageBonusByElement.get('hoa')).toBeCloseTo(1.15, 5);
+    expect(mods.damageBonusByElement.size).toBe(1);
+    expect(mods.atkMul).toBe(1);
+    expect(mods.defMul).toBe(1);
+    expect(mods.spiritMul).toBe(1);
+    expect(mods.hpMaxMul).toBe(1);
+  });
+
+  it('tho_chan_dao → damageBonusByElement[thuy] = 1.15 (Phase 11.X.AM tho khắc thuy)', () => {
+    const mods = composePassiveTalentMods(['talent_tho_chan_dao']);
+    expect(mods.damageBonusByElement.get('thuy')).toBeCloseTo(1.15, 5);
+    expect(mods.damageBonusByElement.size).toBe(1);
+    expect(mods.atkMul).toBe(1);
+    expect(mods.defMul).toBe(1);
+    expect(mods.spiritMul).toBe(1);
+    expect(mods.hpMaxMul).toBe(1);
+  });
+
+  it('combine all 5 tương khắc damage_bonus producers → 5 distinct entries each 1.15 (5-element tương khắc chain coverage, hoàn tất Phase 11.X.AM)', () => {
+    const mods = composePassiveTalentMods([
+      'talent_kim_phach_dao',
+      'talent_moc_xuyen_dao',
+      'talent_thuy_diet_dao',
+      'talent_hoa_tam_dao',
+      'talent_tho_chan_dao',
+    ]);
+    // Hoàn tất 5-element tương khắc chain damage_bonus coverage:
+    // kim → moc, moc → tho, thuy → hoa, hoa → kim, tho → thuy.
+    expect(mods.damageBonusByElement.size).toBe(5);
+    expect(mods.damageBonusByElement.get('moc')).toBeCloseTo(1.15, 5);
+    expect(mods.damageBonusByElement.get('tho')).toBeCloseTo(1.15, 5);
+    expect(mods.damageBonusByElement.get('hoa')).toBeCloseTo(1.15, 5);
+    expect(mods.damageBonusByElement.get('kim')).toBeCloseTo(1.15, 5);
+    expect(mods.damageBonusByElement.get('thuy')).toBeCloseTo(1.15, 5);
+    // Cross-stat: stat mods giữ identity vì chỉ damage_bonus path active.
+    expect(mods.atkMul).toBe(1);
+    expect(mods.defMul).toBe(1);
+    expect(mods.spiritMul).toBe(1);
+    expect(mods.hpMaxMul).toBe(1);
+  });
+
   it('thien_di → dropMul = 1.2', () => {
     const mods = composePassiveTalentMods(['talent_thien_di']);
     expect(mods.dropMul).toBeCloseTo(1.2, 5);
