@@ -16,6 +16,7 @@ import { RefineService } from './refine.service';
 import { TribulationService } from './tribulation.service';
 import { BuffService } from './buff.service';
 import { TalentService } from './talent.service';
+import { TitleService } from './title.service';
 import { PrismaService } from '../../common/prisma.service';
 import { AuthModule } from '../auth/auth.module';
 import { RealtimeModule } from '../realtime/realtime.module';
@@ -59,6 +60,7 @@ const profileLimiterProvider = {
     TribulationService,
     BuffService,
     TalentService,
+    TitleService,
     PrismaService,
     profileLimiterProvider,
   ],
@@ -73,6 +75,7 @@ const profileLimiterProvider = {
     TribulationService,
     BuffService,
     TalentService,
+    TitleService,
   ],
 })
 export class CharacterModule {}

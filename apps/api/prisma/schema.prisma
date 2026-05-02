@@ -238,6 +238,7 @@ model Character {
   tribulationAttemptLogs      TribulationAttemptLog[]
   buffs                       CharacterBuff[]
   talents                     CharacterTalent[]
+  titleUnlocks                CharacterTitleUnlock[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -438,6 +439,36 @@ model CharacterTalent {
 
   @@unique([characterId, talentKey])
   @@index([characterId, learnedAt])
+}
+
+/// Phase 11.9.B Title (Danh hiệu) MVP — title ownership persistence.
+/// 1 row per (`characterId`, `titleKey`); composite UNIQUE đảm bảo idempotent
+/// `unlockTitle`. `Character.title String?` đã tồn tại từ phase 0 — đó là
+/// field "equipped title" (chỉ 1 title slot tại 1 thời điểm). Bảng này
+/// persist **danh sách title đã unlock** cho character; `equipTitle` validate
+/// ownership từ bảng này trước khi set `Character.title`.
+///
+/// `source` là `TitleSource` snapshot ('realm_milestone' | 'achievement' |
+/// 'sect_rank' | 'event' | 'donation' | 'element_mastery'). Catalog có thể
+/// đổi sau nên không enum.
+///
+/// Wire FUTURE PR (out of scope 11.9.B):
+///   - auto-grant trên realm breakthrough → `unlockTitle('realm_*', 'realm_milestone')`.
+///   - auto-grant trên achievement complete → `unlockTitle(..., 'achievement')`.
+///   - `composeTitleMods([equipped])` wire vào `CharacterStatService.computeStats`
+///     cho flavor stat bonus (rare ≤ +2%, mythic ≤ +15%).
+model CharacterTitleUnlock {
+  id          String    @id @default(cuid())
+  characterId String
+  character   Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  /// Khoá tham chiếu `TITLES` trong `packages/shared/src/titles.ts`.
+  titleKey    String
+  /// `TitleSource` snapshot — audit nguồn unlock.
+  source      String
+  unlockedAt  DateTime  @default(now())
+
+  @@unique([characterId, titleKey])
+  @@index([characterId, unlockedAt])
 }
 
 enum MissionPeriod {
