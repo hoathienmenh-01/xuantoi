@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import type { EquipSlot, Prisma } from '@prisma/client';
 import {
   composeSocketBonus,
+  getRefineStatMultiplier,
   itemByKey,
   type ItemDef,
   type RolledLoot,
@@ -33,7 +34,13 @@ export type ItemLedgerReason =
   // Positive qtyDelta: GEM_UNSOCKET (return gem) / GEM_COMBINE (grant 1 next-tier).
   | 'GEM_SOCKET'
   | 'GEM_UNSOCKET'
-  | 'GEM_COMBINE';
+  | 'GEM_COMBINE'
+  // Phase 11.5.B Refine MVP runtime — luyện khí ops (consume material/protection).
+  // Negative qtyDelta: REFINE_MATERIAL (consume `tinh_thiet`/`yeu_dan`/`han_ngoc`)
+  // hoặc REFINE_PROTECTION (consume `refine_protection_charm` khi protection trigger).
+  // KHÔNG có positive qtyDelta — refine không trả lại item dù fail.
+  | 'REFINE_MATERIAL'
+  | 'REFINE_PROTECTION';
 
 export interface ItemLedgerMeta {
   reason: ItemLedgerReason;
@@ -67,6 +74,8 @@ export interface InventoryView {
   item: ItemDef;
   /** Phase 11.4.B Gem MVP — danh sách gemKey đã khảm theo thứ tự slot. */
   sockets: string[];
+  /** Phase 11.5.B Refine MVP — cấp luyện khí 0..15. */
+  refineLevel: number;
 }
 
 export interface EquipBonusSummary {
@@ -101,6 +110,7 @@ export class InventoryService {
         equippedSlot: r.equippedSlot,
         item,
         sockets: r.sockets,
+        refineLevel: r.refineLevel,
       });
     }
     return out;
@@ -113,6 +123,11 @@ export class InventoryService {
    * equipped item — socket bonus stack additive với base bonus, không cap
    * ở service này (cap ở `BALANCE_MODEL.md` §6 enforce qua quality
    * → `socketCapacityForQuality()` cap số lượng gem mỗi item).
+   *
+   * Phase 11.5.B: nhân `getRefineStatMultiplier(item.refineLevel)` lên
+   * (base bonus + socket bonus) per item — luyện khí amplify tổng power
+   * của trang bị. Refine 0 = no-op (multiplier 1.0). Cộng dồn additive
+   * sang summary sau khi đã scale per-item.
    */
   async equipBonus(characterId: string): Promise<EquipBonusSummary> {
     const equipped = await this.prisma.inventoryItem.findMany({
@@ -126,22 +141,34 @@ export class InventoryService {
     for (const r of equipped) {
       const def_ = itemByKey(r.itemKey);
       if (!def_) continue;
+      let itemAtk = 0;
+      let itemDef = 0;
+      let itemHpMax = 0;
+      let itemMpMax = 0;
+      let itemSpirit = 0;
       if (def_.bonuses) {
-        atk += def_.bonuses.atk ?? 0;
-        def += def_.bonuses.def ?? 0;
-        hpMaxBonus += def_.bonuses.hpMax ?? 0;
-        mpMaxBonus += def_.bonuses.mpMax ?? 0;
-        spiritBonus += def_.bonuses.spirit ?? 0;
+        itemAtk += def_.bonuses.atk ?? 0;
+        itemDef += def_.bonuses.def ?? 0;
+        itemHpMax += def_.bonuses.hpMax ?? 0;
+        itemMpMax += def_.bonuses.mpMax ?? 0;
+        itemSpirit += def_.bonuses.spirit ?? 0;
       }
       // Phase 11.4.B socket bonus.
       if (r.sockets.length > 0) {
         const sb = composeSocketBonus(r.sockets);
-        atk += sb.atk ?? 0;
-        def += sb.def ?? 0;
-        hpMaxBonus += sb.hpMax ?? 0;
-        mpMaxBonus += sb.mpMax ?? 0;
-        spiritBonus += sb.spirit ?? 0;
+        itemAtk += sb.atk ?? 0;
+        itemDef += sb.def ?? 0;
+        itemHpMax += sb.hpMax ?? 0;
+        itemMpMax += sb.mpMax ?? 0;
+        itemSpirit += sb.spirit ?? 0;
       }
+      // Phase 11.5.B refine multiplier (1.0 nếu refineLevel=0).
+      const mult = getRefineStatMultiplier(r.refineLevel);
+      atk += Math.round(itemAtk * mult);
+      def += Math.round(itemDef * mult);
+      hpMaxBonus += Math.round(itemHpMax * mult);
+      mpMaxBonus += Math.round(itemMpMax * mult);
+      spiritBonus += Math.round(itemSpirit * mult);
     }
     return { atk, def, hpMaxBonus, mpMaxBonus, spiritBonus };
   }
