@@ -93,7 +93,7 @@ export interface TalentDef {
 }
 
 /**
- * 17 talent baseline cover passive + active × 5 element + neutral.
+ * 18 talent baseline cover passive + active × 5 element + neutral.
  * (Phase 11.X.AA: thêm `talent_huyen_thuy_tam` thuy +10% spirit — producer
  * đầu tiên cho `composePassiveTalentMods.spiritMul`, activate Phase 11.4.G
  * (boss spirit branch wire) + Phase 11.X.U (combat effSpirit defense wire).)
@@ -102,10 +102,14 @@ export interface TalentDef {
  * `talent_huyen_thuy_tam` (thuy). Flavor: mộc linh tâm hấp thu sinh khí, dưỡng
  * thần trí.)
  * (Phase 11.X.AC: thêm `talent_hoa_dan_tam` hoa +10% spirit — producer thứ 3
- * cho spiritMul, fill 5-element coverage roadmap (thuy ✅ + moc ✅ + hoa ✅;
- * tho/kim còn defer). Symmetric structure với `talent_huyen_thuy_tam`,
- * `talent_moc_linh_co`. Flavor: hoả đan tâm thiêu hoá tạp niệm, tinh thần
- * minh mẫn.)
+ * cho spiritMul, fill 5-element coverage roadmap (thuy ✅ + moc ✅ + hoa ✅).
+ * Symmetric structure với `talent_huyen_thuy_tam`, `talent_moc_linh_co`.
+ * Flavor: hoả đan tâm thiêu hoá tạp niệm, tinh thần minh mẫn.)
+ * (Phase 11.X.AD: thêm `talent_tho_linh_an` tho +10% spirit — producer thứ 4
+ * cho spiritMul tiếp tục fill 5-element coverage roadmap (thuy ✅ + moc ✅ +
+ * hoa ✅ + tho ✅; kim còn defer — kim đã có atk producer
+ * `talent_kim_thien_co`). Symmetric structure với thuy/moc/hoa producers.
+ * Flavor: thổ địa ấn chú trấn an linh hồn, dưỡng tinh thần.)
  *
  * Stable order: passive trước → active sau.
  */
@@ -237,6 +241,23 @@ export const TALENTS: readonly TalentDef[] = [
       kind: 'stat_mod',
       value: 1.1,
       statTarget: 'def',
+      elementTarget: null,
+    },
+    activeEffect: null,
+  },
+  {
+    key: 'talent_tho_linh_an',
+    name: 'Thổ Linh Ấn',
+    description:
+      'Thổ địa ấn chú trấn an linh hồn, +10% linh khí công kích.',
+    type: 'passive',
+    element: 'tho',
+    realmRequirement: 'kim_dan',
+    talentPointCost: 1,
+    passiveEffect: {
+      kind: 'stat_mod',
+      value: 1.1,
+      statTarget: 'spirit',
       elementTarget: null,
     },
     activeEffect: null,
