@@ -1055,4 +1055,216 @@ describe('BossService', () => {
       expect(BigInt(buffedOut.result.damageDealt)).toBe(1n);
     });
   });
+
+  // ── Phase 11.4.G — Talent spiritMul wire vào BossService.attack() spirit branch ──
+  // Wire `talents.getMods().spiritMul` × `(char.spirit + equip.spiritBonus)` ở
+  // spirit branch (atkScale > 1). Symmetric với Phase 11.X.U combat path
+  // (`talentMods.spiritMul` × `effSpirit`). Không có talent nào catalog hiện
+  // tại với `kind: 'stat_mod'`, `statTarget: 'spirit'` → no-balance impact
+  // baseline. Future-proof: nếu thêm talent producer (vd `talent_huyen_thuy_tam`
+  // +50% spirit), wire này tự động áp dụng. Test dùng `vi.spyOn(TalentService.prototype, 'getMods')`
+  // để inject `spiritMul: 1.5` symmetric với combat.service.test.ts.
+  // Skill thử: `ngung_thien_chuong` (atkScale=1.4, sect=null, mpCost=6).
+  describe('Talent spiritMul wire (Phase 11.4.G)', () => {
+    let bossWithTalentsG: BossService;
+    let talentSvcG: TalentService;
+
+    beforeAll(() => {
+      const realtime = new RealtimeService();
+      const chars = new CharacterService(prisma, realtime);
+      const inventory = new InventoryService(prisma, realtime, chars);
+      const currency = new CurrencyService(prisma);
+      const missions = makeMissionService(prisma);
+      talentSvcG = new TalentService(prisma);
+      bossWithTalentsG = new BossService(
+        prisma,
+        realtime,
+        chars,
+        inventory,
+        currency,
+        missions,
+        undefined, // achievements
+        talentSvcG,
+      );
+    });
+
+    beforeEach(() => {
+      (bossWithTalentsG as unknown as { cooldowns: Map<string, number> })
+        .cooldowns.clear();
+    });
+
+    afterEach(() => {
+      vi.restoreAllMocks();
+    });
+
+    it('atkScale > 1 (ngung_thien_chuong) + no learned talent → spiritMul=1 identity (damage equal)', async () => {
+      // Identity: 2 char no talent → composePassiveTalentMods([]) returns
+      // spiritMul=1.0. Damage equal.
+      vi.spyOn(Math, 'random').mockReturnValue(0.5);
+      const a = await makeUserChar(prisma, {
+        mp: 100,
+        stamina: 100,
+        power: 0,
+        spirit: 100,
+        realmKey: 'kim_dan',
+      });
+      const b = await makeUserChar(prisma, {
+        mp: 100,
+        stamina: 100,
+        power: 0,
+        spirit: 100,
+        realmKey: 'kim_dan',
+      });
+      await spawnBoss({ currentHp: 1_000_000n });
+
+      const outA = await bossWithTalentsG.attack(a.userId, 'ngung_thien_chuong');
+      const outB = await bossWithTalentsG.attack(b.userId, 'ngung_thien_chuong');
+
+      // Cả 2 spiritMul=1 → damage equal (deterministic via Math.random mock).
+      expect(BigInt(outA.result.damageDealt)).toBe(
+        BigInt(outB.result.damageDealt),
+      );
+    });
+
+    it('spy TalentService.getMods → spiritMul=1.5 → damage cao hơn baseline (atkScale > 1 spirit branch)', async () => {
+      // Future-proof spy: inject spiritMul=1.5 (vd `talent_huyen_thuy_tam` +50%
+      // spirit). Spirit branch (skill.atkScale > 1) phải apply.
+      vi.spyOn(Math, 'random').mockReturnValue(0.5);
+      // Baseline: identity (no spy yet for this char).
+      const baseline = await makeUserChar(prisma, {
+        mp: 100,
+        stamina: 100,
+        power: 0,
+        spirit: 100,
+        realmKey: 'kim_dan',
+      });
+      await spawnBoss({ currentHp: 1_000_000n });
+      const baselineOut = await bossWithTalentsG.attack(
+        baseline.userId,
+        'ngung_thien_chuong',
+      );
+
+      // Spy AFTER baseline: spiritMul=1.5 → buffed char damage cao hơn.
+      vi.spyOn(TalentService.prototype, 'getMods').mockResolvedValue({
+        atkMul: 1,
+        defMul: 1,
+        hpMaxMul: 1,
+        mpMaxMul: 1,
+        spiritMul: 1.5,
+        hpRegenFlat: 0,
+        mpRegenFlat: 0,
+        dropMul: 1,
+        expMul: 1,
+        damageBonusByElement: new Map(),
+      });
+
+      const buffed = await makeUserChar(prisma, {
+        mp: 100,
+        stamina: 100,
+        power: 0,
+        spirit: 100,
+        realmKey: 'kim_dan',
+      });
+      const buffedOut = await bossWithTalentsG.attack(
+        buffed.userId,
+        'ngung_thien_chuong',
+      );
+
+      // spiritMul=1.5 → effSpirit = 100*1.5 = 150 vs baseline 100 → damage cao hơn.
+      expect(BigInt(buffedOut.result.damageDealt)).toBeGreaterThan(
+        BigInt(baselineOut.result.damageDealt),
+      );
+    });
+
+    it('TalentService không inject vào BossService → identity baseline (no spiritMul boost despite spy)', async () => {
+      // Top-level `boss` instance KHÔNG inject TalentService → bypass talent
+      // fetch → talentMods = composePassiveTalentMods([]) → spiritMul=1.0.
+      vi.spyOn(Math, 'random').mockReturnValue(0.5);
+      // Spy with spiritMul=1.5 — should be IGNORED because top-level `boss`
+      // không inject TalentService.
+      vi.spyOn(TalentService.prototype, 'getMods').mockResolvedValue({
+        atkMul: 1,
+        defMul: 1,
+        hpMaxMul: 1,
+        mpMaxMul: 1,
+        spiritMul: 1.5,
+        hpRegenFlat: 0,
+        mpRegenFlat: 0,
+        dropMul: 1,
+        expMul: 1,
+        damageBonusByElement: new Map(),
+      });
+
+      const a = await makeUserChar(prisma, {
+        mp: 100,
+        stamina: 100,
+        power: 0,
+        spirit: 100,
+        realmKey: 'kim_dan',
+      });
+      const b = await makeUserChar(prisma, {
+        mp: 100,
+        stamina: 100,
+        power: 0,
+        spirit: 100,
+        realmKey: 'kim_dan',
+      });
+      await spawnBoss({ currentHp: 1_000_000n });
+
+      const outA = await boss.attack(a.userId, 'ngung_thien_chuong');
+      const outB = await boss.attack(b.userId, 'ngung_thien_chuong');
+
+      // Cả 2 không inject talents → spiritMul=1 → damage equal.
+      expect(BigInt(outA.result.damageDealt)).toBe(
+        BigInt(outB.result.damageDealt),
+      );
+    });
+
+    it('spiritMul KHÔNG áp dụng cho atkScale = 1 basic skill (spirit branch không active)', async () => {
+      // Spirit branch only active when `skill.atkScale > 1`. Verify with
+      // `SKILL_BASIC_ATTACK` (atkScale=1) — spy spiritMul=1.5 should be no-op.
+      vi.spyOn(Math, 'random').mockReturnValue(0.5);
+      const baseline = await makeUserChar(prisma, {
+        mp: 100,
+        stamina: 100,
+        power: 100, // power > 0 để có damage hữu hạn từ atk branch.
+        spirit: 100,
+        realmKey: 'kim_dan',
+      });
+      await spawnBoss({ currentHp: 1_000_000n });
+      const baselineOut = await bossWithTalentsG.attack(
+        baseline.userId,
+        undefined, // SKILL_BASIC_ATTACK, atkScale=1.
+      );
+
+      // Spy spiritMul=1.5 — should be NO-OP for basic skill.
+      vi.spyOn(TalentService.prototype, 'getMods').mockResolvedValue({
+        atkMul: 1,
+        defMul: 1,
+        hpMaxMul: 1,
+        mpMaxMul: 1,
+        spiritMul: 1.5,
+        hpRegenFlat: 0,
+        mpRegenFlat: 0,
+        dropMul: 1,
+        expMul: 1,
+        damageBonusByElement: new Map(),
+      });
+
+      const buffed = await makeUserChar(prisma, {
+        mp: 100,
+        stamina: 100,
+        power: 100,
+        spirit: 100,
+        realmKey: 'kim_dan',
+      });
+      const buffedOut = await bossWithTalentsG.attack(buffed.userId, undefined);
+
+      // atkScale=1 → spirit branch không active → spiritMul=1.5 ignored →
+      // damage equal (atkMul=1 cho cả 2).
+      expect(BigInt(buffedOut.result.damageDealt)).toBe(
+        BigInt(baselineOut.result.damageDealt),
+      );
+    });
+  });
 });
