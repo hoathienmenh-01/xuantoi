@@ -390,12 +390,29 @@ export class CombatService {
           ? buffMods.damageReductionByElement.get(monsterElemKey) ?? 1
           : 1;
       const reply = Math.max(1, Math.round(replyBase * monsterElementMul * buffDmgReduction));
-      charHp -= reply;
       log.push({
         side: 'monster',
         text: `${monster.name} phản kích, gây ${reply} sát thương.`,
         ts: Date.now(),
       });
+      // Phase 11.X.N — Buff shield (talent_shield_phong: 30% hpMax, etc.)
+      // absorb monster reply damage. `shieldAbsorb = floor(char.hpMax *
+      // buffMods.shieldHpMaxRatio)` re-applied mỗi turn còn buff active
+      // (per-turn refresh aura model). Buff hết hạn (`expiresAt` sweep) →
+      // shieldHpMaxRatio = 0 → no absorb. Identity (0, no-op) khi service
+      // không injected hoặc no shield buff. KHÔNG mutate buff DB row —
+      // duration-based, không depletion-based.
+      const shieldAbsorb = Math.floor(char.hpMax * buffMods.shieldHpMaxRatio);
+      const absorbed = Math.min(shieldAbsorb, reply);
+      const netReply = reply - absorbed;
+      if (absorbed > 0) {
+        log.push({
+          side: 'system',
+          text: `Khiên hấp thu ${absorbed} sát thương.`,
+          ts: Date.now(),
+        });
+      }
+      charHp -= netReply;
       if (charHp <= 0) {
         nextStatus = EncounterStatus.LOST;
         charHp = 1;
