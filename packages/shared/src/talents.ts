@@ -93,7 +93,7 @@ export interface TalentDef {
 }
 
 /**
- * 16 talent baseline cover passive + active × 5 element + neutral.
+ * 17 talent baseline cover passive + active × 5 element + neutral.
  * (Phase 11.X.AA: thêm `talent_huyen_thuy_tam` thuy +10% spirit — producer
  * đầu tiên cho `composePassiveTalentMods.spiritMul`, activate Phase 11.4.G
  * (boss spirit branch wire) + Phase 11.X.U (combat effSpirit defense wire).)
@@ -101,6 +101,11 @@ export interface TalentDef {
  * cho spiritMul, fill 5-element coverage roadmap. Symmetric structure với
  * `talent_huyen_thuy_tam` (thuy). Flavor: mộc linh tâm hấp thu sinh khí, dưỡng
  * thần trí.)
+ * (Phase 11.X.AC: thêm `talent_hoa_dan_tam` hoa +10% spirit — producer thứ 3
+ * cho spiritMul, fill 5-element coverage roadmap (thuy ✅ + moc ✅ + hoa ✅;
+ * tho/kim còn defer). Symmetric structure với `talent_huyen_thuy_tam`,
+ * `talent_moc_linh_co`. Flavor: hoả đan tâm thiêu hoá tạp niệm, tinh thần
+ * minh mẫn.)
  *
  * Stable order: passive trước → active sau.
  */
@@ -200,6 +205,23 @@ export const TALENTS: readonly TalentDef[] = [
       value: 1.15,
       statTarget: null,
       elementTarget: 'kim',
+    },
+    activeEffect: null,
+  },
+  {
+    key: 'talent_hoa_dan_tam',
+    name: 'Hoả Đan Tâm',
+    description:
+      'Hoả đan luyện tâm, +10% linh khí công kích từ ngọn lửa nội tâm.',
+    type: 'passive',
+    element: 'hoa',
+    realmRequirement: 'kim_dan',
+    talentPointCost: 1,
+    passiveEffect: {
+      kind: 'stat_mod',
+      value: 1.1,
+      statTarget: 'spirit',
+      elementTarget: null,
     },
     activeEffect: null,
   },
