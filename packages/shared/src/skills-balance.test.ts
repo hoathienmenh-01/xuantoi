@@ -192,30 +192,41 @@ describe('SKILL catalog — Ngũ Hành / type / role / unlockRealm validity', ()
   });
 });
 
-describe('SKILL catalog — Ngũ Hành coverage (PR-2 promise)', () => {
-  it('mỗi element (kim/moc/thuy/hoa/tho) có ≥ 1 ACTIVE + ≥ 1 PASSIVE', () => {
+describe('SKILL catalog — Ngũ Hành coverage (PR-2 v2 promise)', () => {
+  it('mỗi element (kim/moc/thuy/hoa/tho) có ≥ 2 ACTIVE + ≥ 2 PASSIVE (PR-2 v2 expansion)', () => {
     for (const el of ELEMENTS) {
       const elementSkills = skillsForElement(el);
       const actives = elementSkills.filter((s) => (s.type ?? 'ACTIVE') === 'ACTIVE');
       const passives = elementSkills.filter((s) => s.type === 'PASSIVE');
       expect(
         actives.length,
-        `Hệ ${el.toUpperCase()} thiếu ACTIVE skill (active=${actives.length})`,
-      ).toBeGreaterThanOrEqual(1);
+        `Hệ ${el.toUpperCase()} thiếu ACTIVE skill (active=${actives.length}, cần ≥ 2)`,
+      ).toBeGreaterThanOrEqual(2);
       expect(
         passives.length,
-        `Hệ ${el.toUpperCase()} thiếu PASSIVE skill (passive=${passives.length})`,
-      ).toBeGreaterThanOrEqual(1);
+        `Hệ ${el.toUpperCase()} thiếu PASSIVE skill (passive=${passives.length}, cần ≥ 2)`,
+      ).toBeGreaterThanOrEqual(2);
     }
   });
 
-  it('mỗi element có ≥ 2 skill (depth tối thiểu cho phase 11 build chọn)', () => {
+  it('mỗi element có ≥ 4 skill (depth Phase 11 build chọn — PR-2 v2 expansion)', () => {
     for (const el of ELEMENTS) {
       const elementSkills = skillsForElement(el);
       expect(
         elementSkills.length,
-        `Hệ ${el.toUpperCase()} chỉ có ${elementSkills.length} skill, cần ≥ 2`,
-      ).toBeGreaterThanOrEqual(2);
+        `Hệ ${el.toUpperCase()} chỉ có ${elementSkills.length} skill, cần ≥ 4`,
+      ).toBeGreaterThanOrEqual(4);
+    }
+  });
+
+  it('mỗi element có ≥ 1 skill ULT tier kim_dan (PR-2 v2 endgame layer)', () => {
+    for (const el of ELEMENTS) {
+      const elementSkills = skillsForElement(el);
+      const kimDanSkills = elementSkills.filter((s) => s.unlockRealm === 'kim_dan');
+      expect(
+        kimDanSkills.length,
+        `Hệ ${el.toUpperCase()} thiếu ULT tier kim_dan (kim_dan=${kimDanSkills.length}, cần ≥ 1)`,
+      ).toBeGreaterThanOrEqual(1);
     }
   });
 
@@ -225,8 +236,8 @@ describe('SKILL catalog — Ngũ Hành coverage (PR-2 promise)', () => {
     expect(noElement.map((s) => s.key)).toContain(SKILL_BASIC_ATTACK.key);
   });
 
-  it('catalog ≥ 25 skill (Phase 10 PR-2 growth target từ CONTENT_PIPELINE §1)', () => {
-    expect(SKILLS.length).toBeGreaterThanOrEqual(25);
+  it('catalog ≥ 35 skill (Phase 10 PR-2 v2 growth target — Ngũ Hành expansion)', () => {
+    expect(SKILLS.length).toBeGreaterThanOrEqual(35);
   });
 });
 

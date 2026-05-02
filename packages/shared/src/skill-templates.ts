@@ -401,7 +401,39 @@ const TEMPLATE_SHORTHAND: readonly TemplateEntryShorthand[] = [
     unlocks: [{ kind: 'realm', ref: 'truc_co' }],
   },
 
-  // ----- Advanced tier (1) -----
+  // ----- Phase 10 PR-2 v2 — Skill Pack Ngũ Hành expansion (mid passive — intermediate tier truc_co/luyenkhi) -----
+  {
+    key: 'kim_phong_lien_hoa',
+    tier: 'basic',
+    unlocks: [{ kind: 'realm', ref: 'luyenkhi' }],
+    notes: 'Passive Kim sharpness — atkScale base = 0, mastery cải thiện sharpness/atk-bonus proxy.',
+  },
+  {
+    key: 'moc_lam_co_thuy',
+    tier: 'intermediate',
+    unlocks: [{ kind: 'realm', ref: 'truc_co' }],
+    notes: 'Passive Mộc DOT poison — atkScale base = 0, mastery cải thiện DOT damage curve proxy.',
+  },
+  {
+    key: 'thuy_huyen_thanh_tinh',
+    tier: 'intermediate',
+    unlocks: [{ kind: 'realm', ref: 'truc_co' }],
+    notes: 'Passive Thuỷ MP regen — atkScale base = 0, mastery cải thiện mpCostReduction curve.',
+  },
+  {
+    key: 'hoa_thieu_chau_van',
+    tier: 'basic',
+    unlocks: [{ kind: 'realm', ref: 'luyenkhi' }],
+    notes: 'Passive Hoả burn DOT — atkScale base = 0, mastery cải thiện burn DOT damage proxy.',
+  },
+  {
+    key: 'tho_quan_dia_man',
+    tier: 'intermediate',
+    unlocks: [{ kind: 'realm', ref: 'truc_co' }],
+    notes: 'Passive Thổ knockback resist — atkScale base = 0, mastery cải thiện CC-resist proxy.',
+  },
+
+  // ----- Advanced tier (1 legacy + 5 new Phase 10 PR-2 v2 ULT kim_dan Ngũ Hành) -----
   {
     key: 'tu_la_chan_that',
     tier: 'advanced',
@@ -410,6 +442,36 @@ const TEMPLATE_SHORTHAND: readonly TemplateEntryShorthand[] = [
       { kind: 'realm', ref: 'kim_dan' },
     ],
     notes: 'atkScale 3.2 + selfBloodCost 0.20 — high-risk skill, advanced tier để hạn chế abuse early.',
+  },
+  {
+    key: 'kim_kiep_luan_chuyen',
+    tier: 'advanced',
+    unlocks: [{ kind: 'realm', ref: 'kim_dan' }],
+    notes: 'ULT Kim Đan Kim hệ — atkScale 3.4 baseline, mpCost 70, cooldown 5.',
+  },
+  {
+    key: 'moc_huyen_thien_dia',
+    tier: 'advanced',
+    unlocks: [{ kind: 'realm', ref: 'kim_dan' }],
+    notes: 'ULT Kim Đan Mộc hệ — atkScale 2.0 + selfHealRatio 0.40, mpCost 65, cooldown 4 (heal-combo).',
+  },
+  {
+    key: 'thuy_long_thien_thai',
+    tier: 'advanced',
+    unlocks: [{ kind: 'realm', ref: 'kim_dan' }],
+    notes: 'ULT Kim Đan Thuỷ hệ — atkScale 2.6, mpCost 60, cooldown 5 (control + dmg).',
+  },
+  {
+    key: 'hoa_thien_chu_tuoc',
+    tier: 'advanced',
+    unlocks: [{ kind: 'realm', ref: 'kim_dan' }],
+    notes: 'ULT Kim Đan Hoả hệ — atkScale 3.4 + selfBloodCost 0.10, mpCost 70, cooldown 5 (huyết tế nhẹ).',
+  },
+  {
+    key: 'tho_huyet_son_quan',
+    tier: 'advanced',
+    unlocks: [{ kind: 'realm', ref: 'kim_dan' }],
+    notes: 'ULT Kim Đan Thổ hệ — atkScale 2.8, mpCost 65, cooldown 5 (area dmg).',
   },
 
   // ----- Master tier (1) -----
