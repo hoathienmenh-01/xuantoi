@@ -29,7 +29,8 @@ export type LedgerReason =
   | 'DAILY_LOGIN'
   | 'SKILL_UPGRADE'
   | 'REFINE'
-  | 'TRIBULATION_REWARD';
+  | 'TRIBULATION_REWARD'
+  | 'ACHIEVEMENT_REWARD';
 
 export interface CurrencyApplyInput {
   characterId: string;
