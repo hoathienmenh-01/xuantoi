@@ -1179,4 +1179,164 @@ describe('CombatService', () => {
       expect(dmg).toBe(19);
     });
   });
+
+  // ── Phase 11.X.M — Buff DOT (debuff_burn_hoa, debuff_poison_moc) ───────
+  // Wire `buffMods.dotPerTickFlat` end-of-turn HP loss vào CombatService.action().
+  // Apply trên encounter còn ACTIVE (không WON/LOST). Stack handler ở
+  // composeBuffMods nhân value × stacks. dotKilled → status LOST + clamp HP=1.
+  describe('Buff DOT wire (Phase 11.X.M)', () => {
+    let combatWithDot: CombatService;
+    let buffSvc: BuffService;
+
+    beforeAll(() => {
+      const realtime = new RealtimeService();
+      const chars = new CharacterService(prisma, realtime);
+      const inventory = new InventoryService(prisma, realtime, chars);
+      const currency = new CurrencyService(prisma);
+      const missions = makeMissionService(prisma);
+      buffSvc = new BuffService(prisma);
+      combatWithDot = new CombatService(
+        prisma,
+        realtime,
+        chars,
+        inventory,
+        currency,
+        missions,
+        undefined, // characterSkill
+        undefined, // achievements
+        undefined, // talents
+        buffSvc,
+      );
+    });
+
+    afterEach(() => {
+      vi.restoreAllMocks();
+    });
+
+    it('character có debuff_burn_hoa (1 stack, 8 dmg/tick) → end-of-turn DOT 8 dmg', async () => {
+      vi.spyOn(Math, 'random').mockReturnValue(0.5);
+      const u = await makeUserChar(prisma, {
+        realmKey: 'kim_dan',
+        stamina: 100,
+        power: 20,
+        spirit: 100,
+        hp: 1000,
+        hpMax: 1000,
+      });
+      await buffSvc.applyBuff(u.characterId, 'debuff_burn_hoa', 'skill');
+      const enc = await combatWithDot.start(u.userId, 'son_coc');
+      await combatWithDot.action(u.userId, enc.id, {});
+      const c = await prisma.character.findUniqueOrThrow({
+        where: { id: u.characterId },
+      });
+      // Baseline reply (vs son_thu_lon, mock 0.5) = 1 dmg → 999 hp.
+      // DOT (debuff_burn_hoa 8 dmg) trừ thêm cuối lượt → 999 - 8 = 991.
+      expect(c.hp).toBe(991);
+      const encAfter = await prisma.encounter.findUniqueOrThrow({
+        where: { id: enc.id },
+      });
+      const logs = encAfter.log as unknown as Array<{ side: string; text: string }>;
+      const dotLine = logs.find((l) => l.text.includes('Độc/bỏng phát tác'));
+      expect(dotLine).toBeDefined();
+      expect(dotLine?.text).toContain('8 sát thương DOT');
+    });
+
+    it('character có debuff_burn_hoa stack 2 (16 dmg/tick) → DOT 16 dmg', async () => {
+      vi.spyOn(Math, 'random').mockReturnValue(0.5);
+      const u = await makeUserChar(prisma, {
+        realmKey: 'kim_dan',
+        stamina: 100,
+        power: 20,
+        spirit: 100,
+        hp: 1000,
+        hpMax: 1000,
+      });
+      await buffSvc.applyBuff(u.characterId, 'debuff_burn_hoa', 'skill');
+      await buffSvc.applyBuff(u.characterId, 'debuff_burn_hoa', 'skill');
+      const enc = await combatWithDot.start(u.userId, 'son_coc');
+      await combatWithDot.action(u.userId, enc.id, {});
+      const c = await prisma.character.findUniqueOrThrow({
+        where: { id: u.characterId },
+      });
+      // Reply 1 dmg + DOT 16 dmg (8 × 2 stacks) = 17 → 1000 - 17 = 983.
+      expect(c.hp).toBe(983);
+    });
+
+    it('character HP thấp + DOT đủ kill → status LOST + charHp clamp 1', async () => {
+      vi.spyOn(Math, 'random').mockReturnValue(0.5);
+      const u = await makeUserChar(prisma, {
+        realmKey: 'kim_dan',
+        stamina: 100,
+        power: 20,
+        spirit: 100,
+        hp: 5,
+        hpMax: 1000,
+      });
+      await buffSvc.applyBuff(u.characterId, 'debuff_burn_hoa', 'skill');
+      const enc = await combatWithDot.start(u.userId, 'son_coc');
+      await combatWithDot.action(u.userId, enc.id, {});
+      const c = await prisma.character.findUniqueOrThrow({
+        where: { id: u.characterId },
+      });
+      // hp=5, monster reply 1 dmg → 4. Player attack 19 dmg vs son_thu_lon hp=30
+      // → still alive (monsterHp=11). Then DOT 8 dmg → 4-8 = -4 → clamp to 1.
+      // Status LOST.
+      expect(c.hp).toBe(1);
+      const encAfter = await prisma.encounter.findUniqueOrThrow({
+        where: { id: enc.id },
+      });
+      expect(encAfter.status).toBe(EncounterStatus.LOST);
+      const logs = encAfter.log as unknown as Array<{ side: string; text: string }>;
+      const koLine = logs.find((l) => l.text.includes('hôn mê do độc/bỏng'));
+      expect(koLine).toBeDefined();
+    });
+
+    it('character KHÔNG debuff → composeBuffMods identity (dotPerTickFlat=0) → no DOT', async () => {
+      vi.spyOn(Math, 'random').mockReturnValue(0.5);
+      const u = await makeUserChar(prisma, {
+        realmKey: 'kim_dan',
+        stamina: 100,
+        power: 20,
+        spirit: 100,
+        hp: 1000,
+        hpMax: 1000,
+      });
+      const enc = await combatWithDot.start(u.userId, 'son_coc');
+      await combatWithDot.action(u.userId, enc.id, {});
+      const c = await prisma.character.findUniqueOrThrow({
+        where: { id: u.characterId },
+      });
+      // Reply 1 dmg, no DOT → 999.
+      expect(c.hp).toBe(999);
+      const encAfter = await prisma.encounter.findUniqueOrThrow({
+        where: { id: enc.id },
+      });
+      const logs = encAfter.log as unknown as Array<{ side: string; text: string }>;
+      const dotLine = logs.find((l) => l.text.includes('Độc/bỏng phát tác'));
+      expect(dotLine).toBeUndefined();
+    });
+
+    it('BuffService không inject vào CombatService → identity baseline (no DOT)', async () => {
+      vi.spyOn(Math, 'random').mockReturnValue(0.5);
+      const u = await makeUserChar(prisma, {
+        realmKey: 'kim_dan',
+        stamina: 100,
+        power: 20,
+        spirit: 100,
+        hp: 1000,
+        hpMax: 1000,
+      });
+      // grant debuff vào DB
+      await buffSvc.applyBuff(u.characterId, 'debuff_burn_hoa', 'skill');
+      // dùng top-level `combat` instance (no BuffService injected)
+      const enc = await combat.start(u.userId, 'son_coc');
+      await combat.action(u.userId, enc.id, {});
+      const c = await prisma.character.findUniqueOrThrow({
+        where: { id: u.characterId },
+      });
+      // BuffService not injected → composeBuffMods([]) → dotPerTickFlat=0
+      // → no DOT despite DB row. 1000 - 1 (reply) = 999.
+      expect(c.hp).toBe(999);
+    });
+  });
 });
