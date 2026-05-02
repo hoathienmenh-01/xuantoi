@@ -374,8 +374,20 @@ export class CombatService {
       // bonus + refine multiplier, đã compute ở `inventory.equipBonus`) cộng
       // additive vào base spirit, sau đó multiply với buff/title spiritMul.
       // Cùng pattern (base + flat) × multipliers như atk: line 232.
+      // Phase 11.X.U — talent spiritMul wire. `composePassiveTalentMods`
+      // produces `spiritMul` từ `kind=stat_mod, statTarget=spirit`. Hiện tại
+      // catalog không có talent producer (talent_kim_thien_co=atk,
+      // talent_thuy_long_an=hpMax, talent_tho_son_tuong=def, etc.) → identity
+      // 1.0 → zero balance impact. Wire để pattern coverage nhất quán với
+      // atkMul/defMul/damageBonusByElement/dropMul/expMul đã wire (#251) và
+      // future-proof cho talent spirit producer (vd `talent_huyen_thuy_tam`
+      // future +10% spirit). Service không inject (legacy DI/test fixture)
+      // → talentMods=identity baseline → no-op.
       const effSpirit =
-        (char.spirit + equip.spiritBonus) * buffMods.spiritMul * titleMods.spiritMul;
+        (char.spirit + equip.spiritBonus) *
+        talentMods.spiritMul *
+        buffMods.spiritMul *
+        titleMods.spiritMul;
       const replyBase = rollDamage(monster.atk, effSpirit + effPower * 0.3 + effDef, 1);
       const monsterElementMul = elementMultiplier(
         (monster.element ?? null) as ElementKey | null,
