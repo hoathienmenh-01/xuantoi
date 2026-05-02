@@ -103,15 +103,22 @@ export class CultivationProcessor extends WorkerHost {
         // Compose với linh căn cultivationMul. Legacy character (no method
         // equipped) → methodMul=1.0 → backward-compat.
         const methodMul = methodExpMultiplierFor(c.equippedCultivationMethodKey);
-        // Phase 11.7.D — Talent (Thần Thông) `expMul` wire vào cultivation tick.
-        // Catalog (`talent_ngo_dao` "+15% EXP tu vi mỗi lần tu luyện") đã ghi
-        // rõ semantic ngộ đạo apply cho cả cultivation EXP, không chỉ monster
-        // EXP drop (Phase 11.7.C). Compose multiplicatively với linh căn
-        // cultivationMul × method methodMul. Legacy character (no talent
-        // learned) hoặc service không inject → talentExpMul=1.0 identity.
-        const talentExpMul = this.talents
-          ? (await this.talents.getMods(c.id)).expMul
-          : 1;
+        // Phase 11.7.D + 11.7.E — Talent (Thần Thông) mods fetch ONCE per
+        // character per tick. `expMul` wire vào EXP gain compose; `hpRegenFlat`
+        // / `mpRegenFlat` (per-second values) wire vào hp/mp regen branch.
+        // Catalog producer:
+        //   - `talent_ngo_dao` (passive expMul +15%, Phase 11.7.D).
+        //   - `talent_moc_linh_quy` (passive regen 5 hpMax per-second, Phase
+        //     11.7.E — Mộc Linh Quy "Linh khí mộc tự hồi, +5 HP regen mỗi tick
+        //     combat", giờ apply cả cultivation tick).
+        // Compose multiplicatively cultivationMul × method methodMul × talentExpMul.
+        // Compose additively buff + talent regen (cả hai đều "per-second flat").
+        // Legacy character (no talent learned) hoặc service không inject →
+        // talentMods=null → expMul=1.0, hpRegenFlat/mpRegenFlat=0 identity.
+        const talentMods = this.talents
+          ? await this.talents.getMods(c.id)
+          : null;
+        const talentExpMul = talentMods?.expMul ?? 1;
         const gain = BigInt(
           Math.max(
             1,
@@ -137,15 +144,22 @@ export class CultivationProcessor extends WorkerHost {
           data: { exp, realmStage },
         });
 
-        // Phase 11.8.E — Buff `hpRegenFlat` / `mpRegenFlat` wire.
-        // Catalog values là per-second (vd `pill_hp_regen_t1` "+5 HP/giây",
-        // `sect_aura_thuy` "+4 MP/giây trong tu luyện"). Mỗi tick = 30s →
-        // tổng hồi = `value × tickSeconds`. Cap LEAST(hp+delta, hpMax) qua raw
-        // SQL để không vượt cap. Skip nếu cả hp/mp regen = 0 (avoid no-op write).
-        if (buffMods && (buffMods.hpRegenFlat > 0 || buffMods.mpRegenFlat > 0)) {
+        // Phase 11.8.E + 11.7.E — Buff `hpRegenFlat` / `mpRegenFlat` wire +
+        // Talent regen wire. Catalog values là per-second (vd
+        // `pill_hp_regen_t1` "+5 HP/giây", `sect_aura_thuy` "+4 MP/giây trong
+        // tu luyện", `talent_moc_linh_quy` "+5 HP regen"). Compose ADDITIVELY
+        // buff + talent regen (cả hai đều flat per-second values). Mỗi tick =
+        // 30s → tổng hồi = `(buff + talent) × tickSeconds`. Cap LEAST(hp+delta,
+        // hpMax) qua raw SQL để không vượt cap. Skip nếu cả hp/mp regen = 0
+        // (avoid no-op write).
+        const totalHpRegenFlat =
+          (buffMods?.hpRegenFlat ?? 0) + (talentMods?.hpRegenFlat ?? 0);
+        const totalMpRegenFlat =
+          (buffMods?.mpRegenFlat ?? 0) + (talentMods?.mpRegenFlat ?? 0);
+        if (totalHpRegenFlat > 0 || totalMpRegenFlat > 0) {
           const tickSeconds = Math.round(CULTIVATION_TICK_MS / 1000);
-          const hpDelta = Math.floor(buffMods.hpRegenFlat * tickSeconds);
-          const mpDelta = Math.floor(buffMods.mpRegenFlat * tickSeconds);
+          const hpDelta = Math.floor(totalHpRegenFlat * tickSeconds);
+          const mpDelta = Math.floor(totalMpRegenFlat * tickSeconds);
           if (hpDelta > 0 || mpDelta > 0) {
             await this.prisma.$executeRawUnsafe(
               `UPDATE "Character" SET hp = LEAST("hpMax", hp + $1), mp = LEAST("mpMax", mp + $2) WHERE id = $3`,

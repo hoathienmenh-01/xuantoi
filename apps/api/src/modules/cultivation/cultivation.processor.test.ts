@@ -566,4 +566,133 @@ describe('CultivationProcessor.process (tick)', () => {
       expect(c.exp).toBe(0n);
     });
   });
+
+  // — Phase 11.7.E — Talent hp/mpRegenFlat wire vào cultivation tick ----
+  describe('Talent hp/mpRegenFlat wire (Phase 11.7.E)', () => {
+    let processorWithTalentRegen: CultivationProcessor;
+    let talentSvc: TalentService;
+    let buffSvc: BuffService;
+
+    beforeAll(() => {
+      const realtime = new RealtimeService();
+      const missions = makeMissionService(prisma);
+      talentSvc = new TalentService(prisma);
+      buffSvc = new BuffService(prisma);
+      processorWithTalentRegen = new CultivationProcessor(
+        prisma,
+        realtime,
+        missions,
+        undefined, // achievements
+        talentSvc,
+        buffSvc,
+      );
+    });
+
+    it('character đã học `talent_moc_linh_quy` (5 HP/sec × 30s = 150 HP) → hp += 150 (cap hpMax)', async () => {
+      const f = await makeUserChar(prisma, {
+        cultivating: true,
+        spirit: 8,
+        realmKey: 'kim_dan', // talent_moc_linh_quy req truc_co (order 2), nhưng cần budget ≥ 1 (kim_dan order 3)
+        realmStage: 1,
+        hp: 100,
+        hpMax: 500,
+        mp: 50,
+        mpMax: 50,
+      });
+      await talentSvc.learnTalent(f.characterId, 'talent_moc_linh_quy');
+
+      await processorWithTalentRegen.process(tickJob());
+      const c = await prisma.character.findUniqueOrThrow({
+        where: { id: f.characterId },
+      });
+      expect(c.hp).toBe(250); // 100 + 5*30 = 250 (≤ hpMax 500)
+      expect(c.mp).toBe(50); // không có mp regen (catalog talent regen chỉ có hpMax)
+    });
+
+    it('talent + buff regen compose additively: talent 5 HP/sec + buff 5 HP/sec → 300 HP/tick', async () => {
+      const f = await makeUserChar(prisma, {
+        cultivating: true,
+        spirit: 8,
+        realmKey: 'kim_dan',
+        realmStage: 1,
+        hp: 100,
+        hpMax: 500,
+        mp: 50,
+        mpMax: 50,
+      });
+      await talentSvc.learnTalent(f.characterId, 'talent_moc_linh_quy');
+      await buffSvc.applyBuff(f.characterId, 'pill_hp_regen_t1', 'pill');
+
+      await processorWithTalentRegen.process(tickJob());
+      const c = await prisma.character.findUniqueOrThrow({
+        where: { id: f.characterId },
+      });
+      // talent 5 + buff 5 = 10 HP/sec × 30s = 300 → 100 + 300 = 400 (≤ hpMax 500).
+      expect(c.hp).toBe(400);
+    });
+
+    it('character KHÔNG học talent → talentMods.hpRegenFlat=0 identity (no regen)', async () => {
+      const f = await makeUserChar(prisma, {
+        cultivating: true,
+        spirit: 8,
+        realmKey: 'kim_dan',
+        realmStage: 1,
+        hp: 100,
+        hpMax: 500,
+        mp: 50,
+        mpMax: 50,
+      });
+
+      await processorWithTalentRegen.process(tickJob());
+      const c = await prisma.character.findUniqueOrThrow({
+        where: { id: f.characterId },
+      });
+      expect(c.hp).toBe(100);
+      expect(c.mp).toBe(50);
+    });
+
+    it('không inject TalentService (legacy DI) → talentMods=null identity (no regen despite DB row)', async () => {
+      // Default `processor` instance không inject TalentService.
+      const f = await makeUserChar(prisma, {
+        cultivating: true,
+        spirit: 8,
+        realmKey: 'kim_dan',
+        realmStage: 1,
+        hp: 100,
+        hpMax: 500,
+        mp: 50,
+        mpMax: 50,
+      });
+      await talentSvc.learnTalent(f.characterId, 'talent_moc_linh_quy');
+
+      await processor.process(tickJob());
+      const c = await prisma.character.findUniqueOrThrow({
+        where: { id: f.characterId },
+      });
+      expect(c.hp).toBe(100);
+    });
+
+    it('character có debuff_taoma + talent regen → cultivationBlocked → hp/mp KHÔNG regen', async () => {
+      const f = await makeUserChar(prisma, {
+        cultivating: true,
+        spirit: 8,
+        realmKey: 'kim_dan',
+        realmStage: 1,
+        hp: 100,
+        hpMax: 500,
+        mp: 50,
+        mpMax: 50,
+      });
+      await talentSvc.learnTalent(f.characterId, 'talent_moc_linh_quy');
+      await buffSvc.applyBuff(f.characterId, 'debuff_taoma', 'tribulation');
+
+      await processorWithTalentRegen.process(tickJob());
+      const c = await prisma.character.findUniqueOrThrow({
+        where: { id: f.characterId },
+      });
+      // Tâm Ma block → continue skip → hp KHÔNG đổi dù talent regen active.
+      expect(c.hp).toBe(100);
+      expect(c.exp).toBe(0n);
+    });
+  });
 });
