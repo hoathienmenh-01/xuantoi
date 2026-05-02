@@ -1267,4 +1267,186 @@ describe('BossService', () => {
       );
     });
   });
+
+  // ── Phase 11.X.W — Buff atkMul/spiritMul wire vào BossService.attack() ──
+  // Wire `buffMods.atkMul` × `buffMods.spiritMul` multiplicative compose với
+  // `talentMods.atkMul` × `talentMods.spiritMul`. Symmetric với Phase 11.X.S/U
+  // combat path (effPower × buffMods.atkMul, effSpirit × buffMods.spiritMul).
+  // Catalog producer atkMul: `pill_atk_buff_t1` (+12%), `sect_aura_hoa` (+5%),
+  // `debuff_boss_atk_down` (×0.82). Catalog producer spiritMul:
+  // `pill_spirit_buff_t1` (+18%), `event_double_exp` (×2.0).
+  // Service không inject (legacy DI / test fixture without `buffs`) → identity
+  // baseline (atkMul=1.0, spiritMul=1.0, no-op).
+  // Buff fetch consolidate: 1 lần `getMods` cho cả control check (Phase 11.X.Q)
+  // + cultivationBlocked check (Phase 11.X.R) + atkMul/spiritMul damage wire.
+  describe('Buff atkMul/spiritMul wire (Phase 11.X.W)', () => {
+    let bossWithBuffsW: BossService;
+    let buffSvcW: BuffService;
+
+    beforeAll(() => {
+      const realtime = new RealtimeService();
+      const chars = new CharacterService(prisma, realtime);
+      const inventory = new InventoryService(prisma, realtime, chars);
+      const currency = new CurrencyService(prisma);
+      const missions = makeMissionService(prisma);
+      buffSvcW = new BuffService(prisma);
+      bossWithBuffsW = new BossService(
+        prisma,
+        realtime,
+        chars,
+        inventory,
+        currency,
+        missions,
+        undefined, // achievements
+        undefined, // talents
+        buffSvcW,
+      );
+    });
+
+    beforeEach(() => {
+      (bossWithBuffsW as unknown as { cooldowns: Map<string, number> })
+        .cooldowns.clear();
+    });
+
+    afterEach(() => {
+      vi.restoreAllMocks();
+    });
+
+    it('atkScale=1 basic skill + buff `pill_atk_buff_t1` (+12% atk) → damage cao hơn baseline', async () => {
+      // Pattern: 2 char giống nhau, 1 không buff (baseline) + 1 apply
+      // `pill_atk_buff_t1` (+12% atk). Boss attack basic skill (atkScale=1) →
+      // chỉ atkMul tác động, spiritMul không (spirit branch dormant).
+      vi.spyOn(Math, 'random').mockReturnValue(0.5);
+
+      const baseline = await makeUserChar(prisma, {
+        mp: 100,
+        stamina: 100,
+        power: 100,
+        spirit: 100,
+        realmKey: 'kim_dan',
+      });
+      await spawnBoss({ currentHp: 1_000_000n });
+      const baselineOut = await bossWithBuffsW.attack(baseline.userId, undefined);
+
+      const buffed = await makeUserChar(prisma, {
+        mp: 100,
+        stamina: 100,
+        power: 100,
+        spirit: 100,
+        realmKey: 'kim_dan',
+      });
+      await buffSvcW.applyBuff(buffed.characterId, 'pill_atk_buff_t1', 'pill');
+      const buffedOut = await bossWithBuffsW.attack(buffed.userId, undefined);
+
+      // pill_atk_buff_t1: atkMul=1.12. effPower buffed > baseline → damage cao hơn.
+      expect(BigInt(buffedOut.result.damageDealt)).toBeGreaterThan(
+        BigInt(baselineOut.result.damageDealt),
+      );
+    });
+
+    it('atkScale > 1 (ngung_thien_chuong) + buff `pill_spirit_buff_t1` (+18% spirit) → damage cao hơn baseline', async () => {
+      // Spirit branch (atkScale > 1): spiritMul tác động lên (char.spirit + equip.spiritBonus).
+      // pill_spirit_buff_t1: spiritMul=1.18.
+      vi.spyOn(Math, 'random').mockReturnValue(0.5);
+
+      const baseline = await makeUserChar(prisma, {
+        mp: 100,
+        stamina: 100,
+        power: 0, // power=0 để loại bỏ atk component, isolate spirit branch.
+        spirit: 100,
+        realmKey: 'kim_dan',
+      });
+      await spawnBoss({ currentHp: 1_000_000n });
+      const baselineOut = await bossWithBuffsW.attack(
+        baseline.userId,
+        'ngung_thien_chuong',
+      );
+
+      const buffed = await makeUserChar(prisma, {
+        mp: 100,
+        stamina: 100,
+        power: 0,
+        spirit: 100,
+        realmKey: 'kim_dan',
+      });
+      await buffSvcW.applyBuff(buffed.characterId, 'pill_spirit_buff_t1', 'pill');
+      const buffedOut = await bossWithBuffsW.attack(
+        buffed.userId,
+        'ngung_thien_chuong',
+      );
+
+      // spiritMul=1.18 → spirit component buffed > baseline → damage cao hơn.
+      expect(BigInt(buffedOut.result.damageDealt)).toBeGreaterThan(
+        BigInt(baselineOut.result.damageDealt),
+      );
+    });
+
+    it('BuffService không inject vào BossService → identity baseline (no atkMul boost despite DB row)', async () => {
+      // Top-level `boss` instance KHÔNG inject BuffService → buffMods =
+      // composeBuffMods([]) identity. Apply buff vào DB nhưng `boss` bypass
+      // fetch → 2 char damage equal.
+      vi.spyOn(Math, 'random').mockReturnValue(0.5);
+
+      const a = await makeUserChar(prisma, {
+        mp: 100,
+        stamina: 100,
+        power: 100,
+        spirit: 100,
+        realmKey: 'kim_dan',
+      });
+      const b = await makeUserChar(prisma, {
+        mp: 100,
+        stamina: 100,
+        power: 100,
+        spirit: 100,
+        realmKey: 'kim_dan',
+      });
+      // Apply buff vào DB cho `b` — nhưng top-level `boss` không inject
+      // BuffService → buffMods identity → buff không có hiệu lực.
+      await buffSvcW.applyBuff(b.characterId, 'pill_atk_buff_t1', 'pill');
+      await spawnBoss({ currentHp: 1_000_000n });
+
+      const outA = await boss.attack(a.userId, undefined);
+      const outB = await boss.attack(b.userId, undefined);
+
+      // No buff inject → 2 char damage equal (composeBuffMods([]) identity).
+      expect(BigInt(outA.result.damageDealt)).toBe(
+        BigInt(outB.result.damageDealt),
+      );
+    });
+
+    it('atkScale=1 basic skill + spiritMul buff (+18%) KHÔNG ảnh hưởng (spirit branch không active)', async () => {
+      // Verify isolation: basic-skill (atkScale=1) → spirit branch dormant →
+      // spiritMul ignored. Apply pill_spirit_buff_t1 nhưng damage equal vì
+      // chỉ atkMul tác động (mà buff này không có atkMul).
+      vi.spyOn(Math, 'random').mockReturnValue(0.5);
+
+      const baseline = await makeUserChar(prisma, {
+        mp: 100,
+        stamina: 100,
+        power: 100,
+        spirit: 100,
+        realmKey: 'kim_dan',
+      });
+      await spawnBoss({ currentHp: 1_000_000n });
+      const baselineOut = await bossWithBuffsW.attack(baseline.userId, undefined);
+
+      const buffed = await makeUserChar(prisma, {
+        mp: 100,
+        stamina: 100,
+        power: 100,
+        spirit: 100,
+        realmKey: 'kim_dan',
+      });
+      await buffSvcW.applyBuff(buffed.characterId, 'pill_spirit_buff_t1', 'pill');
+      const buffedOut = await bossWithBuffsW.attack(buffed.userId, undefined);
+
+      // basic-skill: atkScale=1 → spirit branch không active. spiritMul=1.18
+      // ignored. atkMul=1.0 (pill_spirit_buff_t1 không có atkMul effect).
+      // → 2 char damage equal.
+      expect(BigInt(buffedOut.result.damageDealt)).toBe(
+        BigInt(baselineOut.result.damageDealt),
+      );
+    });
+  });
 });
