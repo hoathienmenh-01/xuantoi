@@ -529,6 +529,48 @@ describe('composePassiveTalentMods', () => {
     expect(mods.defMul).toBe(1);
   });
 
+  it('thuy_long_trao → atkMul = 1.1 (Phase 11.X.AG producer thứ 3 cho atkMul)', () => {
+    const mods = composePassiveTalentMods(['talent_thuy_long_trao']);
+    expect(mods.atkMul).toBeCloseTo(1.1, 5);
+    expect(mods.spiritMul).toBe(1);
+    expect(mods.defMul).toBe(1);
+    expect(mods.hpMaxMul).toBe(1);
+    expect(mods.damageBonusByElement.size).toBe(0);
+  });
+
+  it('hoa_phen_kiem → atkMul = 1.1 (Phase 11.X.AH producer thứ 4 cho atkMul)', () => {
+    const mods = composePassiveTalentMods(['talent_hoa_phen_kiem']);
+    expect(mods.atkMul).toBeCloseTo(1.1, 5);
+    expect(mods.spiritMul).toBe(1);
+    expect(mods.defMul).toBe(1);
+    expect(mods.hpMaxMul).toBe(1);
+    expect(mods.damageBonusByElement.size).toBe(0);
+  });
+
+  it('tho_son_phach → atkMul = 1.1 (Phase 11.X.AI producer thứ 5 cho atkMul, hoàn tất 5-element atk coverage)', () => {
+    const mods = composePassiveTalentMods(['talent_tho_son_phach']);
+    expect(mods.atkMul).toBeCloseTo(1.1, 5);
+    expect(mods.spiritMul).toBe(1);
+    expect(mods.defMul).toBe(1);
+    expect(mods.hpMaxMul).toBe(1);
+    expect(mods.damageBonusByElement.size).toBe(0);
+  });
+
+  it('combine all 5 atk producers (kim + moc + thuy + hoa + tho) → atkMul = 1.1⁵ = 1.61051 (5-element atk ceiling)', () => {
+    const mods = composePassiveTalentMods([
+      'talent_kim_thien_co',
+      'talent_moc_lam_phach',
+      'talent_thuy_long_trao',
+      'talent_hoa_phen_kiem',
+      'talent_tho_son_phach',
+    ]);
+    // Hoàn tất 5-element atk coverage roadmap, khớp 5-element spirit ceiling.
+    expect(mods.atkMul).toBeCloseTo(1.61051, 5);
+    expect(mods.spiritMul).toBe(1);
+    expect(mods.hpMaxMul).toBe(1);
+    expect(mods.defMul).toBe(1);
+  });
+
   it('hoa_tam_dao → damageBonusByElement[kim] = 1.15', () => {
     const mods = composePassiveTalentMods(['talent_hoa_tam_dao']);
     expect(mods.damageBonusByElement.get('kim')).toBeCloseTo(1.15, 5);
