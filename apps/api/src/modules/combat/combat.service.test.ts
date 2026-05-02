@@ -8,6 +8,7 @@ import { InventoryService } from '../inventory/inventory.service';
 import { CurrencyService } from '../character/currency.service';
 import { TitleService } from '../character/title.service';
 import { AchievementService } from '../character/achievement.service';
+import { TalentService } from '../character/talent.service';
 import { CombatService } from './combat.service';
 import {
   TEST_DATABASE_URL,
@@ -547,6 +548,158 @@ describe('CombatService', () => {
       expect(dungeonRow!.progress).toBeGreaterThanOrEqual(1);
       expect(dungeonRow!.completedAt).not.toBeNull();
       vi.restoreAllMocks();
+    });
+  });
+
+  // — Phase 11.7.C Talent wire (passive mods compose vào atk/def/exp/drop) ----
+  describe('Talent passive wire (Phase 11.7.C)', () => {
+    let combatWithTalents: CombatService;
+
+    beforeAll(() => {
+      const realtime = new RealtimeService();
+      const chars = new CharacterService(prisma, realtime);
+      const inventory = new InventoryService(prisma, realtime, chars);
+      const currency = new CurrencyService(prisma);
+      const missions = makeMissionService(prisma);
+      const talents = new TalentService(prisma);
+      combatWithTalents = new CombatService(
+        prisma,
+        realtime,
+        chars,
+        inventory,
+        currency,
+        missions,
+        undefined,
+        undefined,
+        talents,
+      );
+    });
+
+    afterEach(() => {
+      vi.restoreAllMocks();
+    });
+
+    it('character ở kim_dan(3) học talent_kim_thien_co (atk*1.1) → effPower lớn hơn baseline → dmg cao hơn', async () => {
+      // Math.random pinned 0.5 → variance = 0.85 + 0.5*0.3 = 1.0 (deterministic).
+      vi.spyOn(Math, 'random').mockReturnValue(0.5);
+      // Power=20 đủ thấp để KHÔNG 1-shot son_thu_lon (hp=30) → monster vẫn còn
+      // sau hit đầu tiên → so sánh được dmg base vs dmg talent qua state.monsterHp.
+      const baseUser = await makeUserChar(prisma, {
+        realmKey: 'kim_dan',
+        stamina: 100,
+        power: 20,
+        spirit: 100, // không chết phản kích
+        hp: 1000,
+        hpMax: 1000,
+      });
+      const baseEnc = await combatWithTalents.start(baseUser.userId, 'son_coc');
+      await combatWithTalents.action(baseUser.userId, baseEnc.id, {});
+      const baseEncAfter = await prisma.encounter.findUniqueOrThrow({
+        where: { id: baseEnc.id },
+      });
+      const baseState = baseEncAfter.state as { monsterHp: number };
+      const baseDmg = 30 - baseState.monsterHp; // son_thu_lon hp=30
+      // baseline: rollDamage(20, 2, 1) = max(1, round((20-1)*1.0)) = 19.
+      expect(baseDmg).toBe(19);
+
+      const talentUser = await makeUserChar(prisma, {
+        realmKey: 'kim_dan',
+        stamina: 100,
+        power: 20,
+        spirit: 100,
+        hp: 1000,
+        hpMax: 1000,
+      });
+      const talentSvc = new TalentService(prisma);
+      await talentSvc.learnTalent(talentUser.characterId, 'talent_kim_thien_co');
+      const talentEnc = await combatWithTalents.start(
+        talentUser.userId,
+        'son_coc',
+      );
+      await combatWithTalents.action(talentUser.userId, talentEnc.id, {});
+      const talentEncAfter = await prisma.encounter.findUniqueOrThrow({
+        where: { id: talentEnc.id },
+      });
+      const talentState = talentEncAfter.state as { monsterHp: number };
+      const talentDmg = 30 - talentState.monsterHp;
+      // talent: effPower = 20 * 1.0 * 1.1 = 22 → rollDamage(22, 2, 1)
+      // = max(1, round((22-1)*1.0)) = 21.
+      expect(talentDmg).toBe(21);
+      expect(talentDmg).toBeGreaterThan(baseDmg);
+    });
+
+    it('character ở luyen_hu(6) học talent_thien_di (drop*1.2) → linhThach drop = floor(5*1.2)=6 thay vì 5', async () => {
+      vi.spyOn(Math, 'random').mockReturnValue(0.5);
+      const u = await makeUserChar(prisma, {
+        realmKey: 'luyen_hu',
+        stamina: 100,
+        power: 1000, // đảm bảo 1-shot son_thu_lon (hp=30)
+        hp: 1000,
+        hpMax: 1000,
+        linhThach: 0n,
+      });
+      const talentSvc = new TalentService(prisma);
+      await talentSvc.learnTalent(u.characterId, 'talent_thien_di');
+
+      const enc = await combatWithTalents.start(u.userId, 'son_coc');
+      await combatWithTalents.action(u.userId, enc.id, {});
+
+      const ledger = await prisma.currencyLedger.findMany({
+        where: { characterId: u.characterId, reason: 'COMBAT_LOOT' },
+      });
+      // 1 monster killed → 1 ledger row, delta = floor(5 * 1.2) = 6.
+      expect(ledger).toHaveLength(1);
+      expect(ledger[0].delta).toBe(6n);
+    });
+
+    it('character ở luyen_hu(6) học talent_ngo_dao (exp*1.15) → exp drop = floor(12*1.15)=13 thay vì 12', async () => {
+      vi.spyOn(Math, 'random').mockReturnValue(0.5);
+      const u = await makeUserChar(prisma, {
+        realmKey: 'luyen_hu',
+        stamina: 100,
+        power: 1000, // 1-shot son_thu_lon (hp=30)
+        hp: 1000,
+        hpMax: 1000,
+        exp: 0n,
+      });
+      const talentSvc = new TalentService(prisma);
+      await talentSvc.learnTalent(u.characterId, 'talent_ngo_dao');
+
+      const enc = await combatWithTalents.start(u.userId, 'son_coc');
+      await combatWithTalents.action(u.userId, enc.id, {});
+
+      const c = await prisma.character.findUniqueOrThrow({
+        where: { id: u.characterId },
+      });
+      // 1 monster killed → exp gain = floor(12 * 1.15) = 13.
+      expect(c.exp).toBe(13n);
+    });
+
+    it('không inject TalentService → identity baseline (linhThach drop = 5, exp drop = 12)', async () => {
+      vi.spyOn(Math, 'random').mockReturnValue(0.5);
+      // combat (no TalentService) — identity behavior.
+      const u = await makeUserChar(prisma, {
+        realmKey: 'luyen_hu',
+        stamina: 100,
+        power: 1000,
+        hp: 1000,
+        hpMax: 1000,
+        exp: 0n,
+        linhThach: 0n,
+      });
+
+      const enc = await combat.start(u.userId, 'son_coc');
+      await combat.action(u.userId, enc.id, {});
+
+      const c = await prisma.character.findUniqueOrThrow({
+        where: { id: u.characterId },
+      });
+      expect(c.exp).toBe(12n);
+      const ledger = await prisma.currencyLedger.findMany({
+        where: { characterId: u.characterId, reason: 'COMBAT_LOOT' },
+      });
+      expect(ledger).toHaveLength(1);
+      expect(ledger[0].delta).toBe(5n);
     });
   });
 });
