@@ -7,6 +7,7 @@ import {
 } from '@xuantoi/shared';
 import { PrismaService } from '../../common/prisma.service';
 import { RealtimeService } from '../realtime/realtime.service';
+import { BuffService } from '../character/buff.service';
 import { TalentService } from '../character/talent.service';
 import { CultivationProcessor } from './cultivation.processor';
 import {
@@ -333,6 +334,97 @@ describe('CultivationProcessor.process (tick)', () => {
         where: { id: f.characterId },
       });
       expect(c.exp).toBe(BigInt(Math.round(baseGain * 1.8 * 1.6 * 1.15)));
+    });
+  });
+
+  // — Phase 11.8.D — Buff cultivationBlocked (Tâm Ma) wire ----
+  describe('Buff cultivationBlocked wire (Phase 11.8.D)', () => {
+    let processorWithBuffs: CultivationProcessor;
+    let buffSvc: BuffService;
+
+    beforeAll(() => {
+      const realtime = new RealtimeService();
+      const missions = makeMissionService(prisma);
+      buffSvc = new BuffService(prisma);
+      processorWithBuffs = new CultivationProcessor(
+        prisma,
+        realtime,
+        missions,
+        undefined, // achievements
+        undefined, // talents
+        buffSvc,
+      );
+    });
+
+    it('character có debuff_taoma active → skip EXP gain (Tâm Ma block)', async () => {
+      const f = await makeUserChar(prisma, {
+        cultivating: true,
+        spirit: 8,
+      });
+      await buffSvc.applyBuff(f.characterId, 'debuff_taoma', 'tribulation');
+
+      await processorWithBuffs.process(tickJob());
+      const c = await prisma.character.findUniqueOrThrow({
+        where: { id: f.characterId },
+      });
+      // Tâm Ma block → exp KHÔNG đổi (vẫn 0).
+      expect(c.exp).toBe(0n);
+    });
+
+    it('character KHÔNG có buff → vẫn cộng EXP bình thường', async () => {
+      const baseGain =
+        cultivationRateForRealm('luyenkhi', CULTIVATION_TICK_BASE_EXP) + 2;
+      const f = await makeUserChar(prisma, {
+        cultivating: true,
+        spirit: 8,
+      });
+      await processorWithBuffs.process(tickJob());
+      const c = await prisma.character.findUniqueOrThrow({
+        where: { id: f.characterId },
+      });
+      expect(c.exp).toBe(BigInt(baseGain));
+    });
+
+    it('không inject BuffService (legacy DI) → identity (không block)', async () => {
+      // Default `processor` instance không inject BuffService — character có
+      // buff applied vẫn tu luyện bình thường.
+      const baseGain =
+        cultivationRateForRealm('luyenkhi', CULTIVATION_TICK_BASE_EXP) + 2;
+      const f = await makeUserChar(prisma, {
+        cultivating: true,
+        spirit: 8,
+      });
+      await buffSvc.applyBuff(f.characterId, 'debuff_taoma', 'tribulation');
+
+      await processor.process(tickJob());
+      const c = await prisma.character.findUniqueOrThrow({
+        where: { id: f.characterId },
+      });
+      // Service không inject → buff bị ignore → exp gain bình thường.
+      expect(c.exp).toBe(BigInt(baseGain));
+    });
+
+    it('character có buff KHÔNG cultivation_block (vd buff_pill_*) → vẫn tu luyện', async () => {
+      // Apply buff non-cultivation-block để verify chỉ flag cultivationBlocked
+      // mới skip, không phải bất kỳ buff nào.
+      const baseGain =
+        cultivationRateForRealm('luyenkhi', CULTIVATION_TICK_BASE_EXP) + 2;
+      const f = await makeUserChar(prisma, {
+        cultivating: true,
+        spirit: 8,
+      });
+      // Apply buff khác (debuff_boss_atk_down: stat_mod atk×0.82, KHÔNG block).
+      await buffSvc.applyBuff(
+        f.characterId,
+        'debuff_boss_atk_down',
+        'boss_skill',
+      );
+
+      await processorWithBuffs.process(tickJob());
+      const c = await prisma.character.findUniqueOrThrow({
+        where: { id: f.characterId },
+      });
+      expect(c.exp).toBe(BigInt(baseGain));
     });
   });
 });

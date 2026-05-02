@@ -16,6 +16,7 @@ import { PrismaService } from '../../common/prisma.service';
 import { RealtimeService } from '../realtime/realtime.service';
 import { MissionService } from '../mission/mission.service';
 import { AchievementService } from '../character/achievement.service';
+import { BuffService } from '../character/buff.service';
 import { methodExpMultiplierFor } from '../character/cultivation-method.service';
 import { TalentService } from '../character/talent.service';
 import { CULTIVATION_QUEUE } from './cultivation.queue';
@@ -41,6 +42,7 @@ export class CultivationProcessor extends WorkerHost {
     private readonly missions: MissionService,
     @Optional() private readonly achievements?: AchievementService,
     @Optional() private readonly talents?: TalentService,
+    @Optional() private readonly buffs?: BuffService,
   ) {
     super();
   }
@@ -71,6 +73,18 @@ export class CultivationProcessor extends WorkerHost {
 
     for (const c of cultivating) {
       try {
+        // Phase 11.8.D — Buff `cultivationBlocked` (Tâm Ma) wire.
+        // Catalog `debuff_taoma` description "công kích -10% và không thể tu
+        // luyện" → khi character đang dính debuff_taoma (sau khi vượt kiếp
+        // FAIL), tick này skip toàn bộ EXP gain + mission/achievement track
+        // + realtime emit. Stamina regen ở trên vẫn áp dụng (không phụ thuộc
+        // cultivating flag). Service không inject → identity (không block).
+        if (this.buffs) {
+          const buffMods = await this.buffs.getMods(c.id);
+          if (buffMods.cultivationBlocked) {
+            continue;
+          }
+        }
         // EXP gain = rateForRealm(realm) + floor(spirit/4).
         // rateForRealm scale 1.45^order → tu luyện ở cảnh giới cao có base rate
         // cao hơn, bù lại expCostForStage cũng cao hơn.
