@@ -7,6 +7,7 @@ import {
   titleForRealmMilestone,
 } from '@xuantoi/shared';
 import { PrismaService } from '../../common/prisma.service';
+import { BuffService } from './buff.service';
 import { CurrencyService } from './currency.service';
 import { TitleService } from './title.service';
 import { TribulationError, TribulationService } from './tribulation.service';
@@ -21,15 +22,24 @@ let prisma: PrismaService;
 let currency: CurrencyService;
 let svc: TribulationService;
 let titleSvc: TitleService;
+let buffSvc: BuffService;
 let svcWithTitles: TribulationService;
+let svcWithBuffs: TribulationService;
 
 beforeAll(() => {
   process.env.DATABASE_URL = TEST_DATABASE_URL;
   prisma = new PrismaService();
   currency = new CurrencyService(prisma);
   titleSvc = new TitleService(prisma);
+  buffSvc = new BuffService(prisma);
   svc = new TribulationService(prisma, currency);
   svcWithTitles = new TribulationService(prisma, currency, titleSvc);
+  svcWithBuffs = new TribulationService(
+    prisma,
+    currency,
+    titleSvc,
+    buffSvc,
+  );
 });
 
 beforeEach(async () => {
@@ -509,5 +519,151 @@ describe('TribulationService.attemptTribulation with TitleService (Phase 11.9.C-
       where: { characterId: ctx.characterId },
     });
     expect(rows.length).toBe(0);
+  });
+});
+
+describe('TribulationService.attemptTribulation with BuffService (Phase 11.8.D-2 taoMa wire)', () => {
+  it('FAIL + taoMaActive (rng=0.0) → CharacterBuff debuff_taoma row insert atomic, expiresAt = penalty.taoMaExpiresAt (per-tier)', async () => {
+    const ctx = await setupCharAtKimDanPeak({ hpMax: 2_000 });
+    const fakeNow = new Date('2026-05-02T00:00:00Z');
+    const out = await svcWithBuffs.attemptTribulation(
+      ctx.characterId,
+      () => 0.0,
+      fakeNow,
+    );
+    expect(out.success).toBe(false);
+    expect(out.penalty!.taoMaActive).toBe(true);
+    // Minor tier: taoMaDebuffDurationMinutes = 15.
+    const expectedExpiresAt = new Date(fakeNow.getTime() + 15 * 60_000);
+    expect(out.penalty!.taoMaExpiresAt!.getTime()).toBe(
+      expectedExpiresAt.getTime(),
+    );
+
+    const buffs = await prisma.characterBuff.findMany({
+      where: { characterId: ctx.characterId },
+    });
+    expect(buffs).toHaveLength(1);
+    expect(buffs[0].buffKey).toBe('debuff_taoma');
+    expect(buffs[0].source).toBe('tribulation');
+    expect(buffs[0].stacks).toBe(1);
+    // Per-tier override (15 phút từ tribulation catalog), KHÔNG phải catalog
+    // buff `durationSec=3600` (60 phút).
+    expect(buffs[0].expiresAt.getTime()).toBe(expectedExpiresAt.getTime());
+
+    // Legacy field vẫn được set cho backward-compat.
+    const updated = await prisma.character.findUnique({
+      where: { id: ctx.characterId },
+    });
+    expect(updated?.taoMaUntil?.getTime()).toBe(expectedExpiresAt.getTime());
+  });
+
+  it('FAIL + taoMa NOT active (rng=0.99) → KHÔNG insert CharacterBuff row', async () => {
+    const ctx = await setupCharAtKimDanPeak({ hpMax: 2_000 });
+    const out = await svcWithBuffs.attemptTribulation(
+      ctx.characterId,
+      () => 0.99,
+    );
+    expect(out.success).toBe(false);
+    expect(out.penalty!.taoMaActive).toBe(false);
+
+    const buffs = await prisma.characterBuff.findMany({
+      where: { characterId: ctx.characterId },
+    });
+    expect(buffs).toHaveLength(0);
+  });
+
+  it('SUCCESS path KHÔNG insert taoMa CharacterBuff row (chỉ FAIL path mới wire)', async () => {
+    const ctx = await setupCharAtKimDanPeak({ hpMax: 10_000 });
+    const out = await svcWithBuffs.attemptTribulation(
+      ctx.characterId,
+      () => 0.0,
+    );
+    expect(out.success).toBe(true);
+
+    const buffs = await prisma.characterBuff.findMany({
+      where: { characterId: ctx.characterId },
+    });
+    const taoma = buffs.filter((b) => b.buffKey === 'debuff_taoma');
+    expect(taoma).toHaveLength(0);
+  });
+
+  it('FAIL atomic: nếu attempt tribulation 2 lần liên tiếp với taoMa active → composite UNIQUE giữ stacks=1 (non-stackable), refresh expiresAt', async () => {
+    // Setup char hpMax=2_000 đủ để FAIL ở minor tier kim_dan→nguyen_anh.
+    const ctx = await setupCharAtKimDanPeak({
+      hpMax: 2_000,
+      exp: KIM_DAN_COST_9 + 100_000n,
+    });
+    const t1 = new Date('2026-05-02T00:00:00Z');
+    const out1 = await svcWithBuffs.attemptTribulation(
+      ctx.characterId,
+      () => 0.0,
+      t1,
+    );
+    expect(out1.success).toBe(false);
+    expect(out1.penalty!.taoMaActive).toBe(true);
+
+    // Verify first buff row.
+    const buffs1 = await prisma.characterBuff.findMany({
+      where: { characterId: ctx.characterId, buffKey: 'debuff_taoma' },
+    });
+    expect(buffs1).toHaveLength(1);
+    const firstExpiresAt = buffs1[0].expiresAt.getTime();
+
+    // Move past cooldown + bump exp lại để eligible attempt 2.
+    await prisma.character.update({
+      where: { id: ctx.characterId },
+      data: {
+        tribulationCooldownAt: null,
+        exp: KIM_DAN_COST_9 + 100_000n,
+        hp: 2_000,
+      },
+    });
+
+    const t2 = new Date('2026-05-02T01:00:00Z'); // 1h sau.
+    const out2 = await svcWithBuffs.attemptTribulation(
+      ctx.characterId,
+      () => 0.0,
+      t2,
+    );
+    expect(out2.success).toBe(false);
+    expect(out2.penalty!.taoMaActive).toBe(true);
+
+    const buffs2 = await prisma.characterBuff.findMany({
+      where: { characterId: ctx.characterId, buffKey: 'debuff_taoma' },
+    });
+    // Composite UNIQUE (characterId, buffKey) → 1 row.
+    expect(buffs2).toHaveLength(1);
+    // debuff_taoma stackable=false → stacks giữ nguyên 1.
+    expect(buffs2[0].stacks).toBe(1);
+    // expiresAt refresh sang t2 + 15 phút.
+    expect(buffs2[0].expiresAt.getTime()).toBe(t2.getTime() + 15 * 60_000);
+    expect(buffs2[0].expiresAt.getTime()).toBeGreaterThan(firstExpiresAt);
+  });
+
+  it('FAIL KHÔNG inject BuffService → vẫn set legacy taoMaUntil + log (backward-compat)', async () => {
+    const ctx = await setupCharAtKimDanPeak({ hpMax: 2_000 });
+    const fakeNow = new Date('2026-05-02T00:00:00Z');
+    // Dùng `svc` (3-arg constructor, KHÔNG có buffs).
+    const out = await svc.attemptTribulation(
+      ctx.characterId,
+      () => 0.0,
+      fakeNow,
+    );
+    expect(out.success).toBe(false);
+    expect(out.penalty!.taoMaActive).toBe(true);
+
+    // Legacy field vẫn được set.
+    const updated = await prisma.character.findUnique({
+      where: { id: ctx.characterId },
+    });
+    expect(updated?.taoMaUntil?.getTime()).toBe(
+      fakeNow.getTime() + 15 * 60_000,
+    );
+
+    // KHÔNG có CharacterBuff row vì BuffService không inject.
+    const buffs = await prisma.characterBuff.findMany({
+      where: { characterId: ctx.characterId },
+    });
+    expect(buffs).toHaveLength(0);
   });
 });

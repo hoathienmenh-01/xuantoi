@@ -67,9 +67,14 @@ export class BuffService {
    * Tx-aware variant của `applyBuff` — dùng từ INSIDE 1 `$transaction` đã
    * có sẵn. Giữ nguyên ngữ nghĩa idempotent + stackable cap.
    *
-   * Phase 11.8.D wire FUTURE dùng method này khi `TribulationService.attemptTribulation()`
-   * FAIL path cần atomic apply `debuff_taoma` cùng tx với character update +
-   * `TribulationAttemptLog` write — rollback toàn bộ nếu DB fail.
+   * Phase 11.8.D-2 wire — `TribulationService.attemptTribulation()` FAIL path
+   * apply `debuff_taoma` cùng tx với character update + `TribulationAttemptLog`
+   * write — rollback toàn bộ nếu DB fail.
+   *
+   * @param expiresAtOverride nếu set, dùng làm `expiresAt` thay vì
+   *   `computeBuffExpiresAt(now, def)` từ catalog `durationSec`. Use case:
+   *   tribulation FAIL có per-tier `taoMaDebuffDurationMinutes` (15/30/60/120)
+   *   override default catalog 60 phút.
    *
    * @throws BuffError('BUFF_NOT_FOUND') nếu buffKey không có trong catalog.
    * @throws BuffError('CHARACTER_NOT_FOUND') nếu character không tồn tại.
@@ -80,6 +85,7 @@ export class BuffService {
     buffKey: string,
     source: BuffSource,
     now: Date = new Date(),
+    expiresAtOverride?: Date,
   ): Promise<{
     buffKey: string;
     stacks: number;
@@ -95,7 +101,7 @@ export class BuffService {
     });
     if (!character) throw new BuffError('CHARACTER_NOT_FOUND');
 
-    const expiresAt = computeBuffExpiresAt(now, def);
+    const expiresAt = expiresAtOverride ?? computeBuffExpiresAt(now, def);
 
     const existing = await tx.characterBuff.findUnique({
       where: {
