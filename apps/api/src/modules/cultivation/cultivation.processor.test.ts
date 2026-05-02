@@ -7,6 +7,7 @@ import {
 } from '@xuantoi/shared';
 import { PrismaService } from '../../common/prisma.service';
 import { RealtimeService } from '../realtime/realtime.service';
+import { TalentService } from '../character/talent.service';
 import { CultivationProcessor } from './cultivation.processor';
 import {
   TEST_DATABASE_URL,
@@ -238,6 +239,100 @@ describe('CultivationProcessor.process (tick)', () => {
       await processor.process(tickJob());
       const c = await prisma.character.findUniqueOrThrow({ where: { id: f.characterId } });
       expect(c.exp).toBe(BigInt(Math.round(baseGain * 1.6)));
+    });
+  });
+
+  // — Phase 11.7.D — Talent expMul wire vào cultivation tick ----
+  describe('Talent expMul wire (Phase 11.7.D)', () => {
+    let processorWithTalents: CultivationProcessor;
+    let talentSvc: TalentService;
+
+    beforeAll(() => {
+      const realtime = new RealtimeService();
+      const missions = makeMissionService(prisma);
+      talentSvc = new TalentService(prisma);
+      processorWithTalents = new CultivationProcessor(
+        prisma,
+        realtime,
+        missions,
+        undefined, // achievements
+        talentSvc,
+      );
+    });
+
+    it('character đã học `talent_ngo_dao` (exp_bonus 1.15) ở luyen_hu → gain × 1.15', async () => {
+      // Baseline ở luyen_hu (order 6, root null) → cultivationMul=1.0,
+      // methodMul=1.0, talentExpMul=1.15. baseGain = rateForRealm(luyen_hu)+spirit/4.
+      const baseGain =
+        cultivationRateForRealm('luyen_hu', CULTIVATION_TICK_BASE_EXP) + 2;
+
+      const f = await makeUserChar(prisma, {
+        cultivating: true,
+        spirit: 8,
+        realmKey: 'luyen_hu',
+        realmStage: 1,
+      });
+      await talentSvc.learnTalent(f.characterId, 'talent_ngo_dao', 'realm_unlock');
+
+      await processorWithTalents.process(tickJob());
+      const c = await prisma.character.findUniqueOrThrow({
+        where: { id: f.characterId },
+      });
+      expect(c.exp).toBe(BigInt(Math.round(baseGain * 1.15)));
+    });
+
+    it('character KHÔNG học talent (legacy) → talentExpMul=1.0 (backward-compat)', async () => {
+      const baseGain =
+        cultivationRateForRealm('luyen_hu', CULTIVATION_TICK_BASE_EXP) + 2;
+      const f = await makeUserChar(prisma, {
+        cultivating: true,
+        spirit: 8,
+        realmKey: 'luyen_hu',
+        realmStage: 1,
+      });
+      await processorWithTalents.process(tickJob());
+      const c = await prisma.character.findUniqueOrThrow({
+        where: { id: f.characterId },
+      });
+      expect(c.exp).toBe(BigInt(baseGain));
+    });
+
+    it('không inject TalentService (legacy DI) → talentExpMul=1.0 identity', async () => {
+      // Default `processor` instance không inject TalentService → fallback path.
+      const baseGain =
+        cultivationRateForRealm('luyen_hu', CULTIVATION_TICK_BASE_EXP) + 2;
+      const f = await makeUserChar(prisma, {
+        cultivating: true,
+        spirit: 8,
+        realmKey: 'luyen_hu',
+        realmStage: 1,
+      });
+      await processor.process(tickJob());
+      const c = await prisma.character.findUniqueOrThrow({
+        where: { id: f.characterId },
+      });
+      expect(c.exp).toBe(BigInt(baseGain));
+    });
+
+    it('compose talent ngo_dao × root than × method thai_hu_chan_kinh → gain × 1.15 × 1.80 × 1.60', async () => {
+      const baseGain =
+        cultivationRateForRealm('luyen_hu', CULTIVATION_TICK_BASE_EXP) + 2;
+      const f = await makeUserChar(prisma, {
+        cultivating: true,
+        spirit: 8,
+        realmKey: 'luyen_hu',
+        realmStage: 1,
+        spiritualRootGrade: 'than',
+        primaryElement: 'kim',
+        equippedCultivationMethodKey: 'thai_hu_chan_kinh',
+      });
+      await talentSvc.learnTalent(f.characterId, 'talent_ngo_dao', 'realm_unlock');
+
+      await processorWithTalents.process(tickJob());
+      const c = await prisma.character.findUniqueOrThrow({
+        where: { id: f.characterId },
+      });
+      expect(c.exp).toBe(BigInt(Math.round(baseGain * 1.8 * 1.6 * 1.15)));
     });
   });
 });

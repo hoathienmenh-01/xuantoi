@@ -17,6 +17,7 @@ import { RealtimeService } from '../realtime/realtime.service';
 import { MissionService } from '../mission/mission.service';
 import { AchievementService } from '../character/achievement.service';
 import { methodExpMultiplierFor } from '../character/cultivation-method.service';
+import { TalentService } from '../character/talent.service';
 import { CULTIVATION_QUEUE } from './cultivation.queue';
 
 /**
@@ -39,6 +40,7 @@ export class CultivationProcessor extends WorkerHost {
     private readonly realtime: RealtimeService,
     private readonly missions: MissionService,
     @Optional() private readonly achievements?: AchievementService,
+    @Optional() private readonly talents?: TalentService,
   ) {
     super();
   }
@@ -86,8 +88,20 @@ export class CultivationProcessor extends WorkerHost {
         // Compose với linh căn cultivationMul. Legacy character (no method
         // equipped) → methodMul=1.0 → backward-compat.
         const methodMul = methodExpMultiplierFor(c.equippedCultivationMethodKey);
+        // Phase 11.7.D — Talent (Thần Thông) `expMul` wire vào cultivation tick.
+        // Catalog (`talent_ngo_dao` "+15% EXP tu vi mỗi lần tu luyện") đã ghi
+        // rõ semantic ngộ đạo apply cho cả cultivation EXP, không chỉ monster
+        // EXP drop (Phase 11.7.C). Compose multiplicatively với linh căn
+        // cultivationMul × method methodMul. Legacy character (no talent
+        // learned) hoặc service không inject → talentExpMul=1.0 identity.
+        const talentExpMul = this.talents
+          ? (await this.talents.getMods(c.id)).expMul
+          : 1;
         const gain = BigInt(
-          Math.max(1, Math.round(baseGain * cultivationMul * methodMul)),
+          Math.max(
+            1,
+            Math.round(baseGain * cultivationMul * methodMul * talentExpMul),
+          ),
         );
         let exp = c.exp + gain;
         let realmKey = c.realmKey;
