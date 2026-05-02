@@ -6,6 +6,7 @@ import { RealtimeService } from '../realtime/realtime.service';
 import { CharacterService } from '../character/character.service';
 import { CurrencyService } from '../character/currency.service';
 import { InventoryService } from '../inventory/inventory.service';
+import { TalentService } from '../character/talent.service';
 import { BossService } from './boss.service';
 import {
   TEST_DATABASE_URL,
@@ -385,6 +386,109 @@ describe('BossService', () => {
       await expect(boss.adminSpawn(admin.id, { level: 1.5 })).rejects.toMatchObject({
         code: 'INVALID_LEVEL',
       });
+    });
+  });
+
+  // ── Phase 11.X.G — Talent dropMul wire vào BossService reward ────────
+  // Wire `talents.getMods().dropMul` × linhThach reward distribution. Catalog
+  // `talent_thien_di` (drop_bonus +20%) etc. apply multiplicatively per-character
+  // in distributeRewards. Service không inject → identity (no bonus).
+  describe('Talent dropMul wire (Phase 11.X.G)', () => {
+    let bossWithTalents: BossService;
+    let talentSvc: TalentService;
+
+    beforeAll(() => {
+      const realtime = new RealtimeService();
+      const chars = new CharacterService(prisma, realtime);
+      const inventory = new InventoryService(prisma, realtime, chars);
+      const currency = new CurrencyService(prisma);
+      const missions = makeMissionService(prisma);
+      talentSvc = new TalentService(prisma);
+      bossWithTalents = new BossService(
+        prisma,
+        realtime,
+        chars,
+        inventory,
+        currency,
+        missions,
+        undefined, // achievements
+        talentSvc,
+      );
+    });
+
+    beforeEach(() => {
+      (bossWithTalents as unknown as { cooldowns: Map<string, number> })
+        .cooldowns.clear();
+    });
+
+    it('character ở luyen_hu(6) học talent_thien_di (drop*1.2) → linhThach reward = floor(5000*1.2)=6000 thay vì 5000', async () => {
+      const a = await makeUserChar(prisma, {
+        mp: 100,
+        stamina: 100,
+        power: 10000,
+        linhThach: 0n,
+        realmKey: 'luyen_hu',
+      });
+      await talentSvc.learnTalent(a.characterId, 'talent_thien_di');
+      await spawnBoss({ currentHp: 1n, rewardTotal: 10_000n });
+
+      const out = await bossWithTalents.attack(a.userId, undefined);
+      expect(out.result.defeated).toBe(true);
+      const c = await prisma.character.findUniqueOrThrow({
+        where: { id: a.characterId },
+      });
+      // Top1 = 50% × 10000 = 5000 → × dropMul 1.2 = 6000.
+      expect(c.linhThach).toBe(6000n);
+      // Ledger reflects the boosted delta.
+      const ledger = await prisma.currencyLedger.findFirstOrThrow({
+        where: {
+          characterId: a.characterId,
+          reason: 'BOSS_REWARD',
+          refType: 'WorldBoss',
+        },
+      });
+      expect(ledger.delta).toBe(6000n);
+    });
+
+    it('character KHÔNG học talent → composePassiveTalentMods([]) identity (dropMul=1) → linhThach reward giữ nguyên 5000', async () => {
+      const a = await makeUserChar(prisma, {
+        mp: 100,
+        stamina: 100,
+        power: 10000,
+        linhThach: 0n,
+      });
+      await spawnBoss({ currentHp: 1n, rewardTotal: 10_000n });
+
+      const out = await bossWithTalents.attack(a.userId, undefined);
+      expect(out.result.defeated).toBe(true);
+      const c = await prisma.character.findUniqueOrThrow({
+        where: { id: a.characterId },
+      });
+      // Top1 = 50% × 10000 = 5000 — không có talent dropMul → identity baseline.
+      expect(c.linhThach).toBe(5000n);
+    });
+
+    it('TalentService không inject vào BossService → identity baseline (dmg = 5000, same as no-talent)', async () => {
+      // `boss` instance ở top-level KHÔNG inject TalentService — verify
+      // fall-soft pattern: no service → bypass talent check → identity.
+      const a = await makeUserChar(prisma, {
+        mp: 100,
+        stamina: 100,
+        power: 10000,
+        linhThach: 0n,
+        realmKey: 'luyen_hu',
+      });
+      // Học talent nhưng `boss` không inject TalentService → talent ignored.
+      await talentSvc.learnTalent(a.characterId, 'talent_thien_di');
+      await spawnBoss({ currentHp: 1n, rewardTotal: 10_000n });
+
+      const out = await boss.attack(a.userId, undefined);
+      expect(out.result.defeated).toBe(true);
+      const c = await prisma.character.findUniqueOrThrow({
+        where: { id: a.characterId },
+      });
+      // Without TalentService injection → no bonus applied → 5000.
+      expect(c.linhThach).toBe(5000n);
     });
   });
 });
