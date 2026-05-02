@@ -882,4 +882,213 @@ describe('CombatService', () => {
       expect(dmg).toBe(19);
     });
   });
+
+  // — Phase 11.9.C Title wire (flavor stat mods compose vào atk/def/spirit) ----
+  describe('Title flavor wire (Phase 11.9.C)', () => {
+    let combatWithTitles: CombatService;
+    let titleSvc: TitleService;
+
+    beforeAll(() => {
+      const realtime = new RealtimeService();
+      const chars = new CharacterService(prisma, realtime);
+      const inventory = new InventoryService(prisma, realtime, chars);
+      const currency = new CurrencyService(prisma);
+      const missions = makeMissionService(prisma);
+      titleSvc = new TitleService(prisma);
+      combatWithTitles = new CombatService(
+        prisma,
+        realtime,
+        chars,
+        inventory,
+        currency,
+        missions,
+        undefined, // characterSkill
+        undefined, // achievements
+        undefined, // talents
+        undefined, // buffs
+        titleSvc,
+      );
+    });
+
+    afterEach(() => {
+      vi.restoreAllMocks();
+    });
+
+    it('realm_hu_khong_chi_ton (atk*1.12) → effPower 20→22.4 → dmg 19→21', async () => {
+      vi.spyOn(Math, 'random').mockReturnValue(0.5);
+      // Baseline — no equipped title.
+      const baseUser = await makeUserChar(prisma, {
+        realmKey: 'kim_dan',
+        stamina: 100,
+        power: 20,
+        spirit: 100,
+        hp: 1000,
+        hpMax: 1000,
+      });
+      const baseEnc = await combatWithTitles.start(baseUser.userId, 'son_coc');
+      await combatWithTitles.action(baseUser.userId, baseEnc.id, {});
+      const baseEncAfter = await prisma.encounter.findUniqueOrThrow({
+        where: { id: baseEnc.id },
+      });
+      const baseState = baseEncAfter.state as { monsterHp: number };
+      const baseDmg = 30 - baseState.monsterHp;
+      expect(baseDmg).toBe(19);
+
+      // With realm_hu_khong_chi_ton equipped → atkMul=1.12.
+      const titleUser = await makeUserChar(prisma, {
+        realmKey: 'kim_dan',
+        stamina: 100,
+        power: 20,
+        spirit: 100,
+        hp: 1000,
+        hpMax: 1000,
+      });
+      await titleSvc.unlockTitle(
+        titleUser.characterId,
+        'realm_hu_khong_chi_ton',
+        'realm_milestone',
+      );
+      await titleSvc.equipTitle(titleUser.characterId, 'realm_hu_khong_chi_ton');
+      const titleEnc = await combatWithTitles.start(titleUser.userId, 'son_coc');
+      await combatWithTitles.action(titleUser.userId, titleEnc.id, {});
+      const titleEncAfter = await prisma.encounter.findUniqueOrThrow({
+        where: { id: titleEnc.id },
+      });
+      const titleState = titleEncAfter.state as { monsterHp: number };
+      const titleDmg = 30 - titleState.monsterHp;
+      // effPower = 20 * 1.12 = 22.4. rollDamage(22.4, 2, 1)
+      // = max(1, round((22.4 - 1) * 1.0)) = round(21.4) = 21.
+      expect(titleDmg).toBe(21);
+      expect(titleDmg).toBeGreaterThan(baseDmg);
+    });
+
+    it('realm_do_kiep_tribulant (def*1.04) → incoming monster damage giảm hoặc bằng baseline', async () => {
+      vi.spyOn(Math, 'random').mockReturnValue(0.5);
+      // Baseline — no title, monster hits back. Power thấp → quái sống → counter.
+      const baseUser = await makeUserChar(prisma, {
+        realmKey: 'kim_dan',
+        stamina: 100,
+        power: 5,
+        spirit: 10,
+        hp: 1000,
+        hpMax: 1000,
+      });
+      const baseEnc = await combatWithTitles.start(baseUser.userId, 'son_coc');
+      await combatWithTitles.action(baseUser.userId, baseEnc.id, {});
+      const baseChar = await prisma.character.findUniqueOrThrow({
+        where: { id: baseUser.characterId },
+      });
+      const baseHpLost = 1000 - baseChar.hp;
+
+      // With realm_do_kiep_tribulant → defMul=1.04.
+      const titleUser = await makeUserChar(prisma, {
+        realmKey: 'kim_dan',
+        stamina: 100,
+        power: 5,
+        spirit: 10,
+        hp: 1000,
+        hpMax: 1000,
+      });
+      await titleSvc.unlockTitle(
+        titleUser.characterId,
+        'realm_do_kiep_tribulant',
+        'realm_milestone',
+      );
+      await titleSvc.equipTitle(titleUser.characterId, 'realm_do_kiep_tribulant');
+      const titleEnc = await combatWithTitles.start(titleUser.userId, 'son_coc');
+      await combatWithTitles.action(titleUser.userId, titleEnc.id, {});
+      const titleChar = await prisma.character.findUniqueOrThrow({
+        where: { id: titleUser.characterId },
+      });
+      const titleHpLost = 1000 - titleChar.hp;
+      // Higher effDef → lower (hoặc bằng) incoming damage.
+      expect(titleHpLost).toBeLessThanOrEqual(baseHpLost);
+    });
+
+    it('realm_thanh_nhan_sage (spirit*1.08) → incoming monster damage giảm hoặc bằng baseline', async () => {
+      vi.spyOn(Math, 'random').mockReturnValue(0.5);
+      // Baseline — no title.
+      const baseUser = await makeUserChar(prisma, {
+        realmKey: 'kim_dan',
+        stamina: 100,
+        power: 5,
+        spirit: 50, // spirit cao đủ để diff visible
+        hp: 1000,
+        hpMax: 1000,
+      });
+      const baseEnc = await combatWithTitles.start(baseUser.userId, 'son_coc');
+      await combatWithTitles.action(baseUser.userId, baseEnc.id, {});
+      const baseChar = await prisma.character.findUniqueOrThrow({
+        where: { id: baseUser.characterId },
+      });
+      const baseHpLost = 1000 - baseChar.hp;
+
+      // With realm_thanh_nhan_sage → spiritMul=1.08.
+      const titleUser = await makeUserChar(prisma, {
+        realmKey: 'kim_dan',
+        stamina: 100,
+        power: 5,
+        spirit: 50,
+        hp: 1000,
+        hpMax: 1000,
+      });
+      await titleSvc.unlockTitle(
+        titleUser.characterId,
+        'realm_thanh_nhan_sage',
+        'realm_milestone',
+      );
+      await titleSvc.equipTitle(titleUser.characterId, 'realm_thanh_nhan_sage');
+      const titleEnc = await combatWithTitles.start(titleUser.userId, 'son_coc');
+      await combatWithTitles.action(titleUser.userId, titleEnc.id, {});
+      const titleChar = await prisma.character.findUniqueOrThrow({
+        where: { id: titleUser.characterId },
+      });
+      const titleHpLost = 1000 - titleChar.hp;
+      // Higher effSpirit → lower (hoặc bằng) incoming damage via defense calc.
+      expect(titleHpLost).toBeLessThanOrEqual(baseHpLost);
+    });
+
+    it('không inject TitleService → identity baseline (dmg = 19, same as no-title)', async () => {
+      vi.spyOn(Math, 'random').mockReturnValue(0.5);
+      // combat (no TitleService) — identity behavior via main `combat` instance.
+      const u = await makeUserChar(prisma, {
+        realmKey: 'kim_dan',
+        stamina: 100,
+        power: 20,
+        spirit: 100,
+        hp: 1000,
+        hpMax: 1000,
+      });
+      const enc = await combat.start(u.userId, 'son_coc');
+      await combat.action(u.userId, enc.id, {});
+      const encAfter = await prisma.encounter.findUniqueOrThrow({
+        where: { id: enc.id },
+      });
+      const st = encAfter.state as { monsterHp: number };
+      const dmg = 30 - st.monsterHp;
+      expect(dmg).toBe(19);
+    });
+
+    it('character chưa equip title (Character.title=null) → identity baseline (dmg = 19)', async () => {
+      vi.spyOn(Math, 'random').mockReturnValue(0.5);
+      // TitleService injected nhưng character chưa unlock/equip title nào →
+      // composeTitleMods([]) trả về identity (atkMul=defMul=spiritMul=1).
+      const u = await makeUserChar(prisma, {
+        realmKey: 'kim_dan',
+        stamina: 100,
+        power: 20,
+        spirit: 100,
+        hp: 1000,
+        hpMax: 1000,
+      });
+      const enc = await combatWithTitles.start(u.userId, 'son_coc');
+      await combatWithTitles.action(u.userId, enc.id, {});
+      const encAfter = await prisma.encounter.findUniqueOrThrow({
+        where: { id: enc.id },
+      });
+      const st = encAfter.state as { monsterHp: number };
+      const dmg = 30 - st.monsterHp;
+      expect(dmg).toBe(19);
+    });
+  });
 });

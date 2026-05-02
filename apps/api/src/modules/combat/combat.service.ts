@@ -30,10 +30,12 @@ import { CurrencyService } from '../character/currency.service';
 import { AchievementService } from '../character/achievement.service';
 import { TalentService } from '../character/talent.service';
 import { BuffService } from '../character/buff.service';
+import { TitleService } from '../character/title.service';
 import { InventoryService } from '../inventory/inventory.service';
 import { MissionService } from '../mission/mission.service';
 import { composePassiveTalentMods, type PassiveTalentMods } from '@xuantoi/shared';
 import { composeBuffMods, type BuffMods } from '@xuantoi/shared';
+import { composeTitleMods, type TitleMods } from '@xuantoi/shared';
 
 export interface EncounterState {
   monsterIndex: number;
@@ -109,6 +111,7 @@ export class CombatService {
     @Optional() private readonly achievements?: AchievementService,
     @Optional() private readonly talents?: TalentService,
     @Optional() private readonly buffs?: BuffService,
+    @Optional() private readonly titles?: TitleService,
   ) {}
 
   listDungeons() {
@@ -217,8 +220,22 @@ export class CombatService {
     const buffMods: BuffMods = this.buffs
       ? await this.buffs.getMods(char.id)
       : composeBuffMods([]);
-    const effPower = (char.power + equip.atk) * statMul * talentMods.atkMul * buffMods.atkMul;
-    const effDef = equip.def * statMul * talentMods.defMul * buffMods.defMul;
+    // Phase 11.9.C — Title flavor stat mods compose. No equipped title or
+    // service không injected → identity baseline (atkMul=defMul=spiritMul=1).
+    // Multiplicative compose với linh căn × talent × buff (Phase 11.3.C/11.7.C/11.8.C).
+    // hpMaxMul/mpMaxMul KHÔNG wire ở đây — là stat cap modifier (defer
+    // CharacterStatService.computeStats), không ảnh hưởng combat action.
+    const titleMods: TitleMods = this.titles
+      ? await this.titles.getMods(char.id)
+      : composeTitleMods([]);
+    const effPower =
+      (char.power + equip.atk) *
+      statMul *
+      talentMods.atkMul *
+      buffMods.atkMul *
+      titleMods.atkMul;
+    const effDef =
+      equip.def * statMul * talentMods.defMul * buffMods.defMul * titleMods.defMul;
 
     const log: EncounterLogLine[] = [
       ...((enc.log as unknown as EncounterLogLine[]) ?? []),
@@ -341,7 +358,8 @@ export class CombatService {
     } else {
       // — Monster counter-attack (Phase 11.3.B — element vs character primary)
       // Phase 11.8.C — spiritMul buff wire vào defense calc.
-      const effSpirit = char.spirit * buffMods.spiritMul;
+      // Phase 11.9.C — title spiritMul compose (mythic/legendary title flavor).
+      const effSpirit = char.spirit * buffMods.spiritMul * titleMods.spiritMul;
       const replyBase = rollDamage(monster.atk, effSpirit + effPower * 0.3 + effDef, 1);
       const monsterElementMul = elementMultiplier(
         (monster.element ?? null) as ElementKey | null,
