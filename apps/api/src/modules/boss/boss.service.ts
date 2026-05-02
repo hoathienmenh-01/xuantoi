@@ -26,6 +26,7 @@ import { CharacterService } from '../character/character.service';
 import { CurrencyService } from '../character/currency.service';
 import { AchievementService } from '../character/achievement.service';
 import { TalentService } from '../character/talent.service';
+import { BuffService } from '../character/buff.service';
 import { InventoryService } from '../inventory/inventory.service';
 import { MissionService } from '../mission/mission.service';
 
@@ -42,7 +43,8 @@ export class BossError extends Error {
       | 'SKILL_NOT_USABLE'
       | 'BOSS_ALREADY_ACTIVE'
       | 'INVALID_BOSS_KEY'
-      | 'INVALID_LEVEL',
+      | 'INVALID_LEVEL'
+      | 'CONTROLLED',
   ) {
     super(code);
   }
@@ -117,6 +119,7 @@ export class BossService implements OnModuleInit, OnModuleDestroy {
     private readonly missions: MissionService,
     @Optional() private readonly achievements?: AchievementService,
     @Optional() private readonly talents?: TalentService,
+    @Optional() private readonly buffs?: BuffService,
   ) {}
 
   onModuleInit(): void {
@@ -151,6 +154,20 @@ export class BossService implements OnModuleInit, OnModuleDestroy {
   ): Promise<{ result: AttackResult; defeated: DefeatedRewardSlice[] | null }> {
     const char = await this.prisma.character.findUnique({ where: { userId } });
     if (!char) throw new BossError('NO_CHARACTER');
+
+    // Phase 11.X.Q — Buff control wire (parallel to Phase 11.X.O combat wire).
+    // Catalog producer: `debuff_root_thuy` (3 turns), `debuff_stun_tho` (1 turn),
+    // `debuff_silence_kim` (2 turns). Throw `CONTROLLED` BEFORE any state
+    // mutation (cooldown set, mp/stamina/hp deduct, ledger). Service không
+    // injected (legacy DI / test fixture without `buffs`) → identity (no
+    // throw). Player bị root/stun/silence không thể boss-attack — frontend
+    // hiển thị "Đang bị khống chế, không thể tấn công boss."
+    if (this.buffs) {
+      const buffMods = await this.buffs.getMods(char.id);
+      if (buffMods.controlTurnsMax > 0) {
+        throw new BossError('CONTROLLED');
+      }
+    }
 
     const now = Date.now();
     const last = this.cooldowns.get(char.id) ?? 0;

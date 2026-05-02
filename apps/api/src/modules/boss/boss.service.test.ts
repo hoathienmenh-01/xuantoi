@@ -7,7 +7,8 @@ import { CharacterService } from '../character/character.service';
 import { CurrencyService } from '../character/currency.service';
 import { InventoryService } from '../inventory/inventory.service';
 import { TalentService } from '../character/talent.service';
-import { BossService } from './boss.service';
+import { BuffService } from '../character/buff.service';
+import { BossError, BossService } from './boss.service';
 import {
   TEST_DATABASE_URL,
   makeMissionService,
@@ -489,6 +490,132 @@ describe('BossService', () => {
       });
       // Without TalentService injection → no bonus applied → 5000.
       expect(c.linhThach).toBe(5000n);
+    });
+  });
+
+  // ── Phase 11.X.Q — Buff control wire vào BossService.attack() ──────────
+  // Wire `buffMods.controlTurnsMax > 0` throw `BossError('CONTROLLED')` BEFORE
+  // any state mutation. Catalog producer: `debuff_root_thuy` (3t),
+  // `debuff_stun_tho` (1t), `debuff_silence_kim` (2t). Parallel to Phase
+  // 11.X.O combat wire — character bị khống chế không thể attack boss.
+  describe('Buff control wire (Phase 11.X.Q)', () => {
+    let bossWithBuffs: BossService;
+    let buffSvc: BuffService;
+
+    beforeAll(() => {
+      const realtime = new RealtimeService();
+      const chars = new CharacterService(prisma, realtime);
+      const inventory = new InventoryService(prisma, realtime, chars);
+      const currency = new CurrencyService(prisma);
+      const missions = makeMissionService(prisma);
+      buffSvc = new BuffService(prisma);
+      bossWithBuffs = new BossService(
+        prisma,
+        realtime,
+        chars,
+        inventory,
+        currency,
+        missions,
+        undefined, // achievements
+        undefined, // talents
+        buffSvc,
+      );
+    });
+
+    beforeEach(() => {
+      (bossWithBuffs as unknown as { cooldowns: Map<string, number> })
+        .cooldowns.clear();
+    });
+
+    it('character có debuff_stun_tho (control 1 turn) → BossError CONTROLLED, KHÔNG mutate state', async () => {
+      const a = await makeUserChar(prisma, {
+        mp: 100,
+        stamina: 100,
+        hp: 1000,
+        hpMax: 1000,
+      });
+      await buffSvc.applyBuff(a.characterId, 'debuff_stun_tho', 'skill');
+      const w = await spawnBoss({ currentHp: 10000n });
+
+      let caught: BossError | null = null;
+      try {
+        await bossWithBuffs.attack(a.userId, undefined);
+      } catch (e) {
+        if (e instanceof BossError) caught = e;
+      }
+      expect(caught).not.toBeNull();
+      expect(caught?.code).toBe('CONTROLLED');
+
+      // Verify state UNCHANGED: boss currentHp giữ nguyên, character mp/stamina/hp giữ nguyên.
+      const after = await prisma.worldBoss.findUniqueOrThrow({
+        where: { id: w.id },
+      });
+      expect(after.currentHp).toBe(10000n);
+      const c = await prisma.character.findUniqueOrThrow({
+        where: { id: a.characterId },
+      });
+      expect(c.mp).toBe(100);
+      expect(c.stamina).toBe(100);
+      expect(c.hp).toBe(1000);
+
+      // Verify cooldown KHÔNG set (controlled throw before cooldown.set).
+      const cd = (
+        bossWithBuffs as unknown as { cooldowns: Map<string, number> }
+      ).cooldowns.get(a.characterId);
+      expect(cd).toBeUndefined();
+    });
+
+    it('character có debuff_root_thuy (control 3 turn) → BossError CONTROLLED', async () => {
+      const a = await makeUserChar(prisma, {
+        mp: 100,
+        stamina: 100,
+      });
+      await buffSvc.applyBuff(a.characterId, 'debuff_root_thuy', 'skill');
+      await spawnBoss({ currentHp: 10000n });
+
+      await expect(bossWithBuffs.attack(a.userId, undefined)).rejects.toThrow(
+        'CONTROLLED',
+      );
+    });
+
+    it('character có debuff_silence_kim (control 2 turn) → BossError CONTROLLED', async () => {
+      const a = await makeUserChar(prisma, {
+        mp: 100,
+        stamina: 100,
+      });
+      await buffSvc.applyBuff(a.characterId, 'debuff_silence_kim', 'skill');
+      await spawnBoss({ currentHp: 10000n });
+
+      await expect(bossWithBuffs.attack(a.userId, undefined)).rejects.toThrow(
+        'CONTROLLED',
+      );
+    });
+
+    it('character KHÔNG có control debuff → identity (no throw, attack succeeds)', async () => {
+      const a = await makeUserChar(prisma, {
+        mp: 100,
+        stamina: 100,
+      });
+      await spawnBoss({ currentHp: 10000n });
+
+      const out = await bossWithBuffs.attack(a.userId, undefined);
+      expect(out.result.defeated).toBe(false);
+      expect(BigInt(out.result.damageDealt)).toBeGreaterThan(0n);
+    });
+
+    it('BuffService không inject vào BossService → identity baseline (no throw despite DB row)', async () => {
+      // Top-level `boss` instance KHÔNG inject BuffService → control debuff
+      // ignored, attack succeed bình thường.
+      const a = await makeUserChar(prisma, {
+        mp: 100,
+        stamina: 100,
+      });
+      await buffSvc.applyBuff(a.characterId, 'debuff_stun_tho', 'skill');
+      await spawnBoss({ currentHp: 10000n });
+
+      const out = await boss.attack(a.userId, undefined);
+      expect(out.result.defeated).toBe(false);
+      expect(BigInt(out.result.damageDealt)).toBeGreaterThan(0n);
     });
   });
 });
