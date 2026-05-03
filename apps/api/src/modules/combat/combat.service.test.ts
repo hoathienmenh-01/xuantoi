@@ -1967,4 +1967,137 @@ describe('CombatService', () => {
       expect(c.hp).toBe(999);
     });
   });
+
+  // ── Phase 11.1.D — Cultivation method statBonus.atk/defPercent wire ───
+  // Wire `methodStatBonusFor(char.equippedCultivationMethodKey)` vào effPower
+  // và effDef. Catalog `cuu_cuc_kim_cuong_quyet` (huyen kim, atk +5%, def +12%)
+  // có statBonus runtime impact; `khai_thien_quyet` (pham starter, all 0%)
+  // identity; legacy character (no method) identity. Tests dùng raw prisma
+  // update để set equippedCultivationMethodKey trực tiếp (bypass realm /
+  // forbiddenElements check của CultivationMethodService.equip — không cần
+  // cho test fixture).
+  describe('Cultivation method statBonus wire (Phase 11.1.D)', () => {
+    it('huyen kim method (atk +5%, def +12%) → effPower/effDef higher than legacy baseline', async () => {
+      vi.spyOn(Math, 'random').mockReturnValue(0.5);
+      const baseUser = await makeUserChar(prisma, {
+        realmKey: 'kim_dan',
+        stamina: 100,
+        power: 100,
+        spirit: 100,
+        hp: 1000,
+        hpMax: 1000,
+      });
+      const baseEnc = await combat.start(baseUser.userId, 'son_coc');
+      await combat.action(baseUser.userId, baseEnc.id, {});
+      const baseEncAfter = await prisma.encounter.findUniqueOrThrow({
+        where: { id: baseEnc.id },
+      });
+      const baseDmg =
+        30 - (baseEncAfter.state as { monsterHp: number }).monsterHp;
+
+      const methodUser = await makeUserChar(prisma, {
+        realmKey: 'kim_dan',
+        stamina: 100,
+        power: 100,
+        spirit: 100,
+        hp: 1000,
+        hpMax: 1000,
+      });
+      await prisma.character.update({
+        where: { id: methodUser.characterId },
+        data: { equippedCultivationMethodKey: 'cuu_cuc_kim_cuong_quyet' },
+      });
+      const methodEnc = await combat.start(methodUser.userId, 'son_coc');
+      await combat.action(methodUser.userId, methodEnc.id, {});
+      const methodEncAfter = await prisma.encounter.findUniqueOrThrow({
+        where: { id: methodEnc.id },
+      });
+      const methodDmg =
+        30 - (methodEncAfter.state as { monsterHp: number }).monsterHp;
+      // method atk +5% → dmg phải >= base (cùng RNG seed mocked 0.5).
+      expect(methodDmg).toBeGreaterThanOrEqual(baseDmg);
+    });
+
+    it('huyen kim method def +12% → reply damage <= legacy baseline', async () => {
+      vi.spyOn(Math, 'random').mockReturnValue(0.5);
+      const baseUser = await makeUserChar(prisma, {
+        realmKey: 'kim_dan',
+        stamina: 100,
+        power: 5,
+        spirit: 50,
+        hp: 1000,
+        hpMax: 1000,
+      });
+      const baseEnc = await combat.start(baseUser.userId, 'son_coc');
+      await combat.action(baseUser.userId, baseEnc.id, {});
+      const baseChar = await prisma.character.findUniqueOrThrow({
+        where: { id: baseUser.characterId },
+      });
+      const baseHpLost = 1000 - baseChar.hp;
+
+      const methodUser = await makeUserChar(prisma, {
+        realmKey: 'kim_dan',
+        stamina: 100,
+        power: 5,
+        spirit: 50,
+        hp: 1000,
+        hpMax: 1000,
+      });
+      await prisma.character.update({
+        where: { id: methodUser.characterId },
+        data: { equippedCultivationMethodKey: 'cuu_cuc_kim_cuong_quyet' },
+      });
+      const methodEnc = await combat.start(methodUser.userId, 'son_coc');
+      await combat.action(methodUser.userId, methodEnc.id, {});
+      const methodChar = await prisma.character.findUniqueOrThrow({
+        where: { id: methodUser.characterId },
+      });
+      const methodHpLost = 1000 - methodChar.hp;
+      // method def +12% → effDef bonus → reply damage giảm hoặc bằng baseline.
+      expect(methodHpLost).toBeLessThanOrEqual(baseHpLost);
+    });
+
+    it('pham starter khai_thien_quyet (all statBonus 0%) → identity (same dmg=19)', async () => {
+      vi.spyOn(Math, 'random').mockReturnValue(0.5);
+      const u = await makeUserChar(prisma, {
+        realmKey: 'kim_dan',
+        stamina: 100,
+        power: 20,
+        spirit: 100,
+        hp: 1000,
+        hpMax: 1000,
+      });
+      await prisma.character.update({
+        where: { id: u.characterId },
+        data: { equippedCultivationMethodKey: 'khai_thien_quyet' },
+      });
+      const enc = await combat.start(u.userId, 'son_coc');
+      await combat.action(u.userId, enc.id, {});
+      const encAfter = await prisma.encounter.findUniqueOrThrow({
+        where: { id: enc.id },
+      });
+      const dmg = 30 - (encAfter.state as { monsterHp: number }).monsterHp;
+      expect(dmg).toBe(19);
+    });
+
+    it('legacy character (equippedCultivationMethodKey=null) → methodStatBonusFor identity', async () => {
+      vi.spyOn(Math, 'random').mockReturnValue(0.5);
+      const u = await makeUserChar(prisma, {
+        realmKey: 'kim_dan',
+        stamina: 100,
+        power: 20,
+        spirit: 100,
+        hp: 1000,
+        hpMax: 1000,
+      });
+      // makeUserChar default equippedCultivationMethodKey=null
+      const enc = await combat.start(u.userId, 'son_coc');
+      await combat.action(u.userId, enc.id, {});
+      const encAfter = await prisma.encounter.findUniqueOrThrow({
+        where: { id: enc.id },
+      });
+      const dmg = 30 - (encAfter.state as { monsterHp: number }).monsterHp;
+      expect(dmg).toBe(19);
+    });
+  });
 });

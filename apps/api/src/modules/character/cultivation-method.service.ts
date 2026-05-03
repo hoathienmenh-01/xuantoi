@@ -244,6 +244,41 @@ export function methodExpMultiplierFor(
   return def.expMultiplier;
 }
 
+/**
+ * Compose multiplicative stat bonus từ method `statBonus` (atkPercent,
+ * defPercent, hpMaxPercent, mpMaxPercent → atkMul, defMul, hpMaxMul, mpMaxMul).
+ *
+ * Phase 11.1.D wire `CombatService.action()` consume `atkMul` / `defMul` cho
+ * effPower / effDef. `hpMaxMul` / `mpMaxMul` là stat cap (chưa wire — defer
+ * `CharacterStatService.computeStats`).
+ *
+ * Catalog huyen-grade method `cuu_cuc_kim_cuong_quyet` (atk +5%, def +12%) v.v.
+ * Trước Phase 11.1.D, `statBonus` được khai báo nhưng KHÔNG consume runtime.
+ *
+ * Legacy character (key=null hoặc invalid) → tất cả mul = 1.0 (identity).
+ * Pham starter (`khai_thien_quyet`, statBonus 0%) → mul = 1.0 (identity).
+ */
+export function methodStatBonusFor(equippedMethodKey: string | null): {
+  readonly atkMul: number;
+  readonly defMul: number;
+  readonly hpMaxMul: number;
+  readonly mpMaxMul: number;
+} {
+  if (!equippedMethodKey) {
+    return { atkMul: 1, defMul: 1, hpMaxMul: 1, mpMaxMul: 1 };
+  }
+  const def = getCultivationMethodDef(equippedMethodKey);
+  if (!def) {
+    return { atkMul: 1, defMul: 1, hpMaxMul: 1, mpMaxMul: 1 };
+  }
+  return {
+    atkMul: 1 + def.statBonus.atkPercent / 100,
+    defMul: 1 + def.statBonus.defPercent / 100,
+    hpMaxMul: 1 + def.statBonus.hpMaxPercent / 100,
+    mpMaxMul: 1 + def.statBonus.mpMaxPercent / 100,
+  };
+}
+
 function isValidElement(e: string | null): e is ElementKey {
   return e !== null && (ELEMENTS as readonly string[]).includes(e);
 }
