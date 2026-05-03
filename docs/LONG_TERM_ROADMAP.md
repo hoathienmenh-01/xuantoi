@@ -365,7 +365,7 @@ Thêm depth cho progression: công pháp, skill upgrade, linh căn, thể chất
 - View append `<section>` với loading/empty/error/list states + reload button + auto-refetch sau attempt.
 - 27 vitest mới (web 817 → 844).
 
-#### 11.6.H PR: Tribulation history pagination "Load more" **(IN-FLIGHT — PR #330)**
+#### 11.6.H PR: Tribulation history pagination "Load more" **(MERGED PR #330)**
 
 - FE-only mở rộng Phase 11.6.G với pagination button (consume cùng endpoint, no backend changes).
 - Approach: expanding-limit re-fetch (`?limit=N+20`) clamp tới MAX 100 thay vì offset/cursor.
@@ -373,6 +373,23 @@ Thêm depth cho progression: công pháp, skill upgrade, linh căn, thể chất
 - View: "Load more" button conditional + max-reached hint + `onLoadMore()` toast on real errors.
 - i18n vi/en: `tribulation.history.{loadMore,loadMoreLoading,maxReached}`.
 - 24 vitest mới (web 844 → 868). Limitation: chỉ pagination tới 100 entries do server cap; future Phase 11.6.I cần real cursor cho >100.
+
+#### 11.6.J PR: Tribulation history client-side filter **(MERGED PR #332)**
+
+- FE-only mở rộng Phase 11.6.G/H với segmented control filter (success/fail/all) trên rows đã loaded — pure presentation, no backend touch.
+- Why client-side: server endpoint không có `success` query param; thêm server filter sẽ phá invariant pagination Phase 11.6.H (`historyHasMore` tính trên full list). Approach client-side giữ load-more logic nguyên vẹn.
+- Store: `HistoryFilter = 'all'|'success'|'fail'` type export + `historyFilter: ref<HistoryFilter>` state + `filteredHistory: computed<rows[]|null>` (preserve null sentinel) + `setHistoryFilter(filter)` action với input validation. `reset()` clear filter về `'all'`.
+- View: 3-button segmented control phía trên list với `aria-pressed` reflect active filter; `<v-for>` đổi từ `history` → `filteredHistory`; empty-after-filter hint khi filter loại hết rows.
+- i18n vi/en: `tribulation.history.filter.{label,all,success,fail,emptyAfterFilter}`.
+- 22 vitest mới (web 868 → 890): 11 store + 11 view. View test stub `filteredHistory` getter mirror Pinia computed → existing Phase 11.6.G tests vẫn pass mà không cần set 2 field.
+
+#### 11.6.K PR: Tribulation history stats summary **(MERGED PR #333)**
+
+- FE-only mở rộng Phase 11.6.G/H/J với 3 stats badge (total/success/fail counts) phía trên filter control. Counts tính trên FULL `history.value` (KHÔNG `filteredHistory`) → user toggle filter UI thì counts không đổi.
+- Store: 3 computed mới `historyTotalCount`/`historySuccessCount`/`historyFailCount` — null history (chưa fetch) → counts = 0; empty array → counts = 0.
+- View: stats line 3 badge (ink-700 total + emerald-700 success + rose-700 fail) phía trên filter control, conditional render cùng `history && history.length > 0`.
+- i18n vi/en: `tribulation.history.stats.{label,total,success,fail}` với placeholder `{count}`.
+- 15 vitest mới (web 890 → 905): 8 store + 7 view (bao gồm DOM position assertion stats trước filter via `Node.DOCUMENT_POSITION_FOLLOWING`).
 
 #### 11.X.A PR: Alchemy catalog foundation **(this PR — session 9r-10, P11-X Luyện Đan MVP catalog half)**
 
