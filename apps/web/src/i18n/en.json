@@ -1458,7 +1458,16 @@
       "attempt": "Begin tribulation",
       "attempting": "Enduring trial…",
       "unavailable": "No tribulation available",
-      "notAtPeak": "Not eligible"
+      "notAtPeak": "Not eligible",
+      "cooldown": "Wait {remaining}"
+    },
+    "cooldown": {
+      "title": "Cooldown active",
+      "remaining": "You can retry in {remaining}"
+    },
+    "taoMa": {
+      "title": "Heart-Demon afflicting you",
+      "remaining": "Fades in {remaining}"
     },
     "empty": {
       "noCharacter": "No character.",

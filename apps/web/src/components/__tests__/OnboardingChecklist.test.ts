@@ -64,6 +64,8 @@ function makeChar(overrides: Partial<CharacterStatePayload> = {}): CharacterStat
     sectKey: null,
     role: 'PLAYER',
     banned: false,
+    tribulationCooldownAt: null,
+    taoMaUntil: null,
     ...overrides,
   };
 }

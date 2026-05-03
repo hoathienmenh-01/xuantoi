@@ -476,3 +476,50 @@ describe('CharacterService.onboard with TitleService (Phase 11.9.C-3)', () => {
     expect(rows.length).toBe(0);
   });
 });
+
+describe('CharacterService.toState exposes tribulation timestamps (Phase 11.6.E)', () => {
+  it('character chưa attempt → tribulationCooldownAt=null + taoMaUntil=null', async () => {
+    const fx = await makeUserChar(prisma, { realmKey: 'kim_dan', realmStage: 9 });
+    const state = await chars.findByUser(fx.userId);
+    expect(state).not.toBeNull();
+    expect(state!.tribulationCooldownAt).toBeNull();
+    expect(state!.taoMaUntil).toBeNull();
+  });
+
+  it('character có tribulationCooldownAt → ISO string trả về (toISOString)', async () => {
+    const fx = await makeUserChar(prisma, { realmKey: 'kim_dan', realmStage: 9 });
+    const cooldown = new Date('2030-01-01T00:00:00.000Z');
+    await prisma.character.update({
+      where: { id: fx.characterId },
+      data: { tribulationCooldownAt: cooldown },
+    });
+    const state = await chars.findByUser(fx.userId);
+    expect(state!.tribulationCooldownAt).toBe(cooldown.toISOString());
+    expect(state!.taoMaUntil).toBeNull();
+  });
+
+  it('character có taoMaUntil → ISO string trả về', async () => {
+    const fx = await makeUserChar(prisma, { realmKey: 'kim_dan', realmStage: 9 });
+    const taoMa = new Date('2030-02-01T12:00:00.000Z');
+    await prisma.character.update({
+      where: { id: fx.characterId },
+      data: { taoMaUntil: taoMa },
+    });
+    const state = await chars.findByUser(fx.userId);
+    expect(state!.tribulationCooldownAt).toBeNull();
+    expect(state!.taoMaUntil).toBe(taoMa.toISOString());
+  });
+
+  it('character có cả 2 → expose đủ cả 2', async () => {
+    const fx = await makeUserChar(prisma, { realmKey: 'kim_dan', realmStage: 9 });
+    const cooldown = new Date('2030-03-01T00:00:00.000Z');
+    const taoMa = new Date('2030-03-01T01:00:00.000Z');
+    await prisma.character.update({
+      where: { id: fx.characterId },
+      data: { tribulationCooldownAt: cooldown, taoMaUntil: taoMa },
+    });
+    const state = await chars.findByUser(fx.userId);
+    expect(state!.tribulationCooldownAt).toBe(cooldown.toISOString());
+    expect(state!.taoMaUntil).toBe(taoMa.toISOString());
+  });
+});

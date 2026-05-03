@@ -142,9 +142,13 @@ describe('ws-events', () => {
         sectKey: null,
         role: 'PLAYER',
         banned: false,
+        tribulationCooldownAt: null,
+        taoMaUntil: null,
       };
       expect(snap.role).toBe('PLAYER');
       expect(snap.sectKey).toBeNull();
+      expect(snap.tribulationCooldownAt).toBeNull();
+      expect(snap.taoMaUntil).toBeNull();
     });
 
     it('allows sectKey as valid literal thanh_van/huyen_thuy/tu_la', () => {
@@ -155,6 +159,39 @@ describe('ws-events', () => {
         null,
       ];
       expect(sects).toHaveLength(4);
+    });
+
+    it('Phase 11.6.E — accepts active cooldown + Tâm Ma timestamps', () => {
+      const snap: CharacterStatePayload = {
+        id: 'char_1',
+        name: 'Tester',
+        realmKey: 'kim_dan',
+        realmStage: 9,
+        level: 1,
+        exp: '0',
+        expNext: '100',
+        hp: 100,
+        hpMax: 100,
+        mp: 50,
+        mpMax: 50,
+        stamina: 100,
+        staminaMax: 100,
+        power: 10,
+        spirit: 10,
+        speed: 10,
+        luck: 5,
+        linhThach: '0',
+        tienNgoc: 0,
+        cultivating: false,
+        sectId: null,
+        sectKey: null,
+        role: 'PLAYER',
+        banned: false,
+        tribulationCooldownAt: '2026-05-02T07:00:00.000Z',
+        taoMaUntil: '2026-05-02T08:00:00.000Z',
+      };
+      expect(typeof snap.tribulationCooldownAt).toBe('string');
+      expect(typeof snap.taoMaUntil).toBe('string');
     });
   });
 

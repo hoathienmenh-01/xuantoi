@@ -22,6 +22,8 @@ import { setActivePinia, createPinia } from 'pinia';
 interface CharacterStub {
   realmKey: string;
   realmStage: number;
+  tribulationCooldownAt?: string | null;
+  taoMaUntil?: string | null;
 }
 
 interface TribulationStateStub {
@@ -134,6 +136,15 @@ const i18n = createI18n({
           attempting: 'Đang vượt kiếp',
           unavailable: 'Chưa có kiếp',
           notAtPeak: 'Chưa đỉnh',
+          cooldown: 'Chờ {remaining}',
+        },
+        cooldown: {
+          title: 'Đang cooldown',
+          remaining: 'Chờ {remaining}',
+        },
+        taoMa: {
+          title: 'Tâm Ma',
+          remaining: 'Tan trong {remaining}',
         },
         empty: {
           noCharacter: 'Chưa có nhân vật',
@@ -429,5 +440,125 @@ describe('TribulationView — last outcome banner', () => {
     await flushPromises();
     await w.find('[data-testid="tribulation-outcome-dismiss"]').trigger('click');
     expect(clearLastOutcomeMock).toHaveBeenCalled();
+  });
+});
+
+describe('TribulationView — Phase 11.6.E cooldown + Tâm Ma', () => {
+  beforeEach(() => {
+    setActivePinia(createPinia());
+    vi.clearAllMocks();
+    resetState();
+  });
+
+  it('cooldown banner KHÔNG render khi tribulationCooldownAt=null', async () => {
+    gameState.character = {
+      realmKey: 'kim_dan',
+      realmStage: 9,
+      tribulationCooldownAt: null,
+      taoMaUntil: null,
+    };
+    const w = mountView();
+    await flushPromises();
+    expect(w.find('[data-testid="tribulation-cooldown-banner"]').exists()).toBe(false);
+    expect(w.find('[data-testid="tribulation-taoma-banner"]').exists()).toBe(false);
+  });
+
+  it('cooldown banner KHÔNG render khi cooldown đã hết hạn (timestamp quá khứ)', async () => {
+    gameState.character = {
+      realmKey: 'kim_dan',
+      realmStage: 9,
+      tribulationCooldownAt: '2000-01-01T00:00:00.000Z',
+    };
+    const w = mountView();
+    await flushPromises();
+    expect(w.find('[data-testid="tribulation-cooldown-banner"]').exists()).toBe(false);
+  });
+
+  it('cooldown banner render với countdown khi cooldown còn hiệu lực', async () => {
+    const future = new Date(Date.now() + 60_000).toISOString();
+    gameState.character = {
+      realmKey: 'kim_dan',
+      realmStage: 9,
+      tribulationCooldownAt: future,
+    };
+    const w = mountView();
+    await flushPromises();
+    const banner = w.find('[data-testid="tribulation-cooldown-banner"]');
+    expect(banner.exists()).toBe(true);
+    expect(banner.text()).toContain('cooldown');
+    const remaining = w.find('[data-testid="tribulation-cooldown-remaining"]');
+    expect(remaining.exists()).toBe(true);
+    expect(remaining.text()).toMatch(/\d+:\d{2}/);
+  });
+
+  it('attempt button DISABLE + label countdown khi cooldown active', async () => {
+    const future = new Date(Date.now() + 90_000).toISOString();
+    gameState.character = {
+      realmKey: 'kim_dan',
+      realmStage: 9,
+      tribulationCooldownAt: future,
+    };
+    const w = mountView();
+    await flushPromises();
+    const btn = w.find('[data-testid="tribulation-attempt-button"]');
+    expect(btn.exists()).toBe(true);
+    expect(btn.attributes('disabled')).toBeDefined();
+    // Label hiển thị remaining countdown chứ không phải "Vượt kiếp"
+    expect(btn.text()).toMatch(/Chờ\s+\d+:\d{2}/);
+  });
+
+  it('Tâm Ma banner render khi taoMaUntil còn hiệu lực', async () => {
+    const future = new Date(Date.now() + 30 * 60_000).toISOString();
+    gameState.character = {
+      realmKey: 'kim_dan',
+      realmStage: 9,
+      taoMaUntil: future,
+    };
+    const w = mountView();
+    await flushPromises();
+    const banner = w.find('[data-testid="tribulation-taoma-banner"]');
+    expect(banner.exists()).toBe(true);
+    expect(banner.text()).toContain('Tâm Ma');
+    const remaining = w.find('[data-testid="tribulation-taoma-remaining"]');
+    expect(remaining.exists()).toBe(true);
+    expect(remaining.text()).toMatch(/\d+:\d{2}/);
+  });
+
+  it('Tâm Ma banner KHÔNG render khi taoMaUntil đã hết hạn', async () => {
+    gameState.character = {
+      realmKey: 'kim_dan',
+      realmStage: 9,
+      taoMaUntil: '2000-01-01T00:00:00.000Z',
+    };
+    const w = mountView();
+    await flushPromises();
+    expect(w.find('[data-testid="tribulation-taoma-banner"]').exists()).toBe(false);
+  });
+
+  it('Tâm Ma có thể active song song với cooldown', async () => {
+    const future = new Date(Date.now() + 60_000).toISOString();
+    gameState.character = {
+      realmKey: 'kim_dan',
+      realmStage: 9,
+      tribulationCooldownAt: future,
+      taoMaUntil: future,
+    };
+    const w = mountView();
+    await flushPromises();
+    expect(w.find('[data-testid="tribulation-cooldown-banner"]').exists()).toBe(true);
+    expect(w.find('[data-testid="tribulation-taoma-banner"]').exists()).toBe(true);
+  });
+
+  it('cooldown countdown format >1h dùng h:mm:ss', async () => {
+    const future = new Date(Date.now() + (3600 + 65) * 1000).toISOString();
+    gameState.character = {
+      realmKey: 'kim_dan',
+      realmStage: 9,
+      tribulationCooldownAt: future,
+    };
+    const w = mountView();
+    await flushPromises();
+    const remaining = w.find('[data-testid="tribulation-cooldown-remaining"]');
+    expect(remaining.text()).toMatch(/\d+:\d{2}:\d{2}/);
   });
 });

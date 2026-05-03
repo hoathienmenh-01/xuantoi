@@ -300,6 +300,10 @@ export class CharacterService {
       sectKey: c.sect ? SECT_NAME_TO_KEY[c.sect.name] ?? null : null,
       role: c.user.role,
       banned: c.user.banned,
+      tribulationCooldownAt: c.tribulationCooldownAt
+        ? c.tribulationCooldownAt.toISOString()
+        : null,
+      taoMaUntil: c.taoMaUntil ? c.taoMaUntil.toISOString() : null,
     };
   }
 }
