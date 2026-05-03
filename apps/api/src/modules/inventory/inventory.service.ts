@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { forwardRef, Inject, Injectable } from '@nestjs/common';
 import type { EquipSlot, Prisma } from '@prisma/client';
 import {
   composeSocketBonus,
@@ -97,6 +97,7 @@ export class InventoryService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly realtime: RealtimeService,
+    @Inject(forwardRef(() => CharacterService))
     private readonly chars: CharacterService,
   ) {}
 
