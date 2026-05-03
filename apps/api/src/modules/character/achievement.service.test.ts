@@ -680,6 +680,62 @@ describe('AchievementService.claimReward item rewards (Phase 11.10.D)', () => {
     expect(ledger).toHaveLength(0);
   });
 
+  // Phase 11.10.F — real catalog wire (no spy). first_breakthrough được mở
+  // `reward.items=[{huyet_chi_dan, 5}]` ở catalog production, nên claim flow
+  // grant items mà không cần inject. Bảo vệ wire end-to-end khi designer
+  // đổi catalog mai sau.
+  it('claim first_breakthrough (real catalog Phase 11.10.F) → grant 5× huyet_chi_dan + ItemLedger ACHIEVEMENT_REWARD', async () => {
+    const ctx = await makeUserChar(prisma);
+    await svc.incrementProgress(ctx.characterId, 'first_breakthrough', 1);
+    const result = await svc.claimReward(ctx.characterId, 'first_breakthrough');
+
+    expect(result.granted.items).toEqual([{ itemKey: 'huyet_chi_dan', qty: 5 }]);
+
+    const invRows = await prisma.inventoryItem.findMany({
+      where: { characterId: ctx.characterId, itemKey: 'huyet_chi_dan' },
+    });
+    expect(invRows).toHaveLength(1);
+    expect(invRows[0].qty).toBe(5);
+
+    const ledger = await prisma.itemLedger.findMany({
+      where: {
+        characterId: ctx.characterId,
+        reason: 'ACHIEVEMENT_REWARD',
+        itemKey: 'huyet_chi_dan',
+      },
+    });
+    expect(ledger).toHaveLength(1);
+    expect(ledger[0].qtyDelta).toBe(5);
+    expect(ledger[0].refType).toBe('Achievement');
+    expect(ledger[0].refId).toBe('first_breakthrough');
+  });
+
+  it('claim first_dungeon_clear (real catalog Phase 11.10.F) → grant 3× tinh_thiet + ItemLedger ACHIEVEMENT_REWARD', async () => {
+    const ctx = await makeUserChar(prisma);
+    await svc.incrementProgress(ctx.characterId, 'first_dungeon_clear', 1);
+    const result = await svc.claimReward(ctx.characterId, 'first_dungeon_clear');
+
+    expect(result.granted.items).toEqual([{ itemKey: 'tinh_thiet', qty: 3 }]);
+
+    const invRows = await prisma.inventoryItem.findMany({
+      where: { characterId: ctx.characterId, itemKey: 'tinh_thiet' },
+    });
+    expect(invRows).toHaveLength(1);
+    expect(invRows[0].qty).toBe(3);
+
+    const ledger = await prisma.itemLedger.findMany({
+      where: {
+        characterId: ctx.characterId,
+        reason: 'ACHIEVEMENT_REWARD',
+        itemKey: 'tinh_thiet',
+      },
+    });
+    expect(ledger).toHaveLength(1);
+    expect(ledger[0].qtyDelta).toBe(3);
+    expect(ledger[0].refType).toBe('Achievement');
+    expect(ledger[0].refId).toBe('first_dungeon_clear');
+  });
+
   it('claim 2 lần liên tiếp với reward.items → lần 2 throw ALREADY_CLAIMED, không grant double items', async () => {
     const ctx = await makeUserChar(prisma);
     const realDef = getAchievementDef('first_monster_kill');
