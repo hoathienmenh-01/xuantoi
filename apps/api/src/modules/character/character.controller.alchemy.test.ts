@@ -87,10 +87,15 @@ function makeController(opts: ControllerOpts = {}) {
 // ---------- GET /character/alchemy/recipes ----------
 
 describe('CharacterController.alchemyRecipes — Phase 11.11.C', () => {
-  it('GET /character/alchemy/recipes returns furnaceLevel + recipe list', async () => {
+  it('GET /character/alchemy/recipes returns furnaceLevel + recipe list + nextUpgrade preview', async () => {
     const alchemy = {
       getFurnaceLevel: async (_id: string) => 1,
       listAvailableRecipes: async (_id: string) => [STUB_RECIPE],
+      getFurnaceUpgradePreview: async (_id: string) => ({
+        toLevel: 2,
+        linhThachCost: 500,
+        realmRequirement: null,
+      }),
     } as unknown as AlchemyService;
     const { controller } = makeController({ alchemy });
     const res = (await controller.alchemyRecipes(makeReq())) as {
@@ -98,6 +103,11 @@ describe('CharacterController.alchemyRecipes — Phase 11.11.C', () => {
       data: {
         alchemy: {
           furnaceLevel: number;
+          nextUpgrade: {
+            toLevel: number;
+            linhThachCost: number;
+            realmRequirement: string | null;
+          } | null;
           recipes: Array<{
             key: string;
             name: string;
@@ -109,9 +119,31 @@ describe('CharacterController.alchemyRecipes — Phase 11.11.C', () => {
     };
     expect(res.ok).toBe(true);
     expect(res.data.alchemy.furnaceLevel).toBe(1);
+    expect(res.data.alchemy.nextUpgrade).toEqual({
+      toLevel: 2,
+      linhThachCost: 500,
+      realmRequirement: null,
+    });
     expect(res.data.alchemy.recipes).toHaveLength(1);
     expect(res.data.alchemy.recipes[0].key).toBe('recipe_tieu_phuc_dan');
     expect(res.data.alchemy.recipes[0].successRate).toBe(0.85);
+  });
+
+  it('GET /character/alchemy/recipes returns nextUpgrade=null khi furnace ở MAX_LEVEL', async () => {
+    const alchemy = {
+      getFurnaceLevel: async (_id: string) => 9,
+      listAvailableRecipes: async (_id: string) => [STUB_RECIPE],
+      getFurnaceUpgradePreview: async (_id: string) => null,
+    } as unknown as AlchemyService;
+    const { controller } = makeController({ alchemy });
+    const res = (await controller.alchemyRecipes(makeReq())) as {
+      ok: true;
+      data: {
+        alchemy: { furnaceLevel: number; nextUpgrade: unknown };
+      };
+    };
+    expect(res.data.alchemy.furnaceLevel).toBe(9);
+    expect(res.data.alchemy.nextUpgrade).toBeNull();
   });
 
   it('GET /character/alchemy/recipes → 401 UNAUTHENTICATED nếu không có cookie', async () => {
@@ -161,6 +193,7 @@ describe('CharacterController.alchemyRecipes — Phase 11.11.C', () => {
         throw new AlchemyError('CHARACTER_NOT_FOUND');
       },
       listAvailableRecipes: async (_id: string) => [],
+      getFurnaceUpgradePreview: async (_id: string) => null,
     } as unknown as AlchemyService;
     const { controller } = makeController({ alchemy });
     let caught: HttpException | null = null;
@@ -394,5 +427,184 @@ describe('CharacterController.alchemyCraft — Phase 11.11.C', () => {
     expect(res.data.alchemy.outcome.success).toBe(false);
     expect(res.data.alchemy.outcome.outputItem).toBeNull();
     expect(res.data.alchemy.outcome.outputQty).toBe(0);
+  });
+});
+
+// ---------- POST /character/alchemy/upgrade-furnace (Phase 11.11.D-2) ----------
+
+describe('CharacterController.alchemyUpgradeFurnace — Phase 11.11.D-2', () => {
+  it('200 happy: trả về outcome + nextUpgrade preview', async () => {
+    const alchemy = {
+      upgradeFurnace: async (_id: string) => ({
+        fromLevel: 1,
+        toLevel: 2,
+        linhThachConsumed: 500,
+      }),
+      getFurnaceUpgradePreview: async (_id: string) => ({
+        toLevel: 3,
+        linhThachCost: 2_000,
+        realmRequirement: 'truc_co',
+      }),
+    } as unknown as AlchemyService;
+    const { controller } = makeController({ alchemy });
+    const res = (await controller.alchemyUpgradeFurnace(makeReq())) as {
+      ok: true;
+      data: {
+        alchemy: {
+          furnaceLevel: number;
+          outcome: { fromLevel: number; toLevel: number; linhThachConsumed: number };
+          nextUpgrade: {
+            toLevel: number;
+            linhThachCost: number;
+            realmRequirement: string | null;
+          } | null;
+        };
+      };
+    };
+    expect(res.ok).toBe(true);
+    expect(res.data.alchemy.furnaceLevel).toBe(2);
+    expect(res.data.alchemy.outcome).toEqual({
+      fromLevel: 1,
+      toLevel: 2,
+      linhThachConsumed: 500,
+    });
+    expect(res.data.alchemy.nextUpgrade).toEqual({
+      toLevel: 3,
+      linhThachCost: 2_000,
+      realmRequirement: 'truc_co',
+    });
+  });
+
+  it('200 với nextUpgrade=null nếu vừa đạt MAX_LEVEL', async () => {
+    const alchemy = {
+      upgradeFurnace: async (_id: string) => ({
+        fromLevel: 8,
+        toLevel: 9,
+        linhThachConsumed: 800_000,
+      }),
+      getFurnaceUpgradePreview: async (_id: string) => null,
+    } as unknown as AlchemyService;
+    const { controller } = makeController({ alchemy });
+    const res = (await controller.alchemyUpgradeFurnace(makeReq())) as {
+      ok: true;
+      data: { alchemy: { furnaceLevel: number; nextUpgrade: unknown } };
+    };
+    expect(res.data.alchemy.furnaceLevel).toBe(9);
+    expect(res.data.alchemy.nextUpgrade).toBeNull();
+  });
+
+  it('401 UNAUTHENTICATED nếu không có cookie', async () => {
+    const { controller } = makeController({ alchemy: {} as AlchemyService });
+    const req = { cookies: {}, ip: '203.0.113.2' } as unknown as Request;
+    let caught: HttpException | null = null;
+    try {
+      await controller.alchemyUpgradeFurnace(req);
+    } catch (e) {
+      caught = e as HttpException;
+    }
+    expect(caught?.getStatus()).toBe(HttpStatus.UNAUTHORIZED);
+  });
+
+  it('501 ALCHEMY_UNAVAILABLE nếu service unwired', async () => {
+    const { controller } = makeController({ alchemy: null });
+    let caught: HttpException | null = null;
+    try {
+      await controller.alchemyUpgradeFurnace(makeReq());
+    } catch (e) {
+      caught = e as HttpException;
+    }
+    expect(caught?.getStatus()).toBe(HttpStatus.NOT_IMPLEMENTED);
+    const body = caught?.getResponse() as { error: { code: string } };
+    expect(body.error.code).toBe('ALCHEMY_UNAVAILABLE');
+  });
+
+  it('404 NO_CHARACTER nếu character chưa onboard', async () => {
+    const alchemy = {} as unknown as AlchemyService;
+    const { controller } = makeController({ character: null, alchemy });
+    let caught: HttpException | null = null;
+    try {
+      await controller.alchemyUpgradeFurnace(makeReq());
+    } catch (e) {
+      caught = e as HttpException;
+    }
+    expect(caught?.getStatus()).toBe(HttpStatus.NOT_FOUND);
+    const body = caught?.getResponse() as { error: { code: string } };
+    expect(body.error.code).toBe('NO_CHARACTER');
+  });
+
+  it('409 INSUFFICIENT_FUNDS map từ AlchemyError', async () => {
+    const alchemy = {
+      upgradeFurnace: async () => {
+        throw new AlchemyError('INSUFFICIENT_FUNDS');
+      },
+      getFurnaceUpgradePreview: async () => null,
+    } as unknown as AlchemyService;
+    const { controller } = makeController({ alchemy });
+    let caught: HttpException | null = null;
+    try {
+      await controller.alchemyUpgradeFurnace(makeReq());
+    } catch (e) {
+      caught = e as HttpException;
+    }
+    expect(caught?.getStatus()).toBe(HttpStatus.CONFLICT);
+    const body = caught?.getResponse() as { error: { code: string } };
+    expect(body.error.code).toBe('INSUFFICIENT_FUNDS');
+  });
+
+  it('409 REALM_REQUIREMENT_NOT_MET map từ AlchemyError', async () => {
+    const alchemy = {
+      upgradeFurnace: async () => {
+        throw new AlchemyError('REALM_REQUIREMENT_NOT_MET');
+      },
+      getFurnaceUpgradePreview: async () => null,
+    } as unknown as AlchemyService;
+    const { controller } = makeController({ alchemy });
+    let caught: HttpException | null = null;
+    try {
+      await controller.alchemyUpgradeFurnace(makeReq());
+    } catch (e) {
+      caught = e as HttpException;
+    }
+    expect(caught?.getStatus()).toBe(HttpStatus.CONFLICT);
+    const body = caught?.getResponse() as { error: { code: string } };
+    expect(body.error.code).toBe('REALM_REQUIREMENT_NOT_MET');
+  });
+
+  it('409 FURNACE_LEVEL_MAX map từ AlchemyError', async () => {
+    const alchemy = {
+      upgradeFurnace: async () => {
+        throw new AlchemyError('FURNACE_LEVEL_MAX');
+      },
+      getFurnaceUpgradePreview: async () => null,
+    } as unknown as AlchemyService;
+    const { controller } = makeController({ alchemy });
+    let caught: HttpException | null = null;
+    try {
+      await controller.alchemyUpgradeFurnace(makeReq());
+    } catch (e) {
+      caught = e as HttpException;
+    }
+    expect(caught?.getStatus()).toBe(HttpStatus.CONFLICT);
+    const body = caught?.getResponse() as { error: { code: string } };
+    expect(body.error.code).toBe('FURNACE_LEVEL_MAX');
+  });
+
+  it('non-AlchemyError được rethrow nguyên dạng (defensive)', async () => {
+    const alchemy = {
+      upgradeFurnace: async () => {
+        throw new Error('UNEXPECTED');
+      },
+      getFurnaceUpgradePreview: async () => null,
+    } as unknown as AlchemyService;
+    const { controller } = makeController({ alchemy });
+    let caught: Error | null = null;
+    try {
+      await controller.alchemyUpgradeFurnace(makeReq());
+    } catch (e) {
+      caught = e as Error;
+    }
+    expect(caught).toBeInstanceOf(Error);
+    expect(caught).not.toBeInstanceOf(HttpException);
+    expect(caught?.message).toBe('UNEXPECTED');
   });
 });
