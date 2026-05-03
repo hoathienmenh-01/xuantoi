@@ -5,6 +5,9 @@ import { useRouter } from 'vue-router';
 import {
   EQUIP_SLOTS,
   QUALITY_COLOR,
+  REFINE_MAX_LEVEL,
+  getRefineAttemptCost,
+  itemByKey,
   type EquipSlot,
   type ItemDef,
 } from '@xuantoi/shared';
@@ -14,9 +17,11 @@ import { useToastStore } from '@/stores/toast';
 import {
   equipItem,
   listInventory,
+  refineEquipment,
   unequipItem,
   useItem,
   type InventoryView,
+  type RefineResult,
 } from '@/api/inventory';
 import AppShell from '@/components/shell/AppShell.vue';
 import MButton from '@/components/ui/MButton.vue';
@@ -30,6 +35,8 @@ const { t } = useI18n();
 
 const items = ref<InventoryView[]>([]);
 const submitting = ref(false);
+/** Phase 11.5.C — per-row protection toggle (key = inventoryItemId). */
+const protectionFlags = ref<Record<string, boolean>>({});
 
 function slotLabel(slot: EquipSlot): string {
   return t(`equipSlot.${slot}`);
@@ -63,6 +70,22 @@ function effectText(item: ItemDef): string {
   if (item.effect.mp) parts.push(`+${item.effect.mp} MP`);
   if (item.effect.exp) parts.push(`+${item.effect.exp} EXP`);
   return parts.join(' · ');
+}
+
+/**
+ * Phase 11.5.C — luyện khí cost preview cho UI. Server-authoritative,
+ * frontend chỉ hiển thị để user biết trước; cost thật resolve qua API.
+ */
+function refineCostText(it: InventoryView): string {
+  if (it.refineLevel >= REFINE_MAX_LEVEL) return '';
+  const cost = getRefineAttemptCost(it.refineLevel);
+  const matDef = itemByKey(cost.materialKey);
+  const matName = matDef?.name ?? cost.materialKey;
+  return t('inventory.refine.costLabel', {
+    linhThach: cost.linhThachCost,
+    qty: cost.materialQty,
+    material: matName,
+  });
 }
 
 onMounted(async () => {
@@ -119,6 +142,52 @@ async function onUse(it: InventoryView): Promise<void> {
   }
 }
 
+async function onRefine(it: InventoryView): Promise<void> {
+  if (submitting.value) return;
+  if (it.refineLevel >= REFINE_MAX_LEVEL) return;
+  submitting.value = true;
+  const useProtection = protectionFlags.value[it.id] === true;
+  try {
+    const result = await refineEquipment(it.id, useProtection);
+    pushRefineToast(result);
+    items.value = await listInventory();
+  } catch (e) {
+    handleErr(e);
+  } finally {
+    submitting.value = false;
+  }
+}
+
+function pushRefineToast(result: RefineResult): void {
+  if (result.broken) {
+    toast.push({ type: 'error', text: t('inventory.refine.brokenToast') });
+    return;
+  }
+  if (result.result.success) {
+    toast.push({
+      type: 'success',
+      text: t('inventory.refine.successToast', { nextLevel: result.result.nextLevel }),
+    });
+    return;
+  }
+  if (result.protectionConsumed) {
+    toast.push({
+      type: 'system',
+      text: t('inventory.refine.failProtectedToast', { finalLevel: result.finalLevel ?? 0 }),
+    });
+    return;
+  }
+  // Fail no level loss (safe stage) when finalLevel === attemptLevel - 1.
+  if (result.finalLevel === result.attemptLevel - 1) {
+    toast.push({ type: 'system', text: t('inventory.refine.failNoLossToast') });
+    return;
+  }
+  toast.push({
+    type: 'system',
+    text: t('inventory.refine.failLossToast', { finalLevel: result.finalLevel ?? 0 }),
+  });
+}
+
 function handleErr(e: unknown): void {
   const code = extractApiErrorCodeOrDefault(e, 'UNKNOWN');
   const text = t(`inventory.errors.${code}`, '__missing__');
@@ -145,6 +214,11 @@ function handleErr(e: unknown): void {
           <span class="text-ink-300 w-24">{{ slotLabel(slot) }}</span>
           <span v-if="equipped.get(slot)" :class="QUALITY_COLOR[equipped.get(slot)!.item.quality]">
             {{ equipped.get(slot)!.item.name }}
+            <span
+              v-if="equipped.get(slot)!.refineLevel > 0"
+              class="text-[10px] text-amber-300 font-bold ml-1"
+              data-testid="refine-badge"
+            >{{ t('inventory.refine.levelLabel', { lvl: equipped.get(slot)!.refineLevel }) }}</span>
           </span>
           <span v-else class="italic text-ink-300/60">{{ t('inventory.empty') }}</span>
           <MButton
@@ -172,6 +246,11 @@ function handleErr(e: unknown): void {
               <span class="font-bold" :class="QUALITY_COLOR[it.item.quality]">
                 {{ it.item.name }}
               </span>
+              <span
+                v-if="it.refineLevel > 0"
+                class="text-[10px] text-amber-300 font-bold"
+                data-testid="refine-badge"
+              >{{ t('inventory.refine.levelLabel', { lvl: it.refineLevel }) }}</span>
               <span class="text-[10px] text-ink-300">
                 {{ t('quality.' + it.item.quality) }} ·
                 {{ it.item.kind }} ·
@@ -186,13 +265,44 @@ function handleErr(e: unknown): void {
               {{ effectText(it.item) }}
             </p>
           </div>
-          <div class="flex flex-col gap-1">
+          <div class="flex flex-col gap-1 items-stretch">
             <MButton v-if="it.item.slot" :loading="submitting" @click="onEquip(it)">
               {{ t('inventory.equip') }}
             </MButton>
             <MButton v-if="it.item.effect" :loading="submitting" @click="onUse(it)">
               {{ t('inventory.use') }}
             </MButton>
+            <!-- Phase 11.5.C — Refine block (chỉ hiển cho equipment slot, không cho consumable). -->
+            <template v-if="it.item.slot">
+              <p
+                v-if="it.refineLevel < REFINE_MAX_LEVEL"
+                class="text-[10px] text-ink-300/80 text-right"
+                data-testid="refine-cost"
+              >{{ refineCostText(it) }}</p>
+              <label
+                v-if="it.refineLevel < REFINE_MAX_LEVEL"
+                class="text-[10px] flex items-center gap-1 justify-end text-ink-300"
+              >
+                <input
+                  v-model="protectionFlags[it.id]"
+                  type="checkbox"
+                  data-testid="refine-protection"
+                />
+                {{ t('inventory.refine.protection') }}
+              </label>
+              <MButton
+                :loading="submitting"
+                :disabled="it.refineLevel >= REFINE_MAX_LEVEL"
+                data-testid="refine-button"
+                @click="onRefine(it)"
+              >
+                {{
+                  it.refineLevel >= REFINE_MAX_LEVEL
+                    ? t('inventory.refine.buttonMaxed')
+                    : t('inventory.refine.button')
+                }}
+              </MButton>
+            </template>
           </div>
         </div>
       </section>
