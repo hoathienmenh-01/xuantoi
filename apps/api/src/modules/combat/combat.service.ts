@@ -31,6 +31,7 @@ import { AchievementService } from '../character/achievement.service';
 import { TalentService } from '../character/talent.service';
 import { BuffService } from '../character/buff.service';
 import { TitleService } from '../character/title.service';
+import { methodStatBonusFor } from '../character/cultivation-method.service';
 import { InventoryService } from '../inventory/inventory.service';
 import { MissionService } from '../mission/mission.service';
 import { composePassiveTalentMods, type PassiveTalentMods } from '@xuantoi/shared';
@@ -239,14 +240,27 @@ export class CombatService {
     const titleMods: TitleMods = this.titles
       ? await this.titles.getMods(char.id)
       : composeTitleMods([]);
+    // Phase 11.1.D — Cultivation method statBonus.atk/defPercent wire vào
+    // effPower/effDef. Catalog huyen-grade `cuu_cuc_kim_cuong_quyet` (atk +5%,
+    // def +12%) v.v. — trước đó `statBonus` được khai báo nhưng KHÔNG consume
+    // runtime. Pure helper `methodStatBonusFor` legacy (key=null) → identity.
+    // Pham starter `khai_thien_quyet` (0%) → identity. hpMaxMul/mpMaxMul là
+    // stat cap (defer `CharacterStatService.computeStats`), KHÔNG wire ở đây.
+    const methodStat = methodStatBonusFor(char.equippedCultivationMethodKey);
     const effPower =
       (char.power + equip.atk) *
       statMul *
       talentMods.atkMul *
       buffMods.atkMul *
-      titleMods.atkMul;
+      titleMods.atkMul *
+      methodStat.atkMul;
     const effDef =
-      equip.def * statMul * talentMods.defMul * buffMods.defMul * titleMods.defMul;
+      equip.def *
+      statMul *
+      talentMods.defMul *
+      buffMods.defMul *
+      titleMods.defMul *
+      methodStat.defMul;
 
     const log: EncounterLogLine[] = [
       ...((enc.log as unknown as EncounterLogLine[]) ?? []),
