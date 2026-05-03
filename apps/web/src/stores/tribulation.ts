@@ -114,6 +114,21 @@ export const useTribulationStore = defineStore('tribulation', () => {
   );
 
   /**
+   * Phase 11.6.K — stats summary tính trên FULL history (không phải
+   * filteredHistory) để counts không thay đổi khi user toggle filter UI.
+   * `null` history (chưa fetch) → counts = 0. Empty array → counts = 0.
+   */
+  const historyTotalCount = computed<number>(
+    () => history.value?.length ?? 0,
+  );
+  const historySuccessCount = computed<number>(
+    () => history.value?.filter((r) => r.success).length ?? 0,
+  );
+  const historyFailCount = computed<number>(
+    () => history.value?.filter((r) => !r.success).length ?? 0,
+  );
+
+  /**
    * Phase 11.6.J — set filter selection. Validate input để tránh assign
    * giá trị vô nghĩa. Không trigger API — pure local UI state.
    */
@@ -231,6 +246,9 @@ export const useTribulationStore = defineStore('tribulation', () => {
     historyMaxReached,
     historyFilter,
     filteredHistory,
+    historyTotalCount,
+    historySuccessCount,
+    historyFailCount,
     clearLastOutcome,
     attempt,
     fetchHistory,

@@ -1534,6 +1534,12 @@
         "success": "Success",
         "fail": "Fail",
         "emptyAfterFilter": "No attempts match the filter."
+      },
+      "stats": {
+        "label": "Stats:",
+        "total": "Total {count}",
+        "success": "Success {count}",
+        "fail": "Fail {count}"
       }
     }
   }

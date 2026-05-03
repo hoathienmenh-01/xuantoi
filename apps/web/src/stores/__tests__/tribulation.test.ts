@@ -565,3 +565,105 @@ describe('useTribulationStore — Phase 11.6.J filter', () => {
     expect(s.filteredHistory).toHaveLength(2);
   });
 });
+
+/** Phase 11.6.K — history stats summary tests. */
+describe('useTribulationStore — Phase 11.6.K stats', () => {
+  beforeEach(() => {
+    setActivePinia(createPinia());
+    vi.clearAllMocks();
+  });
+
+  function makeRow(
+    id: string,
+    success: boolean,
+  ): api.TribulationAttemptLogView {
+    return { ...STUB_LOG_ROW, id, success };
+  }
+
+  it('historyTotalCount=0 khi history null', () => {
+    const s = useTribulationStore();
+    expect(s.historyTotalCount).toBe(0);
+    expect(s.historySuccessCount).toBe(0);
+    expect(s.historyFailCount).toBe(0);
+  });
+
+  it('historyTotalCount=0 khi history empty array', () => {
+    const s = useTribulationStore();
+    s.history = [];
+    expect(s.historyTotalCount).toBe(0);
+    expect(s.historySuccessCount).toBe(0);
+    expect(s.historyFailCount).toBe(0);
+  });
+
+  it('counts đúng với mix success/fail', () => {
+    const s = useTribulationStore();
+    s.history = [
+      makeRow('a', true),
+      makeRow('b', false),
+      makeRow('c', true),
+      makeRow('d', false),
+      makeRow('e', true),
+    ];
+    expect(s.historyTotalCount).toBe(5);
+    expect(s.historySuccessCount).toBe(3);
+    expect(s.historyFailCount).toBe(2);
+  });
+
+  it('counts khi all success', () => {
+    const s = useTribulationStore();
+    s.history = [makeRow('a', true), makeRow('b', true)];
+    expect(s.historyTotalCount).toBe(2);
+    expect(s.historySuccessCount).toBe(2);
+    expect(s.historyFailCount).toBe(0);
+  });
+
+  it('counts khi all fail', () => {
+    const s = useTribulationStore();
+    s.history = [makeRow('a', false), makeRow('b', false), makeRow('c', false)];
+    expect(s.historyTotalCount).toBe(3);
+    expect(s.historySuccessCount).toBe(0);
+    expect(s.historyFailCount).toBe(3);
+  });
+
+  it('counts KHÔNG đổi khi historyFilter thay đổi (stats trên FULL list)', () => {
+    const s = useTribulationStore();
+    s.history = [
+      makeRow('a', true),
+      makeRow('b', false),
+      makeRow('c', true),
+    ];
+    expect(s.historyTotalCount).toBe(3);
+    s.setHistoryFilter('success');
+    expect(s.historyTotalCount).toBe(3);
+    expect(s.historySuccessCount).toBe(2);
+    expect(s.historyFailCount).toBe(1);
+    s.setHistoryFilter('fail');
+    expect(s.historyTotalCount).toBe(3);
+    expect(s.historySuccessCount).toBe(2);
+    expect(s.historyFailCount).toBe(1);
+  });
+
+  it('counts reactive khi history thay đổi', () => {
+    const s = useTribulationStore();
+    s.history = [makeRow('a', true)];
+    expect(s.historyTotalCount).toBe(1);
+    s.history = [
+      makeRow('a', true),
+      makeRow('b', true),
+      makeRow('c', false),
+    ];
+    expect(s.historyTotalCount).toBe(3);
+    expect(s.historySuccessCount).toBe(2);
+    expect(s.historyFailCount).toBe(1);
+  });
+
+  it('counts về 0 sau reset()', () => {
+    const s = useTribulationStore();
+    s.history = [makeRow('a', true), makeRow('b', false)];
+    expect(s.historyTotalCount).toBe(2);
+    s.reset();
+    expect(s.historyTotalCount).toBe(0);
+    expect(s.historySuccessCount).toBe(0);
+    expect(s.historyFailCount).toBe(0);
+  });
+});

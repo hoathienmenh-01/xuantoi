@@ -43,6 +43,10 @@ interface TribulationStateStub {
   // Derived getter — mirror Pinia computed `filteredHistory` để existing
   // Phase 11.6.G tests vẫn pass mà không cần set 2 field.
   readonly filteredHistory: HistoryRowStub[] | null;
+  // Phase 11.6.K — derived counts trên FULL history (không phải filtered).
+  readonly historyTotalCount: number;
+  readonly historySuccessCount: number;
+  readonly historyFailCount: number;
   attempt: ReturnType<typeof vi.fn>;
   clearLastOutcome: ReturnType<typeof vi.fn>;
   fetchHistory: ReturnType<typeof vi.fn>;
@@ -80,6 +84,15 @@ const tribulationState: TribulationStateStub = {
     if (this.historyFilter === 'success') return rows.filter((r) => r.success);
     if (this.historyFilter === 'fail') return rows.filter((r) => !r.success);
     return rows;
+  },
+  get historyTotalCount(): number {
+    return this.history?.length ?? 0;
+  },
+  get historySuccessCount(): number {
+    return this.history?.filter((r) => r.success).length ?? 0;
+  },
+  get historyFailCount(): number {
+    return this.history?.filter((r) => !r.success).length ?? 0;
   },
   attempt: attemptMock,
   clearLastOutcome: clearLastOutcomeMock,
@@ -242,6 +255,12 @@ const i18n = createI18n({
             success: 'Thành công',
             fail: 'Thất bại',
             emptyAfterFilter: 'Không có lượt nào khớp',
+          },
+          stats: {
+            label: 'Tổng kết:',
+            total: 'Tổng {count}',
+            success: 'Thành công {count}',
+            fail: 'Thất bại {count}',
           },
         },
       },
@@ -1088,5 +1107,109 @@ describe('TribulationView — Phase 11.6.J history filter', () => {
         .find('[data-testid="tribulation-history-filter-fail"]')
         .attributes('aria-pressed'),
     ).toBe('true');
+  });
+});
+
+/** Phase 11.6.K — history stats summary UI. */
+describe('TribulationView — Phase 11.6.K history stats', () => {
+  beforeEach(() => {
+    resetState();
+  });
+
+  it('không render stats khi history null (chưa fetch)', async () => {
+    tribulationState.history = null;
+    const w = mountView();
+    await flushPromises();
+    expect(w.find('[data-testid="tribulation-history-stats"]').exists()).toBe(
+      false,
+    );
+  });
+
+  it('không render stats khi history empty', async () => {
+    tribulationState.history = [];
+    const w = mountView();
+    await flushPromises();
+    expect(w.find('[data-testid="tribulation-history-stats"]').exists()).toBe(
+      false,
+    );
+  });
+
+  it('không render stats khi historyLoading=true', async () => {
+    tribulationState.history = [STUB_HISTORY_SUCCESS];
+    tribulationState.historyLoading = true;
+    const w = mountView();
+    await flushPromises();
+    expect(w.find('[data-testid="tribulation-history-stats"]').exists()).toBe(
+      false,
+    );
+  });
+
+  it('render 3 stats badge (total/success/fail) khi có rows', async () => {
+    tribulationState.history = [STUB_HISTORY_SUCCESS, STUB_HISTORY_FAIL];
+    const w = mountView();
+    await flushPromises();
+    expect(w.find('[data-testid="tribulation-history-stats"]').exists()).toBe(
+      true,
+    );
+    expect(
+      w.find('[data-testid="tribulation-history-stats-total"]').exists(),
+    ).toBe(true);
+    expect(
+      w.find('[data-testid="tribulation-history-stats-success"]').exists(),
+    ).toBe(true);
+    expect(
+      w.find('[data-testid="tribulation-history-stats-fail"]').exists(),
+    ).toBe(true);
+  });
+
+  it('counts hiển thị đúng: total=2, success=1, fail=1', async () => {
+    tribulationState.history = [STUB_HISTORY_SUCCESS, STUB_HISTORY_FAIL];
+    const w = mountView();
+    await flushPromises();
+    expect(
+      w.find('[data-testid="tribulation-history-stats-total"]').text(),
+    ).toContain('2');
+    expect(
+      w.find('[data-testid="tribulation-history-stats-success"]').text(),
+    ).toContain('1');
+    expect(
+      w.find('[data-testid="tribulation-history-stats-fail"]').text(),
+    ).toContain('1');
+  });
+
+  it('counts KHÔNG đổi khi filter thay đổi (stats trên FULL list)', async () => {
+    tribulationState.history = [
+      STUB_HISTORY_SUCCESS,
+      STUB_HISTORY_SUCCESS,
+      STUB_HISTORY_FAIL,
+    ];
+    tribulationState.historyFilter = 'fail';
+    const w = mountView();
+    await flushPromises();
+    // Filter='fail' nhưng stats vẫn show full counts
+    expect(
+      w.find('[data-testid="tribulation-history-stats-total"]').text(),
+    ).toContain('3');
+    expect(
+      w.find('[data-testid="tribulation-history-stats-success"]').text(),
+    ).toContain('2');
+    expect(
+      w.find('[data-testid="tribulation-history-stats-fail"]').text(),
+    ).toContain('1');
+  });
+
+  it('stats render trước filter control (above)', async () => {
+    tribulationState.history = [STUB_HISTORY_SUCCESS, STUB_HISTORY_FAIL];
+    const w = mountView();
+    await flushPromises();
+    const stats = w.find('[data-testid="tribulation-history-stats"]').element;
+    const filter = w.find('[data-testid="tribulation-history-filter"]')
+      .element;
+    expect(stats).toBeTruthy();
+    expect(filter).toBeTruthy();
+    // DOCUMENT_POSITION_FOLLOWING (4) → stats comes BEFORE filter.
+    // Use Node.DOCUMENT_POSITION_FOLLOWING constant (=4) to avoid bitwise op.
+    const pos = stats.compareDocumentPosition(filter);
+    expect(pos === Node.DOCUMENT_POSITION_FOLLOWING).toBe(true);
   });
 });

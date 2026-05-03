@@ -650,6 +650,35 @@ onUnmounted(() => {
           Render khi có rows (sau khi loading/error/empty resolved trên).
         -->
         <template v-else-if="tribulation.history && tribulation.history.length > 0">
+          <!--
+            Phase 11.6.K — stats summary tính trên FULL history. Counts không
+            đổi khi user toggle filter (filter chỉ ảnh hưởng list bên dưới).
+          -->
+          <div
+            class="flex items-center gap-2 flex-wrap text-xs"
+            data-testid="tribulation-history-stats"
+          >
+            <span class="text-ink-300">{{ t('tribulation.history.stats.label') }}</span>
+            <span
+              class="px-2 py-0.5 rounded border bg-ink-700/30 border-ink-300/30 text-ink-100"
+              data-testid="tribulation-history-stats-total"
+            >
+              {{ t('tribulation.history.stats.total', { count: tribulation.historyTotalCount }) }}
+            </span>
+            <span
+              class="px-2 py-0.5 rounded border bg-emerald-700/30 border-emerald-500/40 text-emerald-100"
+              data-testid="tribulation-history-stats-success"
+            >
+              {{ t('tribulation.history.stats.success', { count: tribulation.historySuccessCount }) }}
+            </span>
+            <span
+              class="px-2 py-0.5 rounded border bg-rose-700/30 border-rose-500/40 text-rose-100"
+              data-testid="tribulation-history-stats-fail"
+            >
+              {{ t('tribulation.history.stats.fail', { count: tribulation.historyFailCount }) }}
+            </span>
+          </div>
+
           <div
             class="flex items-center gap-2 flex-wrap text-xs"
             data-testid="tribulation-history-filter"

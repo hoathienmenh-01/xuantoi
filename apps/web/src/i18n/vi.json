@@ -1534,6 +1534,12 @@
         "success": "Thành công",
         "fail": "Thất bại",
         "emptyAfterFilter": "Không có lượt nào khớp bộ lọc."
+      },
+      "stats": {
+        "label": "Tổng kết:",
+        "total": "Tổng {count}",
+        "success": "Thành công {count}",
+        "fail": "Thất bại {count}"
       }
     }
   }
