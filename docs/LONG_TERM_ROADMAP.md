@@ -323,17 +323,56 @@ Thêm depth cho progression: công pháp, skill upgrade, linh căn, thể chất
 - 52 vitest cover catalog shape + ref REALMS valid + waves balance + reward/failure monotonic theo severity + helpers happy + error paths + sim deterministic replay.
 - KHÔNG schema migration, KHÔNG runtime hook (catalog-only foundation cho 11.6.B runtime).
 
-#### 11.6.B PR: Tribulation runtime (Pending)
+#### 11.6.B PR: Tribulation runtime **(MERGED — PR #242 `a2721b1`)**
 
-- Prisma migration: `Tribulation { id, characterId, tribulationKey, fromRealmKey, toRealmKey, status: 'pending'|'success'|'failed', attemptCount, lastAttemptAt, cooldownAt, taoMaActive, taoMaExpiresAt, ... }`.
-- Add Character field: `taoMaActive Boolean @default(false)` + `taoMaExpiresAt DateTime?` + extend `cultivating: Boolean` để gating.
-- Add ITEMS catalog: `kiep_van_thach` (TIEN MISC) + `thanh_kiep_tinh` (THAN MISC) reward unique drop.
-- Service `TribulationService.attemptTribulation(characterId, fromRealmKey)` → detect via `getTribulationForBreakthrough`, run `simulateTribulation(def, character.hpMax, computeElementResist)` deterministic, on success: grant reward qua CurrencyLedger + ItemLedger + bump realm; on fail: apply `computeTribulationFailurePenalty`, set cooldown + taoMaActive flag.
-- Service hook vào `BreakthroughService.attemptBreakthrough` → nếu transition match getTribulationForBreakthrough → force tribulation flow.
-- `CombatService.computeStats` apply Tâm Ma debuff: -10% atk + block tu luyện while taoMaActive.
-- Cooldown enforcement: REST `POST /tribulation/attempt` reject 429 nếu `cooldownAt > now`.
-- Idempotency cho `attemptTribulation` qua `attemptId` UUID per call.
-- Migration + rollback note + audit log.
+- Prisma migration: `TribulationAttemptLog` model + Character fields `tribulationCooldownAt: DateTime?` + `taoMaUntil: DateTime?` (Tâm Ma debuff window).
+- Service `TribulationService.attemptTribulation(characterId)` → detect via `getTribulationForBreakthrough`, run `simulateTribulation(def, character.hpMax, computeElementResist)` deterministic seeded RNG, on success: grant reward qua CurrencyLedger + ItemLedger + bump realm/stage; on fail: apply `computeTribulationFailurePenalty`, set `tribulationCooldownAt` + `taoMaUntil` window.
+- Hook vào breakthrough flow → realm transition cần kiếp dispatch sang tribulation route.
+- Cooldown enforcement: server reject `TRIBULATION_COOLDOWN` nếu `tribulationCooldownAt > now`.
+- Idempotency cho ledger ops + audit log.
+- Subsequent extensions: PR #281 Phase 11.9.C-2 Title milestone wire SUCCESS path, PR #286 Phase 11.8.D-2 BuffService.applyBuffTx debuff_taoma vào FAIL path. **Strictly superior so với 216-dòng MVP của PR #313** (closed as duplicate).
+
+#### 11.6.C PR: Tribulation HTTP wire **(MERGED)**
+
+- `POST /character/tribulation/attempt` (server-authoritative, idempotent) expose `TribulationService.attemptTribulation`.
+- DTO + Zod validation + `mapTribulationErrorStatus` (NO_CHARACTER 404, NOT_AT_PEAK 422, COOLDOWN 429, TAO_MA_ACTIVE 409, NO_DEFINITION 501).
+- Vitest controller + service integration + cookie auth.
+
+#### 11.6.D PR: Tribulation UI **(MERGED PR #326)**
+
+- `apps/web/src/views/TribulationView.vue` + `apps/web/src/stores/tribulation.ts` + `apps/web/src/api/tribulation.ts`.
+- Upcoming card render với severity/type badge + reward preview + penalty preview + "Vượt kiếp" attempt button.
+- Last outcome banner (success reward chi tiết / fail penalty + Tâm Ma chance).
+- Route `/tribulation` + sidebar nav.
+
+#### 11.6.E PR: Tribulation state expose **(MERGED PR #327)**
+
+- `CharacterStatePayload` + `tribulationCooldownAt` + `taoMaUntil` (ISO string nullable) → `CharacterService.toState()` mapping.
+- View live cooldown banner countdown `m:ss` / `h:mm:ss` (>1h) + Tâm Ma debuff banner.
+- Pre-check button disable theo cooldown countdown.
+
+#### 11.6.F PR: Tribulation log endpoint **(MERGED PR #328)**
+
+- `GET /character/tribulation/log?limit=N` (default 20, max 100) expose `TribulationAttemptLog` table DESC by `createdAt`.
+- `TribulationService.listAttemptLogs(charId, limit?)` query + cast BigInt → string + DateTime → ISO.
+- 14 vitest mới (8 controller + 6 service).
+
+#### 11.6.G PR: Tribulation history view **(MERGED PR #329)**
+
+- FE consume Phase 11.6.F endpoint → render history list dưới `TribulationView.vue`.
+- API client `fetchAttemptLog(limit?)` + `TribulationAttemptLogView` interface + `TRIBULATION_LOG_DEFAULT_LIMIT/MAX_LIMIT` constants (mirror server).
+- Pinia store extend `history`/`historyLoading`/`historyError` + `fetchHistory(limit?)` race-protected action.
+- View append `<section>` với loading/empty/error/list states + reload button + auto-refetch sau attempt.
+- 27 vitest mới (web 817 → 844).
+
+#### 11.6.H PR: Tribulation history pagination "Load more" **(IN-FLIGHT — PR #330)**
+
+- FE-only mở rộng Phase 11.6.G với pagination button (consume cùng endpoint, no backend changes).
+- Approach: expanding-limit re-fetch (`?limit=N+20`) clamp tới MAX 100 thay vì offset/cursor.
+- Store: `historyLimit: ref<number>` + `historyHasMore: computed` + `historyMaxReached: computed` + `loadMoreHistory(): Promise<string|null>` action (race-safe + IN_FLIGHT/MAX_REACHED short-circuit).
+- View: "Load more" button conditional + max-reached hint + `onLoadMore()` toast on real errors.
+- i18n vi/en: `tribulation.history.{loadMore,loadMoreLoading,maxReached}`.
+- 24 vitest mới (web 844 → 868). Limitation: chỉ pagination tới 100 entries do server cap; future Phase 11.6.I cần real cursor cho >100.
 
 #### 11.X.A PR: Alchemy catalog foundation **(this PR — session 9r-10, P11-X Luyện Đan MVP catalog half)**
 
