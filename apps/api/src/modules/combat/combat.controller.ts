@@ -115,6 +115,10 @@ export class CombatController {
       case 'SKILL_NOT_USABLE':
       case 'ALREADY_IN_FIGHT':
       case 'ENCOUNTER_ENDED':
+      case 'CONTROLLED':
+      case 'TALENT_NOT_LEARNED':
+      case 'TALENT_NOT_ACTIVE':
+      case 'TALENT_ON_COOLDOWN':
         fail(code, HttpStatus.CONFLICT);
       // eslint-disable-next-line no-fallthrough
       default:

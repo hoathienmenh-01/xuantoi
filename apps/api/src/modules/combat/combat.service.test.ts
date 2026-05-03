@@ -2401,4 +2401,197 @@ describe('CombatService', () => {
       ).rejects.toThrow('TALENT_NOT_LEARNED');
     });
   });
+
+  describe('Active talent cooldown persist (Phase 11.7.E)', () => {
+    let combatWithTalents: CombatService;
+    let talents: TalentService;
+
+    beforeAll(() => {
+      const realtime = new RealtimeService();
+      const chars = new CharacterService(prisma, realtime);
+      const inventory = new InventoryService(prisma, realtime, chars);
+      const currency = new CurrencyService(prisma);
+      const missions = makeMissionService(prisma);
+      talents = new TalentService(prisma);
+      combatWithTalents = new CombatService(
+        prisma,
+        realtime,
+        chars,
+        inventory,
+        currency,
+        missions,
+        undefined,
+        undefined,
+        talents,
+      );
+    });
+
+    afterEach(() => {
+      vi.restoreAllMocks();
+    });
+
+    it('cast talent active thành công → cooldown persist = activeEffect.cooldownTurns (3)', async () => {
+      vi.spyOn(Math, 'random').mockReturnValue(0.5);
+      const u = await makeUserChar(prisma, {
+        realmKey: 'do_kiep',
+        stamina: 100,
+        power: 20,
+        spirit: 100,
+        hp: 1000,
+        hpMax: 1000,
+        mp: 100,
+        mpMax: 100,
+      });
+      await talents.learnTalent(u.characterId, 'talent_kim_quang_tram');
+
+      const enc = await combatWithTalents.start(u.userId, 'son_coc');
+      await combatWithTalents.action(u.userId, enc.id, {
+        skillKey: 'talent_kim_quang_tram',
+      });
+
+      const remaining = await talents.getCooldownRemaining(
+        u.characterId,
+        'talent_kim_quang_tram',
+      );
+      expect(remaining).toBe(3);
+    });
+
+    it('cast lại talent đang còn cooldown → reject TALENT_ON_COOLDOWN, mp KHÔNG bị deduct', async () => {
+      vi.spyOn(Math, 'random').mockReturnValue(0.5);
+      const u = await makeUserChar(prisma, {
+        realmKey: 'do_kiep',
+        stamina: 100,
+        power: 20,
+        spirit: 100,
+        hp: 1000,
+        hpMax: 1000,
+        mp: 100,
+        mpMax: 100,
+      });
+      await talents.learnTalent(u.characterId, 'talent_kim_quang_tram');
+
+      const enc = await combatWithTalents.start(u.userId, 'son_coc');
+      // Lần 1: cast OK → mp 70, cooldown 3.
+      await combatWithTalents.action(u.userId, enc.id, {
+        skillKey: 'talent_kim_quang_tram',
+      });
+      const cAfter1 = await prisma.character.findUniqueOrThrow({
+        where: { id: u.characterId },
+      });
+      // skill flow tick decrements (no skill cast yet, but talent cast itself
+      // sets cd=3 AFTER decrement → 3). mp = 100 - 30 = 70.
+      expect(cAfter1.mp).toBe(70);
+
+      // Lần 2 ngay sau: vẫn còn cooldown → reject + KHÔNG deduct mp lần 2.
+      await expect(
+        combatWithTalents.action(u.userId, enc.id, {
+          skillKey: 'talent_kim_quang_tram',
+        }),
+      ).rejects.toThrow('TALENT_ON_COOLDOWN');
+
+      const cAfter2 = await prisma.character.findUniqueOrThrow({
+        where: { id: u.characterId },
+      });
+      expect(cAfter2.mp).toBe(70); // mp y nguyên — early reject.
+    });
+
+    it('skill flow (basic_attack) tick -1 cooldown talent active → 3 → 2 (1 tick verified)', async () => {
+      vi.spyOn(Math, 'random').mockReturnValue(0.5);
+      // power=2 + statMul + talentMul → rollDamage tiny ~ 2-3 → son_thu_lon
+      // hp=30 KHÔNG chết trong 1 lượt → encounter vẫn ACTIVE cho tick test.
+      const u = await makeUserChar(prisma, {
+        realmKey: 'do_kiep',
+        stamina: 100,
+        power: 2,
+        spirit: 100,
+        hp: 5000,
+        hpMax: 5000,
+        mp: 200,
+        mpMax: 200,
+      });
+      await talents.learnTalent(u.characterId, 'talent_kim_quang_tram');
+
+      const enc = await combatWithTalents.start(u.userId, 'son_coc');
+      // Cast active talent → cd 3.
+      await combatWithTalents.action(u.userId, enc.id, {
+        skillKey: 'talent_kim_quang_tram',
+      });
+      expect(
+        await talents.getCooldownRemaining(
+          u.characterId,
+          'talent_kim_quang_tram',
+        ),
+      ).toBe(3);
+      // Skill flow basic_attack 1 tick → cd 3 → 2.
+      await combatWithTalents.action(u.userId, enc.id, {});
+      expect(
+        await talents.getCooldownRemaining(
+          u.characterId,
+          'talent_kim_quang_tram',
+        ),
+      ).toBe(2);
+    });
+
+    it('cooldown persist xuyên encounter — encounter mới vẫn block cast cho tới khi tick về 0', async () => {
+      vi.spyOn(Math, 'random').mockReturnValue(0.5);
+      const u = await makeUserChar(prisma, {
+        realmKey: 'do_kiep',
+        stamina: 100,
+        power: 20,
+        spirit: 100,
+        hp: 1000,
+        hpMax: 1000,
+        mp: 200,
+        mpMax: 200,
+      });
+      await talents.learnTalent(u.characterId, 'talent_kim_quang_tram');
+
+      // Encounter A: cast → cd 3.
+      const encA = await combatWithTalents.start(u.userId, 'son_coc');
+      await combatWithTalents.action(u.userId, encA.id, {
+        skillKey: 'talent_kim_quang_tram',
+      });
+      // Abandon A.
+      await combatWithTalents.abandon(u.userId, encA.id);
+
+      // Encounter B mới: cooldown vẫn = 3 (persist trong DB cross-encounter).
+      const encB = await combatWithTalents.start(u.userId, 'son_coc');
+      await expect(
+        combatWithTalents.action(u.userId, encB.id, {
+          skillKey: 'talent_kim_quang_tram',
+        }),
+      ).rejects.toThrow('TALENT_ON_COOLDOWN');
+    });
+
+    it('cooldown KHÔNG ghi đè khi reject (MP_LOW trước cooldown check) → cooldown vẫn 0', async () => {
+      vi.spyOn(Math, 'random').mockReturnValue(0.5);
+      // mp=10 < cost=30 → MP_LOW reject EARLY (trước cooldown check).
+      const u = await makeUserChar(prisma, {
+        realmKey: 'do_kiep',
+        stamina: 100,
+        power: 20,
+        spirit: 100,
+        hp: 1000,
+        hpMax: 1000,
+        mp: 10,
+        mpMax: 50,
+      });
+      await talents.learnTalent(u.characterId, 'talent_kim_quang_tram');
+
+      const enc = await combatWithTalents.start(u.userId, 'son_coc');
+      await expect(
+        combatWithTalents.action(u.userId, enc.id, {
+          skillKey: 'talent_kim_quang_tram',
+        }),
+      ).rejects.toThrow('MP_LOW');
+
+      // Cooldown vẫn = 0 (cast bị reject sớm).
+      expect(
+        await talents.getCooldownRemaining(
+          u.characterId,
+          'talent_kim_quang_tram',
+        ),
+      ).toBe(0);
+    });
+  });
 });

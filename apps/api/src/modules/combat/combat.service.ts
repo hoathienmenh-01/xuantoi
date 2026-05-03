@@ -105,7 +105,8 @@ class CombatError extends Error {
       | 'MP_LOW'
       | 'CONTROLLED'
       | 'TALENT_NOT_LEARNED'
-      | 'TALENT_NOT_ACTIVE',
+      | 'TALENT_NOT_ACTIVE'
+      | 'TALENT_ON_COOLDOWN',
   ) {
     super(code);
   }
@@ -545,7 +546,8 @@ export class CombatService {
     };
     if (expGain > 0n) updateChar.exp = { increment: expGain };
 
-    // Bao trong tx để character.update + ledger row cùng commit/rollback.
+    // Bao trong tx để character.update + ledger row + talent cooldown
+    // tick cùng commit/rollback.
     await this.prisma.$transaction(async (tx) => {
       await tx.character.update({ where: { id: char.id }, data: updateChar });
       if (linhThachGain > 0n) {
@@ -561,6 +563,11 @@ export class CombatService {
             status: nextStatus,
           },
         });
+      }
+      // Phase 11.7.E — decrement talent active cooldown sau mỗi action
+      // skill flow. Active talent KHÔNG cast turn này vẫn tick down.
+      if (this.talents) {
+        await this.talents.decrementAllCooldowns(tx, char.id);
       }
     });
 
@@ -698,6 +705,20 @@ export class CombatService {
       throw new CombatError('MP_LOW');
     }
 
+    // Phase 11.7.E — Cooldown check. Reject EARLY (trước stamina/HP/MP
+    // mutation, ledger row, encounter status update) khi active talent
+    // còn cooldown > 0. Player nhận `TALENT_ON_COOLDOWN` và phải đợi
+    // (hoặc chuyển sang skill khác). Cast cooldown được set ở cuối flow
+    // sau khi mọi check pass, qua cùng `prisma.$transaction` với character
+    // update + ledger row.
+    const cooldownRemaining = await this.talents.getCooldownRemaining(
+      char.id,
+      talent.key,
+    );
+    if (cooldownRemaining > 0) {
+      throw new CombatError('TALENT_ON_COOLDOWN');
+    }
+
     // Compute element multipliers cho damage kind (same pattern with skill flow).
     const charElementState =
       char.primaryElement && char.spiritualRootGrade
@@ -796,9 +817,20 @@ export class CombatService {
           ts: Date.now(),
         });
         const newStaminaEarly = Math.max(0, char.stamina - STAMINA_PER_ACTION);
-        await this.prisma.character.update({
-          where: { id: char.id },
-          data: { mp: charMp, stamina: newStaminaEarly },
+        // Phase 11.7.E — wrap utility (escape) cũng trong tx để set cooldown
+        // talent vừa cast + decrement cooldown các talent khác cùng atomic.
+        await this.prisma.$transaction(async (tx) => {
+          await tx.character.update({
+            where: { id: char.id },
+            data: { mp: charMp, stamina: newStaminaEarly },
+          });
+          await this.talents!.decrementAllCooldowns(tx, char.id);
+          await this.talents!.setCooldown(
+            tx,
+            char.id,
+            talent.key,
+            talent.activeEffect!.cooldownTurns,
+          );
         });
         const updated = await this.prisma.encounter.update({
           where: { id: enc.id },
@@ -907,6 +939,19 @@ export class CombatService {
           },
         });
       }
+      // Phase 11.7.E — Talent active cooldown persist:
+      //   1. Decrement -1 cooldown của mọi active talent đang còn cooldown
+      //      (talent KHÔNG cast turn này vẫn tick down).
+      //   2. Set cooldown talent vừa cast = `talent.activeEffect.cooldownTurns`.
+      //      Thứ tự: decrement TRƯỚC set — đảm bảo talent vừa cast nhận đúng
+      //      cooldown đầy đủ (không bị decrement trên cooldown vừa set).
+      await this.talents!.decrementAllCooldowns(tx, char.id);
+      await this.talents!.setCooldown(
+        tx,
+        char.id,
+        talent.key,
+        talent.activeEffect!.cooldownTurns,
+      );
     });
 
     const lootView: EncounterRewardLoot[] = [];
