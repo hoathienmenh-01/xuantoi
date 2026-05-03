@@ -213,12 +213,32 @@ Thêm depth cho progression: công pháp, skill upgrade, linh căn, thể chất
 - Controller endpoints `GET /character/cultivation-method` + `POST /character/cultivation-method/equip`.
 - 29 vitest mới (23 service + 4 processor compose + 2 onboard hook).
 
-#### 11.1.C PR: CultivationMethod UI display + equip switcher (Pending)
+#### 11.1.C PR: CultivationMethod UI display + equip switcher — DONE ✅ (PR #322 MERGED)
 
 - UI character profile page: equipped method icon + grade + expMultiplier display + tooltip statBonus.
 - Modal "Công pháp" list learned methods (có badge tier, source, learnedAt) + button equip → call `POST /character/cultivation-method/equip`.
 - Optional 24h cooldown anti-spam re-equip (server-side check `lastEquippedAt`).
 - E2E test golden: onboard → expect starter equipped → switch sang method khác (sau khi học).
+
+#### 11.4.C PR: Gem socket UI — DONE ✅ (PR #317 MERGED)
+
+- UI khảm/tháo/combine gem cho `InventoryView.vue` consume `GemService` runtime (Phase 11.4.B PR #239 merged).
+- Backend `inventory.service.list()` fallback `getGemDef` synthesize ItemDef từ GemDef.
+- Combine 3→1 next-tier flow + socket select.
+
+#### 11.5.C PR: Refine UI — DONE ✅ (PR #315 MERGED)
+
+- Inventory equip detail refine button consume `RefineService.refineEquipment` runtime (PR #240 merged).
+- Display refineLevel + statMultiplier + success rate + cost preview.
+
+#### 11.10.E PR: Achievement UI — DONE ✅ (PR #323 MERGED)
+
+- AchievementView với category tab + tier badge + progress bar + claim button + title preview.
+
+#### 11.11.D PR: Alchemy UI — DONE ✅ (PR #320 MERGED)
+
+- Alchemy view consume `AlchemyService.attemptAlchemy` runtime (PR #318 merged).
+- Recipe list + furnace level gate + ingredient cost preview + attempt history.
 
 #### 11.2.A PR: SkillTemplate catalog foundation **(this PR — session 9r-10)**
 
@@ -282,7 +302,7 @@ Thêm depth cho progression: công pháp, skill upgrade, linh căn, thể chất
 - 39 vitest cover catalog shape, 5×5 element×grade matrix, balance (price + bonus monotonic + Hoả def trade-off + combine sink rule), helpers (compose/combine/canSocket/upgradePath happy + error paths).
 - KHÔNG schema migration, KHÔNG runtime hook (catalog-only foundation cho 11.4.B runtime).
 
-#### 11.4.B PR: Gem runtime (Pending)
+#### 11.4.B PR: Gem runtime — DONE ✅ (PR #239 MERGED)
 
 - Prisma migration: `Equipment.sockets Json?` (list `{ slotIndex: int, gemKey: string | null }`) với default empty `[]`. Backfill nullable cho character cũ.
 - Service: `socketGem(characterId, equipmentId, slotIndex, gemKey)` deduct gem qty từ `ItemLedger`, push vào `equipment.sockets`. `unsocketGem` return gem (cost linhThach), push qty back.
@@ -301,7 +321,7 @@ Thêm depth cho progression: công pháp, skill upgrade, linh căn, thể chất
 - 56 vitest cover catalog shape, material curve (ref ITEMS valid), balance, helpers happy + error paths, simulateRefineAttempt 12 scenario (safe/risky/extreme × success/fail/protection × break/no-break) + replay determinism.
 - KHÔNG schema migration, KHÔNG runtime hook (catalog-only foundation cho 11.5.B runtime).
 
-#### 11.5.B PR: Refine runtime (Pending)
+#### 11.5.B PR: Refine runtime — DONE ✅ (PR #240 MERGED)
 
 - Prisma migration: `Equipment.refineLevel Int @default(0)` + optional `Equipment.refineHistory Json?` (audit log per attempt).
 - Add item `refine_protection_charm` (HUYEN MISC consumable) vào `packages/shared/src/items.ts` + drop table dungeon HUYEN+.
@@ -402,7 +422,7 @@ Thêm depth cho progression: công pháp, skill upgrade, linh căn, thể chất
 - 55 vitest cover catalog shape + ref ITEMS/REALMS valid + curve sanity (success monotonic giảm + cost monotonic tăng theo tier + cover ≥ 3 pill mỗi kind HP/MP/EXP) + helpers happy + error paths + sim deterministic replay.
 - KHÔNG schema migration, KHÔNG runtime hook (catalog-only foundation cho 11.X.B runtime).
 
-#### 11.X.B PR: Alchemy runtime (Pending)
+#### 11.X.B PR: Alchemy runtime — DONE ✅ (PR #318 MERGED)
 
 - Module mới `apps/api/src/modules/alchemy/` (controller + service + DTO).
 - Prisma migration: `Character.alchemyFurnaceLevel Int @default(1)` + `AlchemyAttempt { id, characterId, recipeKey, attemptId UNIQUE, success, rollValue, createdAt }` model cho audit.
@@ -424,7 +444,7 @@ Thêm depth cho progression: công pháp, skill upgrade, linh căn, thể chất
 - 70 vitest cover catalog shape + ref REALMS valid + curve sanity + helpers + sim deterministic + error paths.
 - KHÔNG schema migration, KHÔNG runtime hook (catalog-only foundation cho 11.7.B runtime).
 
-#### 11.7.B PR: Talent / Thần Thông runtime (Pending)
+#### 11.7.B PR: Talent / Thần Thông runtime — DONE ✅ (PR #244 MERGED)
 
 - Module mới `apps/api/src/modules/talent/` (controller + service + DTO).
 - Prisma migration: `CharacterTalent { id, characterId, talentKey, learnedAt, mpCooldownUntil, attemptCount }` + indexed on `(characterId, talentKey)` UNIQUE.
@@ -447,7 +467,7 @@ Thêm depth cho progression: công pháp, skill upgrade, linh căn, thể chất
 - 56 vitest (catalog shape + curve coverage + helper + compose + expire).
 - KHÔNG runtime / schema / Prisma migration trong PR này.
 
-#### 11.8.B PR: Buff/Debuff runtime (Pending)
+#### 11.8.B PR: Buff/Debuff runtime — DONE ✅ (PR #243 MERGED)
 
 - Model `CharacterBuff(id, characterId, buffKey, stacks, source, expiresAt, createdAt)` Prisma migration.
 - Service `applyBuff` (idempotent on key+source for non-stackable, increment stacks for stackable up to maxStacks, refresh expiresAt).
@@ -496,7 +516,7 @@ Thêm depth cho progression: công pháp, skill upgrade, linh căn, thể chất
 - 45 vitest (catalog shape + curve + balance + title link integration + helpers).
 - KHÔNG runtime / schema / Prisma migration trong PR này.
 
-#### 11.10.B PR: Achievement runtime (Pending)
+#### 11.10.B PR: Achievement runtime — DONE ✅ (PR #246 MERGED)
 
 - Model `CharacterAchievement(id, characterId, achievementKey, progress, completedAt?)` Prisma migration (idempotent unique on `[characterId, achievementKey]`).
 - Service `incrementAchievement(characterId, achievementKey, delta)` (idempotent — nếu progress đã ≥ goalAmount thì set `completedAt` chỉ nếu null).
@@ -515,7 +535,7 @@ Thêm depth cho progression: công pháp, skill upgrade, linh căn, thể chất
 - REST `GET /achievement/list` + `GET /achievement/progress` + `POST /achievement/claim`.
 - UI achievement page với category tab + tier badge + progress bar + claim button + title preview.
 
-#### 11.9.B PR: Title runtime (Pending)
+#### 11.9.B PR: Title runtime — DONE ✅ (PR #245 MERGED)
 
 - Model `CharacterTitleUnlock(id, characterId, titleKey, unlockedAt, source)` Prisma migration (idempotent unique on `[characterId, titleKey]`).
 - Service `unlockTitle(characterId, titleKey, source)` (idempotent).

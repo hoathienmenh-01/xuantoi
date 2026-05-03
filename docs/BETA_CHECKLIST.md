@@ -61,7 +61,7 @@ Checklist để promote beta (closed 50 users → open). Tick khi xong.
 - [x] **CSP production** policy chặt, dev `false` (`apps/api/src/main.ts` `helmetConfig`) — chỉ cần review CDN khi prod deploy
 
 ### Testing
-- [x] **api 1133** + **web 588** + **shared 950** = **2671 vitest** (post-merge target Phase 11.10.A achievement catalog this PR — shared baseline 905 → 950 with `achievements.test.ts` +45; previously 854 → 905 with `titles.test.ts` +51 Phase 11.9.A #230 merged; before that 798 → 854 with `buffs.test.ts` +56 Phase 11.8.A #229 merged; before that 771 → 798 with `missions-balance.test.ts` +27 Phase 10 PR-4 #217 merged). Stale snapshot cũ "557 test" của session 9d đã bị thay; mỗi PR mới phải verify số này không giảm.
+- [x] **api 1600** + **web 918** + **shared 1035** = **3553 vitest** (post-merge baseline post PR #336 Phase 11.1.D — verified `pnpm test` on `e37a71a`). Mỗi PR mới phải verify số này không giảm. Pre-existing flaky: `chat.service.test.ts > ChatService rate limit` (50ms timing window — NOT regression, passes on rerun).
 - [x] Real Postgres integration (CI `postgres` service, schema `mtt`)
 - [x] WS integration test (real socket.io-client)
 - [x] CI postgres + redis service xanh
