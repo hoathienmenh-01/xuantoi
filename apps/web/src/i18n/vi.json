@@ -210,7 +210,9 @@
     },
     "step3": {
       "title": "Chọn Khởi Tông",
-      "lines": ["Mỗi tông môn có công pháp khởi đầu khác biệt. Chọn nơi đạo hữu muốn an thân."],
+      "lines": [
+        "Mỗi tông môn có công pháp khởi đầu khác biệt. Chọn nơi đạo hữu muốn an thân."
+      ],
       "sects": {
         "thanh_van": {
           "name": "Thanh Vân Môn",
@@ -255,7 +257,8 @@
       "settings": "Tâm Pháp",
       "activity": "Hoạt Động",
       "admin": "Quản Trị",
-      "toggle": "Mở menu điều hướng"
+      "toggle": "Mở menu điều hướng",
+      "talents": "Ngộ Đạo"
     },
     "badge": {
       "bossActive": "Boss đang xuất thế",
@@ -1039,6 +1042,58 @@
       "INVALID_BOSS_KEY": "Boss key không có trong catalog.",
       "INVALID_LEVEL": "Cấp độ phải là số nguyên 1..10.",
       "UNKNOWN": "Có lỗi xảy ra."
+    }
+  },
+  "talents": {
+    "title": "Ngộ Đạo · Thần Thông",
+    "subtitle": "Catalog {total} thần thông + thiên phú toàn ngũ hành",
+    "counts": "{passive} bị động · {active} chủ động",
+    "empty": "Không có thần thông nào khớp bộ lọc.",
+    "filter": {
+      "type": "Loại",
+      "element": "Hệ",
+      "all": "Tất cả",
+      "passive": "Bị động",
+      "active": "Chủ động",
+      "shown": "Hiển thị {shown}/{total}"
+    },
+    "type": {
+      "passive": "Bị động",
+      "active": "Chủ động"
+    },
+    "element": {
+      "kim": "Kim",
+      "moc": "Mộc",
+      "thuy": "Thuỷ",
+      "hoa": "Hoả",
+      "tho": "Thổ",
+      "neutral": "Vô hệ"
+    },
+    "stat": {
+      "atk": "công kích",
+      "def": "phòng ngự",
+      "hpMax": "sinh lực",
+      "mpMax": "linh khí",
+      "spirit": "tinh thần"
+    },
+    "field": {
+      "realm": "Cảnh giới",
+      "cost": "Điểm ngộ đạo",
+      "effect": "Hiệu ứng"
+    },
+    "effect": {
+      "statMod": "+{pct}% {stat}",
+      "regen": "+{flat} hồi {stat} mỗi tick",
+      "dropBonus": "+{pct}% rơi đồ",
+      "expBonus": "+{pct}% kinh nghiệm",
+      "damageBonus": "+{pct}% sát thương vs hệ {element}",
+      "aoe": "AoE",
+      "single": "đơn mục tiêu",
+      "activeDamage": "×{mul} sát thương ({aoe}) · {mp} MP · CD {cd} hiệp",
+      "activeCc": "Khống chế {turns} hiệp ({aoe}) · {mp} MP · CD {cd} hiệp",
+      "activeHeal": "Hồi ×{mul} HP · {mp} MP · CD {cd} hiệp",
+      "activeDot": "Bỏng/độc {turns} hiệp ({aoe}) · {mp} MP · CD {cd} hiệp",
+      "activeUtility": "Hỗ trợ · {mp} MP · CD {cd} hiệp"
     }
   }
 }
