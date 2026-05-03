@@ -558,6 +558,18 @@
     "equipToast": "Đã mang {name}.",
     "unequipToast": "Đã tháo {slot}.",
     "useToast": "Đã dùng {name}.",
+    "refine": {
+      "button": "Luyện Khí",
+      "buttonMaxed": "Luyện Khí đỉnh",
+      "levelLabel": "+{lvl}",
+      "costLabel": "{linhThach} linh thạch + {qty}× {material}",
+      "protection": "Dùng bội nguyên phù (bảo hộ cấp)",
+      "successToast": "Luyện khí thành công — cấp {nextLevel}.",
+      "failNoLossToast": "Luyện khí thất bại — chưa mất cấp (giai đoạn an toàn).",
+      "failProtectedToast": "Luyện khí thất bại — bội nguyên phù bảo hộ, giữ cấp {finalLevel}.",
+      "failLossToast": "Luyện khí thất bại — tụt về cấp {finalLevel}.",
+      "brokenToast": "Luyện khí khích phát — trang bị vỡ nát."
+    },
     "bonus": {
       "atk": "+{v} công",
       "def": "+{v} thủ",
@@ -569,6 +581,13 @@
       "INVENTORY_ITEM_NOT_FOUND": "Vật phẩm không còn nữa.",
       "NOT_EQUIPPABLE": "Vật phẩm này không trang bị được.",
       "NOT_USABLE": "Vật phẩm này không có hiệu ứng.",
+      "EQUIPMENT_NOT_FOUND": "Trang bị không còn nữa.",
+      "NOT_REFINABLE": "Vật phẩm này không luyện khí được.",
+      "MAX_LEVEL_REACHED": "Đã đạt cấp luyện khí tối đa (15).",
+      "INSUFFICIENT_MATERIAL": "Thiếu nguyên liệu luyện khí.",
+      "INSUFFICIENT_PROTECTION": "Thiếu bội nguyên phù bảo hộ.",
+      "INSUFFICIENT_FUNDS": "Không đủ linh thạch.",
+      "REFINE_UNAVAILABLE": "Luyện Khí Đường tạm đóng cửa.",
       "UNKNOWN": "Có lỗi xảy ra, mời thử lại."
     }
   },

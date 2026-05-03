@@ -558,6 +558,18 @@
     "equipToast": "Equipped {name}.",
     "unequipToast": "Unequipped {slot}.",
     "useToast": "Used {name}.",
+    "refine": {
+      "button": "Refine",
+      "buttonMaxed": "Refine maxed",
+      "levelLabel": "+{lvl}",
+      "costLabel": "{linhThach} linh thach + {qty}× {material}",
+      "protection": "Use protection charm (preserve level)",
+      "successToast": "Refine succeeded — level {nextLevel}.",
+      "failNoLossToast": "Refine failed — no level loss (safe stage).",
+      "failProtectedToast": "Refine failed — protection charm preserved level {finalLevel}.",
+      "failLossToast": "Refine failed — dropped to level {finalLevel}.",
+      "brokenToast": "Refine catastrophic — equipment broken."
+    },
     "bonus": {
       "atk": "+{v} ATK",
       "def": "+{v} DEF",
@@ -569,6 +581,13 @@
       "INVENTORY_ITEM_NOT_FOUND": "Item no longer exists.",
       "NOT_EQUIPPABLE": "This item cannot be equipped.",
       "NOT_USABLE": "This item has no effect.",
+      "EQUIPMENT_NOT_FOUND": "Equipment no longer exists.",
+      "NOT_REFINABLE": "This item cannot be refined.",
+      "MAX_LEVEL_REACHED": "Already at max refine level (15).",
+      "INSUFFICIENT_MATERIAL": "Not enough refining material.",
+      "INSUFFICIENT_PROTECTION": "Not enough protection charms.",
+      "INSUFFICIENT_FUNDS": "Not enough linh thach.",
+      "REFINE_UNAVAILABLE": "Refining hall is closed.",
       "UNKNOWN": "Something went wrong, please retry."
     }
   },

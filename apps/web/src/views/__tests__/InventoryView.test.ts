@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { mount, flushPromises } from '@vue/test-utils';
 import { createI18n } from 'vue-i18n';
 import { setActivePinia, createPinia } from 'pinia';
-import type { InventoryView } from '@/api/inventory';
+import type { InventoryView, RefineResult } from '@/api/inventory';
 import type { ItemDef } from '@xuantoi/shared';
 
 /**
@@ -17,6 +17,7 @@ const listInventoryMock = vi.fn();
 const equipItemMock = vi.fn();
 const unequipItemMock = vi.fn();
 const useItemMock = vi.fn();
+const refineEquipmentMock = vi.fn();
 
 vi.mock('@/api/inventory', async () => {
   const actual = await vi.importActual<typeof import('@/api/inventory')>(
@@ -28,6 +29,7 @@ vi.mock('@/api/inventory', async () => {
     equipItem: (...a: unknown[]) => equipItemMock(...a),
     unequipItem: (...a: unknown[]) => unequipItemMock(...a),
     useItem: (...a: unknown[]) => useItemMock(...a),
+    refineEquipment: (...a: unknown[]) => refineEquipmentMock(...a),
   };
 });
 
@@ -93,8 +95,23 @@ const i18n = createI18n({
           mpMax: 'MP Max +{v}',
           spirit: 'Thần +{v}',
         },
+        refine: {
+          button: 'Luyện Khí',
+          buttonMaxed: 'Luyện Khí đỉnh',
+          levelLabel: '+{lvl}',
+          costLabel: '{linhThach} LT + {qty}× {material}',
+          protection: 'Dùng bội nguyên phù',
+          successToast: 'Luyện khí thành công — cấp {nextLevel}.',
+          failNoLossToast: 'Luyện khí thất bại — chưa mất cấp.',
+          failProtectedToast: 'Luyện khí thất bại — bội nguyên phù bảo hộ, giữ cấp {finalLevel}.',
+          failLossToast: 'Luyện khí thất bại — tụt về cấp {finalLevel}.',
+          brokenToast: 'Luyện khí khích phát — trang bị vỡ nát.',
+        },
         errors: {
           NOT_OWNER: 'Không sở hữu vật phẩm.',
+          INSUFFICIENT_FUNDS: 'Không đủ linh thạch.',
+          INSUFFICIENT_MATERIAL: 'Thiếu nguyên liệu.',
+          INSUFFICIENT_PROTECTION: 'Thiếu bội nguyên phù.',
           UNKNOWN: 'Có lỗi xảy ra.',
         },
       },
@@ -142,6 +159,23 @@ function makeInv(over: Partial<InventoryView> = {}): InventoryView {
     qty: 1,
     equippedSlot: null,
     item: makeItemDef(),
+    sockets: [],
+    refineLevel: 0,
+    ...over,
+  };
+}
+
+function makeRefineResult(over: Partial<RefineResult> = {}): RefineResult {
+  return {
+    equipmentInventoryItemId: 'i_w',
+    attemptLevel: 1,
+    result: { success: true, nextLevel: 1, broken: false, protectionConsumed: false },
+    finalLevel: 1,
+    broken: false,
+    linhThachCost: 100,
+    materialKey: 'tinh_thiet',
+    materialQty: 1,
+    protectionConsumed: false,
     ...over,
   };
 }
@@ -156,6 +190,7 @@ beforeEach(() => {
   equipItemMock.mockReset();
   unequipItemMock.mockReset();
   useItemMock.mockReset();
+  refineEquipmentMock.mockReset();
   routerReplaceMock.mockReset();
   toastPushMock.mockReset();
   authState.isAuthenticated = true;
@@ -458,5 +493,261 @@ describe('InventoryView — use flow', () => {
       type: 'error',
       text: 'Không sở hữu vật phẩm.',
     });
+  });
+});
+
+/**
+ * Phase 11.5.C — Refine button tests. Wire `refineEquipment(it.id, useProtection)`
+ * + per-row protection toggle + result toast (success/failNoLoss/failProtected/
+ * failLoss/broken). Server-authoritative — frontend re-fetch listInventory()
+ * sau success để lấy refineLevel mới.
+ */
+describe('InventoryView — Phase 11.5.C refine flow', () => {
+  it('render refine badge "+N" cho equipment có refineLevel > 0', async () => {
+    listInventoryMock.mockResolvedValue([
+      makeInv({ id: 'i_w', equippedSlot: 'WEAPON', refineLevel: 5 }),
+    ]);
+    const w = mountView();
+    await flushPromises();
+    const badges = w.findAll('[data-testid="refine-badge"]');
+    expect(badges.length).toBeGreaterThanOrEqual(1);
+    expect(badges[0]!.text()).toBe('+5');
+  });
+
+  it('không render refine badge cho refineLevel = 0', async () => {
+    listInventoryMock.mockResolvedValue([
+      makeInv({ id: 'i_w', equippedSlot: 'WEAPON', refineLevel: 0 }),
+    ]);
+    const w = mountView();
+    await flushPromises();
+    expect(w.findAll('[data-testid="refine-badge"]').length).toBe(0);
+  });
+
+  it('render Luyện Khí button + cost label cho equipment chưa max trong unequipped list', async () => {
+    listInventoryMock.mockResolvedValue([
+      makeInv({ id: 'i_w', equippedSlot: null, refineLevel: 0 }),
+    ]);
+    const w = mountView();
+    await flushPromises();
+    const btn = w.find('[data-testid="refine-button"]');
+    expect(btn.exists()).toBe(true);
+    expect(btn.text()).toContain('Luyện Khí');
+    const costEl = w.find('[data-testid="refine-cost"]');
+    expect(costEl.exists()).toBe(true);
+    expect(costEl.text()).toContain('LT'); // costLabel `{linhThach} LT + ...`
+  });
+
+  it('không render Luyện Khí cho consumable (slot=undefined)', async () => {
+    const pill = makeInv({
+      id: 'i_pill',
+      itemKey: 'pill_hp',
+      item: makeItemDef({
+        key: 'pill_hp',
+        name: 'Hồi HP Đan',
+        kind: 'PILL_HP',
+        slot: undefined,
+        bonuses: undefined,
+        effect: { hp: 50 },
+      }),
+    });
+    listInventoryMock.mockResolvedValue([pill]);
+    const w = mountView();
+    await flushPromises();
+    expect(w.find('[data-testid="refine-button"]').exists()).toBe(false);
+  });
+
+  it('refineLevel >= MAX → button disabled + label "Luyện Khí đỉnh"', async () => {
+    listInventoryMock.mockResolvedValue([
+      makeInv({ id: 'i_w', equippedSlot: null, refineLevel: 15 }),
+    ]);
+    const w = mountView();
+    await flushPromises();
+    const btn = w.find('[data-testid="refine-button"]');
+    expect(btn.exists()).toBe(true);
+    expect(btn.text()).toContain('đỉnh');
+    expect(w.find('[data-testid="refine-cost"]').exists()).toBe(false);
+    expect(w.find('[data-testid="refine-protection"]').exists()).toBe(false);
+  });
+
+  it('click Luyện Khí success → refineEquipment(id, false) + toast success + re-fetch list', async () => {
+    listInventoryMock.mockResolvedValueOnce([
+      makeInv({ id: 'i_w', equippedSlot: null, refineLevel: 0 }),
+    ]);
+    refineEquipmentMock.mockResolvedValue(
+      makeRefineResult({
+        attemptLevel: 1,
+        result: { success: true, nextLevel: 1, broken: false, protectionConsumed: false },
+        finalLevel: 1,
+      }),
+    );
+    listInventoryMock.mockResolvedValueOnce([
+      makeInv({ id: 'i_w', equippedSlot: null, refineLevel: 1 }),
+    ]);
+
+    const w = mountView();
+    await flushPromises();
+    await w.find('[data-testid="refine-button"]').trigger('click');
+    await flushPromises();
+
+    expect(refineEquipmentMock).toHaveBeenCalledWith('i_w', false);
+    expect(toastPushMock).toHaveBeenCalledWith({
+      type: 'success',
+      text: 'Luyện khí thành công — cấp 1.',
+    });
+    expect(listInventoryMock).toHaveBeenCalledTimes(2);
+    // Sau re-fetch: badge mới hiển thị "+1".
+    expect(w.find('[data-testid="refine-badge"]').text()).toBe('+1');
+  });
+
+  it('check protection → refineEquipment(id, true)', async () => {
+    listInventoryMock.mockResolvedValueOnce([
+      makeInv({ id: 'i_w', equippedSlot: null, refineLevel: 5 }),
+    ]);
+    refineEquipmentMock.mockResolvedValue(
+      makeRefineResult({
+        attemptLevel: 6,
+        result: { success: false, nextLevel: 5, broken: false, protectionConsumed: true },
+        finalLevel: 5,
+        protectionConsumed: true,
+      }),
+    );
+    listInventoryMock.mockResolvedValueOnce([
+      makeInv({ id: 'i_w', equippedSlot: null, refineLevel: 5 }),
+    ]);
+
+    const w = mountView();
+    await flushPromises();
+    const checkbox = w.find('[data-testid="refine-protection"]');
+    await checkbox.setValue(true);
+    await w.find('[data-testid="refine-button"]').trigger('click');
+    await flushPromises();
+
+    expect(refineEquipmentMock).toHaveBeenCalledWith('i_w', true);
+    expect(toastPushMock).toHaveBeenCalledWith({
+      type: 'system',
+      text: 'Luyện khí thất bại — bội nguyên phù bảo hộ, giữ cấp 5.',
+    });
+  });
+
+  it('failNoLoss (safe stage) → toast failNoLossToast', async () => {
+    listInventoryMock.mockResolvedValueOnce([
+      makeInv({ id: 'i_w', equippedSlot: null, refineLevel: 0 }),
+    ]);
+    refineEquipmentMock.mockResolvedValue(
+      makeRefineResult({
+        attemptLevel: 1,
+        result: { success: false, nextLevel: 0, broken: false, protectionConsumed: false },
+        finalLevel: 0,
+      }),
+    );
+    listInventoryMock.mockResolvedValueOnce([
+      makeInv({ id: 'i_w', equippedSlot: null, refineLevel: 0 }),
+    ]);
+
+    const w = mountView();
+    await flushPromises();
+    await w.find('[data-testid="refine-button"]').trigger('click');
+    await flushPromises();
+
+    expect(toastPushMock).toHaveBeenCalledWith({
+      type: 'system',
+      text: 'Luyện khí thất bại — chưa mất cấp.',
+    });
+  });
+
+  it('failLoss (risky no protection) → toast failLossToast', async () => {
+    listInventoryMock.mockResolvedValueOnce([
+      makeInv({ id: 'i_w', equippedSlot: null, refineLevel: 6 }),
+    ]);
+    refineEquipmentMock.mockResolvedValue(
+      makeRefineResult({
+        attemptLevel: 7,
+        result: { success: false, nextLevel: 5, broken: false, protectionConsumed: false },
+        finalLevel: 5,
+      }),
+    );
+    listInventoryMock.mockResolvedValueOnce([
+      makeInv({ id: 'i_w', equippedSlot: null, refineLevel: 5 }),
+    ]);
+
+    const w = mountView();
+    await flushPromises();
+    await w.find('[data-testid="refine-button"]').trigger('click');
+    await flushPromises();
+
+    expect(toastPushMock).toHaveBeenCalledWith({
+      type: 'system',
+      text: 'Luyện khí thất bại — tụt về cấp 5.',
+    });
+  });
+
+  it('broken (extreme stage break) → toast brokenToast (error)', async () => {
+    listInventoryMock.mockResolvedValueOnce([
+      makeInv({ id: 'i_w', equippedSlot: null, refineLevel: 11 }),
+    ]);
+    refineEquipmentMock.mockResolvedValue(
+      makeRefineResult({
+        attemptLevel: 12,
+        result: { success: false, nextLevel: 0, broken: true, protectionConsumed: false },
+        finalLevel: null,
+        broken: true,
+      }),
+    );
+    listInventoryMock.mockResolvedValueOnce([]);
+
+    const w = mountView();
+    await flushPromises();
+    await w.find('[data-testid="refine-button"]').trigger('click');
+    await flushPromises();
+
+    expect(toastPushMock).toHaveBeenCalledWith({
+      type: 'error',
+      text: 'Luyện khí khích phát — trang bị vỡ nát.',
+    });
+  });
+
+  it('refine error INSUFFICIENT_FUNDS → toast inventory.errors.INSUFFICIENT_FUNDS', async () => {
+    listInventoryMock.mockResolvedValue([
+      makeInv({ id: 'i_w', equippedSlot: null, refineLevel: 0 }),
+    ]);
+    refineEquipmentMock.mockRejectedValue(
+      Object.assign(new Error('no money'), { code: 'INSUFFICIENT_FUNDS' }),
+    );
+
+    const w = mountView();
+    await flushPromises();
+    await w.find('[data-testid="refine-button"]').trigger('click');
+    await flushPromises();
+
+    expect(toastPushMock).toHaveBeenCalledWith({
+      type: 'error',
+      text: 'Không đủ linh thạch.',
+    });
+  });
+
+  it('submitting guard: click Luyện Khí 2 lần liền → chỉ gọi refineEquipment 1 lần', async () => {
+    listInventoryMock.mockResolvedValue([
+      makeInv({ id: 'i_w', equippedSlot: null, refineLevel: 0 }),
+    ]);
+    const resolveHolder: { current: ((v: RefineResult) => void) | null } = { current: null };
+    refineEquipmentMock.mockImplementation(
+      () =>
+        new Promise<RefineResult>((resolve) => {
+          resolveHolder.current = resolve;
+        }),
+    );
+
+    const w = mountView();
+    await flushPromises();
+    const btn = w.find('[data-testid="refine-button"]');
+    await btn.trigger('click');
+    await flushPromises();
+    await btn.trigger('click');
+    await flushPromises();
+
+    expect(refineEquipmentMock).toHaveBeenCalledTimes(1);
+
+    resolveHolder.current?.(makeRefineResult());
+    await flushPromises();
   });
 });
