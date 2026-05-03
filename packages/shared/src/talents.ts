@@ -161,6 +161,18 @@ export interface TalentDef {
  * `talentPointCost: 1` + `kind: 'regen'` + `statTarget: 'hpMax'` + `value: 5`.
  * 5-element hpRegen ceiling = 5 × 5 = 25 flat HP regen mỗi tick combat.
  * Additive (không multiplicative) khác với atk/def/hpMax/spirit ceiling 1.61051.)
+ * (Phase 11.X.AO: thêm `talent_kim_linh_hai` (kim), `talent_thuy_linh_hai`
+ * (thuy), `talent_moc_linh_hai` (moc), `talent_hoa_linh_hai` (hoa),
+ * `talent_tho_linh_hai` (tho) +10% MP tối đa — producers thứ 1–5 cho
+ * `composePassiveTalentMods.mpMaxMul`. **Hoàn tất 5-element mpMax coverage
+ * roadmap** (lần đầu tiên fill mpMaxMul path — trước đó 0/5). Symmetric
+ * structure với 5-element atk/def/hpMax/spirit producers (cost 1.1 multiplicative
+ * stat_mod). Cùng `realmRequirement: 'kim_dan'` + `talentPointCost: 1` +
+ * `kind: 'stat_mod'` + `statTarget: 'mpMax'` + `value: 1.1`. 5-element mpMax
+ * ceiling = 1.1⁵ = 1.61051, khớp atk + def + hpMax + spirit ceiling.
+ * **5-element symmetry hoàn tất 5/5 stat_mod path** (atk + def + hpMax + spirit
+ * + mpMax) — tất cả statTarget của `PassiveTalentMods` đã có 5-element
+ * coverage.)
  *
  * Stable order: passive trước → active sau.
  */
@@ -267,6 +279,23 @@ export const TALENTS: readonly TalentDef[] = [
     activeEffect: null,
   },
   {
+    key: 'talent_kim_linh_hai',
+    name: 'Kim Linh Hải',
+    description:
+      'Linh hải kim khí không đáy, mở rộng dung lượng linh khí, +10% MP tối đa.',
+    type: 'passive',
+    element: 'kim',
+    realmRequirement: 'kim_dan',
+    talentPointCost: 1,
+    passiveEffect: {
+      kind: 'stat_mod',
+      value: 1.1,
+      statTarget: 'mpMax',
+      elementTarget: null,
+    },
+    activeEffect: null,
+  },
+  {
     key: 'talent_thuy_long_an',
     name: 'Thuỷ Long Ấn',
     description: 'Thân thể như thuỷ long, +10% HP tối đa.',
@@ -366,6 +395,23 @@ export const TALENTS: readonly TalentDef[] = [
     activeEffect: null,
   },
   {
+    key: 'talent_thuy_linh_hai',
+    name: 'Thuỷ Linh Hải',
+    description:
+      'Thuỷ linh hải bao la dừng trữ linh khí vô tận, +10% MP tối đa.',
+    type: 'passive',
+    element: 'thuy',
+    realmRequirement: 'kim_dan',
+    talentPointCost: 1,
+    passiveEffect: {
+      kind: 'stat_mod',
+      value: 1.1,
+      statTarget: 'mpMax',
+      elementTarget: null,
+    },
+    activeEffect: null,
+  },
+  {
     key: 'talent_moc_linh_quy',
     name: 'Mộc Linh Quy',
     description: 'Linh khí mộc tự hồi, +5 HP regen mỗi tick combat.',
@@ -377,6 +423,23 @@ export const TALENTS: readonly TalentDef[] = [
       kind: 'regen',
       value: 5,
       statTarget: 'hpMax',
+      elementTarget: null,
+    },
+    activeEffect: null,
+  },
+  {
+    key: 'talent_moc_linh_hai',
+    name: 'Mộc Linh Hải',
+    description:
+      'Mộc linh hải sinh cơ bất tận, mở rộng đan điền linh khí, +10% MP tối đa.',
+    type: 'passive',
+    element: 'moc',
+    realmRequirement: 'kim_dan',
+    talentPointCost: 1,
+    passiveEffect: {
+      kind: 'stat_mod',
+      value: 1.1,
+      statTarget: 'mpMax',
       elementTarget: null,
     },
     activeEffect: null,
@@ -567,6 +630,23 @@ export const TALENTS: readonly TalentDef[] = [
     activeEffect: null,
   },
   {
+    key: 'talent_hoa_linh_hai',
+    name: 'Hoả Linh Hải',
+    description:
+      'Hoả linh hải sôi trào thắp sáng đan điền linh khí, +10% MP tối đa.',
+    type: 'passive',
+    element: 'hoa',
+    realmRequirement: 'kim_dan',
+    talentPointCost: 1,
+    passiveEffect: {
+      kind: 'stat_mod',
+      value: 1.1,
+      statTarget: 'mpMax',
+      elementTarget: null,
+    },
+    activeEffect: null,
+  },
+  {
     key: 'talent_tho_son_tuong',
     name: 'Thổ Sơn Tướng',
     description: 'Thân giáp như thổ sơn, +10% phòng ngự.',
@@ -662,6 +742,23 @@ export const TALENTS: readonly TalentDef[] = [
       kind: 'regen',
       value: 5,
       statTarget: 'hpMax',
+      elementTarget: null,
+    },
+    activeEffect: null,
+  },
+  {
+    key: 'talent_tho_linh_hai',
+    name: 'Thổ Linh Hải',
+    description:
+      'Thổ linh hải trầm ổn cố định khí hải và đan điền, +10% MP tối đa.',
+    type: 'passive',
+    element: 'tho',
+    realmRequirement: 'kim_dan',
+    talentPointCost: 1,
+    passiveEffect: {
+      kind: 'stat_mod',
+      value: 1.1,
+      statTarget: 'mpMax',
       elementTarget: null,
     },
     activeEffect: null,

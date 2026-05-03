@@ -806,6 +806,88 @@ describe('composePassiveTalentMods', () => {
     expect(mods.damageBonusByElement.size).toBe(0);
   });
 
+  it('kim_linh_hai → mpMaxMul = 1.1 (Phase 11.X.AO producer thứ 1 cho mpMax, mở đầu fill 5-element mpMax coverage)', () => {
+    const mods = composePassiveTalentMods(['talent_kim_linh_hai']);
+    expect(mods.mpMaxMul).toBeCloseTo(1.1, 5);
+    // Verify isolation: chỉ mpMax stat_mod path active, các stat khác giữ identity.
+    expect(mods.atkMul).toBe(1);
+    expect(mods.defMul).toBe(1);
+    expect(mods.hpMaxMul).toBe(1);
+    expect(mods.spiritMul).toBe(1);
+    expect(mods.hpRegenFlat).toBe(0);
+    expect(mods.mpRegenFlat).toBe(0);
+    expect(mods.damageBonusByElement.size).toBe(0);
+  });
+
+  it('thuy_linh_hai → mpMaxMul = 1.1 (Phase 11.X.AO producer thứ 2 cho mpMax, fill 5-element mpMax coverage)', () => {
+    const mods = composePassiveTalentMods(['talent_thuy_linh_hai']);
+    expect(mods.mpMaxMul).toBeCloseTo(1.1, 5);
+    expect(mods.atkMul).toBe(1);
+    expect(mods.defMul).toBe(1);
+    expect(mods.hpMaxMul).toBe(1);
+    expect(mods.spiritMul).toBe(1);
+    expect(mods.hpRegenFlat).toBe(0);
+    expect(mods.mpRegenFlat).toBe(0);
+    expect(mods.damageBonusByElement.size).toBe(0);
+  });
+
+  it('moc_linh_hai → mpMaxMul = 1.1 (Phase 11.X.AO producer thứ 3 cho mpMax, fill 5-element mpMax coverage)', () => {
+    const mods = composePassiveTalentMods(['talent_moc_linh_hai']);
+    expect(mods.mpMaxMul).toBeCloseTo(1.1, 5);
+    expect(mods.atkMul).toBe(1);
+    expect(mods.defMul).toBe(1);
+    expect(mods.hpMaxMul).toBe(1);
+    expect(mods.spiritMul).toBe(1);
+    expect(mods.hpRegenFlat).toBe(0);
+    expect(mods.mpRegenFlat).toBe(0);
+    expect(mods.damageBonusByElement.size).toBe(0);
+  });
+
+  it('hoa_linh_hai → mpMaxMul = 1.1 (Phase 11.X.AO producer thứ 4 cho mpMax, fill 5-element mpMax coverage)', () => {
+    const mods = composePassiveTalentMods(['talent_hoa_linh_hai']);
+    expect(mods.mpMaxMul).toBeCloseTo(1.1, 5);
+    expect(mods.atkMul).toBe(1);
+    expect(mods.defMul).toBe(1);
+    expect(mods.hpMaxMul).toBe(1);
+    expect(mods.spiritMul).toBe(1);
+    expect(mods.hpRegenFlat).toBe(0);
+    expect(mods.mpRegenFlat).toBe(0);
+    expect(mods.damageBonusByElement.size).toBe(0);
+  });
+
+  it('tho_linh_hai → mpMaxMul = 1.1 (Phase 11.X.AO producer thứ 5 cho mpMax, hoàn tất 5-element mpMax coverage)', () => {
+    const mods = composePassiveTalentMods(['talent_tho_linh_hai']);
+    expect(mods.mpMaxMul).toBeCloseTo(1.1, 5);
+    expect(mods.atkMul).toBe(1);
+    expect(mods.defMul).toBe(1);
+    expect(mods.hpMaxMul).toBe(1);
+    expect(mods.spiritMul).toBe(1);
+    expect(mods.hpRegenFlat).toBe(0);
+    expect(mods.mpRegenFlat).toBe(0);
+    expect(mods.damageBonusByElement.size).toBe(0);
+  });
+
+  it('combine all 5 mpMax producers (kim + thuy + moc + hoa + tho) → mpMaxMul = 1.1⁵ = 1.61051 (5-element ceiling, hoàn tất Phase 11.X.AO + 5/5 stat_mod path)', () => {
+    const mods = composePassiveTalentMods([
+      'talent_kim_linh_hai',
+      'talent_thuy_linh_hai',
+      'talent_moc_linh_hai',
+      'talent_hoa_linh_hai',
+      'talent_tho_linh_hai',
+    ]);
+    // Hoàn tất 5-element mpMax coverage roadmap; khớp atk/def/hpMax/spirit
+    // ceiling 1.61051 (multiplicative). 5/5 stat_mod path đã có 5-element coverage.
+    expect(mods.mpMaxMul).toBeCloseTo(1.61051, 5);
+    // Cross-stat: các stat khác giữ identity vì chỉ mpMax path active.
+    expect(mods.atkMul).toBe(1);
+    expect(mods.defMul).toBe(1);
+    expect(mods.hpMaxMul).toBe(1);
+    expect(mods.spiritMul).toBe(1);
+    expect(mods.hpRegenFlat).toBe(0);
+    expect(mods.mpRegenFlat).toBe(0);
+    expect(mods.damageBonusByElement.size).toBe(0);
+  });
+
   it('thien_di → dropMul = 1.2', () => {
     const mods = composePassiveTalentMods(['talent_thien_di']);
     expect(mods.dropMul).toBeCloseTo(1.2, 5);
