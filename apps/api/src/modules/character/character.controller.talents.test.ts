@@ -64,6 +64,7 @@ function makeController(opts: ControllerOpts = {}) {
     undefined,
     talent,
     undefined,
+    undefined,
   );
   return { controller };
 }

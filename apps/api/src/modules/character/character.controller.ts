@@ -34,6 +34,7 @@ import {
   AchievementService,
 } from './achievement.service';
 import { TalentError, TalentService } from './talent.service';
+import { AlchemyError, AlchemyService } from './alchemy.service';
 import { AuthService } from '../auth/auth.service';
 import {
   InMemorySlidingWindowRateLimiter,
@@ -101,6 +102,10 @@ const TalentLearnInput = z.object({
   talentKey: z.string().min(1).max(64),
 });
 
+const AlchemyCraftInput = z.object({
+  recipeKey: z.string().min(1).max(64),
+});
+
 /**
  * `POST /character/tribulation` body — không có input field. Server-authoritative
  * resolve transition từ `c.realmKey` → `nextRealm(c.realmKey)`. Tránh client
@@ -126,6 +131,7 @@ export class CharacterController {
     @Optional() private readonly tribulation?: TribulationService,
     @Optional() private readonly achievement?: AchievementService,
     @Optional() private readonly talent?: TalentService,
+    @Optional() private readonly alchemy?: AlchemyService,
     @Optional() @Inject(PROFILE_RATE_LIMITER) profileLimiter?: RateLimiter,
   ) {
     this.profileLimiter =
@@ -676,6 +682,120 @@ export class CharacterController {
       throw e;
     }
   }
+
+  /**
+   * Phase 11.11.C Alchemy state — list recipe khả dụng theo `furnaceLevel`
+   * hiện tại của character + furnace level. Server-authoritative — frontend
+   * không tự filter theo catalog.
+   *
+   *   - Reuse `AlchemyService.getFurnaceLevel` + `AlchemyService.listAvailableRecipes`.
+   *   - Idempotent GET — không thay đổi state. Auth required (bound theo
+   *     character của caller).
+   *   - Trả về `recipes[]` snapshot từ catalog `ALCHEMY_RECIPES` (frozen,
+   *     không có instance per-character) — frontend hiển thị availability +
+   *     cost preview.
+   */
+  @Get('alchemy/recipes')
+  async alchemyRecipes(@Req() req: Request) {
+    const userId = await this.requireUserId(req);
+    if (!this.alchemy) {
+      fail('ALCHEMY_UNAVAILABLE', HttpStatus.NOT_IMPLEMENTED);
+    }
+    const character = await this.chars.findByUser(userId);
+    if (!character) fail('NO_CHARACTER', HttpStatus.NOT_FOUND);
+    try {
+      const [furnaceLevel, recipes] = await Promise.all([
+        this.alchemy.getFurnaceLevel(character.id),
+        this.alchemy.listAvailableRecipes(character.id),
+      ]);
+      return {
+        ok: true,
+        data: {
+          alchemy: {
+            furnaceLevel,
+            recipes: recipes.map((r) => ({
+              key: r.key,
+              name: r.name,
+              description: r.description,
+              outputItem: r.outputItem,
+              outputQty: r.outputQty,
+              outputQuality: r.outputQuality,
+              inputs: r.inputs.map((i) => ({ itemKey: i.itemKey, qty: i.qty })),
+              furnaceLevel: r.furnaceLevel,
+              realmRequirement: r.realmRequirement,
+              linhThachCost: r.linhThachCost,
+              successRate: r.successRate,
+            })),
+          },
+        },
+      };
+    } catch (e) {
+      if (e instanceof AlchemyError) {
+        fail(e.code, mapAlchemyErrorStatus(e.code));
+      }
+      throw e;
+    }
+  }
+
+  /**
+   * Phase 11.11.C Alchemy craft — server-authoritative POST cho frontend
+   * "Luyện đan" button.
+   *
+   *   - Body: `{ recipeKey: string }` (Zod validated).
+   *   - Validate auth → resolve character → reuse `AlchemyService.attemptCraft`
+   *     (atomic `prisma.$transaction` consume input + linhThach + grant
+   *     output qua `ItemLedger`/`CurrencyLedger`).
+   *   - Input + linhThach LUÔN bị consume dù fail (balance intent — khớp
+   *     comment trong catalog `simulateAlchemyAttempt`).
+   *   - RNG mặc định `Math.random` — không cho client inject; reuse pattern
+   *     từ `tribulation` endpoint.
+   *   - Trả về `outcome` + `furnaceLevel` để frontend render kết quả + refresh
+   *     inventory.
+   */
+  @Post('alchemy/craft')
+  @HttpCode(200)
+  async alchemyCraft(@Req() req: Request, @Body() body: unknown) {
+    const userId = await this.requireUserId(req);
+    if (!this.alchemy) {
+      fail('ALCHEMY_UNAVAILABLE', HttpStatus.NOT_IMPLEMENTED);
+    }
+    const parsed = AlchemyCraftInput.safeParse(body);
+    if (!parsed.success) fail('INVALID_INPUT');
+    const character = await this.chars.findByUser(userId);
+    if (!character) fail('NO_CHARACTER', HttpStatus.NOT_FOUND);
+    try {
+      const outcome = await this.alchemy.attemptCraft(
+        character.id,
+        parsed.data.recipeKey,
+      );
+      const furnaceLevel = await this.alchemy.getFurnaceLevel(character.id);
+      return {
+        ok: true,
+        data: {
+          alchemy: {
+            furnaceLevel,
+            outcome: {
+              recipeKey: outcome.recipeKey,
+              success: outcome.success,
+              rollValue: outcome.rollValue,
+              outputItem: outcome.outputItem,
+              outputQty: outcome.outputQty,
+              linhThachConsumed: outcome.linhThachConsumed,
+              inputsConsumed: outcome.inputsConsumed.map((i) => ({
+                itemKey: i.itemKey,
+                qty: i.qty,
+              })),
+            },
+          },
+        },
+      };
+    } catch (e) {
+      if (e instanceof AlchemyError) {
+        fail(e.code, mapAlchemyErrorStatus(e.code));
+      }
+      throw e;
+    }
+  }
 }
 
 /** Map GemError code → HTTP status. */
@@ -787,6 +907,22 @@ function mapSkillErrorStatus(code: CharacterSkillError['code']): HttpStatus {
       return HttpStatus.CONFLICT;
     case 'INSUFFICIENT_FUNDS':
       return HttpStatus.PAYMENT_REQUIRED;
+    default:
+      return HttpStatus.BAD_REQUEST;
+  }
+}
+
+/** Map AlchemyError code → HTTP status (Phase 11.11.C). */
+function mapAlchemyErrorStatus(code: AlchemyError['code']): HttpStatus {
+  switch (code) {
+    case 'RECIPE_NOT_FOUND':
+    case 'CHARACTER_NOT_FOUND':
+      return HttpStatus.NOT_FOUND;
+    case 'FURNACE_LEVEL_TOO_LOW':
+    case 'REALM_REQUIREMENT_NOT_MET':
+    case 'INSUFFICIENT_INGREDIENTS':
+    case 'INSUFFICIENT_FUNDS':
+      return HttpStatus.CONFLICT;
     default:
       return HttpStatus.BAD_REQUEST;
   }
