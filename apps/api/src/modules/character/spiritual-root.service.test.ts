@@ -2,6 +2,8 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { ELEMENTS, SPIRITUAL_ROOT_GRADES, getSpiritualRootGradeDef } from '@xuantoi/shared';
 import { PrismaService } from '../../common/prisma.service';
 import {
+  REROLL_ITEM_KEY,
+  SpiritualRootError,
   SpiritualRootService,
   rollRandomState,
   makeSeededRng,
@@ -155,6 +157,153 @@ describe('SpiritualRootService idempotent on concurrent onboard call', () => {
     });
     expect(logs.length).toBeGreaterThanOrEqual(1);
     expect(logs.length).toBeLessThanOrEqual(2);
+  });
+});
+
+describe('SpiritualRootService.reroll (Phase 11.3.D)', () => {
+  it('character chưa onboard linh căn → throw NOT_INITIALIZED', async () => {
+    const f = await makeUserChar(prisma);
+    // Không gọi rollOnboard. Inventory cũng không có linh_can_dan.
+    await expect(svc.reroll(f.characterId)).rejects.toMatchObject({
+      code: 'NOT_INITIALIZED',
+    });
+  });
+
+  it('character đã onboard nhưng KHÔNG có linh_can_dan → throw LINH_CAN_DAN_INSUFFICIENT', async () => {
+    const f = await makeUserChar(prisma);
+    await svc.rollOnboard(f.characterId, makeSeededRng(11));
+    await expect(svc.reroll(f.characterId, makeSeededRng(22))).rejects.toMatchObject({
+      code: 'LINH_CAN_DAN_INSUFFICIENT',
+    });
+  });
+
+  it('character không tồn tại → throw CHARACTER_NOT_FOUND', async () => {
+    await expect(svc.reroll('clxxxxxxxxxxxxxxxxxxxxxxx')).rejects.toMatchObject({
+      code: 'CHARACTER_NOT_FOUND',
+    });
+  });
+
+  it('happy path: consume 1× linh_can_dan, roll mới, ledger -1, log source=reroll, rerollCount++', async () => {
+    const f = await makeUserChar(prisma);
+    const initial = await svc.rollOnboard(f.characterId, makeSeededRng(100));
+    // Grant 2× linh_can_dan trực tiếp (test-only — tránh InventoryService.grant
+    // để không depend vào RolledLoot type).
+    await prisma.inventoryItem.create({
+      data: { characterId: f.characterId, itemKey: REROLL_ITEM_KEY, qty: 2 },
+    });
+
+    // Reroll với seed khác — kết quả mới có thể khác initial (probabilistic)
+    // nhưng ta verify state matrix structure.
+    const rerolled = await svc.reroll(f.characterId, makeSeededRng(999));
+    expect(SPIRITUAL_ROOT_GRADES).toContain(rerolled.grade);
+    expect(ELEMENTS).toContain(rerolled.primaryElement);
+    const def = getSpiritualRootGradeDef(rerolled.grade);
+    expect(rerolled.secondaryElements.length).toBe(def.secondaryElementCount);
+    expect(rerolled.rerollCount).toBe(initial.rerollCount + 1);
+
+    // Inventory: qty 2 → 1.
+    const inv = await prisma.inventoryItem.findFirst({
+      where: { characterId: f.characterId, itemKey: REROLL_ITEM_KEY },
+    });
+    expect(inv?.qty).toBe(1);
+
+    // ItemLedger: 1 row qtyDelta=-1, reason='SPIRITUAL_ROOT_REROLL'.
+    const ledgers = await prisma.itemLedger.findMany({
+      where: { characterId: f.characterId, itemKey: REROLL_ITEM_KEY },
+    });
+    expect(ledgers.length).toBe(1);
+    expect(ledgers[0].qtyDelta).toBe(-1);
+    expect(ledgers[0].reason).toBe('SPIRITUAL_ROOT_REROLL');
+    expect(ledgers[0].refType).toBe('Character');
+    expect(ledgers[0].refId).toBe(f.characterId);
+
+    // SpiritualRootRollLog: 1 onboard + 1 reroll.
+    const logs = await prisma.spiritualRootRollLog.findMany({
+      where: { characterId: f.characterId },
+      orderBy: { rolledAt: 'asc' },
+    });
+    expect(logs.length).toBe(2);
+    expect(logs[0].source).toBe('onboard');
+    expect(logs[1].source).toBe('reroll');
+    expect(logs[1].previousGrade).toBe(initial.grade);
+    expect(logs[1].newGrade).toBe(rerolled.grade);
+    expect(logs[1].previousElement).toBe(initial.primaryElement);
+    expect(logs[1].newElement).toBe(rerolled.primaryElement);
+    expect(logs[1].previousPurity).toBe(initial.purity);
+    expect(logs[1].newPurity).toBe(rerolled.purity);
+
+    // Character row updated.
+    const c = await prisma.character.findUnique({ where: { id: f.characterId } });
+    expect(c?.spiritualRootGrade).toBe(rerolled.grade);
+    expect(c?.primaryElement).toBe(rerolled.primaryElement);
+    expect(c?.secondaryElements).toEqual([...rerolled.secondaryElements]);
+    expect(c?.rootPurity).toBe(rerolled.purity);
+    expect(c?.rootRerollCount).toBe(1);
+  });
+
+  it('reroll khi qty=1 → row bị xoá hết, ledger vẫn ghi -1', async () => {
+    const f = await makeUserChar(prisma);
+    await svc.rollOnboard(f.characterId, makeSeededRng(50));
+    await prisma.inventoryItem.create({
+      data: { characterId: f.characterId, itemKey: REROLL_ITEM_KEY, qty: 1 },
+    });
+
+    await svc.reroll(f.characterId, makeSeededRng(200));
+
+    const inv = await prisma.inventoryItem.findFirst({
+      where: { characterId: f.characterId, itemKey: REROLL_ITEM_KEY },
+    });
+    expect(inv).toBeNull();
+
+    const ledgers = await prisma.itemLedger.findMany({
+      where: { characterId: f.characterId, itemKey: REROLL_ITEM_KEY },
+    });
+    expect(ledgers.length).toBe(1);
+    expect(ledgers[0].qtyDelta).toBe(-1);
+  });
+
+  it('reroll 3 lần liên tiếp → rerollCount=3 + 3 ledger row + 4 log row (1 onboard + 3 reroll)', async () => {
+    const f = await makeUserChar(prisma);
+    await svc.rollOnboard(f.characterId, makeSeededRng(5));
+    await prisma.inventoryItem.create({
+      data: { characterId: f.characterId, itemKey: REROLL_ITEM_KEY, qty: 5 },
+    });
+
+    await svc.reroll(f.characterId, makeSeededRng(101));
+    await svc.reroll(f.characterId, makeSeededRng(102));
+    const final = await svc.reroll(f.characterId, makeSeededRng(103));
+
+    expect(final.rerollCount).toBe(3);
+    const c = await prisma.character.findUnique({ where: { id: f.characterId } });
+    expect(c?.rootRerollCount).toBe(3);
+
+    const inv = await prisma.inventoryItem.findFirst({
+      where: { characterId: f.characterId, itemKey: REROLL_ITEM_KEY },
+    });
+    expect(inv?.qty).toBe(2); // 5 - 3 = 2
+
+    const ledgers = await prisma.itemLedger.findMany({
+      where: { characterId: f.characterId, itemKey: REROLL_ITEM_KEY },
+    });
+    expect(ledgers.length).toBe(3);
+    for (const l of ledgers) {
+      expect(l.qtyDelta).toBe(-1);
+      expect(l.reason).toBe('SPIRITUAL_ROOT_REROLL');
+    }
+
+    const logs = await prisma.spiritualRootRollLog.findMany({
+      where: { characterId: f.characterId },
+    });
+    expect(logs.length).toBe(4);
+    const sources = logs.map((l) => l.source).sort();
+    expect(sources).toEqual(['onboard', 'reroll', 'reroll', 'reroll']);
+  });
+
+  it('SpiritualRootError class instance → expose code field', () => {
+    const err = new SpiritualRootError('LINH_CAN_DAN_INSUFFICIENT');
+    expect(err).toBeInstanceOf(Error);
+    expect(err.code).toBe('LINH_CAN_DAN_INSUFFICIENT');
+    expect(err.message).toBe('LINH_CAN_DAN_INSUFFICIENT');
   });
 });
 

@@ -43,7 +43,9 @@
       "cultivationMethodEquip": "Failed to equip cultivation method",
       "achievementsState": "Failed to load achievements state",
       "achievementClaim": "Failed to claim achievement reward",
-      "tribulation": "Tribulation attempt failed"
+      "tribulation": "Tribulation attempt failed",
+      "spiritualRootState": "Failed to load spiritual root state",
+      "spiritualRootReroll": "Spiritual root reroll failed"
     }
   },
   "locale": {
@@ -270,6 +272,7 @@
       "talents": "Talents",
       "alchemy": "Alchemy",
       "cultivationMethod": "Method",
+      "spiritualRoot": "Root",
       "achievements": "Achievements",
       "tribulation": "Tribulation"
     },
@@ -1336,6 +1339,70 @@
         "ALREADY_EQUIPPED": "This method is already equipped.",
         "IN_FLIGHT": "Processing…",
         "UNKNOWN": "Activation failed, please retry."
+      }
+    }
+  },
+  "spiritualRoot": {
+    "title": "Spiritual Root Hall",
+    "subtitle": "Your spiritual root determines cultivation speed, combat element and stat bonuses. The server rolls it on onboarding; you may reroll with a Root Pill.",
+    "loading": "Loading spiritual root…",
+    "empty": "No spiritual root data — please finish onboarding first.",
+    "rerollCount": "Rerolled {count} times",
+    "field": {
+      "tier": "Tier {tier}",
+      "purity": "Purity",
+      "cultivationMultiplier": "Cultivation multiplier",
+      "statBonus": "Stat bonus",
+      "secondaryCount": "Secondary elements"
+    },
+    "grade": {
+      "pham": "Mortal",
+      "linh": "Spirit",
+      "huyen": "Mystic",
+      "tien": "Immortal",
+      "than": "Divine"
+    },
+    "element": {
+      "kim": "Metal",
+      "moc": "Wood",
+      "thuy": "Water",
+      "hoa": "Fire",
+      "tho": "Earth",
+      "role": {
+        "primary": "Primary",
+        "secondary": "Secondary",
+        "inactive": "—"
+      }
+    },
+    "elements": {
+      "title": "Five-Phase Wheel",
+      "legend": "Bright = primary · dim = secondary · gray = inactive",
+      "secondaryLabel": "Secondary elements"
+    },
+    "reroll": {
+      "title": "Reroll Spiritual Root",
+      "description": "Consume 1× Root Pill to reroll your spiritual root (grade + element + purity).",
+      "warning": "Warning: result is random — your grade may go down. Server-authoritative; no refund.",
+      "success": "Spiritual root rerolled.",
+      "button": {
+        "idle": "Reroll (-1× Root Pill)",
+        "inFlight": "Rolling…"
+      },
+      "confirm": {
+        "title": "Confirm spiritual root reroll",
+        "body": "Your current spiritual root will be replaced entirely. This cannot be undone.",
+        "cost": "Cost: 1× Root Pill",
+        "cancel": "Cancel",
+        "accept": "Reroll"
+      },
+      "errors": {
+        "LINH_CAN_DAN_INSUFFICIENT": "Not enough Root Pills.",
+        "NOT_INITIALIZED": "No initial spiritual root yet — open this page first to roll one.",
+        "NO_CHARACTER": "Character not created.",
+        "SPIRITUAL_ROOT_UNAVAILABLE": "Spiritual root system temporarily unavailable.",
+        "UNAUTHENTICATED": "Session expired.",
+        "IN_FLIGHT": "Processing…",
+        "UNKNOWN": "Reroll failed, please retry."
       }
     }
   },

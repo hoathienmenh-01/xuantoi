@@ -46,7 +46,12 @@ export type ItemLedgerReason =
   // `def.reward.items` non-empty grant items qua AchievementService.claimReward
   // → InventoryService.grantTx (positive qtyDelta). Mirror với CurrencyLedger
   // reason `ACHIEVEMENT_REWARD` đã wire ở Phase 11.10.C-1 cho linhThach/tienNgoc.
-  | 'ACHIEVEMENT_REWARD';
+  | 'ACHIEVEMENT_REWARD'
+  // Phase 11.3.D Linh căn reroll — consume 1× `linh_can_dan` qua
+  // SpiritualRootService.reroll (server-authoritative). Negative qtyDelta=-1.
+  // Atomic cùng SpiritualRootRollLog.create + Character update (grade/element
+  // /secondary/purity/rerollCount++).
+  | 'SPIRITUAL_ROOT_REROLL';
 
 export interface ItemLedgerMeta {
   reason: ItemLedgerReason;
