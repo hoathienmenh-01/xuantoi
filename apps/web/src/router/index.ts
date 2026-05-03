@@ -116,6 +116,11 @@ const routes: RouteRecordRaw[] = [
     component: () => import('@/views/AlchemyView.vue'),
   },
   {
+    path: '/cultivation-method',
+    name: 'cultivation-method',
+    component: () => import('@/views/CultivationMethodView.vue'),
+  },
+  {
     path: '/:pathMatch(.*)*',
     name: 'not-found',
     component: () => import('@/views/NotFoundView.vue'),

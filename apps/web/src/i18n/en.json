@@ -38,7 +38,9 @@
       "talentsState": "Failed to load talent state",
       "talentsLearn": "Failed to learn talent",
       "alchemyState": "Failed to load alchemy recipes",
-      "alchemyCraft": "Failed to craft pill"
+      "alchemyCraft": "Failed to craft pill",
+      "cultivationMethodState": "Failed to load cultivation method state",
+      "cultivationMethodEquip": "Failed to equip cultivation method"
     }
   },
   "locale": {
@@ -263,7 +265,8 @@
       "admin": "Admin",
       "toggle": "Toggle navigation menu",
       "talents": "Talents",
-      "alchemy": "Alchemy"
+      "alchemy": "Alchemy",
+      "cultivationMethod": "Method"
     },
     "badge": {
       "bossActive": "World boss is live",
@@ -1231,6 +1234,79 @@
         "UNAUTHENTICATED": "Session expired.",
         "IN_FLIGHT": "Processing…",
         "UNKNOWN": "Crafting failed, please retry."
+      }
+    }
+  },
+  "cultivationMethod": {
+    "title": "Cultivation Method Hall",
+    "subtitle": "Manage learned cultivation methods. A cultivator runs only one method at a time — pick by realm, spiritual root, and sect.",
+    "loading": "Loading cultivation methods…",
+    "empty": "No methods match the filter.",
+    "equippedSummary": "Active: {key}",
+    "equippedNone": "No method equipped.",
+    "filter": {
+      "grade": "Grade",
+      "all": "All",
+      "shown": "Showing {shown}/{total} (catalog: {catalog})"
+    },
+    "grade": {
+      "pham": "Mortal",
+      "huyen": "Mystic",
+      "tien": "Immortal",
+      "than": "Divine"
+    },
+    "element": {
+      "kim": "Metal",
+      "moc": "Wood",
+      "thuy": "Water",
+      "hoa": "Fire",
+      "tho": "Earth",
+      "loi": "Lightning",
+      "phong": "Wind",
+      "bang": "Ice",
+      "doc": "Poison",
+      "am": "Yin",
+      "duong": "Yang",
+      "hon_don": "Chaos",
+      "none": "Neutral"
+    },
+    "source": {
+      "starter": "Starter",
+      "sect_shop": "Sect Shop",
+      "dungeon_drop": "Dungeon Drop",
+      "boss_drop": "World Boss",
+      "event": "Event",
+      "quest_milestone": "Quest"
+    },
+    "field": {
+      "expMultiplier": "Cultivation",
+      "source": "Source"
+    },
+    "badge": {
+      "equipped": "Active"
+    },
+    "button": {
+      "equip": "Activate",
+      "equipping": "Activating…",
+      "equipped": "Active"
+    },
+    "equip": {
+      "success": "Activated cultivation method {name}.",
+      "errors": {
+        "METHOD_NOT_FOUND": "Method not found.",
+        "NOT_LEARNED": "You have not learned this method.",
+        "REALM_NOT_FOUND": "Current realm not found.",
+        "REALM_TOO_LOW": "Realm requirement not met.",
+        "WRONG_SECT": "This method belongs to a different sect.",
+        "FORBIDDEN_ELEMENT": "Your spiritual root conflicts with this method.",
+        "CHARACTER_NOT_FOUND": "Character not created.",
+        "NO_CHARACTER": "Character not created.",
+        "CULTIVATION_METHOD_UNAVAILABLE": "Cultivation method system temporarily unavailable.",
+        "INVALID_INPUT": "Invalid input.",
+        "UNAUTHENTICATED": "Session expired.",
+        "ALREADY_EQUIPPED": "This method is already equipped.",
+        "IN_FLIGHT": "Processing…",
+        "UNKNOWN": "Activation failed, please retry."
       }
     }
   }
