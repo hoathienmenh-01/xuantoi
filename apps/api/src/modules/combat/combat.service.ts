@@ -1,5 +1,11 @@
 import { Injectable, Optional } from '@nestjs/common';
-import { CurrencyKind, Prisma, EncounterStatus } from '@prisma/client';
+import {
+  CurrencyKind,
+  Prisma,
+  EncounterStatus,
+  type Character,
+  type Encounter,
+} from '@prisma/client';
 import {
   DUNGEONS,
   SPIRITUAL_ROOT_GRADES,
@@ -9,10 +15,12 @@ import {
   dungeonByKey,
   elementMultiplier,
   getSpiritualRootGradeDef,
+  getTalentDef,
   itemByKey,
   monsterByKey,
   rollDamage,
   rollDungeonLoot,
+  simulateActiveTalent,
   skillByKey,
   type DungeonDef,
   type ElementKey,
@@ -21,6 +29,7 @@ import {
   type SectKey,
   type SkillDef,
   type SpiritualRootGrade,
+  type TalentDef,
 } from '@xuantoi/shared';
 import { PrismaService } from '../../common/prisma.service';
 import { RealtimeService } from '../realtime/realtime.service';
@@ -94,7 +103,9 @@ class CombatError extends Error {
       | 'ENCOUNTER_ENDED'
       | 'SKILL_NOT_USABLE'
       | 'MP_LOW'
-      | 'CONTROLLED',
+      | 'CONTROLLED'
+      | 'TALENT_NOT_LEARNED'
+      | 'TALENT_NOT_ACTIVE',
   ) {
     super(code);
   }
@@ -185,6 +196,32 @@ export class CombatService {
     const state = enc.state as unknown as EncounterState;
     const monster = monsterByKey(dungeon.monsters[state.monsterIndex]);
     if (!monster) throw new CombatError('DUNGEON_NOT_FOUND');
+
+    // Phase 11.7.D — Active talent fallback: nếu skillKey không phải SkillDef
+    // nhưng là active TalentDef → route sang flow riêng. `skillByKey` null +
+    // `getTalentDef` non-null → talent path. Validate ownership qua
+    // `TalentService.listLearned` + MP cost + execute via simulateActiveTalent.
+    if (input.skillKey) {
+      const directSkill = skillByKey(input.skillKey);
+      if (!directSkill) {
+        const talentDef = getTalentDef(input.skillKey);
+        if (talentDef) {
+          if (talentDef.type !== 'active' || !talentDef.activeEffect) {
+            throw new CombatError('TALENT_NOT_ACTIVE');
+          }
+          return this.actionViaActiveTalent(
+            userId,
+            encounterId,
+            char,
+            enc,
+            dungeon,
+            state,
+            monster,
+            talentDef,
+          );
+        }
+      }
+    }
 
     const sectKey = await this.resolveSectKey(char.sectId);
     const skill: SkillDef = input.skillKey
@@ -574,6 +611,347 @@ export class CombatService {
     // vừa kill monster vừa (nếu là quái cuối) clear dungeon. Không throw nếu
     // mission/achievement lỗi (Phase 11.10.C-2 wire trackEvent vào achievement
     // bằng cùng goalKind với mission — fail-soft).
+    try {
+      if (monsterHp <= 0) {
+        await this.missions.track(char.id, 'KILL_MONSTER', 1);
+        if (this.achievements) {
+          await this.achievements.trackEvent(char.id, 'KILL_MONSTER', 1);
+        }
+      }
+      if (nextStatus === EncounterStatus.WON) {
+        await this.missions.track(char.id, 'CLEAR_DUNGEON', 1);
+        if (this.achievements) {
+          await this.achievements.trackEvent(char.id, 'CLEAR_DUNGEON', 1);
+        }
+      }
+    } catch {
+      // bỏ qua
+    }
+
+    const charState = await this.chars.findByUser(userId);
+    if (charState) this.realtime.emitToUser(userId, 'state:update', charState);
+
+    const finalEnc = await this.prisma.encounter.findUniqueOrThrow({ where: { id: enc.id } });
+    const view = this.toView(finalEnc);
+    view.reward = reward;
+    return view;
+  }
+
+  /**
+   * Phase 11.7.D — Active talent flow trong combat. Gọi từ {@link action} khi
+   * `input.skillKey` resolve sang `getTalentDef()` (active type) thay vì
+   * `skillByKey()`.
+   *
+   * Server-authoritative: validate ownership qua `TalentService.listLearned`
+   * (reject nếu chưa học) + MP cost từ `activeEffect.mpCost` (reject nếu
+   * mp thấp) + execute deterministic qua `simulateActiveTalent(def, atk, spirit)`.
+   *
+   * Effect mapping:
+   * - `damage` → deal `result.damage × playerElementMul × talentElementMul × buffElementMul`
+   *   vào current monster (raw — bypass `effective.atkScale` + skill mastery
+   *   curve, talent là channel độc lập).
+   * - `heal` → restore `result.heal` HP (clamp `char.hpMax`).
+   * - `cc` (root/stun) → log control applied + skip monster reply turn này.
+   * - `dot` → log dot applied + skip monster reply turn này (DOT damage stack
+   *   chưa schema persist — Phase 11.X.M defer cumulative cross-turn).
+   * - `utility` (escape `talent_phong_lui`) → set encounter ABANDONED +
+   *   return view (early exit, không monster reply).
+   *
+   * MP deduct cố định = `result.mpConsumed` (= `activeEffect.mpCost`),
+   * trừ stamina `STAMINA_PER_ACTION` như skill flow.
+   *
+   * Cooldown turns chưa schema persist (DB chỉ có `learnedAt`); Phase 11.7.E
+   * defer.
+   *
+   * Linh căn / talent / buff / title / method stat mods KHÔNG áp cho talent
+   * channel (deterministic atk × value, không multipliers stack — keep talent
+   * power-curve dễ balance). Nhưng element multipliers (linh căn primary +
+   * talent damage_bonus + buff damage_bonus) áp cho `damage` kind giống skill
+   * flow (cùng pattern `playerElementMul × talentElementMul × buffElementMul`).
+   */
+  private async actionViaActiveTalent(
+    userId: string,
+    _encounterId: string,
+    char: Character,
+    enc: Encounter,
+    dungeon: DungeonDef,
+    state: EncounterState,
+    monster: MonsterDef,
+    talent: TalentDef,
+  ): Promise<EncounterView> {
+    if (!talent.activeEffect) {
+      throw new CombatError('TALENT_NOT_ACTIVE');
+    }
+
+    // Validate ownership: character phải đã học talent qua TalentService.
+    if (!this.talents) {
+      throw new CombatError('TALENT_NOT_LEARNED');
+    }
+    const learned = await this.talents.listLearned(char.id);
+    const owns = learned.some((l) => l.talentKey === talent.key);
+    if (!owns) {
+      throw new CombatError('TALENT_NOT_LEARNED');
+    }
+
+    // MP cost from activeEffect.
+    if (char.mp < talent.activeEffect.mpCost) {
+      throw new CombatError('MP_LOW');
+    }
+
+    // Compute element multipliers cho damage kind (same pattern with skill flow).
+    const charElementState =
+      char.primaryElement && char.spiritualRootGrade
+        ? {
+            primaryElement: char.primaryElement as ElementKey,
+            secondaryElements: char.secondaryElements as ElementKey[],
+          }
+        : null;
+    const playerElementMul = characterSkillElementBonus(
+      charElementState,
+      talent.element,
+      (monster.element ?? null) as ElementKey | null,
+    );
+    // Talent damage_bonus by element compose (passive talent học khác có
+    // damage_bonus by element vẫn áp cho talent active damage).
+    const talentMods = this.talents
+      ? await this.talents.getMods(char.id)
+      : null;
+    const talentElementMul =
+      talentMods && talent.element !== null
+        ? talentMods.damageBonusByElement.get(talent.element) ?? 1
+        : 1;
+    const buffMods = this.buffs ? await this.buffs.getMods(char.id) : null;
+    const buffElementMul =
+      buffMods && talent.element !== null
+        ? buffMods.damageBonusByElement.get(talent.element) ?? 1
+        : 1;
+    // Phase 11.X.O — Buff control vẫn block player action (cùng pattern skill).
+    if (buffMods && buffMods.controlTurnsMax > 0) {
+      throw new CombatError('CONTROLLED');
+    }
+
+    const result = simulateActiveTalent(talent, char.power, char.spirit);
+
+    // Apply effect.
+    let charHp = char.hp;
+    let charMp = char.mp - result.mpConsumed;
+    let monsterHp = state.monsterHp;
+    let nextStatus: EncounterStatus = EncounterStatus.ACTIVE;
+    let skipMonsterReply = false;
+
+    const log: EncounterLogLine[] = [
+      ...((enc.log as unknown as EncounterLogLine[]) ?? []),
+    ];
+
+    const aoeLabel = result.aoe ? ' (AOE)' : '';
+
+    switch (talent.activeEffect.kind) {
+      case 'damage': {
+        const dmg = Math.max(
+          1,
+          Math.round(result.damage * playerElementMul * talentElementMul * buffElementMul),
+        );
+        monsterHp = state.monsterHp - dmg;
+        log.push({
+          side: 'player',
+          text: `Đạo hữu phát động ${talent.name}${aoeLabel}, gây ${dmg} sát thương lên ${monster.name}.`,
+          ts: Date.now(),
+        });
+        break;
+      }
+      case 'heal': {
+        const before = charHp;
+        charHp = Math.min(char.hpMax, charHp + result.heal);
+        log.push({
+          side: 'player',
+          text: `Đạo hữu vận ${talent.name}, hồi ${charHp - before} HP.`,
+          ts: Date.now(),
+        });
+        skipMonsterReply = true;
+        break;
+      }
+      case 'cc': {
+        log.push({
+          side: 'player',
+          text: `Đạo hữu phong toả ${monster.name} bằng ${talent.name}${aoeLabel} (${result.ccTurns} lượt).`,
+          ts: Date.now(),
+        });
+        skipMonsterReply = true;
+        break;
+      }
+      case 'dot': {
+        log.push({
+          side: 'player',
+          text: `Đạo hữu thiêu ${monster.name} bằng ${talent.name} — burn ${result.dotTurns} lượt.`,
+          ts: Date.now(),
+        });
+        skipMonsterReply = true;
+        break;
+      }
+      case 'utility': {
+        // Escape utility (talent_phong_lui): rút lui khỏi encounter ngay.
+        log.push({
+          side: 'player',
+          text: `Đạo hữu vận ${talent.name} thoát thân khỏi ải.`,
+          ts: Date.now(),
+        });
+        const newStaminaEarly = Math.max(0, char.stamina - STAMINA_PER_ACTION);
+        await this.prisma.character.update({
+          where: { id: char.id },
+          data: { mp: charMp, stamina: newStaminaEarly },
+        });
+        const updated = await this.prisma.encounter.update({
+          where: { id: enc.id },
+          data: {
+            status: EncounterStatus.ABANDONED,
+            log: log as unknown as Prisma.InputJsonValue,
+          },
+        });
+        const charState = await this.chars.findByUser(userId);
+        if (charState) this.realtime.emitToUser(userId, 'state:update', charState);
+        return this.toView(updated);
+      }
+    }
+
+    // Monster killed (damage path) → progress encounter.
+    let nextState: EncounterState = { ...state, monsterHp };
+    let expGain = 0n;
+    let linhThachGain = 0n;
+    let reward: EncounterView['reward'] = null;
+
+    if (monsterHp <= 0) {
+      log.push({
+        side: 'system',
+        text: `${monster.name} đổ xuống — đắc thủ ${monster.expDrop} EXP, ${monster.linhThachDrop} linh thạch.`,
+        ts: Date.now(),
+      });
+      expGain += BigInt(monster.expDrop);
+      linhThachGain += BigInt(monster.linhThachDrop);
+      const nextIdx = state.monsterIndex + 1;
+      if (nextIdx >= dungeon.monsters.length) {
+        nextStatus = EncounterStatus.WON;
+        log.push({
+          side: 'system',
+          text: `Chinh phục ${dungeon.name} thành công, đạo hữu thoát quan.`,
+          ts: Date.now(),
+        });
+        nextState = { monsterIndex: nextIdx, monsterHp: 0 };
+      } else {
+        const nextMonster = monsterByKey(dungeon.monsters[nextIdx]);
+        if (nextMonster) {
+          nextState = { monsterIndex: nextIdx, monsterHp: nextMonster.hp };
+          log.push({
+            side: 'system',
+            text: `${nextMonster.name} (Lv.${nextMonster.level}) lao tới.`,
+            ts: Date.now(),
+          });
+        }
+      }
+    } else if (!skipMonsterReply) {
+      // Monster counter-attack (damage path, monster còn sống).
+      const replyBase = rollDamage(monster.atk, char.spirit + char.power * 0.3, 1);
+      const monsterElementMul = elementMultiplier(
+        (monster.element ?? null) as ElementKey | null,
+        (char.primaryElement ?? null) as ElementKey | null,
+      );
+      const reply = Math.max(1, Math.round(replyBase * monsterElementMul));
+      log.push({
+        side: 'monster',
+        text: `${monster.name} phản kích, gây ${reply} sát thương.`,
+        ts: Date.now(),
+      });
+      charHp -= reply;
+      if (charHp <= 0) {
+        nextStatus = EncounterStatus.LOST;
+        charHp = 1;
+        log.push({
+          side: 'system',
+          text: `Đạo hữu rơi vào hôn mê, đan điền tổn thương — phải hồi phục mới có thể chiến tiếp.`,
+          ts: Date.now(),
+        });
+      }
+    }
+
+    // Persist encounter & character.
+    await this.prisma.encounter.update({
+      where: { id: enc.id },
+      data: {
+        status: nextStatus,
+        state: nextState as unknown as Prisma.InputJsonValue,
+        log: log as unknown as Prisma.InputJsonValue,
+      },
+    });
+
+    const newStamina = Math.max(0, char.stamina - STAMINA_PER_ACTION);
+    const updateChar: Prisma.CharacterUpdateInput = {
+      hp: charHp,
+      mp: charMp,
+      stamina: newStamina,
+    };
+    if (expGain > 0n) updateChar.exp = { increment: expGain };
+
+    await this.prisma.$transaction(async (tx) => {
+      await tx.character.update({ where: { id: char.id }, data: updateChar });
+      if (linhThachGain > 0n) {
+        await this.currency.applyTx(tx, {
+          characterId: char.id,
+          currency: CurrencyKind.LINH_THACH,
+          delta: linhThachGain,
+          reason: 'COMBAT_LOOT',
+          refType: 'Encounter',
+          refId: enc.id,
+          meta: {
+            dungeonKey: dungeon.key,
+            status: nextStatus,
+            talentKey: talent.key,
+          },
+        });
+      }
+    });
+
+    const lootView: EncounterRewardLoot[] = [];
+    if (nextStatus === EncounterStatus.WON) {
+      const loot = rollDungeonLoot(dungeon.key, 2);
+      if (loot.length > 0) {
+        await this.inventory.grant(char.id, loot, {
+          reason: 'COMBAT_LOOT',
+          refType: 'Encounter',
+          refId: enc.id,
+          extra: { dungeonKey: dungeon.key, talentKey: talent.key },
+        });
+        for (const l of loot) {
+          const def = itemByKey(l.itemKey);
+          if (!def) continue;
+          lootView.push({
+            itemKey: l.itemKey,
+            qty: l.qty,
+            itemName: def.name,
+            quality: def.quality,
+          });
+        }
+        log.push({
+          side: 'system',
+          text: `Đắc thủ chiến lợi: ${lootView
+            .map((l) => `${l.itemName} ×${l.qty}`)
+            .join(', ')}.`,
+          ts: Date.now(),
+        });
+        await this.prisma.encounter.update({
+          where: { id: enc.id },
+          data: { log: log as unknown as Prisma.InputJsonValue },
+        });
+      }
+    }
+
+    if (nextStatus === EncounterStatus.WON || nextStatus === EncounterStatus.LOST) {
+      reward = {
+        exp: expGain.toString(),
+        linhThach: linhThachGain.toString(),
+        loot: lootView,
+      };
+    }
+
+    // Mission + achievement tracking — fail-soft.
     try {
       if (monsterHp <= 0) {
         await this.missions.track(char.id, 'KILL_MONSTER', 1);
