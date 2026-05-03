@@ -36,7 +36,9 @@
       "shopBuy": "Purchase failed",
       "onboard": "Onboard failed",
       "talentsState": "Failed to load talent state",
-      "talentsLearn": "Failed to learn talent"
+      "talentsLearn": "Failed to learn talent",
+      "alchemyState": "Failed to load alchemy recipes",
+      "alchemyCraft": "Failed to craft pill"
     }
   },
   "locale": {
@@ -260,7 +262,8 @@
       "activity": "Activity",
       "admin": "Admin",
       "toggle": "Toggle navigation menu",
-      "talents": "Talents"
+      "talents": "Talents",
+      "alchemy": "Alchemy"
     },
     "badge": {
       "bossActive": "World boss is live",
@@ -1179,6 +1182,55 @@
         "UNAUTHENTICATED": "Session expired.",
         "IN_FLIGHT": "Processing…",
         "UNKNOWN": "Cannot learn, please retry."
+      }
+    }
+  },
+  "alchemy": {
+    "title": "Alchemy Hall",
+    "subtitle": "Craft pills from herbs + recipes — server rolls RNG, ingredients are not refunded on failure.",
+    "loading": "Loading recipes…",
+    "empty": "No recipes match the filter.",
+    "furnaceLevel": "Furnace level {level}",
+    "furnaceReq": "Furnace ≥ {level}",
+    "filter": {
+      "quality": "Quality",
+      "all": "All",
+      "shown": "Showing {shown}/{total}"
+    },
+    "quality": {
+      "PHAM": "Mortal",
+      "LINH": "Spiritual",
+      "HUYEN": "Mystic",
+      "TIEN": "Immortal",
+      "THAN": "Divine"
+    },
+    "field": {
+      "output": "Output",
+      "inputs": "Inputs",
+      "cost": "Cost",
+      "linhThach": "Spirit Stones",
+      "successRate": "Success rate"
+    },
+    "button": {
+      "craft": "Craft",
+      "crafting": "Crafting…"
+    },
+    "craft": {
+      "success": "Successfully crafted {name} × {qty}!",
+      "fail": "Failed to craft {name}, ingredients lost.",
+      "errors": {
+        "RECIPE_NOT_FOUND": "Recipe not found.",
+        "FURNACE_LEVEL_TOO_LOW": "Furnace level too low.",
+        "REALM_REQUIREMENT_NOT_MET": "Cultivation realm not high enough.",
+        "INSUFFICIENT_INGREDIENTS": "Missing ingredients.",
+        "INSUFFICIENT_FUNDS": "Not enough Spirit Stones.",
+        "CHARACTER_NOT_FOUND": "Character not created.",
+        "NO_CHARACTER": "Character not created.",
+        "ALCHEMY_UNAVAILABLE": "Alchemy system temporarily unavailable.",
+        "INVALID_INPUT": "Invalid input.",
+        "UNAUTHENTICATED": "Session expired.",
+        "IN_FLIGHT": "Processing…",
+        "UNKNOWN": "Crafting failed, please retry."
       }
     }
   }
