@@ -63,6 +63,35 @@ describe('InventoryService', () => {
       const list = await inv.list(u.characterId);
       expect(list).toHaveLength(0);
     });
+
+    // Phase 11.4.C — gem inventory rows phải hiển trên list (trước đó bị skip
+    // vì `itemByKey` chỉ search ITEMS catalog).
+    it('list: gem inventory row hiện diện qua fallback gem catalog (Phase 11.4.C)', async () => {
+      const u = await makeUserChar(prisma);
+      await prisma.inventoryItem.create({
+        data: { characterId: u.characterId, itemKey: 'gem_kim_pham', qty: 5 },
+      });
+      const list = await inv.list(u.characterId);
+      const gemRow = list.find((x) => x.itemKey === 'gem_kim_pham');
+      expect(gemRow).toBeDefined();
+      expect(gemRow?.qty).toBe(5);
+      // Gem synth thành ItemDef với kind='MISC', stackable, có quality+bonuses.
+      expect(gemRow?.item.kind).toBe('MISC');
+      expect(gemRow?.item.stackable).toBe(true);
+      expect(gemRow?.item.quality).toBe('PHAM');
+      expect(gemRow?.item.bonuses).toBeDefined();
+    });
+
+    it('list: gem rows không equippedSlot (gem không equip trực tiếp)', async () => {
+      const u = await makeUserChar(prisma);
+      await prisma.inventoryItem.create({
+        data: { characterId: u.characterId, itemKey: 'gem_thuy_linh', qty: 2 },
+      });
+      const list = await inv.list(u.characterId);
+      const gemRow = list.find((x) => x.itemKey === 'gem_thuy_linh');
+      expect(gemRow?.equippedSlot).toBeNull();
+      expect(gemRow?.item.slot).toBeUndefined();
+    });
   });
 
   describe('equip / unequip', () => {

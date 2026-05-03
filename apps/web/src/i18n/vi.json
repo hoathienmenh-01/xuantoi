@@ -570,6 +570,21 @@
       "failLossToast": "Luyện khí thất bại — tụt về cấp {finalLevel}.",
       "brokenToast": "Luyện khí khích phát — trang bị vỡ nát."
     },
+    "gem": {
+      "socketsLabel": "Khảm: {filled}/{max}",
+      "selectPlaceholder": "— chọn linh thạch tương thích —",
+      "socketButton": "Khảm",
+      "unsocketButton": "Gỡ",
+      "combineButton": "Hợp 3→1",
+      "noOwnedGems": "Chưa có linh thạch tương thích.",
+      "elementLabel": "Hệ {element}",
+      "anyElement": "Vô hệ",
+      "compatibleSlotsLabel": "Tương thích: {slots}",
+      "socketSuccessToast": "Đã khảm {gem} vào {equipment}.",
+      "unsocketSuccessToast": "Đã gỡ {gem} khỏi {equipment}.",
+      "unsocketDriftToast": "Đã gỡ slot {slot} (linh thạch không còn trong sách lệnh).",
+      "combineSuccessToast": "Hợp thành 1× {result} từ 3× {src}."
+    },
     "bonus": {
       "atk": "+{v} công",
       "def": "+{v} thủ",
@@ -588,6 +603,14 @@
       "INSUFFICIENT_PROTECTION": "Thiếu bội nguyên phù bảo hộ.",
       "INSUFFICIENT_FUNDS": "Không đủ linh thạch.",
       "REFINE_UNAVAILABLE": "Luyện Khí Đường tạm đóng cửa.",
+      "GEM_NOT_FOUND": "Linh thạch không tồn tại.",
+      "GEM_INCOMPATIBLE_SLOT": "Linh thạch không khớp slot trang bị.",
+      "NO_SOCKET_CAPACITY": "Trang bị này không có lỗ khảm.",
+      "SOCKETS_FULL": "Lỗ khảm đã đầy.",
+      "NO_NEXT_TIER": "Linh thạch tối thượng — không thể hợp tiếp.",
+      "INSUFFICIENT_QTY": "Không đủ số lượng linh thạch.",
+      "INVALID_SLOT_INDEX": "Slot không hợp lệ.",
+      "GEM_UNAVAILABLE": "Khảm Bảo Đường tạm đóng cửa.",
       "UNKNOWN": "Có lỗi xảy ra, mời thử lại."
     }
   },

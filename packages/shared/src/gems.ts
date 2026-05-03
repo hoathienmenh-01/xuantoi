@@ -20,6 +20,7 @@
 
 import type { Quality } from './enums';
 import type { ElementKey } from './combat';
+import { itemByKey, type ItemDef } from './items';
 
 // =====================================================================
 // Gem grade & bonus
@@ -359,4 +360,54 @@ export function gemUpgradePathCost(
   const pathSteps = toIdx - fromIdx;
   const gemsRequired = Math.pow(3, pathSteps);
   return { gemsRequired, pathSteps };
+}
+
+// =====================================================================
+// Phase 11.4.C — Gem ↔ ItemDef bridge cho UI inventory
+// =====================================================================
+
+/**
+ * Synth `ItemDef` từ `GemDef` để inventory UI có thể render gem rows
+ * cùng layout với item rows. `kind = 'MISC'` (gem không có ItemKind
+ * dedicated; tránh thêm `'GEM'` vào `ItemKind` union để giữ blast
+ * radius nhỏ — switch/filter consumers vẫn an toàn). `slot = undefined`
+ * (gem không equip trực tiếp). `bonuses` reuse `GemBonus` shape (atk/def/
+ * hpMax/mpMax/spirit) — đã match `ItemBonus` shape 1:1, an toàn cast.
+ *
+ * Dùng bởi:
+ *   - `inventory.service.ts:list()` fallback khi `itemByKey` undefined.
+ *   - Frontend gem combine UI tra cứu name/description/quality/price.
+ */
+export function gemDefAsItemDef(g: GemDef): ItemDef {
+  return {
+    key: g.key,
+    name: g.name,
+    description: g.description,
+    kind: 'MISC',
+    quality: g.grade,
+    stackable: true,
+    bonuses: { ...g.bonus },
+    price: g.price,
+  };
+}
+
+/**
+ * Lookup item key trong cả `ITEMS` catalog VÀ `GEMS` catalog (gems được
+ * synth thành ItemDef-shape qua `gemDefAsItemDef`). Tránh duplicate logic
+ * fallback ở mọi consumer.
+ *
+ * Phase 11.4.C — wire vào `inventory.service.list()` để gem inventory
+ * rows hiển trên UI (trước đó bị skip vì `itemByKey` chỉ search `ITEMS`).
+ *
+ * Thứ tự lookup:
+ *   1. `itemByKey(key)` — match item catalog phổ thông trước.
+ *   2. `getGemDef(key)` — fallback qua gem catalog.
+ *   3. `undefined` — không tồn tại trong cả 2 catalog.
+ */
+export function itemOrGemByKey(key: string): ItemDef | undefined {
+  const item = itemByKey(key);
+  if (item) return item;
+  const gem = getGemDef(key);
+  if (gem) return gemDefAsItemDef(gem);
+  return undefined;
 }

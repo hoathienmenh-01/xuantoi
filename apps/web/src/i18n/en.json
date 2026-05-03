@@ -570,6 +570,21 @@
       "failLossToast": "Refine failed — dropped to level {finalLevel}.",
       "brokenToast": "Refine catastrophic — equipment broken."
     },
+    "gem": {
+      "socketsLabel": "Sockets: {filled}/{max}",
+      "selectPlaceholder": "— pick a compatible gem —",
+      "socketButton": "Socket",
+      "unsocketButton": "Unsocket",
+      "combineButton": "Combine 3→1",
+      "noOwnedGems": "No compatible gems owned.",
+      "elementLabel": "{element} element",
+      "anyElement": "Elementless",
+      "compatibleSlotsLabel": "Compatible: {slots}",
+      "socketSuccessToast": "Socketed {gem} into {equipment}.",
+      "unsocketSuccessToast": "Unsocketed {gem} from {equipment}.",
+      "unsocketDriftToast": "Unsocketed slot {slot} (gem no longer in catalog).",
+      "combineSuccessToast": "Combined 3× {src} into 1× {result}."
+    },
     "bonus": {
       "atk": "+{v} ATK",
       "def": "+{v} DEF",
@@ -588,6 +603,14 @@
       "INSUFFICIENT_PROTECTION": "Not enough protection charms.",
       "INSUFFICIENT_FUNDS": "Not enough linh thach.",
       "REFINE_UNAVAILABLE": "Refining hall is closed.",
+      "GEM_NOT_FOUND": "Gem not found.",
+      "GEM_INCOMPATIBLE_SLOT": "Gem does not fit this equipment slot.",
+      "NO_SOCKET_CAPACITY": "This equipment has no sockets.",
+      "SOCKETS_FULL": "All sockets are filled.",
+      "NO_NEXT_TIER": "Highest tier gem — cannot combine further.",
+      "INSUFFICIENT_QTY": "Not enough gems.",
+      "INVALID_SLOT_INDEX": "Invalid slot index.",
+      "GEM_UNAVAILABLE": "Socketing hall is closed.",
       "UNKNOWN": "Something went wrong, please retry."
     }
   },

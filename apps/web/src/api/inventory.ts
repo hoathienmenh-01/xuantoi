@@ -95,3 +95,82 @@ export async function refineEquipment(
   );
   return unwrap(data).refine;
 }
+
+// ====================================================================
+// Phase 11.4.C — Gem socket / unsocket / combine API
+// ====================================================================
+
+/** Phase 11.4.C — `/character/gem/socket` response envelope. */
+export interface GemSocketResult {
+  equipmentInventoryItemId: string;
+  gemKey: string;
+  slotIndex: number;
+  sockets: string[];
+}
+
+/** Phase 11.4.C — `/character/gem/unsocket` response envelope. */
+export interface GemUnsocketResult {
+  equipmentInventoryItemId: string;
+  gemKey: string;
+  sockets: string[];
+  /**
+   * `false` nếu gem catalog drift — gemKey trong DB không còn trong catalog
+   * → service vẫn cho gỡ nhưng không grant lại để tránh restore item invalid.
+   */
+  gemReturned: boolean;
+}
+
+/**
+ * Phase 11.4.C — `/character/gem/combine` response envelope.
+ * Trùng pattern với `GemCombineResultOut` của `apps/api/.../gem.service.ts`,
+ * KHÔNG nhầm với `GemCombineResult` của `@xuantoi/shared` (catalog type).
+ */
+export interface GemCombineApiResult {
+  srcGemKey: string;
+  srcQtyConsumed: 3;
+  resultGemKey: string;
+  resultQtyGained: 1;
+}
+
+/**
+ * Phase 11.4.C — POST `/character/gem/socket`. Server-authoritative socket
+ * 1× gem vào equipment slot kế tiếp. Caller phải re-fetch `listInventory()`
+ * để cập nhật equipment.sockets[] + gem qty inventory.
+ */
+export async function socketGem(
+  equipmentInventoryItemId: string,
+  gemKey: string,
+): Promise<GemSocketResult> {
+  const { data } = await apiClient.post<Envelope<{ socket: GemSocketResult }>>(
+    '/character/gem/socket',
+    { equipmentInventoryItemId, gemKey },
+  );
+  return unwrap(data).socket;
+}
+
+/**
+ * Phase 11.4.C — POST `/character/gem/unsocket`. Gỡ gem khỏi 1 slot, gem
+ * qty về inventory unequipped row. Caller phải re-fetch `listInventory()`.
+ */
+export async function unsocketGem(
+  equipmentInventoryItemId: string,
+  slotIndex: number,
+): Promise<GemUnsocketResult> {
+  const { data } = await apiClient.post<Envelope<{ unsocket: GemUnsocketResult }>>(
+    '/character/gem/unsocket',
+    { equipmentInventoryItemId, slotIndex },
+  );
+  return unwrap(data).unsocket;
+}
+
+/**
+ * Phase 11.4.C — POST `/character/gem/combine`. Combine 3× gem cùng key
+ * thành 1× gem next-tier (deterministic). THAN tier không combine.
+ */
+export async function combineGemsApi(srcGemKey: string): Promise<GemCombineApiResult> {
+  const { data } = await apiClient.post<Envelope<{ combine: GemCombineApiResult }>>(
+    '/character/gem/combine',
+    { srcGemKey },
+  );
+  return unwrap(data).combine;
+}
