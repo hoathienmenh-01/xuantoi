@@ -4,6 +4,8 @@
 
 Các luật chung (server-authoritative gameplay, ledger, idempotency, không push thẳng main, không merge khi CI đỏ, etc.) đã có ở các doc khác (`GAME_DESIGN_BIBLE.md`, `ECONOMY_MODEL.md`, `AI_HANDOFF_REPORT.md`). File này tập trung vào **delivery / scope rules** — cách chia PR, cách gom việc, cách không tạo micro-PR vô nghĩa.
 
+**Mode**: Fast but Safe Delivery Mode. Tất cả 8 luật bên dưới là một bộ nhất quán. Đừng đọc lẻ một luật rồi áp dụng — phải hiểu cả gói.
+
 ---
 
 ## UI MODULE RULE
@@ -56,6 +58,262 @@ Reviewer (AI hoặc người) phải reject PR nếu:
 
 ---
 
+## DOCS UPDATE RULE
+
+Mọi task/feature/bugfix phải cập nhật `docs/AI_HANDOFF_REPORT.md` **trong cùng PR với code**. Không mở PR riêng chỉ để sync docs.
+
+### Bắt buộc trong cùng PR
+
+- `docs/AI_HANDOFF_REPORT.md` — Executive Summary (main commit, this-PR description) + snapshot mới ở đầu `## Snapshots` + Recent Changes block.
+- Doc chuyên biệt nếu task đụng phạm vi tương ứng:
+  - `docs/CONTENT_PIPELINE.md` — khi thêm content (item / skill / monster / dungeon / mission / boss / quest / event / title / achievement).
+  - `docs/BALANCE_MODEL.md` — khi đổi số (curve / drop weight / stat budget / cost).
+  - `docs/ECONOMY_MODEL.md` — khi đụng currency / item / reward / ledger / idempotency.
+  - `docs/LIVE_OPS_MODEL.md` — khi đụng event / season / feature flag / maintenance.
+  - `docs/QA_CHECKLIST.md` — khi thêm flow QA cần manual smoke trước release.
+  - `docs/RUN_LOCAL.md` — khi đổi local setup, env var, port, infra.
+  - `docs/API.md` — khi thêm/đổi route REST hoặc WS event.
+  - `docs/CHANGELOG.md` — khi PR đáng vào version note (catch-up có thể batch nhiều PR).
+
+### Ngoại lệ hợp lệ (PR docs riêng)
+
+- **Audit lệch main**: handoff report nói "Pending merge" nhưng đã merged, hoặc nói "Done" nhưng chưa vào main → cần audit cleanup.
+- **PR/branch merge nhầm/obsolete**: cần ghi rõ trạng thái thật, không chuyển task khi handoff sai.
+- **Docs conflict lớn** sau rebase nhiều PR cùng đụng `AI_HANDOFF_REPORT.md` → resolve trong PR docs riêng cho rõ.
+- **Workflow rules update** (file này, START_HERE, QA_CHECKLIST, CONTENT_PIPELINE) — không gắn với code task cụ thể.
+- **CHANGELOG catch-up** batch nhiều PR đã merge — không gắn với code.
+
+### Anti-pattern bị reject
+
+- Mở `docs(audit): sync handoff` ngay sau mỗi `feat(...)` PR. Sync handoff phải nằm trong cùng PR feat.
+- Quên handoff trong PR feat rồi báo "sẽ sync sau" → reviewer phải reject hoặc force update trước khi merge.
+
+---
+
+## HANDOFF REPORT STRUCTURE RULE
+
+`docs/AI_HANDOFF_REPORT.md` là snapshot trạng thái thật. AI mới phải đọc `## Current Executive Summary` (30 dòng đầu) là đủ context. **Nếu Executive Summary > 30 dòng, AI tiếp theo bị nghẽn.**
+
+### Executive Summary (~30 dòng tối đa)
+
+Bắt buộc có (theo thứ tự):
+
+1. **Current `main` commit** + tên PR cuối cùng đã merge.
+2. **Current phase** (vd `Phase 11.10 Achievement runtime`, `Phase 11.6 Tribulation runtime`).
+3. **Test baseline** (vd `2973 vitest: 1431 api + 954 shared + 588 web; 16 Playwright golden path; CI 5/5 GREEN`).
+4. **Open PR / pending branch** (1-2 dòng mỗi cái: số PR, scope, blocker nếu có).
+5. **3-5 task tiếp theo** ngắn gọn (link `Recommended Next Roadmap` để chi tiết).
+6. **Critical/High issues** nếu có (P0/P1 bug, regression, blocker production-readiness).
+7. **Blocker** nếu có (vd thiếu credential, infra fail, quyết định thiết kế cần user).
+
+KHÔNG nhồi mọi thứ vào dòng đầu tiên. KHÔNG paste 2000-char block "this PR is in-flight" nhiều layer lồng nhau.
+
+### Recent Changes (5-10 PR gần nhất)
+
+Giữ tối đa 5-10 PR gần nhất. Mỗi entry:
+
+- PR number + link.
+- Branch.
+- Phase / scope.
+- Files chính.
+- CI status.
+- Risk note 1 dòng.
+
+PR cũ hơn 10 (hoặc cũ hơn 1 phase) → đưa xuống `## Recent Changes — Archive` hoặc tóm tắt theo phase trong `## Snapshots`.
+
+### Snapshots (chi tiết theo session)
+
+Vẫn append mới ở đầu. Mỗi snapshot ~5-15 dòng cho 1 PR. Snapshot cho PR > 1 tháng tuổi nên được đẩy xuống `## Snapshots — Archive` (hoặc tóm tắt theo phase) khi handoff bị quá dài.
+
+### Khi nào compact
+
+Compact khi:
+
+- Executive Summary > 30 dòng.
+- Recent Changes > 10 entries.
+- Total file > 4000 dòng.
+
+Compact KHÔNG xóa thông tin quan trọng. Phải:
+
+- Tóm tắt theo phase (vd "Phase 11.10.A→G: AchievementService runtime + 4 catalog achievement BREAKTHROUGH track wired qua CharacterService/TribulationService/CultivationProcessor — PR #320..#339").
+- Giữ link tới PR cụ thể nếu có thông tin riêng (vd DI cycle fix PR #339).
+- Đẩy xuống section Archive cuối file, không xóa.
+
+---
+
+## TEST FAST PATH RULE
+
+Test theo **scope**. Không chạy thừa, nhưng không fake green.
+
+### Docs-only
+
+- Lint markdown nếu repo có `.markdownlint*` config (hiện tại repo KHÔNG có → skip).
+- KHÔNG cần `pnpm test` / `pnpm build` local nếu không đụng code.
+- KHÔNG tắt CI. Dù docs-only, CI `build` + `e2e-smoke` vẫn chạy (vì `ci.yml` không có path filter) — phải chờ xanh trước khi báo Done.
+
+### FE-only (apps/web/)
+
+```bash
+pnpm --filter @xuantoi/web test       # vitest (web 588+ baseline)
+pnpm --filter @xuantoi/web build      # vue-tsc + vite build
+```
+
+E2E nếu đụng flow quan trọng (`/auth`, `/onboarding`, `/home`, `/missions`, `/inventory`, `/dungeon`, `/mail`, `/settings`):
+
+```bash
+pnpm --filter @xuantoi/web e2e        # Playwright smoke (vite preview)
+# E2E_FULL=1 pnpm --filter @xuantoi/web e2e   # full-stack 16 spec, cần api+pg+redis up
+```
+
+### Shared catalog-only (packages/shared/)
+
+```bash
+pnpm --filter @xuantoi/shared test    # vitest (954+ baseline)
+pnpm --filter @xuantoi/shared build   # tsup
+```
+
+### API runtime (apps/api/)
+
+```bash
+pnpm --filter @xuantoi/api test       # vitest --passWithNoTests (1431+ baseline)
+pnpm --filter @xuantoi/api build      # nest build
+```
+
+### Prisma / economy / inventory / reward / ledger / cross-module
+
+```bash
+pnpm typecheck      # cả 3 package
+pnpm lint           # cả 3 package, max-warnings 0
+pnpm test           # cả 3 package
+pnpm build          # cả 3 package
+# + smoke nếu task đụng:
+pnpm smoke:economy
+pnpm smoke:ws
+pnpm smoke:admin
+pnpm smoke:combat
+pnpm smoke:beta
+```
+
+Nếu task đụng schema Prisma: BẮT BUỘC chạy migration test (`pnpm --filter @xuantoi/api prisma migrate dev --name <desc>` local rồi rollback) + verify CI `Apply migrations` step pass.
+
+### Quy tắc chung
+
+- KHÔNG tắt test cũ.
+- KHÔNG skip test cũ.
+- KHÔNG fake green (vd dùng `it.skip`, `expect.assertions(0)` để bypass).
+- CI đỏ thì KHÔNG báo Done; phải debug trong cùng PR cho đến xanh, hoặc revert nếu blocker > 3 lần fix.
+
+---
+
+## BATCHING RULE
+
+Có thể gom task nhỏ độc lập, rủi ro thấp, cùng loại để tiết kiệm CI round + review attention.
+
+### Được gom
+
+- 2-3 FE-only polish task (vd thêm i18n key cho 3 view không liên quan trực tiếp).
+- Một view hoàn chỉnh gồm list + filter + pagination + stats (đây là UI MODULE RULE).
+- Catalog content cùng loại (vd 5 item tier `huyen` Mộc element).
+- Tests cùng module (vd thêm 4 vitest fixtures cho `mission.service.test.ts`).
+- Docs catch-up multiple PR cũ vào CHANGELOG.
+
+### KHÔNG được gom
+
+- Prisma migration + UI lớn + economy thay đổi trong cùng PR.
+- Combat runtime + payment/topup + refactor.
+- Nhiều module không liên quan (vd `feat(combat,topup,mail,gem,refine,gacha): misc fixes` — reject).
+- Bug fix critical + feature mới (bug fix phải merge nhanh, không chờ feature review).
+
+### PR size khuyến nghị
+
+| Mode | Files | LOC diff | Ví dụ |
+|---|---|---|---|
+| **Hotfix** | 1-5 | < 200 | bug fix, security, CI red, regression revert. |
+| **Medium** | 5-20 | 200-1200 | 1 view UI hoàn chỉnh, 1 service runtime + tests, 1 catalog pack. |
+| **Large** | 20-35 | tối đa 1800 | chỉ khi cùng module + có test rõ + có justify trong PR body. |
+
+> Đừng cố ép PR ≥ 200 dòng để được "Medium". Hotfix 30 dòng mà fix CI đỏ là hợp lệ và quý hơn 1 Medium giả tạo.
+
+---
+
+## SAFETY CORRECTION RULE
+
+Đây là layer chống diễn dịch sai các luật bên trên.
+
+### Không ép cứng minimum 100 dòng diff
+
+- Hotfix nhỏ 10-100 dòng vẫn hợp lệ nếu sửa bug / CI / security / regression / docs sai nghiêm trọng.
+- Đừng nhồi diff giả (refactor không cần thiết, comment thừa, đổi tên biến) chỉ để PR "trông to hơn".
+
+### Docs-only KHÔNG cần full test local
+
+- Nhưng KHÔNG được tắt CI. CI sẽ chạy `build` + `e2e-smoke` dù docs-only — phải chờ xanh.
+- Nếu CI fail vì lý do flaky không liên quan docs → restart job, không skip.
+
+### Phạm vi test phải tương xứng risk
+
+- Shared / API / Prisma / economy / inventory / reward → test kỹ hơn (full `pnpm test` + smoke).
+- Docs / FE polish → test fast path là đủ.
+- Đụng ledger / idempotency / authority server → BẮT BUỘC unit test mới + integration test pass + smoke pass + manual verify nếu khả thi.
+
+### Trước khi báo Done
+
+- CI xanh hoặc Pending CI rõ ràng (đã push, chưa polled).
+- Nếu CI chưa xanh, KHÔNG chuyển task khác.
+- Nếu CI đỏ > 3 lần fix → block trên user, không tự ép merge.
+
+### Không bao giờ làm
+
+- KHÔNG push thẳng main.
+- KHÔNG force push vào branch của session khác đang làm việc.
+- KHÔNG xóa data thật, không reset DB production.
+- KHÔNG commit secret / token / `.env` thật.
+- KHÔNG tắt test/CI để qua phase.
+- KHÔNG fake test pass (`expect(true).toBe(true)` hoặc `it.skip` cho test cũ).
+- KHÔNG `--no-verify` skip hook.
+- KHÔNG amend commit cũ trên branch đã share (push commit mới).
+
+---
+
+## SPEED TARGET
+
+Mỗi session cố gắng hoàn thành **một trong các đầu ra** sau:
+
+- 1 Medium Feature PR xanh (5-20 file, 200-1200 dòng), HOẶC
+- 2-3 Hotfix / Test PR xanh (mỗi cái 1-5 file), HOẶC
+- 1 audit cleanup PR + 1 feature PR nếu handoff bị lệch.
+
+Nếu một session **chỉ làm docs sync** mà không có blocker thật (ie. handoff không lệch), coi là chưa đạt mục tiêu tốc độ — phải rút ngắn docs sync và pickup task code/feature/test thực sự.
+
+> Speed target không phải KPI cứng. Là mục tiêu định hướng. Session nhỏ, blocker nhiều, hoặc credit ít → vẫn hợp lệ nếu PR nào cũng xanh và an toàn. Đừng đánh đổi an toàn lấy tốc độ.
+
+---
+
+## NEXT TASK AUTO-SELECTION
+
+Sau khi PR hiện tại CI xanh và an toàn:
+
+1. **KHÔNG hỏi user** nếu còn task an toàn (trừ khi user đã ra lệnh "đợi tôi" — explicit instruction overrides).
+2. Đọc `docs/AI_HANDOFF_REPORT.md` `## Current Executive Summary` + `## 20. Recommended Next Roadmap`.
+3. Chọn task **giá trị cao nhất** + **an toàn** tiếp theo:
+   - CI/test đỏ trên main → ưu tiên cao nhất.
+   - Critical/High bug trong handoff → ưu tiên thứ hai.
+   - Open PR/pending branch cần fix → take-over.
+   - Task phase hiện tại trong roadmap → pick.
+4. **Ưu tiên Medium PR thay vì micro-PR** khi có thể gom (xem BATCHING RULE).
+5. Tiếp tục đến khi:
+   - Hết credit/session/tool timeout.
+   - Không còn task an toàn.
+   - User ra lệnh dừng.
+   - Repo bị blocker hệ thống không tự xử lý được.
+6. Trước khi pick task, **kiểm tra anti-duplicate**:
+   - `git fetch origin main && git log --oneline -10` đối chiếu task định pick.
+   - Nếu commit gần đây có keyword task đó (vd "Phase 11.6.B Tribulation"), STOP và pick task khác.
+   - Lý do: parallel session khác có thể đã merge cùng scope (xem snapshot lịch sử PR #313 closed do duplicate).
+
+---
+
 ## Lịch sử
 
 - **2026-05-03** — Tạo file. Author: Devin AI session 9r-26 take-over. Lý do: trong loop autonomous trước đó, một số UI module bị chia thành 4-5 micro-PR (vd Phase 11.6 Tribulation history split: PR #329 list view, #330 pagination, #332 filter, #333 stats summary, #334 docs sync), tốn CI thời gian + tốn review attention. Luật UI Module Rule giờ là gate.
+- **2026-05-03** — Mở rộng thành **Fast but Safe Delivery Mode**: thêm DOCS UPDATE RULE, HANDOFF REPORT STRUCTURE RULE, TEST FAST PATH RULE, BATCHING RULE, SAFETY CORRECTION RULE, SPEED TARGET, NEXT TASK AUTO-SELECTION. Mục tiêu: AI/dev sau làm nhanh hơn nhưng vẫn đúng (không ép minimum 100 dòng, không fake green, không tắt CI). Author: Devin AI session 9r-26.

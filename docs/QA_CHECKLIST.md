@@ -2,6 +2,39 @@
 
 Manual smoke test checklist trước mỗi release closed beta. Mục tiêu: ~15 phút để 1 QA/operator verify các flow quan trọng nhất còn xanh sau khi deploy.
 
+> **Test scope reference**: trước khi mở PR, AI/dev chọn đúng phạm vi test theo bảng [§A. Test Fast Path Theo Scope](#a-test-fast-path-theo-scope) bên dưới (per [`AI_WORKFLOW_RULES.md`](./AI_WORKFLOW_RULES.md) `## TEST FAST PATH RULE`). KHÔNG chạy thừa, NHƯNG cũng KHÔNG bỏ qua test đáng phải chạy với scope đó.
+
+## A. Test Fast Path Theo Scope
+
+Bảng tham chiếu nhanh script test theo loại PR. Tất cả script đã có trong `package.json` root + per-package.
+
+| Scope PR | Local commands BẮT BUỘC | Smoke commands (nếu liên quan) | E2E |
+|---|---|---|---|
+| **Docs-only** (`docs/**`, `*.md`, không touch source) | none (lint markdown nếu repo có config — hiện tại KHÔNG) | none | none. CI `build` + `e2e-smoke` vẫn chạy (no path filter ở `ci.yml`) — phải chờ xanh. |
+| **Shared catalog-only** (`packages/shared/src/**.ts`, không đụng api/web) | `pnpm --filter @xuantoi/shared test`<br>`pnpm --filter @xuantoi/shared build` | none thường lệ | none |
+| **FE-only polish** (`apps/web/src/**`, i18n, view tweak, không touch backend) | `pnpm --filter @xuantoi/web test`<br>`pnpm --filter @xuantoi/web build` | none | `pnpm --filter @xuantoi/web e2e` (Playwright smoke ~25s) nếu touch flow `/auth`, `/onboarding`, `/home`, `/missions`, `/inventory`, `/dungeon`, `/mail`, `/settings`. Optional: `E2E_FULL=1 pnpm --filter @xuantoi/web e2e` (16 spec full-stack, cần api+pg+redis up — `pnpm infra:up` + `pnpm --filter @xuantoi/api dev`). |
+| **API runtime** (`apps/api/src/modules/**`, service mới, controller mới, không đụng schema) | `pnpm --filter @xuantoi/api test`<br>`pnpm --filter @xuantoi/api build` | `pnpm smoke:economy` / `smoke:ws` / `smoke:admin` / `smoke:combat` nếu module liên quan | none thường lệ. Nếu touch endpoint UI consume → trigger `e2e-full.yml` qua paths filter (auto). |
+| **Cross-module / Prisma migration / economy / inventory / reward / ledger / authority** | `pnpm typecheck`<br>`pnpm lint`<br>`pnpm test`<br>`pnpm build` | `pnpm smoke:economy` (luôn nếu touch ledger/currency/item)<br>`pnpm smoke:ws` (nếu emit event)<br>`pnpm smoke:admin` (nếu touch admin route)<br>`pnpm smoke:combat` (nếu touch CombatService/BossService) | `E2E_FULL=1 pnpm --filter @xuantoi/web e2e` nếu touch endpoint UI consume |
+| **Schema Prisma** (`apps/api/prisma/schema.prisma` + migration) | tất cả ở dòng trên + `pnpm --filter @xuantoi/api prisma migrate dev --name <desc>` local rồi rollback verify | smoke economy/ws nếu liên quan | E2E full-stack nếu schema đụng UI flow |
+
+### Quy tắc
+
+- **KHÔNG tắt test** cũ.
+- **KHÔNG skip test** cũ (`it.skip`, `xdescribe`, `expect.assertions(0)` để bypass đều bị reject).
+- **KHÔNG fake green** (vd `expect(true).toBe(true)` chỉ để PR có "test" mà không cover gì).
+- **KHÔNG tắt CI**. Dù docs-only, CI `build` + `e2e-smoke` vẫn chạy ở mọi PR (workflow `ci.yml` không có path filter).
+- **CI đỏ thì KHÔNG báo Done**. Phải debug trong cùng PR cho đến xanh, hoặc revert nếu blocker > 3 lần fix.
+- **CI 5/5 GREEN** nghĩa là cả 4 check (`build` ×2 từ matrix + `e2e-smoke` ×2 + workflow `e2e-full` nếu trigger) đều pass. Đếm chính xác sau khi push.
+
+### Workflow CI hiện có
+
+| Workflow | File | Trigger | Thời gian |
+|---|---|---|---|
+| `CI` | `.github/workflows/ci.yml` | mọi push + PR (no path filter) | ~10-15 phút (build + typecheck + lint + test + e2e-smoke Playwright) |
+| `e2e-full` | `.github/workflows/e2e-full.yml` | `workflow_dispatch` + PR/push touching `apps/web/`, `apps/api/`, `packages/shared/`, `pnpm-lock.yaml`, `package.json` | ~5-8 phút (Playwright golden 16 spec full-stack) |
+
+Docs-only PR sẽ KHÔNG trigger `e2e-full.yml` (path filter); chỉ trigger `ci.yml`.
+
 ## 0. Prerequisites
 
 - [ ] Dev server api (port 3000) + web (port 5173) chạy, hoặc staging URL sẵn sàng.
