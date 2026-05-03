@@ -531,4 +531,62 @@ test.describe('Golden path — full stack required', () => {
     const pwdInputs = page.locator('input[type="password"]');
     expect(await pwdInputs.count()).toBeGreaterThanOrEqual(3);
   });
+
+  // ---------------------------------------------------------------------------
+  // 16. Spiritual Root (Linh Căn) — Phase 11.3.D.
+  //
+  // Visit `/spiritual-root` cho fresh char → server lazy-roll linh căn (Phase
+  // 11.3.A) + render grade card + element wheel + reroll card. Reroll button
+  // luôn visible nhưng click sẽ fail LINH_CAN_DAN_INSUFFICIENT vì fresh char
+  // không có item. Spec verify static UI render, KHÔNG bấm reroll (không inject
+  // item drop trong E2E để tránh test-fragility).
+  // ---------------------------------------------------------------------------
+  test('spiritual-root — auto-roll display + element wheel + reroll button', async ({ page }) => {
+    await registerAndOnboard(page, { emailPrefix: 'e2e_spiritual_root' });
+    await page.goto('/spiritual-root');
+
+    await expect(page).toHaveURL(/\/spiritual-root/);
+
+    // Grade card render (server lazy roll on GET /character/spiritual-root).
+    await expect(page.locator('[data-testid="spiritual-root-grade-card"]')).toBeVisible({
+      timeout: 10_000,
+    });
+
+    // Grade name visible (1 trong 5 grade: Phàm/Linh/Huyền/Tiên/Thần).
+    const gradeName = await page
+      .locator('[data-testid="spiritual-root-grade-name"]')
+      .textContent();
+    expect(gradeName?.trim()).toMatch(/Phàm|Linh|Huyền|Tiên|Thần/);
+
+    // Element wheel: đủ 5 ô Ngũ Hành.
+    for (const el of ['kim', 'moc', 'thuy', 'hoa', 'tho']) {
+      await expect(
+        page.locator(`[data-testid="spiritual-root-element-${el}"]`),
+      ).toBeVisible();
+    }
+
+    // Đúng 1 element là primary (kim/moc/thuy/hoa/tho).
+    const primaries = page.locator(
+      '[data-testid^="spiritual-root-element-"][data-role="primary"]',
+    );
+    expect(await primaries.count()).toBe(1);
+
+    // Purity hiển thị range hợp lệ 80..100.
+    const purityTxt =
+      (await page.locator('[data-testid="spiritual-root-purity"]').textContent()) ?? '';
+    const purityMatch = purityTxt.match(/(\d+)\s*\/\s*100/);
+    expect(purityMatch).not.toBeNull();
+    const purity = Number(purityMatch?.[1] ?? '0');
+    expect(purity).toBeGreaterThanOrEqual(80);
+    expect(purity).toBeLessThanOrEqual(100);
+
+    // Reroll card + button visible (fresh char, count=0).
+    await expect(page.locator('[data-testid="spiritual-root-reroll-card"]')).toBeVisible();
+    await expect(
+      page.locator('[data-testid="spiritual-root-reroll-button"]'),
+    ).toBeVisible();
+    await expect(page.locator('[data-testid="spiritual-root-reroll-count"]')).toContainText(
+      /0/,
+    );
+  });
 });

@@ -121,6 +121,11 @@ const routes: RouteRecordRaw[] = [
     component: () => import('@/views/CultivationMethodView.vue'),
   },
   {
+    path: '/spiritual-root',
+    name: 'spiritual-root',
+    component: () => import('@/views/SpiritualRootView.vue'),
+  },
+  {
     path: '/achievements',
     name: 'achievements',
     component: () => import('@/views/AchievementView.vue'),

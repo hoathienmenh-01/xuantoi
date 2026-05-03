@@ -15,7 +15,7 @@ import {
 import type { Request } from 'express';
 import { z } from 'zod';
 import { CharacterService } from './character.service';
-import { SpiritualRootService } from './spiritual-root.service';
+import { SpiritualRootError, SpiritualRootService } from './spiritual-root.service';
 import {
   CultivationMethodError,
   CultivationMethodService,
@@ -243,6 +243,39 @@ export class CharacterController {
     if (!character) fail('NO_CHARACTER', HttpStatus.NOT_FOUND);
     const state = await this.spiritualRoot.getState(character.id);
     return { ok: true, data: { spiritualRoot: state } };
+  }
+
+  /**
+   * Phase 11.3.D — Reroll linh căn bằng item `linh_can_dan`. Server-authoritative
+   * consume 1 stack qua `ItemLedger` atomic với roll mới + Character update +
+   * `SpiritualRootRollLog` row source='reroll'. Returns new state.
+   *
+   * Errors: `LINH_CAN_DAN_INSUFFICIENT` 409 (thiếu item), `NOT_INITIALIZED`
+   * 409 (chưa onboard linh căn — phải GET /spiritual-root trước),
+   * `NO_CHARACTER` 404, `SPIRITUAL_ROOT_UNAVAILABLE` 501 (DI thiếu).
+   */
+  @Post('spiritual-root/reroll')
+  @HttpCode(200)
+  async spiritualRootReroll(@Req() req: Request) {
+    const userId = await this.requireUserId(req);
+    if (!this.spiritualRoot) {
+      fail('SPIRITUAL_ROOT_UNAVAILABLE', HttpStatus.NOT_IMPLEMENTED);
+    }
+    const character = await this.chars.findByUser(userId);
+    if (!character) fail('NO_CHARACTER', HttpStatus.NOT_FOUND);
+    try {
+      const state = await this.spiritualRoot.reroll(character.id);
+      return { ok: true, data: { spiritualRoot: state } };
+    } catch (e) {
+      if (e instanceof SpiritualRootError) {
+        if (e.code === 'CHARACTER_NOT_FOUND') fail('NO_CHARACTER', HttpStatus.NOT_FOUND);
+        if (e.code === 'NOT_INITIALIZED') fail('NOT_INITIALIZED', HttpStatus.CONFLICT);
+        if (e.code === 'LINH_CAN_DAN_INSUFFICIENT') {
+          fail('LINH_CAN_DAN_INSUFFICIENT', HttpStatus.CONFLICT);
+        }
+      }
+      throw e;
+    }
   }
 
   /**

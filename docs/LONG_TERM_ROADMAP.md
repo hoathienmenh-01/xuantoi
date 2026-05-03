@@ -266,11 +266,18 @@ Thêm depth cho progression: công pháp, skill upgrade, linh căn, thể chất
 - Curve statBonus: pham +0% / linh +5% / huyen +10% / tien +18% / than +30%.
 - 5 vitest: 3 cultivation processor (than 1.80 vs legacy 1.0; pham 1.0; huyen 1.30) + 2 combat statBonus (than 30% > pham; legacy 1.0 → dmg=99 deterministic).
 
-#### 11.3.D PR: Linh căn UI display + reroll service (Pending)
+#### 11.3.D PR: Linh căn UI display + reroll service **(this PR open — Phase 11.3.D Linh căn UI + reroll, branch `devin/1777830894-phase-11-3-d-spiritual-root-ui-reroll`)**
 
-- UI character profile display Linh căn (icon + grade tooltip + element wheel + secondary elements row).
-- Reroll service: consume `linh_can_dan` (Phase 11.4.A item catalog có rồi) qua `ItemLedger` + cost gating + rate limit + insert log `source='reroll'` + `rootRerollCount++`.
-- E2E Playwright test onboard auto-roll display trong character profile.
+- `packages/shared/src/items.ts` thêm catalog entry `linh_can_dan` (MISC TIEN, stackable, price 5000 LT) — drop tuning (boss tier ≥ THẦN, dungeon hậu kỳ) defer 11.3.D++.
+- `apps/api/src/modules/inventory/inventory.service.ts` mở rộng `ItemLedgerReason` union với `SPIRITUAL_ROOT_REROLL`.
+- `apps/api/src/modules/character/spiritual-root.service.ts` thêm `REROLL_ITEM_KEY='linh_can_dan'` + `SpiritualRootError(code: 'CHARACTER_NOT_FOUND' | 'NOT_INITIALIZED' | 'LINH_CAN_DAN_INSUFFICIENT')` class + `async reroll(characterId, rng?)`. Atomic flow: pre-check inventory aggregate → `prisma.$transaction` re-check + non-equipped row first delete/decrement + `ItemLedger.create({reason:'SPIRITUAL_ROOT_REROLL', qtyDelta:-1, refType:'Character'})` + `Character.update({grade,primaryElement,secondaryElements,rootPurity,rootRerollCount++})` + `SpiritualRootRollLog.create({source:'reroll', previous*, new*})`.
+- `apps/api/src/modules/character/character.controller.ts` thêm `@Post('spiritual-root/reroll') @HttpCode(200)` endpoint mapping error code → HTTP (LINH_CAN_DAN_INSUFFICIENT/NOT_INITIALIZED 409 CONFLICT, NO_CHARACTER 404, SPIRITUAL_ROOT_UNAVAILABLE 501).
+- `apps/web/src/api/spiritualRoot.ts` (NEW) — `getSpiritualRootState/rerollSpiritualRoot` envelope client.
+- `apps/web/src/stores/spiritualRoot.ts` (NEW) — Pinia store với `state/loaded/rerolling/fetchState/reroll/reset` race-protect.
+- `apps/web/src/views/SpiritualRootView.vue` (NEW) — grade card (name + tier + description + cultivationMultiplier + statBonus + secondaryCount + purity), element wheel 5 ô Ngũ Hành (data-role primary/secondary/inactive), secondary list, reroll card + confirm dialog modal.
+- `apps/web/src/router/index.ts` route `/spiritual-root` + `apps/web/src/components/shell/AppShell.vue` nav 根 Linh Căn + i18n keys (en + vi: title/subtitle/loading/empty/rerollCount/field/grade/element/elements/reroll.{title,description,warning,success,button,confirm,errors}).
+- Tests: 7 vitest cho `SpiritualRootService.reroll` (NOT_INITIALIZED/INSUFFICIENT/NOT_FOUND/happy path inventory consume + ledger + log + state, qty=1 row delete edge, 3-reroll lifecycle rerollCount=3, error class instanceof) + 11 controller test + 6 api/spiritualRoot + 8 stores/spiritualRoot + 14 SpiritualRootView + Playwright spec #16 (register fresh char → goto /spiritual-root → verify grade card + element wheel 5 ô + 1 primary role + purity range 80..100 + reroll card visible).
+- Rate limit: defer Phase 11.3.D++ (controller-level @Throttle(...) optional follow-up — không block UI display + reroll core flow).
 
 #### 11.4.A PR: Gem catalog foundation **(this PR — session 9r-10, P11-4 Gem MVP catalog half)**
 

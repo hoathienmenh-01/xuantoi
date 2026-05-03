@@ -403,6 +403,19 @@ export const ITEMS: readonly ItemDef[] = [
     effect: { exp: 2500 },
     price: 1200,
   },
+  {
+    // Phase 11.3.D — Linh căn reroll consumable. Dùng qua endpoint
+    // `POST /character/spiritual-root/reroll` (không tự kích hoạt khi inventory
+    // use). Server-authoritative consume 1 stack qua `ItemLedger` reason
+    // `SPIRITUAL_ROOT_REROLL`. Drop endgame (boss tier ≥ THAN, dungeon hậu kỳ).
+    key: 'linh_can_dan',
+    name: 'Linh Căn Đan',
+    description: 'Tiên đan tái khai linh căn, dùng để gieo lại linh căn ngẫu nhiên một lần.',
+    kind: 'MISC',
+    quality: 'TIEN',
+    stackable: true,
+    price: 5000,
+  },
 
   // ===================================================================
   // Phase 10 PR-1 — Item Pack 1 (+50 item)

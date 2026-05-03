@@ -43,7 +43,9 @@
       "cultivationMethodEquip": "Vận công pháp thất bại",
       "achievementsState": "Không lấy được trạng thái thành tựu",
       "achievementClaim": "Nhận thưởng thành tựu thất bại",
-      "tribulation": "Vượt kiếp thất bại"
+      "tribulation": "Vượt kiếp thất bại",
+      "spiritualRootState": "Không lấy được trạng thái linh căn",
+      "spiritualRootReroll": "Tái khai linh căn thất bại"
     }
   },
   "locale": {
@@ -270,6 +272,7 @@
       "talents": "Ngộ Đạo",
       "alchemy": "Luyện Đan",
       "cultivationMethod": "Công Pháp",
+      "spiritualRoot": "Linh Căn",
       "achievements": "Thành Tựu",
       "tribulation": "Thiên Kiếp"
     },
@@ -1336,6 +1339,70 @@
         "ALREADY_EQUIPPED": "Công pháp này đang được vận.",
         "IN_FLIGHT": "Đang xử lý…",
         "UNKNOWN": "Vận công pháp thất bại, thử lại."
+      }
+    }
+  },
+  "spiritualRoot": {
+    "title": "Linh Căn Đường",
+    "subtitle": "Linh căn quyết định tốc độ tu luyện, hệ chiến đấu và chỉ số bonus. Server tự gieo lúc khai đạo; có thể tái khai bằng Linh Căn Đan.",
+    "loading": "Đang tải linh căn…",
+    "empty": "Chưa có dữ liệu linh căn — hãy hoàn tất khai đạo trước.",
+    "rerollCount": "Đã tái khai: {count} lần",
+    "field": {
+      "tier": "Tầng {tier}",
+      "purity": "Thuần độ",
+      "cultivationMultiplier": "Hệ số tu luyện",
+      "statBonus": "Bonus chỉ số",
+      "secondaryCount": "Số element phụ"
+    },
+    "grade": {
+      "pham": "Phàm",
+      "linh": "Linh",
+      "huyen": "Huyền",
+      "tien": "Tiên",
+      "than": "Thần"
+    },
+    "element": {
+      "kim": "Kim",
+      "moc": "Mộc",
+      "thuy": "Thuỷ",
+      "hoa": "Hoả",
+      "tho": "Thổ",
+      "role": {
+        "primary": "Chính",
+        "secondary": "Phụ",
+        "inactive": "Vô"
+      }
+    },
+    "elements": {
+      "title": "Ngũ Hành Bản Đồ",
+      "legend": "Sáng = chính · mờ = phụ · xám = vô",
+      "secondaryLabel": "Element phụ"
+    },
+    "reroll": {
+      "title": "Tái Khai Linh Căn",
+      "description": "Dùng 1× Linh Căn Đan để gieo lại linh căn ngẫu nhiên (grade + element + thuần độ).",
+      "warning": "Cảnh báo: kết quả ngẫu nhiên — có thể xuống grade. Server xác nhận, không hoàn lại.",
+      "success": "Đã tái khai linh căn.",
+      "button": {
+        "idle": "Tái khai (-1× Linh Căn Đan)",
+        "inFlight": "Đang gieo…"
+      },
+      "confirm": {
+        "title": "Xác nhận tái khai linh căn",
+        "body": "Linh căn hiện tại sẽ bị thay thế hoàn toàn. Hành động này không thể hoàn tác.",
+        "cost": "Tiêu hao: 1× Linh Căn Đan",
+        "cancel": "Huỷ",
+        "accept": "Đồng ý gieo lại"
+      },
+      "errors": {
+        "LINH_CAN_DAN_INSUFFICIENT": "Không đủ Linh Căn Đan.",
+        "NOT_INITIALIZED": "Chưa có linh căn ban đầu. Hãy mở trang để gieo trước.",
+        "NO_CHARACTER": "Chưa tạo nhân vật.",
+        "SPIRITUAL_ROOT_UNAVAILABLE": "Hệ thống linh căn tạm khoá.",
+        "UNAUTHENTICATED": "Phiên đăng nhập đã hết.",
+        "IN_FLIGHT": "Đang xử lý…",
+        "UNKNOWN": "Tái khai thất bại, thử lại."
       }
     }
   },
