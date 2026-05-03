@@ -462,12 +462,14 @@ Thêm depth cho progression: công pháp, skill upgrade, linh căn, thể chất
 - 10 vitest mới cover full effect path + 3 reject path (TALENT_NOT_LEARNED, MP_LOW, TALENT_NOT_ACTIVE, TalentService không inject reject).
 - KHÔNG schema migration, KHÔNG breaking change cho skill flow legacy.
 
-#### 11.7.E PR: Talent active cooldown schema persist (Pending)
+#### 11.7.E PR: Talent active cooldown schema persist — DONE ✅ (this PR / merge target)
 
-- Schema migration `CharacterTalent.cooldownTurnsRemaining Int @default(0)` (hoặc `cooldownExpiresAt DateTime?`).
-- `CombatService.action` (skill flow + active talent flow): decrement-per-turn + reject `TALENT_ON_COOLDOWN` nếu đang cooldown.
-- Set cooldown khi cast active talent thành công (`activeEffect.cooldownTurns` từ catalog).
-- Update test fixture + migration test.
+- Migration `20260512000000_phase_11_7_e_character_talent_cooldown` — `ALTER TABLE "CharacterTalent" ADD COLUMN "cooldownTurnsRemaining" INTEGER NOT NULL DEFAULT 0`. Backfill safe: existing rows pre-cooldown treated như "ready to cast" (default 0).
+- `apps/api/src/modules/character/talent.service.ts` thêm 3 method: `getCooldownRemaining(charId, key) → number` đọc, `setCooldown(tx, charId, key, turns)` set inside tx clamp `Math.max(0, floor(turns))`, `decrementAllCooldowns(tx, charId)` `updateMany WHERE > 0 decrement -1` idempotent.
+- `apps/api/src/modules/combat/combat.service.ts` extend `CombatError` union `TALENT_ON_COOLDOWN`. `actionViaActiveTalent` reject EARLY (trước stamina/HP/MP mutation, ledger row, encounter status update) khi `getCooldownRemaining > 0`. Skill flow `action()` tx: `decrementAllCooldowns(tx, char.id)` sau `currency.applyTx` để talent active KHÔNG cast turn này vẫn tick down. Active talent flow (utility escape + main damage/heal/cc/dot tx): order `decrementAllCooldowns` → `setCooldown(activeEffect.cooldownTurns)` để talent vừa cast nhận đủ cooldown (không bị tick same turn).
+- `apps/api/src/modules/combat/combat.controller.ts` `handleErr` map `TALENT_ON_COOLDOWN` (+ existing `CONTROLLED` / `TALENT_NOT_LEARNED` / `TALENT_NOT_ACTIVE` consolidated) → HTTP 409 CONFLICT (mirror `MP_LOW`).
+- 12 vitest mới: 7 trong `talent.service.test.ts` (lifecycle, isolation, clamp, idempotent), 5 trong `combat.service.test.ts` (TALENT_ON_COOLDOWN reject, cooldown set on cast, skill flow tick, persist cross-encounter, MP_LOW reject không set cooldown).
+- Defer: UI cooldown badge (Phase 11.7.E++ FE), rate limiter `@Throttle` (Phase 11.7.E++), WebSocket realtime emit cooldown state (không cần — client probe khi mở Talent panel).
 
 #### 11.8.A PR: Buff/Debuff catalog foundation — DONE ✅ (this branch / merge target)
 

@@ -218,3 +218,132 @@ describe('TalentService — error class', () => {
     }
   });
 });
+
+describe('TalentService — cooldown (Phase 11.7.E)', () => {
+  it('getCooldownRemaining default 0 sau khi học (chưa cast)', async () => {
+    // talent_kim_quang_tram = active damage cooldown=3, cost=2.
+    // luyen_hu(6) → budget=2 → vừa đủ. learnedAt → cooldown 0.
+    const ctx = await makeUserChar(prisma, { realmKey: 'luyen_hu' });
+    await svc.learnTalent(ctx.characterId, 'talent_kim_quang_tram');
+    const remaining = await svc.getCooldownRemaining(
+      ctx.characterId,
+      'talent_kim_quang_tram',
+    );
+    expect(remaining).toBe(0);
+  });
+
+  it('getCooldownRemaining = 0 cho talent chưa học (defensive)', async () => {
+    const ctx = await makeUserChar(prisma, { realmKey: 'kim_dan' });
+    const remaining = await svc.getCooldownRemaining(
+      ctx.characterId,
+      'talent_kim_quang_tram',
+    );
+    expect(remaining).toBe(0);
+  });
+
+  it('setCooldown lưu đúng cooldownTurns từ activeEffect', async () => {
+    const ctx = await makeUserChar(prisma, { realmKey: 'luyen_hu' });
+    await svc.learnTalent(ctx.characterId, 'talent_kim_quang_tram');
+    await prisma.$transaction(async (tx) => {
+      // talent_kim_quang_tram cooldownTurns=3.
+      await svc.setCooldown(tx, ctx.characterId, 'talent_kim_quang_tram', 3);
+    });
+    expect(
+      await svc.getCooldownRemaining(ctx.characterId, 'talent_kim_quang_tram'),
+    ).toBe(3);
+  });
+
+  it('setCooldown clamp Math.max(0, floor(turns)) — guard âm + float', async () => {
+    const ctx = await makeUserChar(prisma, { realmKey: 'luyen_hu' });
+    await svc.learnTalent(ctx.characterId, 'talent_kim_quang_tram');
+    await prisma.$transaction(async (tx) => {
+      await svc.setCooldown(tx, ctx.characterId, 'talent_kim_quang_tram', -5);
+    });
+    expect(
+      await svc.getCooldownRemaining(ctx.characterId, 'talent_kim_quang_tram'),
+    ).toBe(0);
+    await prisma.$transaction(async (tx) => {
+      await svc.setCooldown(tx, ctx.characterId, 'talent_kim_quang_tram', 4.7);
+    });
+    expect(
+      await svc.getCooldownRemaining(ctx.characterId, 'talent_kim_quang_tram'),
+    ).toBe(4);
+  });
+
+  it('decrementAllCooldowns -1 cho mọi row > 0, idempotent cho row =0', async () => {
+    // 2 active talent costs 2 mỗi cái → cần budget=4 → thien_tien(12).
+    const ctx = await makeUserChar(prisma, { realmKey: 'thien_tien' });
+    await svc.learnTalent(ctx.characterId, 'talent_kim_quang_tram'); // cd=3, cost=2
+    await svc.learnTalent(ctx.characterId, 'talent_thuy_yen_nguc'); // cd=5, cost=2
+    await prisma.$transaction(async (tx) => {
+      await svc.setCooldown(tx, ctx.characterId, 'talent_kim_quang_tram', 3);
+      await svc.setCooldown(tx, ctx.characterId, 'talent_thuy_yen_nguc', 5);
+    });
+
+    await prisma.$transaction(async (tx) => {
+      await svc.decrementAllCooldowns(tx, ctx.characterId);
+    });
+    expect(
+      await svc.getCooldownRemaining(ctx.characterId, 'talent_kim_quang_tram'),
+    ).toBe(2);
+    expect(
+      await svc.getCooldownRemaining(ctx.characterId, 'talent_thuy_yen_nguc'),
+    ).toBe(4);
+
+    // Tick xuống 0 + tick thêm → vẫn 0 (idempotent guard `> 0`).
+    for (let i = 0; i < 5; i++) {
+      await prisma.$transaction((tx) =>
+        svc.decrementAllCooldowns(tx, ctx.characterId),
+      );
+    }
+    expect(
+      await svc.getCooldownRemaining(ctx.characterId, 'talent_kim_quang_tram'),
+    ).toBe(0);
+    expect(
+      await svc.getCooldownRemaining(ctx.characterId, 'talent_thuy_yen_nguc'),
+    ).toBe(0);
+  });
+
+  it('decrementAllCooldowns không ảnh hưởng character khác (cross-character isolation)', async () => {
+    const a = await makeUserChar(prisma, { realmKey: 'luyen_hu' });
+    const b = await makeUserChar(prisma, { realmKey: 'luyen_hu' });
+    await svc.learnTalent(a.characterId, 'talent_kim_quang_tram');
+    await svc.learnTalent(b.characterId, 'talent_kim_quang_tram');
+    await prisma.$transaction(async (tx) => {
+      await svc.setCooldown(tx, a.characterId, 'talent_kim_quang_tram', 3);
+      await svc.setCooldown(tx, b.characterId, 'talent_kim_quang_tram', 3);
+    });
+
+    await prisma.$transaction((tx) =>
+      svc.decrementAllCooldowns(tx, a.characterId),
+    );
+
+    expect(
+      await svc.getCooldownRemaining(a.characterId, 'talent_kim_quang_tram'),
+    ).toBe(2);
+    expect(
+      await svc.getCooldownRemaining(b.characterId, 'talent_kim_quang_tram'),
+    ).toBe(3); // Char B không bị ảnh hưởng.
+  });
+
+  it('cooldown lifecycle full: cast → 3 → 2 → 1 → 0 (sẵn sàng cast lại)', async () => {
+    const ctx = await makeUserChar(prisma, { realmKey: 'luyen_hu' });
+    await svc.learnTalent(ctx.characterId, 'talent_kim_quang_tram');
+    // T0: cast → set 3.
+    await prisma.$transaction((tx) =>
+      svc.setCooldown(tx, ctx.characterId, 'talent_kim_quang_tram', 3),
+    );
+    expect(
+      await svc.getCooldownRemaining(ctx.characterId, 'talent_kim_quang_tram'),
+    ).toBe(3);
+    // T1, T2, T3: tick mỗi lần.
+    for (let i = 0; i < 3; i++) {
+      await prisma.$transaction((tx) =>
+        svc.decrementAllCooldowns(tx, ctx.characterId),
+      );
+    }
+    expect(
+      await svc.getCooldownRemaining(ctx.characterId, 'talent_kim_quang_tram'),
+    ).toBe(0);
+  });
+});

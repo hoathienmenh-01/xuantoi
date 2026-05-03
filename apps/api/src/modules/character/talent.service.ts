@@ -8,6 +8,7 @@ import {
   type PassiveTalentMods,
   type TalentDef,
 } from '@xuantoi/shared';
+import type { Prisma } from '@prisma/client';
 import { PrismaService } from '../../common/prisma.service';
 
 /**
@@ -179,6 +180,61 @@ export class TalentService {
     const learned = await this.listLearned(characterId);
     const keys = learned.map((l) => l.talentKey);
     return composePassiveTalentMods(keys);
+  }
+
+  /**
+   * Phase 11.7.E — đọc số lượt cooldown còn lại của 1 active talent đã học.
+   * Trả về 0 nếu chưa học (caller `actionViaActiveTalent` đã reject
+   * `TALENT_NOT_LEARNED` riêng — method này chỉ phục vụ probe trạng thái
+   * sẵn sàng cast).
+   */
+  async getCooldownRemaining(
+    characterId: string,
+    talentKey: string,
+  ): Promise<number> {
+    const row = await this.prisma.characterTalent.findUnique({
+      where: {
+        characterId_talentKey: { characterId, talentKey },
+      },
+      select: { cooldownTurnsRemaining: true },
+    });
+    return row?.cooldownTurnsRemaining ?? 0;
+  }
+
+  /**
+   * Phase 11.7.E — set cooldown sau khi cast active talent thành công.
+   * Gọi từ INSIDE `prisma.$transaction` đã có sẵn (truyền `tx`). `turns`
+   * là `talent.activeEffect.cooldownTurns` từ catalog (3..10).
+   */
+  async setCooldown(
+    tx: Prisma.TransactionClient,
+    characterId: string,
+    talentKey: string,
+    turns: number,
+  ): Promise<void> {
+    await tx.characterTalent.update({
+      where: {
+        characterId_talentKey: { characterId, talentKey },
+      },
+      data: { cooldownTurnsRemaining: Math.max(0, Math.floor(turns)) },
+    });
+  }
+
+  /**
+   * Phase 11.7.E — decrement -1 cho mọi active talent đang còn cooldown
+   * của character. Gọi sau MỌI action combat (skill flow + active talent
+   * flow) để các talent active không cast turn này vẫn tick down. Idempotent
+   * cho row đã =0 (clamp `Math.max(0, ...)` qua `updateMany` predicate
+   * `cooldownTurnsRemaining > 0`).
+   */
+  async decrementAllCooldowns(
+    tx: Prisma.TransactionClient,
+    characterId: string,
+  ): Promise<void> {
+    await tx.characterTalent.updateMany({
+      where: { characterId, cooldownTurnsRemaining: { gt: 0 } },
+      data: { cooldownTurnsRemaining: { decrement: 1 } },
+    });
   }
 }
 

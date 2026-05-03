@@ -436,12 +436,18 @@ model CharacterBuff {
 ///   - Active talent ("thần thông") execution `useActiveTalent` qua mp
 ///     consume + cooldown turns enforce trong combat tick (Phase 11.7.C).
 model CharacterTalent {
-  id          String    @id @default(cuid())
-  characterId String
-  character   Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  id                      String    @id @default(cuid())
+  characterId             String
+  character               Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
   /// Khoá tham chiếu `TALENTS` trong `packages/shared/src/talents.ts`.
-  talentKey   String
-  learnedAt   DateTime  @default(now())
+  talentKey               String
+  learnedAt               DateTime  @default(now())
+  /// Phase 11.7.E — số lượt cooldown còn lại của active talent. 0 = sẵn sàng
+  /// cast. Sau khi cast thành công trong combat, set =
+  /// `talent.activeEffect.cooldownTurns`. Mỗi action combat tiếp theo
+  /// (skill flow + active talent flow) decrement -1 cho tất cả row > 0.
+  /// Passive talent luôn 0 (không cast nên không tick).
+  cooldownTurnsRemaining  Int       @default(0)
 
   @@unique([characterId, talentKey])
   @@index([characterId, learnedAt])
