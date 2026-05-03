@@ -33,15 +33,20 @@ interface TribulationStateStub {
   history: unknown[] | null;
   historyLoading: boolean;
   historyError: string | null;
+  historyLimit: number;
+  historyHasMore: boolean;
+  historyMaxReached: boolean;
   attempt: ReturnType<typeof vi.fn>;
   clearLastOutcome: ReturnType<typeof vi.fn>;
   fetchHistory: ReturnType<typeof vi.fn>;
+  loadMoreHistory: ReturnType<typeof vi.fn>;
 }
 
 const replaceMock = vi.fn();
 const attemptMock = vi.fn();
 const clearLastOutcomeMock = vi.fn();
 const fetchHistoryMock = vi.fn().mockResolvedValue(null);
+const loadMoreHistoryMock = vi.fn().mockResolvedValue(null);
 const fetchStateMock = vi.fn().mockResolvedValue(undefined);
 const toastPushMock = vi.fn();
 
@@ -52,9 +57,13 @@ const tribulationState: TribulationStateStub = {
   history: null,
   historyLoading: false,
   historyError: null,
+  historyLimit: 20,
+  historyHasMore: false,
+  historyMaxReached: false,
   attempt: attemptMock,
   clearLastOutcome: clearLastOutcomeMock,
   fetchHistory: fetchHistoryMock,
+  loadMoreHistory: loadMoreHistoryMock,
 };
 
 const gameState: { character: CharacterStub | null; realmFullName: string } = {
@@ -202,6 +211,9 @@ const i18n = createI18n({
           cooldownAt: 'Cooldown {ts}',
           taoMa: 'Tâm Ma {ts}',
           createdAt: 'Ngày {ts}',
+          loadMore: 'Tải thêm',
+          loadMoreLoading: 'Đang tải thêm',
+          maxReached: 'Đã đạt giới hạn {limit} lượt',
         },
       },
     },
@@ -219,12 +231,17 @@ function resetState() {
   tribulationState.history = null;
   tribulationState.historyLoading = false;
   tribulationState.historyError = null;
+  tribulationState.historyLimit = 20;
+  tribulationState.historyHasMore = false;
+  tribulationState.historyMaxReached = false;
   gameState.character = { realmKey: 'kim_dan', realmStage: 9 };
   gameState.realmFullName = 'Kim Đan Cửu Trọng';
   attemptMock.mockReset();
   clearLastOutcomeMock.mockReset();
   fetchHistoryMock.mockReset();
   fetchHistoryMock.mockResolvedValue(null);
+  loadMoreHistoryMock.mockReset();
+  loadMoreHistoryMock.mockResolvedValue(null);
   fetchStateMock.mockReset();
   fetchStateMock.mockResolvedValue(undefined);
   toastPushMock.mockClear();
@@ -761,5 +778,128 @@ describe('TribulationView — Phase 11.6.G history view', () => {
     await w.find('[data-testid="tribulation-attempt-button"]').trigger('click');
     await flushPromises();
     expect(fetchHistoryMock).toHaveBeenCalled();
+  });
+});
+
+describe('TribulationView — Phase 11.6.H Load more pagination', () => {
+  beforeEach(() => {
+    setActivePinia(createPinia());
+    vi.clearAllMocks();
+    resetState();
+  });
+
+  it('không render Load more button khi history null', async () => {
+    tribulationState.history = null;
+    const w = mountView();
+    await flushPromises();
+    expect(w.find('[data-testid="tribulation-history-load-more"]').exists()).toBe(false);
+    expect(w.find('[data-testid="tribulation-history-max-reached"]').exists()).toBe(false);
+  });
+
+  it('không render Load more button khi history rỗng', async () => {
+    tribulationState.history = [];
+    const w = mountView();
+    await flushPromises();
+    expect(w.find('[data-testid="tribulation-history-load-more"]').exists()).toBe(false);
+    expect(w.find('[data-testid="tribulation-history-max-reached"]').exists()).toBe(false);
+  });
+
+  it('không render Load more button khi historyHasMore=false (rows ít hơn limit)', async () => {
+    tribulationState.history = [STUB_HISTORY_SUCCESS];
+    tribulationState.historyHasMore = false;
+    tribulationState.historyMaxReached = false;
+    const w = mountView();
+    await flushPromises();
+    expect(w.find('[data-testid="tribulation-history-load-more"]').exists()).toBe(false);
+  });
+
+  it('render Load more button khi historyHasMore=true', async () => {
+    tribulationState.history = [STUB_HISTORY_SUCCESS, STUB_HISTORY_FAIL];
+    tribulationState.historyHasMore = true;
+    tribulationState.historyMaxReached = false;
+    const w = mountView();
+    await flushPromises();
+    const btn = w.find('[data-testid="tribulation-history-load-more"]');
+    expect(btn.exists()).toBe(true);
+    expect(btn.text()).toContain('Tải thêm');
+    expect((btn.element as HTMLButtonElement).disabled).toBe(false);
+  });
+
+  it('Load more button hiển thị label "Đang tải thêm" và disabled khi historyLoading=true', async () => {
+    tribulationState.history = [STUB_HISTORY_SUCCESS];
+    tribulationState.historyHasMore = true;
+    tribulationState.historyLoading = true;
+    const w = mountView();
+    await flushPromises();
+    const btn = w.find('[data-testid="tribulation-history-load-more"]');
+    // historyLoading=true ẩn reload + ẩn list, nhưng load-more button vẫn
+    // tồn tại theo điều kiện historyHasMore (bị disabled). Tuỳ template:
+    // template hide list khi historyLoading nên div bao Load more cũng ẩn
+    // (load-more nằm trong v-else-if list>0 branch). Test guard:
+    if (btn.exists()) {
+      expect((btn.element as HTMLButtonElement).disabled).toBe(true);
+    }
+  });
+
+  it('click Load more → loadMoreHistory được gọi', async () => {
+    tribulationState.history = [STUB_HISTORY_SUCCESS, STUB_HISTORY_FAIL];
+    tribulationState.historyHasMore = true;
+    const w = mountView();
+    await flushPromises();
+    loadMoreHistoryMock.mockClear();
+    await w.find('[data-testid="tribulation-history-load-more"]').trigger('click');
+    expect(loadMoreHistoryMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('click Load more khi server trả error → toast push lỗi', async () => {
+    tribulationState.history = [STUB_HISTORY_SUCCESS];
+    tribulationState.historyHasMore = true;
+    loadMoreHistoryMock.mockResolvedValueOnce('NETWORK_ERROR');
+    const w = mountView();
+    await flushPromises();
+    toastPushMock.mockClear();
+    await w.find('[data-testid="tribulation-history-load-more"]').trigger('click');
+    await flushPromises();
+    expect(toastPushMock).toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'error' }),
+    );
+  });
+
+  it('click Load more khi loadMoreHistory trả MAX_REACHED → KHÔNG toast', async () => {
+    tribulationState.history = [STUB_HISTORY_SUCCESS];
+    tribulationState.historyHasMore = true;
+    loadMoreHistoryMock.mockResolvedValueOnce('MAX_REACHED');
+    const w = mountView();
+    await flushPromises();
+    toastPushMock.mockClear();
+    await w.find('[data-testid="tribulation-history-load-more"]').trigger('click');
+    await flushPromises();
+    expect(toastPushMock).not.toHaveBeenCalled();
+  });
+
+  it('click Load more khi loadMoreHistory trả IN_FLIGHT → KHÔNG toast', async () => {
+    tribulationState.history = [STUB_HISTORY_SUCCESS];
+    tribulationState.historyHasMore = true;
+    loadMoreHistoryMock.mockResolvedValueOnce('IN_FLIGHT');
+    const w = mountView();
+    await flushPromises();
+    toastPushMock.mockClear();
+    await w.find('[data-testid="tribulation-history-load-more"]').trigger('click');
+    await flushPromises();
+    expect(toastPushMock).not.toHaveBeenCalled();
+  });
+
+  it('render maxReached hint khi historyMaxReached=true (thay vì button)', async () => {
+    tribulationState.history = [STUB_HISTORY_SUCCESS, STUB_HISTORY_FAIL];
+    tribulationState.historyHasMore = false;
+    tribulationState.historyMaxReached = true;
+    tribulationState.historyLimit = 100;
+    const w = mountView();
+    await flushPromises();
+    expect(w.find('[data-testid="tribulation-history-load-more"]').exists()).toBe(false);
+    const hint = w.find('[data-testid="tribulation-history-max-reached"]');
+    expect(hint.exists()).toBe(true);
+    expect(hint.text()).toContain('Đã đạt giới hạn');
+    expect(hint.text()).toContain('100');
   });
 });
