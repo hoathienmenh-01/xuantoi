@@ -152,6 +152,15 @@ export interface TalentDef {
  * Tương khắc chain: kim khắc moc, moc khắc tho, tho khắc thuy, thuy khắc hoa,
  * hoa khắc kim. Symmetric structure với `talent_hoa_tam_dao`. Cùng
  * `realmRequirement: 'kim_dan'` + `talentPointCost: 2` + `value: 1.15`.)
+ * (Phase 11.X.AN: thêm `talent_kim_linh_quy` (kim), `talent_thuy_linh_quy`
+ * (thuy), `talent_hoa_linh_quy` (hoa), `talent_tho_linh_quy` (tho) +5 HP regen
+ * flat — producers thứ 2/3/4/5 cho `composePassiveTalentMods.hpRegenFlat`.
+ * **Hoàn tất 5-element hpRegen coverage roadmap** (moc ✅ qua
+ * `talent_moc_linh_quy` từ trước, + 4 element còn lại). Symmetric structure
+ * với `talent_moc_linh_quy`. Cùng `realmRequirement: 'truc_co'` early-game +
+ * `talentPointCost: 1` + `kind: 'regen'` + `statTarget: 'hpMax'` + `value: 5`.
+ * 5-element hpRegen ceiling = 5 × 5 = 25 flat HP regen mỗi tick combat.
+ * Additive (không multiplicative) khác với atk/def/hpMax/spirit ceiling 1.61051.)
  *
  * Stable order: passive trước → active sau.
  */
@@ -242,6 +251,22 @@ export const TALENTS: readonly TalentDef[] = [
     activeEffect: null,
   },
   {
+    key: 'talent_kim_linh_quy',
+    name: 'Kim Linh Quy',
+    description: 'Kim khí ngưng tụ tự sửa nhục thân, +5 HP regen mỗi tick combat.',
+    type: 'passive',
+    element: 'kim',
+    realmRequirement: 'truc_co',
+    talentPointCost: 1,
+    passiveEffect: {
+      kind: 'regen',
+      value: 5,
+      statTarget: 'hpMax',
+      elementTarget: null,
+    },
+    activeEffect: null,
+  },
+  {
     key: 'talent_thuy_long_an',
     name: 'Thuỷ Long Ấn',
     description: 'Thân thể như thuỷ long, +10% HP tối đa.',
@@ -321,6 +346,22 @@ export const TALENTS: readonly TalentDef[] = [
       value: 1.15,
       statTarget: null,
       elementTarget: 'hoa',
+    },
+    activeEffect: null,
+  },
+  {
+    key: 'talent_thuy_linh_quy',
+    name: 'Thuỷ Linh Quy',
+    description: 'Thuỷ khí cuồn cuộn tưới mát kinh mạch, +5 HP regen mỗi tick combat.',
+    type: 'passive',
+    element: 'thuy',
+    realmRequirement: 'truc_co',
+    talentPointCost: 1,
+    passiveEffect: {
+      kind: 'regen',
+      value: 5,
+      statTarget: 'hpMax',
+      elementTarget: null,
     },
     activeEffect: null,
   },
@@ -510,6 +551,22 @@ export const TALENTS: readonly TalentDef[] = [
     activeEffect: null,
   },
   {
+    key: 'talent_hoa_linh_quy',
+    name: 'Hoả Linh Quy',
+    description: 'Hoả khí phượng nguyên ấm dưỡng nhục thân, +5 HP regen mỗi tick combat.',
+    type: 'passive',
+    element: 'hoa',
+    realmRequirement: 'truc_co',
+    talentPointCost: 1,
+    passiveEffect: {
+      kind: 'regen',
+      value: 5,
+      statTarget: 'hpMax',
+      elementTarget: null,
+    },
+    activeEffect: null,
+  },
+  {
     key: 'talent_tho_son_tuong',
     name: 'Thổ Sơn Tướng',
     description: 'Thân giáp như thổ sơn, +10% phòng ngự.',
@@ -590,6 +647,22 @@ export const TALENTS: readonly TalentDef[] = [
       value: 1.15,
       statTarget: null,
       elementTarget: 'thuy',
+    },
+    activeEffect: null,
+  },
+  {
+    key: 'talent_tho_linh_quy',
+    name: 'Thổ Linh Quy',
+    description: 'Thổ khí trầm hậu vun đắp khí huyết, +5 HP regen mỗi tick combat.',
+    type: 'passive',
+    element: 'tho',
+    realmRequirement: 'truc_co',
+    talentPointCost: 1,
+    passiveEffect: {
+      kind: 'regen',
+      value: 5,
+      statTarget: 'hpMax',
+      elementTarget: null,
     },
     activeEffect: null,
   },
