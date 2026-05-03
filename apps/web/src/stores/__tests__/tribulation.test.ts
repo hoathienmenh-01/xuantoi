@@ -447,3 +447,121 @@ describe('useTribulationStore — Phase 11.6.H pagination', () => {
     expect(s.historyLimit).toBe(20);
   });
 });
+
+/** Phase 11.6.J — client-side history filter tests. */
+describe('useTribulationStore — Phase 11.6.J filter', () => {
+  beforeEach(() => {
+    setActivePinia(createPinia());
+    vi.clearAllMocks();
+  });
+
+  function makeRow(
+    id: string,
+    success: boolean,
+  ): api.TribulationAttemptLogView {
+    return { ...STUB_LOG_ROW, id, success };
+  }
+
+  it("initial historyFilter = 'all'", () => {
+    const s = useTribulationStore();
+    expect(s.historyFilter).toBe('all');
+  });
+
+  it('filteredHistory=null khi history null (preserve null sentinel)', () => {
+    const s = useTribulationStore();
+    expect(s.filteredHistory).toBeNull();
+  });
+
+  it("filteredHistory='all' trả full rows (không filter)", () => {
+    const s = useTribulationStore();
+    s.history = [
+      makeRow('a', true),
+      makeRow('b', false),
+      makeRow('c', true),
+    ];
+    expect(s.historyFilter).toBe('all');
+    expect(s.filteredHistory).toHaveLength(3);
+  });
+
+  it("filteredHistory='success' chỉ trả rows success=true", () => {
+    const s = useTribulationStore();
+    s.history = [
+      makeRow('a', true),
+      makeRow('b', false),
+      makeRow('c', true),
+      makeRow('d', false),
+    ];
+    s.setHistoryFilter('success');
+    expect(s.filteredHistory).toHaveLength(2);
+    expect(s.filteredHistory?.every((r) => r.success === true)).toBe(true);
+  });
+
+  it("filteredHistory='fail' chỉ trả rows success=false", () => {
+    const s = useTribulationStore();
+    s.history = [
+      makeRow('a', true),
+      makeRow('b', false),
+      makeRow('c', true),
+      makeRow('d', false),
+    ];
+    s.setHistoryFilter('fail');
+    expect(s.filteredHistory).toHaveLength(2);
+    expect(s.filteredHistory?.every((r) => r.success === false)).toBe(true);
+  });
+
+  it("filteredHistory='success' khi 0 rows match → empty array (không null)", () => {
+    const s = useTribulationStore();
+    s.history = [makeRow('a', false), makeRow('b', false)];
+    s.setHistoryFilter('success');
+    expect(s.filteredHistory).toEqual([]);
+  });
+
+  it("setHistoryFilter ignore giá trị invalid (giữ nguyên filter cũ)", () => {
+    const s = useTribulationStore();
+    s.setHistoryFilter('success');
+    expect(s.historyFilter).toBe('success');
+    s.setHistoryFilter('garbage' as 'all');
+    expect(s.historyFilter).toBe('success');
+  });
+
+  it('setHistoryFilter pure local (không trigger fetchAttemptLog)', () => {
+    const s = useTribulationStore();
+    s.setHistoryFilter('success');
+    s.setHistoryFilter('fail');
+    s.setHistoryFilter('all');
+    expect(mockedFetchLog).not.toHaveBeenCalled();
+  });
+
+  it('reset: historyFilter về "all"', () => {
+    const s = useTribulationStore();
+    s.setHistoryFilter('fail');
+    s.history = [makeRow('a', false)];
+    s.reset();
+    expect(s.historyFilter).toBe('all');
+  });
+
+  it("filteredHistory reactive khi historyFilter thay đổi", () => {
+    const s = useTribulationStore();
+    s.history = [
+      makeRow('a', true),
+      makeRow('b', false),
+      makeRow('c', true),
+    ];
+    expect(s.filteredHistory).toHaveLength(3);
+    s.setHistoryFilter('success');
+    expect(s.filteredHistory).toHaveLength(2);
+    s.setHistoryFilter('fail');
+    expect(s.filteredHistory).toHaveLength(1);
+    s.setHistoryFilter('all');
+    expect(s.filteredHistory).toHaveLength(3);
+  });
+
+  it("filteredHistory reactive khi history thay đổi (mới fetch)", async () => {
+    const s = useTribulationStore();
+    s.history = [];
+    s.setHistoryFilter('success');
+    expect(s.filteredHistory).toEqual([]);
+    s.history = [makeRow('a', true), makeRow('b', false), makeRow('c', true)];
+    expect(s.filteredHistory).toHaveLength(2);
+  });
+});

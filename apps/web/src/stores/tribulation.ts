@@ -3,6 +3,14 @@ import { defineStore } from 'pinia';
 import * as api from '@/api/tribulation';
 
 /**
+ * Phase 11.6.J — client-side filter selection cho history view.
+ *   - `'all'`: không filter (default).
+ *   - `'success'`: chỉ rows `success === true`.
+ *   - `'fail'`: chỉ rows `success === false`.
+ */
+export type HistoryFilter = 'all' | 'success' | 'fail';
+
+/**
  * Phase 11.6.D — server-authoritative Tribulation (Thiên Kiếp) store.
  *
  * State:
@@ -78,6 +86,43 @@ export const useTribulationStore = defineStore('tribulation', () => {
     if (historyLimit.value < api.TRIBULATION_LOG_MAX_LIMIT) return false;
     return rows.length >= api.TRIBULATION_LOG_MAX_LIMIT;
   });
+
+  /**
+   * Phase 11.6.J — client-side filter cho history list. Pure presentation
+   * filter; không đụng API/server query. Default `'all'` = không filter.
+   * Filter chỉ áp dụng lên rows đã load — load-more logic (`historyHasMore`)
+   * vẫn tính trên full list (server-side). Nếu filter loại hết rows hiển
+   * thị, view show "no match" hint riêng.
+   */
+  const historyFilter = ref<HistoryFilter>('all');
+
+  /**
+   * Phase 11.6.J — `history` đã filter theo `historyFilter`. `null` =
+   * chưa fetch (preserve null); `[]` = đã fetch nhưng filter loại hết.
+   * Caller dùng cái này thay cho `history` trong `<v-for>` để render.
+   */
+  const filteredHistory = computed<api.TribulationAttemptLogView[] | null>(
+    () => {
+      const rows = history.value;
+      if (!rows) return null;
+      const filter = historyFilter.value;
+      if (filter === 'all') return rows;
+      if (filter === 'success') return rows.filter((r) => r.success);
+      if (filter === 'fail') return rows.filter((r) => !r.success);
+      return rows;
+    },
+  );
+
+  /**
+   * Phase 11.6.J — set filter selection. Validate input để tránh assign
+   * giá trị vô nghĩa. Không trigger API — pure local UI state.
+   */
+  function setHistoryFilter(filter: HistoryFilter): void {
+    if (filter !== 'all' && filter !== 'success' && filter !== 'fail') {
+      return;
+    }
+    historyFilter.value = filter;
+  }
 
   function clearLastOutcome(): void {
     lastOutcome.value = null;
@@ -171,6 +216,7 @@ export const useTribulationStore = defineStore('tribulation', () => {
     historyLoading.value = false;
     historyError.value = null;
     historyLimit.value = api.TRIBULATION_LOG_DEFAULT_LIMIT;
+    historyFilter.value = 'all';
   }
 
   return {
@@ -183,10 +229,13 @@ export const useTribulationStore = defineStore('tribulation', () => {
     historyLimit,
     historyHasMore,
     historyMaxReached,
+    historyFilter,
+    filteredHistory,
     clearLastOutcome,
     attempt,
     fetchHistory,
     loadMoreHistory,
+    setHistoryFilter,
     reset,
   };
 });

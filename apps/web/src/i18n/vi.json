@@ -1527,7 +1527,14 @@
       "createdAt": "Ngày: {ts}",
       "loadMore": "Tải thêm",
       "loadMoreLoading": "Đang tải thêm…",
-      "maxReached": "Đã đạt giới hạn {limit} lượt gần nhất."
+      "maxReached": "Đã đạt giới hạn {limit} lượt gần nhất.",
+      "filter": {
+        "label": "Lọc:",
+        "all": "Tất cả",
+        "success": "Thành công",
+        "fail": "Thất bại",
+        "emptyAfterFilter": "Không có lượt nào khớp bộ lọc."
+      }
     }
   }
 }

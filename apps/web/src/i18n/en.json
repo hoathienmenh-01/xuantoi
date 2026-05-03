@@ -1527,7 +1527,14 @@
       "createdAt": "Date: {ts}",
       "loadMore": "Load more",
       "loadMoreLoading": "Loading more…",
-      "maxReached": "Reached the most recent {limit} attempts."
+      "maxReached": "Reached the most recent {limit} attempts.",
+      "filter": {
+        "label": "Filter:",
+        "all": "All",
+        "success": "Success",
+        "fail": "Fail",
+        "emptyAfterFilter": "No attempts match the filter."
+      }
     }
   }
 }

@@ -26,20 +26,28 @@ interface CharacterStub {
   taoMaUntil?: string | null;
 }
 
+type HistoryFilterStub = 'all' | 'success' | 'fail';
+type HistoryRowStub = { id: string; success: boolean };
+
 interface TribulationStateStub {
   lastOutcome: unknown;
   inFlight: boolean;
   lastError: string | null;
-  history: unknown[] | null;
+  history: HistoryRowStub[] | null;
   historyLoading: boolean;
   historyError: string | null;
   historyLimit: number;
   historyHasMore: boolean;
   historyMaxReached: boolean;
+  historyFilter: HistoryFilterStub;
+  // Derived getter — mirror Pinia computed `filteredHistory` để existing
+  // Phase 11.6.G tests vẫn pass mà không cần set 2 field.
+  readonly filteredHistory: HistoryRowStub[] | null;
   attempt: ReturnType<typeof vi.fn>;
   clearLastOutcome: ReturnType<typeof vi.fn>;
   fetchHistory: ReturnType<typeof vi.fn>;
   loadMoreHistory: ReturnType<typeof vi.fn>;
+  setHistoryFilter: ReturnType<typeof vi.fn>;
 }
 
 const replaceMock = vi.fn();
@@ -47,6 +55,11 @@ const attemptMock = vi.fn();
 const clearLastOutcomeMock = vi.fn();
 const fetchHistoryMock = vi.fn().mockResolvedValue(null);
 const loadMoreHistoryMock = vi.fn().mockResolvedValue(null);
+const setHistoryFilterMock = vi.fn((filter: HistoryFilterStub) => {
+  if (filter === 'all' || filter === 'success' || filter === 'fail') {
+    tribulationState.historyFilter = filter;
+  }
+});
 const fetchStateMock = vi.fn().mockResolvedValue(undefined);
 const toastPushMock = vi.fn();
 
@@ -60,10 +73,19 @@ const tribulationState: TribulationStateStub = {
   historyLimit: 20,
   historyHasMore: false,
   historyMaxReached: false,
+  historyFilter: 'all',
+  get filteredHistory(): HistoryRowStub[] | null {
+    const rows = this.history;
+    if (!rows) return null;
+    if (this.historyFilter === 'success') return rows.filter((r) => r.success);
+    if (this.historyFilter === 'fail') return rows.filter((r) => !r.success);
+    return rows;
+  },
   attempt: attemptMock,
   clearLastOutcome: clearLastOutcomeMock,
   fetchHistory: fetchHistoryMock,
   loadMoreHistory: loadMoreHistoryMock,
+  setHistoryFilter: setHistoryFilterMock,
 };
 
 const gameState: { character: CharacterStub | null; realmFullName: string } = {
@@ -214,6 +236,13 @@ const i18n = createI18n({
           loadMore: 'Tải thêm',
           loadMoreLoading: 'Đang tải thêm',
           maxReached: 'Đã đạt giới hạn {limit} lượt',
+          filter: {
+            label: 'Lọc:',
+            all: 'Tất cả',
+            success: 'Thành công',
+            fail: 'Thất bại',
+            emptyAfterFilter: 'Không có lượt nào khớp',
+          },
         },
       },
     },
@@ -234,6 +263,8 @@ function resetState() {
   tribulationState.historyLimit = 20;
   tribulationState.historyHasMore = false;
   tribulationState.historyMaxReached = false;
+  tribulationState.historyFilter = 'all';
+  // filteredHistory is a getter — derived from history+historyFilter; no reset.
   gameState.character = { realmKey: 'kim_dan', realmStage: 9 };
   gameState.realmFullName = 'Kim Đan Cửu Trọng';
   attemptMock.mockReset();
@@ -242,6 +273,12 @@ function resetState() {
   fetchHistoryMock.mockResolvedValue(null);
   loadMoreHistoryMock.mockReset();
   loadMoreHistoryMock.mockResolvedValue(null);
+  setHistoryFilterMock.mockReset();
+  setHistoryFilterMock.mockImplementation((filter: HistoryFilterStub) => {
+    if (filter === 'all' || filter === 'success' || filter === 'fail') {
+      tribulationState.historyFilter = filter;
+    }
+  });
   fetchStateMock.mockReset();
   fetchStateMock.mockResolvedValue(undefined);
   toastPushMock.mockClear();
@@ -901,5 +938,155 @@ describe('TribulationView — Phase 11.6.H Load more pagination', () => {
     expect(hint.exists()).toBe(true);
     expect(hint.text()).toContain('Đã đạt giới hạn');
     expect(hint.text()).toContain('100');
+  });
+});
+
+/** Phase 11.6.J — client-side history filter UI. */
+describe('TribulationView — Phase 11.6.J history filter', () => {
+  beforeEach(() => {
+    resetState();
+  });
+
+  it('không render filter khi history null (chưa fetch)', async () => {
+    tribulationState.history = null;
+    const w = mountView();
+    await flushPromises();
+    expect(w.find('[data-testid="tribulation-history-filter"]').exists()).toBe(
+      false,
+    );
+  });
+
+  it('không render filter khi history empty array', async () => {
+    tribulationState.history = [];
+    const w = mountView();
+    await flushPromises();
+    expect(w.find('[data-testid="tribulation-history-filter"]').exists()).toBe(
+      false,
+    );
+  });
+
+  it('không render filter khi historyLoading=true', async () => {
+    tribulationState.history = [STUB_HISTORY_SUCCESS];
+    tribulationState.historyLoading = true;
+    const w = mountView();
+    await flushPromises();
+    expect(w.find('[data-testid="tribulation-history-filter"]').exists()).toBe(
+      false,
+    );
+  });
+
+  it('render filter với 3 button (all/success/fail) khi có rows', async () => {
+    tribulationState.history = [STUB_HISTORY_SUCCESS, STUB_HISTORY_FAIL];
+    const w = mountView();
+    await flushPromises();
+    expect(w.find('[data-testid="tribulation-history-filter"]').exists()).toBe(
+      true,
+    );
+    expect(
+      w.find('[data-testid="tribulation-history-filter-all"]').exists(),
+    ).toBe(true);
+    expect(
+      w.find('[data-testid="tribulation-history-filter-success"]').exists(),
+    ).toBe(true);
+    expect(
+      w.find('[data-testid="tribulation-history-filter-fail"]').exists(),
+    ).toBe(true);
+  });
+
+  it('default filter là "all" + button "all" có aria-pressed=true', async () => {
+    tribulationState.history = [STUB_HISTORY_SUCCESS, STUB_HISTORY_FAIL];
+    const w = mountView();
+    await flushPromises();
+    const allBtn = w.find('[data-testid="tribulation-history-filter-all"]');
+    expect(allBtn.attributes('aria-pressed')).toBe('true');
+  });
+
+  it("click 'success' → setHistoryFilter('success') được gọi", async () => {
+    tribulationState.history = [STUB_HISTORY_SUCCESS, STUB_HISTORY_FAIL];
+    const w = mountView();
+    await flushPromises();
+    setHistoryFilterMock.mockClear();
+    await w
+      .find('[data-testid="tribulation-history-filter-success"]')
+      .trigger('click');
+    await flushPromises();
+    expect(setHistoryFilterMock).toHaveBeenCalledTimes(1);
+    expect(setHistoryFilterMock).toHaveBeenCalledWith('success');
+  });
+
+  it("click 'fail' → setHistoryFilter('fail') được gọi", async () => {
+    tribulationState.history = [STUB_HISTORY_SUCCESS, STUB_HISTORY_FAIL];
+    const w = mountView();
+    await flushPromises();
+    setHistoryFilterMock.mockClear();
+    await w
+      .find('[data-testid="tribulation-history-filter-fail"]')
+      .trigger('click');
+    await flushPromises();
+    expect(setHistoryFilterMock).toHaveBeenCalledWith('fail');
+  });
+
+  it("filter='success' → list chỉ render rows success", async () => {
+    tribulationState.history = [STUB_HISTORY_SUCCESS, STUB_HISTORY_FAIL];
+    tribulationState.historyFilter = 'success';
+    const w = mountView();
+    await flushPromises();
+    const list = w.find('[data-testid="tribulation-history-list"]');
+    expect(list.exists()).toBe(true);
+    expect(
+      w.findAll('[data-testid^="tribulation-history-row-"]'),
+    ).toHaveLength(1);
+    expect(
+      w
+        .find('[data-testid="tribulation-history-filter-empty"]')
+        .exists(),
+    ).toBe(false);
+  });
+
+  it("filter='fail' → list chỉ render rows fail", async () => {
+    tribulationState.history = [STUB_HISTORY_SUCCESS, STUB_HISTORY_FAIL];
+    tribulationState.historyFilter = 'fail';
+    const w = mountView();
+    await flushPromises();
+    expect(
+      w.findAll('[data-testid^="tribulation-history-row-"]'),
+    ).toHaveLength(1);
+  });
+
+  it("filter='success' khi 0 rows match → render empty hint thay vì list", async () => {
+    tribulationState.history = [STUB_HISTORY_FAIL];
+    tribulationState.historyFilter = 'success';
+    const w = mountView();
+    await flushPromises();
+    expect(
+      w.find('[data-testid="tribulation-history-list"]').exists(),
+    ).toBe(false);
+    const emptyHint = w.find(
+      '[data-testid="tribulation-history-filter-empty"]',
+    );
+    expect(emptyHint.exists()).toBe(true);
+    expect(emptyHint.text()).toContain('Không có lượt nào khớp');
+  });
+
+  it('aria-pressed cập nhật theo historyFilter active', async () => {
+    tribulationState.history = [STUB_HISTORY_SUCCESS, STUB_HISTORY_FAIL];
+    tribulationState.historyFilter = 'fail';
+    const w = mountView();
+    await flushPromises();
+    expect(
+      w
+        .find('[data-testid="tribulation-history-filter-all"]')
+        .attributes('aria-pressed'),
+    ).toBe('false');
+    expect(
+      w
+        .find('[data-testid="tribulation-history-filter-success"]')
+        .attributes('aria-pressed'),
+    ).toBe('false');
+    expect(
+      w
+        .find('[data-testid="tribulation-history-filter-fail"]')
+        .attributes('aria-pressed'),
+    ).toBe('true');
   });
 });

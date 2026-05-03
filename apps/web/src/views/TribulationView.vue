@@ -276,6 +276,14 @@ async function onLoadMore(): Promise<void> {
   }
 }
 
+/**
+ * Phase 11.6.J — set client-side history filter. Pure presentation, không
+ * trigger API call. Store đã validate input.
+ */
+function onHistoryFilter(filter: 'all' | 'success' | 'fail'): void {
+  tribulation.setHistoryFilter(filter);
+}
+
 const showOutcome = ref<boolean>(false);
 function dismissOutcome(): void {
   showOutcome.value = false;
@@ -637,110 +645,149 @@ onUnmounted(() => {
           {{ t('tribulation.history.empty') }}
         </div>
 
-        <ul
-          v-else-if="tribulation.history && tribulation.history.length > 0"
-          class="space-y-2"
-          data-testid="tribulation-history-list"
-        >
-          <li
-            v-for="row in tribulation.history"
-            :key="row.id"
-            :class="[
-              'rounded p-3 border text-xs space-y-1',
-              row.success
-                ? 'bg-emerald-900/20 border-emerald-500/30 text-emerald-100'
-                : 'bg-rose-900/20 border-rose-500/30 text-rose-100',
-            ]"
-            :data-testid="`tribulation-history-row-${row.id}`"
+        <!--
+          Phase 11.6.J — filter segmented control + filtered list.
+          Render khi có rows (sau khi loading/error/empty resolved trên).
+        -->
+        <template v-else-if="tribulation.history && tribulation.history.length > 0">
+          <div
+            class="flex items-center gap-2 flex-wrap text-xs"
+            data-testid="tribulation-history-filter"
           >
-            <header class="flex items-baseline justify-between gap-2 flex-wrap">
-              <div class="flex items-baseline gap-2">
-                <span
-                  :class="[
-                    'text-[10px] px-1.5 py-0.5 rounded border',
-                    row.success
-                      ? 'bg-emerald-700/40 text-emerald-200 border-emerald-500/40'
-                      : 'bg-rose-700/40 text-rose-200 border-rose-500/40',
-                  ]"
-                  :data-testid="`tribulation-history-badge-${row.id}`"
-                >
-                  {{
-                    row.success
-                      ? t('tribulation.history.successBadge')
-                      : t('tribulation.history.failBadge')
-                  }}
-                </span>
-                <span class="text-ink-300">
-                  {{ t('tribulation.history.attemptIndex', { index: row.attemptIndex }) }}
-                </span>
-              </div>
-              <span class="text-[10px] text-ink-300">
-                {{ t('tribulation.history.createdAt', { ts: fmtDate(row.createdAt) }) }}
-              </span>
-            </header>
-
-            <div>
-              {{
-                t('tribulation.history.transition', {
-                  from: realmName(row.fromRealmKey),
-                  to: realmName(row.toRealmKey),
-                })
-              }}
-              ·
-              {{ t('tribulation.history.waves', { count: row.wavesCompleted }) }}
-              ·
-              {{ t('tribulation.history.damage', { dmg: fmtNum(row.totalDamage) }) }}
+            <span class="text-ink-300">{{ t('tribulation.history.filter.label') }}</span>
+            <div class="inline-flex rounded border border-ink-300/30 overflow-hidden">
+              <button
+                v-for="opt in (['all', 'success', 'fail'] as const)"
+                :key="opt"
+                type="button"
+                :class="[
+                  'px-2 py-1 transition-colors',
+                  tribulation.historyFilter === opt
+                    ? 'bg-ink-700/80 text-ink-50'
+                    : 'bg-ink-700/20 text-ink-300 hover:bg-ink-700/40',
+                ]"
+                :data-testid="`tribulation-history-filter-${opt}`"
+                :aria-pressed="tribulation.historyFilter === opt"
+                @click="onHistoryFilter(opt)"
+              >
+                {{ t(`tribulation.history.filter.${opt}`) }}
+              </button>
             </div>
+          </div>
 
-            <div v-if="row.success" class="space-y-0.5">
-              <div v-if="row.linhThachReward > 0">
-                {{
-                  t('tribulation.history.rewardLinhThach', {
-                    amount: fmtNum(row.linhThachReward),
-                  })
-                }}
-              </div>
-              <div v-if="row.expBonusReward !== '0'">
-                {{
-                  t('tribulation.history.rewardExpBonus', {
-                    amount: fmtNum(row.expBonusReward),
-                  })
-                }}
-              </div>
-              <div v-if="row.titleKeyReward">
-                {{
-                  t('tribulation.history.rewardTitle', {
-                    key: row.titleKeyReward,
-                  })
-                }}
-              </div>
-            </div>
+          <div
+            v-if="!tribulation.filteredHistory || tribulation.filteredHistory.length === 0"
+            class="text-xs text-ink-300"
+            data-testid="tribulation-history-filter-empty"
+          >
+            {{ t('tribulation.history.filter.emptyAfterFilter') }}
+          </div>
 
-            <div v-else class="space-y-0.5">
+          <ul
+            v-else
+            class="space-y-2"
+            data-testid="tribulation-history-list"
+          >
+            <li
+              v-for="row in tribulation.filteredHistory"
+              :key="row.id"
+              :class="[
+                'rounded p-3 border text-xs space-y-1',
+                row.success
+                  ? 'bg-emerald-900/20 border-emerald-500/30 text-emerald-100'
+                  : 'bg-rose-900/20 border-rose-500/30 text-rose-100',
+              ]"
+              :data-testid="`tribulation-history-row-${row.id}`"
+            >
+              <header class="flex items-baseline justify-between gap-2 flex-wrap">
+                <div class="flex items-baseline gap-2">
+                  <span
+                    :class="[
+                      'text-[10px] px-1.5 py-0.5 rounded border',
+                      row.success
+                        ? 'bg-emerald-700/40 text-emerald-200 border-emerald-500/40'
+                        : 'bg-rose-700/40 text-rose-200 border-rose-500/40',
+                    ]"
+                    :data-testid="`tribulation-history-badge-${row.id}`"
+                  >
+                    {{
+                      row.success
+                        ? t('tribulation.history.successBadge')
+                        : t('tribulation.history.failBadge')
+                    }}
+                  </span>
+                  <span class="text-ink-300">
+                    {{ t('tribulation.history.attemptIndex', { index: row.attemptIndex }) }}
+                  </span>
+                </div>
+                <span class="text-[10px] text-ink-300">
+                  {{ t('tribulation.history.createdAt', { ts: fmtDate(row.createdAt) }) }}
+                </span>
+              </header>
+
               <div>
                 {{
-                  t('tribulation.history.expLoss', {
-                    amount: fmtNum(row.expLoss),
+                  t('tribulation.history.transition', {
+                    from: realmName(row.fromRealmKey),
+                    to: realmName(row.toRealmKey),
                   })
                 }}
+                ·
+                {{ t('tribulation.history.waves', { count: row.wavesCompleted }) }}
+                ·
+                {{ t('tribulation.history.damage', { dmg: fmtNum(row.totalDamage) }) }}
               </div>
-              <div v-if="row.cooldownAt">
-                {{
-                  t('tribulation.history.cooldownAt', {
-                    ts: fmtDate(row.cooldownAt),
-                  })
-                }}
+
+              <div v-if="row.success" class="space-y-0.5">
+                <div v-if="row.linhThachReward > 0">
+                  {{
+                    t('tribulation.history.rewardLinhThach', {
+                      amount: fmtNum(row.linhThachReward),
+                    })
+                  }}
+                </div>
+                <div v-if="row.expBonusReward !== '0'">
+                  {{
+                    t('tribulation.history.rewardExpBonus', {
+                      amount: fmtNum(row.expBonusReward),
+                    })
+                  }}
+                </div>
+                <div v-if="row.titleKeyReward">
+                  {{
+                    t('tribulation.history.rewardTitle', {
+                      key: row.titleKeyReward,
+                    })
+                  }}
+                </div>
               </div>
-              <div v-if="row.taoMaActive && row.taoMaExpiresAt">
-                {{
-                  t('tribulation.history.taoMa', {
-                    ts: fmtDate(row.taoMaExpiresAt),
-                  })
-                }}
+
+              <div v-else class="space-y-0.5">
+                <div>
+                  {{
+                    t('tribulation.history.expLoss', {
+                      amount: fmtNum(row.expLoss),
+                    })
+                  }}
+                </div>
+                <div v-if="row.cooldownAt">
+                  {{
+                    t('tribulation.history.cooldownAt', {
+                      ts: fmtDate(row.cooldownAt),
+                    })
+                  }}
+                </div>
+                <div v-if="row.taoMaActive && row.taoMaExpiresAt">
+                  {{
+                    t('tribulation.history.taoMa', {
+                      ts: fmtDate(row.taoMaExpiresAt),
+                    })
+                  }}
+                </div>
               </div>
-            </div>
-          </li>
-        </ul>
+            </li>
+          </ul>
+        </template>
 
         <!-- Phase 11.6.H — Load more button + max-reached hint -->
         <div
