@@ -1,12 +1,14 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { PrismaService } from '../../common/prisma.service';
 import { RealtimeService } from '../realtime/realtime.service';
+import { AchievementService } from './achievement.service';
 import { CharacterService } from './character.service';
 import { SpiritualRootService } from './spiritual-root.service';
 import { CultivationMethodService } from './cultivation-method.service';
 import { CharacterSkillService } from './character-skill.service';
 import { CurrencyService } from './currency.service';
 import { TitleService } from './title.service';
+import { InventoryService } from '../inventory/inventory.service';
 import {
   ELEMENTS,
   SPIRITUAL_ROOT_GRADES,
@@ -521,5 +523,86 @@ describe('CharacterService.toState exposes tribulation timestamps (Phase 11.6.E)
     const state = await chars.findByUser(fx.userId);
     expect(state!.tribulationCooldownAt).toBe(cooldown.toISOString());
     expect(state!.taoMaUntil).toBe(taoMa.toISOString());
+  });
+});
+
+// ── Phase 11.10.G-2 — CharacterService.breakthrough BREAKTHROUGH achievement track ──
+// Symmetric với CultivationProcessor auto-tick BREAKTHROUGH track (line 196)
+// và TribulationService SUCCESS path (Phase 11.10.G). Manual peak breakthrough
+// trước đó KHÔNG fire BREAKTHROUGH event → 4 catalog achievement BREAKTHROUGH
+// (`first_breakthrough` v.v.) miss khi player click button đột phá thủ công.
+describe('CharacterService.breakthrough BREAKTHROUGH achievement track (Phase 11.10.G-2)', () => {
+  let charsWithAch: CharacterService;
+  let charsNoAch: CharacterService;
+
+  beforeAll(() => {
+    const realtime = new RealtimeService();
+    const currency = new CurrencyService(prisma);
+    const tempChars = new CharacterService(prisma, realtime);
+    const inventory = new InventoryService(prisma, realtime, tempChars);
+    const achievements = new AchievementService(
+      prisma,
+      currency,
+      titleSvc,
+      inventory,
+    );
+    charsWithAch = new CharacterService(
+      prisma,
+      realtime,
+      undefined,
+      undefined,
+      undefined,
+      titleSvc,
+      achievements,
+    );
+    charsNoAch = new CharacterService(prisma, realtime);
+  });
+
+  it('breakthrough luyenkhi → truc_co với AchievementService → first_breakthrough progress=1, completedAt set', async () => {
+    const cost = expCostForStage('luyenkhi', 9)!;
+    const fix = await makeUserChar(prisma, {
+      realmKey: 'luyenkhi',
+      realmStage: 9,
+      exp: cost,
+    });
+
+    // Pre-condition: chưa có CharacterAchievement row.
+    const before = await prisma.characterAchievement.findMany({
+      where: { characterId: fix.characterId },
+    });
+    expect(before).toHaveLength(0);
+
+    const state = await charsWithAch.breakthrough(fix.userId);
+    expect(state.realmKey).toBe('truc_co');
+
+    // first_breakthrough (goal=1, BREAKTHROUGH) phải completed.
+    const row = await prisma.characterAchievement.findUnique({
+      where: {
+        characterId_achievementKey: {
+          characterId: fix.characterId,
+          achievementKey: 'first_breakthrough',
+        },
+      },
+    });
+    expect(row).not.toBeNull();
+    expect(row!.progress).toBe(1);
+    expect(row!.completedAt).not.toBeNull();
+  });
+
+  it('breakthrough KHÔNG inject AchievementService → vẫn advance realm, KHÔNG có row (backward-compat)', async () => {
+    const cost = expCostForStage('luyenkhi', 9)!;
+    const fix = await makeUserChar(prisma, {
+      realmKey: 'luyenkhi',
+      realmStage: 9,
+      exp: cost,
+    });
+
+    const state = await charsNoAch.breakthrough(fix.userId);
+    expect(state.realmKey).toBe('truc_co');
+
+    const rows = await prisma.characterAchievement.findMany({
+      where: { characterId: fix.characterId },
+    });
+    expect(rows).toHaveLength(0);
   });
 });

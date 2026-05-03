@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { forwardRef, Inject, Injectable, Logger, Optional } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import {
   expCostForStage,
@@ -8,6 +8,7 @@ import {
 } from '@xuantoi/shared';
 import { PrismaService } from '../../common/prisma.service';
 import { RealtimeService } from '../realtime/realtime.service';
+import { AchievementService } from './achievement.service';
 import { SpiritualRootService } from './spiritual-root.service';
 import { CultivationMethodService } from './cultivation-method.service';
 import { CharacterSkillService } from './character-skill.service';
@@ -75,6 +76,9 @@ export class CharacterService {
     private readonly cultivationMethod?: CultivationMethodService,
     private readonly characterSkill?: CharacterSkillService,
     private readonly titles?: TitleService,
+    @Optional()
+    @Inject(forwardRef(() => AchievementService))
+    private readonly achievements?: AchievementService,
   ) {}
 
   async findByUser(userId: string) {
@@ -265,6 +269,25 @@ export class CharacterService {
             `breakthrough: failed to auto-unlock title ${titleDef.key} for char ${updated.id}: ${(err as Error).message}`,
           );
         }
+      }
+    }
+
+    // Phase 11.10.G-2 — fail-soft post-update tracking BREAKTHROUGH event.
+    // Symmetric với `CultivationProcessor` auto-tick low-tier breakthrough
+    // (line 196 `achievements.trackEvent('BREAKTHROUGH', 1)`) và
+    // `TribulationService` SUCCESS path (Phase 11.10.G). Manual peak
+    // breakthrough trước đó KHÔNG fire BREAKTHROUGH → 4 catalog achievement
+    // BREAKTHROUGH miss khi player click button đột phá thủ công ở stage 9.
+    // Skip nếu `!next` (đã đạt cao nhất, không advance realm).
+    // MissionService.track defer (cross-module wire MissionModule →
+    // CharacterModule cycle, scope larger Phase 11.10.G-3).
+    if (next && this.achievements) {
+      try {
+        await this.achievements.trackEvent(updated.id, 'BREAKTHROUGH', 1);
+      } catch (err) {
+        this.logger.warn(
+          `breakthrough: achievement BREAKTHROUGH track failed for char ${updated.id}: ${(err as Error).message}`,
+        );
       }
     }
 
