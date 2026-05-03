@@ -21,6 +21,7 @@ Khi tài liệu xung đột nhau, ưu tiên theo thứ tự sau:
 
 | Bạn muốn... | Đọc file | Vì sao |
 |---|---|---|
+| **Biết luật delivery / scope khi viết PR** (UI Module Rule, gom scope, không micro-PR) | [`AI_WORKFLOW_RULES.md`](./AI_WORKFLOW_RULES.md) | **MUST READ trước PR đầu tiên.** Định nghĩa cách chia PR (UI module phải gom trọn 1 PR). |
 | **Biết trạng thái thật hiện tại của repo** (đã làm gì, baseline test, model nào đã có, PR nào vừa merge) | [`AI_HANDOFF_REPORT.md`](./AI_HANDOFF_REPORT.md) — đọc **`## Current Executive Summary`** (30 dòng đầu) là đủ; muốn chi tiết theo session đọc tiếp `## Snapshots`. | Cập nhật mỗi PR. Đây là nguồn sự thật về "hôm nay đang ở đâu". |
 | **Biết game sẽ đi đâu, fantasy là gì, core loop, 13 gameplay system, product principles** | [`GAME_DESIGN_BIBLE.md`](./GAME_DESIGN_BIBLE.md) | Vision + thiết kế dài hạn. Đọc xong hiểu "Xuân Tôi muốn trở thành cái gì". |
 | **Biết phase nào nên làm tiếp, entry/exit criteria, module nào bị cấm chưa được build** | [`LONG_TERM_ROADMAP.md`](./LONG_TERM_ROADMAP.md) | Phase 9 → 17 với dependency rule + DO-NOT-BUILD-YET list. |
@@ -39,19 +40,21 @@ Khi tài liệu xung đột nhau, ưu tiên theo thứ tự sau:
 
 Đọc đủ **để không phá hệ thống**:
 
-1. [`AI_HANDOFF_REPORT.md`](./AI_HANDOFF_REPORT.md) — snapshot trên cùng. Biết hôm nay ở đâu.
-2. [`LONG_TERM_ROADMAP.md`](./LONG_TERM_ROADMAP.md) §0 + phase tương ứng. Confirm dependency rule + entry criteria phase đó đã đạt.
-3. Doc chuyên biệt theo nội dung PR (xem §1).
-4. [`API.md`](./API.md) nếu touch route.
-5. `apps/api/prisma/schema.prisma` — schema thật.
-6. `packages/shared/src/*.ts` nếu thêm catalog content.
+1. [`AI_WORKFLOW_RULES.md`](./AI_WORKFLOW_RULES.md) — **MUST READ.** UI Module Rule + delivery/scope rules. Tránh chia một màn hình UI thành 4-5 micro-PR.
+2. [`AI_HANDOFF_REPORT.md`](./AI_HANDOFF_REPORT.md) — snapshot trên cùng. Biết hôm nay ở đâu.
+3. [`LONG_TERM_ROADMAP.md`](./LONG_TERM_ROADMAP.md) §0 + phase tương ứng. Confirm dependency rule + entry criteria phase đó đã đạt.
+4. Doc chuyên biệt theo nội dung PR (xem §1).
+5. [`API.md`](./API.md) nếu touch route.
+6. `apps/api/prisma/schema.prisma` — schema thật.
+7. `packages/shared/src/*.ts` nếu thêm catalog content.
 
 ### 2.2 AI/dev review PR
 
-1. [`AI_HANDOFF_REPORT.md`](./AI_HANDOFF_REPORT.md) snapshot mới nhất — biết baseline.
-2. [`GAME_DESIGN_BIBLE.md`](./GAME_DESIGN_BIBLE.md) §K (Module dependency rule) — confirm PR không lấn sân phase chưa tới.
-3. [`ECONOMY_MODEL.md`](./ECONOMY_MODEL.md) §3 (Invariants) — nếu PR đụng currency/item, mọi mutation phải qua CurrencyService/ItemService và có ledger row.
-4. [`BALANCE_MODEL.md`](./BALANCE_MODEL.md) — nếu PR đổi số, confirm còn nằm trong band và có dial registry.
+1. [`AI_WORKFLOW_RULES.md`](./AI_WORKFLOW_RULES.md) — UI Module Rule + delivery/scope rules. Reject PR nếu một màn hình UI bị chia thành micro-PR pagination/filter/stats riêng.
+2. [`AI_HANDOFF_REPORT.md`](./AI_HANDOFF_REPORT.md) snapshot mới nhất — biết baseline.
+3. [`GAME_DESIGN_BIBLE.md`](./GAME_DESIGN_BIBLE.md) §K (Module dependency rule) — confirm PR không lấn sân phase chưa tới.
+4. [`ECONOMY_MODEL.md`](./ECONOMY_MODEL.md) §3 (Invariants) — nếu PR đụng currency/item, mọi mutation phải qua CurrencyService/ItemService và có ledger row.
+5. [`BALANCE_MODEL.md`](./BALANCE_MODEL.md) — nếu PR đổi số, confirm còn nằm trong band và có dial registry.
 
 ### 2.3 PM/admin/ops
 
@@ -85,6 +88,7 @@ Khi tài liệu xung đột nhau, ưu tiên theo thứ tự sau:
 ### 3.1 Long-term design (mới — 2026-04, đọc đầu tiên)
 
 - [`START_HERE.md`](./START_HERE.md) ← **bạn đang ở đây**.
+- [`AI_WORKFLOW_RULES.md`](./AI_WORKFLOW_RULES.md) — UI Module Rule + delivery/scope rules. **MUST READ trước PR đầu tiên.**
 - [`GAME_DESIGN_BIBLE.md`](./GAME_DESIGN_BIBLE.md) — vision + core loop + 13 system + principles.
 - [`LONG_TERM_ROADMAP.md`](./LONG_TERM_ROADMAP.md) — Phase 9 → 17.
 - [`ECONOMY_MODEL.md`](./ECONOMY_MODEL.md) — currency invariants + anti-abuse.
@@ -164,4 +168,5 @@ Còn lại đọc khi cần.
 
 ## 6. CHANGELOG
 
+- **2026-05-03** — Add `AI_WORKFLOW_RULES.md` to required reading (§1 decision table, §2.1 + §2.2 role guides, §3.1 docs map). Lý do: tránh chia một màn hình UI thành 4-5 micro-PR (UI Module Rule).
 - **2026-04-30** — Tạo file. Author: Devin AI session 9q (sau khi `docs/` đạt 25 file, AI mới dễ ngợp).
