@@ -40,7 +40,10 @@ export type ItemLedgerReason =
   // hoặc REFINE_PROTECTION (consume `refine_protection_charm` khi protection trigger).
   // KHÔNG có positive qtyDelta — refine không trả lại item dù fail.
   | 'REFINE_MATERIAL'
-  | 'REFINE_PROTECTION';
+  | 'REFINE_PROTECTION'
+  // Phase 11.6.B Tribulation runtime — special drop từ vượt kiếp thành công.
+  // Positive qtyDelta only (`kiep_van_thach`/`thanh_kiep_tinh` heavenly+saint).
+  | 'TRIBULATION_DROP';
 
 export interface ItemLedgerMeta {
   reason: ItemLedgerReason;

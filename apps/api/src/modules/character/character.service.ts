@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import {
   expCostForStage,
+  getTribulationForBreakthrough,
   nextRealm,
   type CharacterStatePayload,
 } from '@xuantoi/shared';
@@ -32,7 +33,15 @@ const SECT_STARTING_STATS: Record<
 };
 
 class DomainError extends Error {
-  constructor(public code: 'NAME_TAKEN' | 'ALREADY_ONBOARDED' | 'NO_CHARACTER' | 'NOT_AT_PEAK') {
+  constructor(
+    public code:
+      | 'NAME_TAKEN'
+      | 'ALREADY_ONBOARDED'
+      | 'NO_CHARACTER'
+      | 'NOT_AT_PEAK'
+      | 'TRIBULATION_REQUIRED'
+      | 'TAO_MA_ACTIVE',
+  ) {
     super(code);
   }
 }
@@ -180,6 +189,17 @@ export class CharacterService {
   async setCultivating(userId: string, on: boolean): Promise<CharacterStatePayload> {
     const c = await this.prisma.character.findUnique({ where: { userId } });
     if (!c) throw new DomainError('NO_CHARACTER');
+    // Phase 11.6.B Tâm Ma gate: bị debuff không tu luyện được. Auto-clear khi
+    // expiresAt qua — lazy reset trước khi check.
+    let taoMaActive = c.taoMaActive;
+    if (taoMaActive && c.taoMaExpiresAt && c.taoMaExpiresAt <= new Date()) {
+      taoMaActive = false;
+      await this.prisma.character.update({
+        where: { id: c.id },
+        data: { taoMaActive: false, taoMaExpiresAt: null },
+      });
+    }
+    if (on && taoMaActive) throw new DomainError('TAO_MA_ACTIVE');
     const updated = await this.prisma.character.update({
       where: { userId },
       data: { cultivating: on },
@@ -204,6 +224,19 @@ export class CharacterService {
     const next = nextRealm(c.realmKey);
     const newRealm = next ? next.key : c.realmKey;
     const newStage = next ? 1 : 9;
+
+    // Phase 11.6.B: nếu transition này có Thiên Kiếp catalog, gate breakthrough
+    // bằng cleared TribulationAttempt — phải vượt kiếp trước (server-side
+    // gọi POST /character/tribulation/attempt → ghi success row → breakthrough OK).
+    if (next) {
+      const trib = getTribulationForBreakthrough(c.realmKey, next.key);
+      if (trib) {
+        const cleared = await this.prisma.tribulationAttempt.findFirst({
+          where: { characterId: c.id, tribulationKey: trib.key, success: true },
+        });
+        if (!cleared) throw new DomainError('TRIBULATION_REQUIRED');
+      }
+    }
 
     const updated = await this.prisma.character.update({
       where: { userId },

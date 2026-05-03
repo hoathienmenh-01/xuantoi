@@ -1035,6 +1035,29 @@ export const ITEMS: readonly ItemDef[] = [
     stackable: true,
     price: 500,
   },
+
+  // ----- Phase 11.6.B Tribulation MVP runtime — unique drops -----
+  // Special drop từ vượt kiếp thành công ở severity heavenly/saint.
+  // `uniqueDropItemKey` của TribulationDef trỏ vào 2 item này. Server-only
+  // drop (không sale shop), grant qua ItemLedger reason='TRIBULATION_DROP'.
+  {
+    key: 'kiep_van_thach',
+    name: 'Kiếp Vân Thạch',
+    description: 'Tinh hoa kết tinh từ kiếp vân Thiên Lôi — drop hiếm khi vượt Thiên Kiếp (heavenly).',
+    kind: 'MISC',
+    quality: 'TIEN',
+    stackable: true,
+    price: 0,
+  },
+  {
+    key: 'thanh_kiep_tinh',
+    name: 'Thánh Kiếp Tinh',
+    description: 'Tinh hoa thánh kiếp — chỉ rớt khi Chuẩn Thánh vượt Thánh Lôi Cửu Kiếp thành công.',
+    kind: 'MISC',
+    quality: 'THAN',
+    stackable: true,
+    price: 0,
+  },
 ];
 
 export function itemByKey(key: string): ItemDef | undefined {

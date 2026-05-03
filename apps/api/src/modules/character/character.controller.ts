@@ -25,6 +25,7 @@ import {
 } from './character-skill.service';
 import { GemError, GemService } from './gem.service';
 import { RefineError, RefineService } from './refine.service';
+import { TribulationError, TribulationService } from './tribulation.service';
 import { AuthService } from '../auth/auth.service';
 import {
   InMemorySlidingWindowRateLimiter,
@@ -100,6 +101,7 @@ export class CharacterController {
     @Optional() private readonly characterSkill?: CharacterSkillService,
     @Optional() private readonly gem?: GemService,
     @Optional() private readonly refine?: RefineService,
+    @Optional() private readonly tribulation?: TribulationService,
     @Optional() @Inject(PROFILE_RATE_LIMITER) profileLimiter?: RateLimiter,
   ) {
     this.profileLimiter =
@@ -172,9 +174,9 @@ export class CharacterController {
       const character = await this.chars.setCultivating(userId, parsed.data.cultivating);
       return { ok: true, data: { character } };
     } catch (e) {
-      if ((e as { code?: string })?.code === 'NO_CHARACTER') {
-        fail('NO_CHARACTER', HttpStatus.NOT_FOUND);
-      }
+      const code = (e as { code?: string })?.code;
+      if (code === 'NO_CHARACTER') fail('NO_CHARACTER', HttpStatus.NOT_FOUND);
+      if (code === 'TAO_MA_ACTIVE') fail('TAO_MA_ACTIVE', HttpStatus.CONFLICT);
       throw e;
     }
   }
@@ -190,6 +192,8 @@ export class CharacterController {
       const code = (e as { code?: string })?.code;
       if (code === 'NO_CHARACTER') fail('NO_CHARACTER', HttpStatus.NOT_FOUND);
       if (code === 'NOT_AT_PEAK') fail('NOT_AT_PEAK', HttpStatus.CONFLICT);
+      if (code === 'TRIBULATION_REQUIRED')
+        fail('TRIBULATION_REQUIRED', HttpStatus.CONFLICT);
       throw e;
     }
   }
@@ -479,6 +483,69 @@ export class CharacterController {
       throw e;
     }
   }
+
+  /**
+   * Phase 11.6.B Tribulation MVP — preview kiếp kế tiếp cho character.
+   * Server trả về catalog def (`TribulationDef` reduced — đủ UI render
+   * waves + reward). Trả null nếu không có kiếp.
+   */
+  @Get('tribulation/preview')
+  async tribulationPreview(@Req() req: Request) {
+    const userId = await this.requireUserId(req);
+    if (!this.tribulation) fail('TRIBULATION_UNAVAILABLE', HttpStatus.NOT_IMPLEMENTED);
+    const def = await this.tribulation.previewNext(userId);
+    if (!def) return { ok: true, data: { tribulation: null } };
+    return {
+      ok: true,
+      data: {
+        tribulation: {
+          key: def.key,
+          name: def.name,
+          description: def.description,
+          fromRealmKey: def.fromRealmKey,
+          toRealmKey: def.toRealmKey,
+          severity: def.severity,
+          type: def.type,
+          waves: def.waves.map((w) => ({
+            waveIndex: w.waveIndex,
+            name: w.name,
+            baseDamage: w.baseDamage,
+            element: w.element,
+            accuracyHint: w.accuracyHint,
+          })),
+          reward: {
+            linhThach: def.reward.linhThach,
+            expBonus: def.reward.expBonus.toString(),
+            titleKey: def.reward.titleKey,
+            uniqueDropChance: def.reward.uniqueDropChance,
+            uniqueDropItemKey: def.reward.uniqueDropItemKey,
+          },
+          failurePenalty: def.failurePenalty,
+        },
+      },
+    };
+  }
+
+  /**
+   * Phase 11.6.B Tribulation MVP — attempt kiếp.
+   * Server-authoritative deterministic simulation; ghi `TribulationAttempt`
+   * + apply reward/penalty atomic; gate breakthrough qua `success=true` row.
+   */
+  @Post('tribulation/attempt')
+  @HttpCode(200)
+  async tribulationAttempt(@Req() req: Request) {
+    const userId = await this.requireUserId(req);
+    if (!this.tribulation) fail('TRIBULATION_UNAVAILABLE', HttpStatus.NOT_IMPLEMENTED);
+    try {
+      const outcome = await this.tribulation.attemptTribulation(userId);
+      return { ok: true, data: { outcome } };
+    } catch (e) {
+      if (e instanceof TribulationError) {
+        fail(e.code, mapTribulationErrorStatus(e.code));
+      }
+      throw e;
+    }
+  }
 }
 
 /** Map GemError code → HTTP status. */
@@ -497,6 +564,21 @@ function mapGemErrorStatus(code: GemError['code']): HttpStatus {
       return HttpStatus.CONFLICT;
     case 'INVALID_SLOT_INDEX':
       return HttpStatus.BAD_REQUEST;
+    default:
+      return HttpStatus.BAD_REQUEST;
+  }
+}
+
+/** Map TribulationError code → HTTP status. */
+function mapTribulationErrorStatus(code: TribulationError['code']): HttpStatus {
+  switch (code) {
+    case 'NO_CHARACTER':
+      return HttpStatus.NOT_FOUND;
+    case 'NOT_AT_PEAK':
+    case 'NO_TRIBULATION':
+    case 'ALREADY_CLEARED':
+    case 'IN_COOLDOWN':
+      return HttpStatus.CONFLICT;
     default:
       return HttpStatus.BAD_REQUEST;
   }

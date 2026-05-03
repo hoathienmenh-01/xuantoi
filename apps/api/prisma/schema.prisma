@@ -214,6 +214,15 @@ model Character {
   /// `khai_thien_quyet` starter.
   equippedCultivationMethodKey String?
 
+  /// Phase 11.6.B — Thiên Kiếp / Tâm Ma runtime.
+  /// `taoMaActive` true nếu character bị Tâm Ma debuff (chống tu luyện +
+  /// atk -10% future combat). `taoMaExpiresAt` server timer auto-expire.
+  /// `tribulationCooldownAt` server-side cooldown sau fail kiếp — phải chờ
+  /// hết mới retry.
+  taoMaActive           Boolean   @default(false)
+  taoMaExpiresAt        DateTime?
+  tribulationCooldownAt DateTime?
+
   sectId String?
   sect   Sect?   @relation(fields: [sectId], references: [id])
 
@@ -226,6 +235,7 @@ model Character {
   spiritualRootRollLogs       SpiritualRootRollLog[]
   cultivationMethods          CharacterCultivationMethod[]
   characterSkills             CharacterSkill[]
+  tribulationAttempts         TribulationAttempt[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -312,6 +322,44 @@ model CharacterSkill {
   @@unique([characterId, skillKey])
   @@index([characterId])
   @@index([characterId, isEquipped])
+}
+
+/// Phase 11.6.B Tribulation/Tâm Ma audit log.
+///
+/// 1 row per attempt. `success=true` row dùng làm "cleared marker" cho
+/// transition (gate `breakthrough` qua `getTribulationForBreakthrough` →
+/// query `findFirst({ characterId, tribulationKey, success: true })`).
+/// Multiple `success=false` rows OK (history của các lần thất bại); attempt
+/// counter `attemptCount` accumulate qua mỗi lần fail.
+///
+/// Reward + cooldown + Tâm Ma debuff state lưu trên Character; row này chỉ
+/// audit kết quả simulation (server-authoritative deterministic — không có
+/// RNG ngoài `taoMaRoll` cho debuff chance). `taoMaTriggered` = true nếu
+/// fail row trúng debuff Tâm Ma.
+model TribulationAttempt {
+  id             String    @id @default(cuid())
+  characterId    String
+  character      Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  /// Khoá tham chiếu `TRIBULATIONS` trong `packages/shared/src/tribulation.ts`.
+  tribulationKey String
+  fromRealmKey   String
+  toRealmKey     String
+  /// 'minor' | 'major' | 'heavenly' | 'saint'.
+  severity       String
+  /// 'lei' | 'phong' | 'bang' | 'hoa' | 'tam'.
+  type           String
+  success        Boolean
+  wavesCompleted Int
+  totalDamage    Int
+  finalHp        Int
+  taoMaTriggered Boolean   @default(false)
+  /// Đếm lần thử (1 = lần đầu, >1 = retry sau cooldown). Server tăng counter
+  /// dựa vào `count({ characterId, tribulationKey })` trước khi insert.
+  attemptCount   Int       @default(1)
+  createdAt      DateTime  @default(now())
+
+  @@index([characterId, success])
+  @@index([characterId, tribulationKey])
 }
 
 enum MissionPeriod {
