@@ -27,10 +27,17 @@ export const useAlchemyStore = defineStore('alchemy', () => {
   const loaded = ref(false);
   const inFlight = ref<Set<string>>(new Set());
   const lastOutcome = ref<api.AlchemyOutcomeView | null>(null);
+  /** Phase 11.11.D-2 — next furnace upgrade preview (null khi furnace ở MAX). */
+  const nextUpgrade = ref<api.AlchemyFurnaceUpgradeView | null>(null);
+  /** Phase 11.11.D-2 — race-protect upgrade button (true khi POST upgrade-furnace in-flight). */
+  const upgradeInFlight = ref(false);
+  /** Phase 11.11.D-2 — outcome gần nhất từ POST /upgrade-furnace, dung cho toast. */
+  const lastUpgradeOutcome = ref<api.AlchemyUpgradeOutcomeView | null>(null);
 
   function applyState(state: api.AlchemyState): void {
     furnaceLevel.value = state.furnaceLevel;
     recipes.value = state.recipes;
+    nextUpgrade.value = state.nextUpgrade;
     loaded.value = true;
   }
 
@@ -72,12 +79,48 @@ export const useAlchemyStore = defineStore('alchemy', () => {
     }
   }
 
+  /**
+   * Phase 11.11.D-2 — Server-authoritative furnace upgrade.
+   *
+   *   - Race-protect via `upgradeInFlight` (chong double-click + chong race
+   *     với craft action khác).
+   *   - Returns `null` on success, error code string on failure. Caller
+   *     dùng để hiển thị toast i18n `alchemy.upgrade.errors.{code}`.
+   *   - Pre-check: `MAX_LEVEL` (`nextUpgrade === null`).
+   *   - On success: bump `furnaceLevel`, refresh `nextUpgrade` từ response,
+   *     lưu `lastUpgradeOutcome` cho toast. Caller nên refetch state để
+   *     re-render recipe list (một số recipe mới unlock tại level cao hơn).
+   */
+  async function upgradeFurnace(): Promise<string | null> {
+    if (upgradeInFlight.value) return 'IN_FLIGHT';
+    if (nextUpgrade.value === null) return 'MAX_LEVEL';
+    upgradeInFlight.value = true;
+    try {
+      const result = await api.upgradeAlchemyFurnace();
+      furnaceLevel.value = result.furnaceLevel;
+      nextUpgrade.value = result.nextUpgrade;
+      lastUpgradeOutcome.value = result.outcome;
+      return null;
+    } catch (e) {
+      const code =
+        (e as { code?: string }).code ??
+        (e as { error?: { code?: string } }).error?.code ??
+        'UNKNOWN';
+      return code;
+    } finally {
+      upgradeInFlight.value = false;
+    }
+  }
+
   function reset(): void {
     furnaceLevel.value = 1;
     recipes.value = [];
     loaded.value = false;
     inFlight.value = new Set();
     lastOutcome.value = null;
+    nextUpgrade.value = null;
+    upgradeInFlight.value = false;
+    lastUpgradeOutcome.value = null;
   }
 
   return {
@@ -86,9 +129,13 @@ export const useAlchemyStore = defineStore('alchemy', () => {
     loaded,
     inFlight,
     lastOutcome,
+    nextUpgrade,
+    upgradeInFlight,
+    lastUpgradeOutcome,
     fetchState,
     isCrafting,
     craft,
+    upgradeFurnace,
     reset,
   };
 });

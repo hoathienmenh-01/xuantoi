@@ -1238,6 +1238,30 @@
         "IN_FLIGHT": "Đang xử lý…",
         "UNKNOWN": "Luyện đan thất bại, thử lại."
       }
+    },
+    "upgrade": {
+      "title": "Nâng cấp lò luyện",
+      "maxNotice": "Lò luyện đã đạt cấp tối đa.",
+      "realmReq": "Yêu cầu cảnh giới: {realm}",
+      "success": "Lò luyện nâng cấp {fromLevel} → {toLevel}!",
+      "button": {
+        "upgrade": "Nâng lên cấp {level}",
+        "upgrading": "Đang nâng cấp…",
+        "maxLevel": "Đã đạt tối đa"
+      },
+      "errors": {
+        "FURNACE_LEVEL_MAX": "Lò luyện đã đạt cấp tối đa.",
+        "FURNACE_RACE": "Có người vừa nâng cấp lò khác, thử lại.",
+        "REALM_REQUIREMENT_NOT_MET": "Cảnh giới chưa đủ để nâng cấp lò.",
+        "INSUFFICIENT_FUNDS": "Không đủ Linh Thạch để nâng cấp.",
+        "CHARACTER_NOT_FOUND": "Chưa tạo nhân vật.",
+        "NO_CHARACTER": "Chưa tạo nhân vật.",
+        "ALCHEMY_UNAVAILABLE": "Hệ thống luyện đan tạm khoá.",
+        "MAX_LEVEL": "Lò luyện đã đạt cấp tối đa.",
+        "IN_FLIGHT": "Đang xử lý…",
+        "UNAUTHENTICATED": "Phiên đăng nhập đã hết.",
+        "UNKNOWN": "Nâng cấp lò thất bại, thử lại."
+      }
     }
   },
   "cultivationMethod": {

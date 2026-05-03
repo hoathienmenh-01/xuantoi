@@ -41,9 +41,29 @@ export interface AlchemyRecipeView {
   successRate: number;
 }
 
+export interface AlchemyFurnaceUpgradeView {
+  toLevel: number;
+  linhThachCost: number;
+  realmRequirement: string | null;
+}
+
 export interface AlchemyState {
   furnaceLevel: number;
   recipes: AlchemyRecipeView[];
+  /** Phase 11.11.D-2 — next upgrade preview, null khi furnaceLevel = MAX. */
+  nextUpgrade: AlchemyFurnaceUpgradeView | null;
+}
+
+export interface AlchemyUpgradeOutcomeView {
+  fromLevel: number;
+  toLevel: number;
+  linhThachConsumed: number;
+}
+
+export interface AlchemyUpgradeResult {
+  furnaceLevel: number;
+  outcome: AlchemyUpgradeOutcomeView;
+  nextUpgrade: AlchemyFurnaceUpgradeView | null;
 }
 
 export interface AlchemyOutcomeView {
@@ -78,5 +98,20 @@ export async function craftAlchemyRecipe(
     { recipeKey },
   );
   if (!data.ok || !data.data) throw data.error ?? fallbackError('alchemyCraft');
+  return data.data.alchemy;
+}
+
+/**
+ * Phase 11.11.D-2 — Upgrade lò đan, server-authoritative.
+ *
+ * No body: target = currentLevel + 1, server quyết định + atomic deduct
+ * linhThach via `CurrencyLedger`.
+ */
+export async function upgradeAlchemyFurnace(): Promise<AlchemyUpgradeResult> {
+  const { data } = await apiClient.post<Envelope<{ alchemy: AlchemyUpgradeResult }>>(
+    '/character/alchemy/upgrade-furnace',
+    {},
+  );
+  if (!data.ok || !data.data) throw data.error ?? fallbackError('alchemyUpgradeFurnace');
   return data.data.alchemy;
 }

@@ -1238,6 +1238,30 @@
         "IN_FLIGHT": "Processing…",
         "UNKNOWN": "Crafting failed, please retry."
       }
+    },
+    "upgrade": {
+      "title": "Furnace upgrade",
+      "maxNotice": "Furnace already at max level.",
+      "realmReq": "Realm required: {realm}",
+      "success": "Furnace upgraded {fromLevel} → {toLevel}!",
+      "button": {
+        "upgrade": "Upgrade to L{level}",
+        "upgrading": "Upgrading…",
+        "maxLevel": "Max level"
+      },
+      "errors": {
+        "FURNACE_LEVEL_MAX": "Furnace already at max level.",
+        "FURNACE_RACE": "Concurrent upgrade detected, please retry.",
+        "REALM_REQUIREMENT_NOT_MET": "Cultivation realm not high enough to upgrade.",
+        "INSUFFICIENT_FUNDS": "Not enough Spirit Stones to upgrade.",
+        "CHARACTER_NOT_FOUND": "Character not created.",
+        "NO_CHARACTER": "Character not created.",
+        "ALCHEMY_UNAVAILABLE": "Alchemy system temporarily unavailable.",
+        "MAX_LEVEL": "Furnace already at max level.",
+        "IN_FLIGHT": "Processing…",
+        "UNAUTHENTICATED": "Session expired.",
+        "UNKNOWN": "Furnace upgrade failed, please retry."
+      }
     }
   },
   "cultivationMethod": {

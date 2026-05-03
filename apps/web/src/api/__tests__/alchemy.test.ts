@@ -20,7 +20,11 @@ vi.mock('@/api/client', () => ({
   },
 }));
 
-import { getAlchemyRecipes, craftAlchemyRecipe } from '@/api/alchemy';
+import {
+  craftAlchemyRecipe,
+  getAlchemyRecipes,
+  upgradeAlchemyFurnace,
+} from '@/api/alchemy';
 
 const STUB_RECIPE = {
   key: 'recipe_tieu_phuc_dan',
@@ -50,6 +54,11 @@ describe('api/alchemy — Phase 11.11.D client', () => {
           alchemy: {
             furnaceLevel: 2,
             recipes: [STUB_RECIPE],
+            nextUpgrade: {
+              toLevel: 3,
+              linhThachCost: 2_000,
+              realmRequirement: 'truc_co',
+            },
           },
         },
       },
@@ -59,6 +68,29 @@ describe('api/alchemy — Phase 11.11.D client', () => {
     expect(out.furnaceLevel).toBe(2);
     expect(out.recipes).toHaveLength(1);
     expect(out.recipes[0].key).toBe('recipe_tieu_phuc_dan');
+    expect(out.nextUpgrade).toEqual({
+      toLevel: 3,
+      linhThachCost: 2_000,
+      realmRequirement: 'truc_co',
+    });
+  });
+
+  it('getAlchemyRecipes: nextUpgrade=null khi furnace ở MAX_LEVEL', async () => {
+    getMock.mockResolvedValueOnce({
+      data: {
+        ok: true,
+        data: {
+          alchemy: {
+            furnaceLevel: 9,
+            recipes: [STUB_RECIPE],
+            nextUpgrade: null,
+          },
+        },
+      },
+    });
+    const out = await getAlchemyRecipes();
+    expect(out.furnaceLevel).toBe(9);
+    expect(out.nextUpgrade).toBeNull();
   });
 
   it('getAlchemyRecipes: server error envelope → throws error object preserving code', async () => {
@@ -147,5 +179,71 @@ describe('api/alchemy — Phase 11.11.D client', () => {
     expect(out.outcome.outputItem).toBeNull();
     expect(out.outcome.outputQty).toBe(0);
     expect(out.outcome.linhThachConsumed).toBe(50);
+  });
+
+  it('upgradeAlchemyFurnace: POST /character/alchemy/upgrade-furnace empty body', async () => {
+    postMock.mockResolvedValueOnce({
+      data: {
+        ok: true,
+        data: {
+          alchemy: {
+            furnaceLevel: 2,
+            outcome: { fromLevel: 1, toLevel: 2, linhThachConsumed: 500 },
+            nextUpgrade: {
+              toLevel: 3,
+              linhThachCost: 2_000,
+              realmRequirement: 'truc_co',
+            },
+          },
+        },
+      },
+    });
+    const out = await upgradeAlchemyFurnace();
+    expect(postMock).toHaveBeenCalledWith(
+      '/character/alchemy/upgrade-furnace',
+      {},
+    );
+    expect(out.furnaceLevel).toBe(2);
+    expect(out.outcome).toEqual({
+      fromLevel: 1,
+      toLevel: 2,
+      linhThachConsumed: 500,
+    });
+    expect(out.nextUpgrade?.toLevel).toBe(3);
+  });
+
+  it('upgradeAlchemyFurnace: ok=false → throws error preserving code', async () => {
+    postMock.mockResolvedValueOnce({
+      data: {
+        ok: false,
+        error: { code: 'INSUFFICIENT_FUNDS', message: 'no funds' },
+      },
+    });
+    await expect(upgradeAlchemyFurnace()).rejects.toMatchObject({
+      code: 'INSUFFICIENT_FUNDS',
+    });
+  });
+
+  it('upgradeAlchemyFurnace: empty data → throws fallback error', async () => {
+    postMock.mockResolvedValueOnce({ data: { ok: true } });
+    await expect(upgradeAlchemyFurnace()).rejects.toBeInstanceOf(Error);
+  });
+
+  it('upgradeAlchemyFurnace: nextUpgrade=null khi vừa đạt MAX_LEVEL', async () => {
+    postMock.mockResolvedValueOnce({
+      data: {
+        ok: true,
+        data: {
+          alchemy: {
+            furnaceLevel: 9,
+            outcome: { fromLevel: 8, toLevel: 9, linhThachConsumed: 800_000 },
+            nextUpgrade: null,
+          },
+        },
+      },
+    });
+    const out = await upgradeAlchemyFurnace();
+    expect(out.furnaceLevel).toBe(9);
+    expect(out.nextUpgrade).toBeNull();
   });
 });

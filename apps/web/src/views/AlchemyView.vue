@@ -88,6 +88,46 @@ function craftButtonDisabled(recipe: AlchemyRecipeView): boolean {
   return alchemy.isCrafting(recipe.key);
 }
 
+function upgradeButtonDisabled(): boolean {
+  return alchemy.upgradeInFlight || alchemy.nextUpgrade === null;
+}
+
+function upgradeButtonLabel(): string {
+  if (alchemy.upgradeInFlight) return t('alchemy.upgrade.button.upgrading');
+  if (alchemy.nextUpgrade === null) return t('alchemy.upgrade.button.maxLevel');
+  return t('alchemy.upgrade.button.upgrade', {
+    level: alchemy.nextUpgrade.toLevel,
+  });
+}
+
+async function onUpgradeFurnace(): Promise<void> {
+  if (upgradeButtonDisabled()) return;
+  const errCode = await alchemy.upgradeFurnace();
+  if (errCode === null) {
+    const outcome = alchemy.lastUpgradeOutcome;
+    if (outcome) {
+      toast.push({
+        type: 'success',
+        text: t('alchemy.upgrade.success', {
+          fromLevel: outcome.fromLevel,
+          toLevel: outcome.toLevel,
+        }),
+      });
+    }
+    // Refetch recipes (level cao hơn có thể unlock recipe mới).
+    await alchemy.fetchState().catch(() => null);
+    // Refresh game state để cập nhật linh thạch hiển thị header.
+    await game.fetchState().catch(() => null);
+  } else {
+    const key = `alchemy.upgrade.errors.${errCode}`;
+    const text = t(key);
+    toast.push({
+      type: 'error',
+      text: text === key ? t('alchemy.upgrade.errors.UNKNOWN') : text,
+    });
+  }
+}
+
 async function onCraft(recipe: AlchemyRecipeView): Promise<void> {
   if (craftButtonDisabled(recipe)) return;
   const errCode = await alchemy.craft(recipe.key);
@@ -150,6 +190,52 @@ onMounted(async () => {
           {{ t('alchemy.furnaceLevel', { level: alchemy.furnaceLevel }) }}
         </div>
       </header>
+
+      <section
+        v-if="alchemy.loaded"
+        class="bg-ink-700/30 border border-ink-300/20 rounded p-3 flex flex-wrap items-center gap-3 text-xs"
+        data-testid="alchemy-furnace-upgrade"
+      >
+        <div class="flex flex-col gap-0.5">
+          <span class="text-ink-300">
+            {{ t('alchemy.upgrade.title') }}
+          </span>
+          <span
+            v-if="alchemy.nextUpgrade"
+            class="text-ink-100"
+            data-testid="alchemy-upgrade-preview"
+          >
+            <span class="text-amber-200">{{ alchemy.nextUpgrade.toLevel }}</span>
+            <span class="text-ink-300 mx-1">|</span>
+            <span class="text-amber-200">
+              {{ alchemy.nextUpgrade.linhThachCost }}
+            </span>
+            <span class="text-ink-300 ml-1">{{ t('alchemy.field.linhThach') }}</span>
+            <template v-if="alchemy.nextUpgrade.realmRequirement">
+              <span class="text-ink-300 mx-1">|</span>
+              <span class="text-violet-200">
+                {{ t('alchemy.upgrade.realmReq', { realm: alchemy.nextUpgrade.realmRequirement }) }}
+              </span>
+            </template>
+          </span>
+          <span
+            v-else
+            class="text-ink-300"
+            data-testid="alchemy-upgrade-max"
+          >
+            {{ t('alchemy.upgrade.maxNotice') }}
+          </span>
+        </div>
+        <button
+          type="button"
+          :disabled="upgradeButtonDisabled()"
+          data-testid="alchemy-upgrade-btn"
+          class="ml-auto px-3 py-1.5 rounded bg-violet-700 text-violet-50 hover:bg-violet-600 disabled:bg-ink-700/40 disabled:text-ink-300 disabled:cursor-not-allowed"
+          @click="onUpgradeFurnace()"
+        >
+          {{ upgradeButtonLabel() }}
+        </button>
+      </section>
 
       <section class="bg-ink-700/30 border border-ink-300/20 rounded p-3 flex flex-wrap items-center gap-3 text-xs">
         <div class="flex items-center gap-2">
