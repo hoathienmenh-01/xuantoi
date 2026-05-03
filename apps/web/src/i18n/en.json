@@ -42,7 +42,8 @@
       "cultivationMethodState": "Failed to load cultivation method state",
       "cultivationMethodEquip": "Failed to equip cultivation method",
       "achievementsState": "Failed to load achievements state",
-      "achievementClaim": "Failed to claim achievement reward"
+      "achievementClaim": "Failed to claim achievement reward",
+      "tribulation": "Tribulation attempt failed"
     }
   },
   "locale": {
@@ -269,7 +270,8 @@
       "talents": "Talents",
       "alchemy": "Alchemy",
       "cultivationMethod": "Method",
-      "achievements": "Achievements"
+      "achievements": "Achievements",
+      "tribulation": "Tribulation"
     },
     "badge": {
       "bossActive": "World boss is live",
@@ -1417,6 +1419,83 @@
         "IN_FLIGHT": "Processing…",
         "UNKNOWN": "Claim failed, please retry."
       }
+    }
+  },
+  "tribulation": {
+    "title": "Tribulation",
+    "subtitle": "Endure the heavens' trial to ascend to the next realm. The server resolves outcomes deterministically.",
+    "currentRealm": "Current realm: {name}",
+    "notAtPeakHint": "You must reach the 9th sub-realm with sufficient EXP before attempting tribulation.",
+    "severity": {
+      "minor": "Minor Trial",
+      "major": "Major Trial",
+      "heavenly": "Heavenly Trial",
+      "saint": "Saint Trial"
+    },
+    "type": {
+      "lei": "Thunder Trial",
+      "phong": "Wind Trial",
+      "bang": "Frost Trial",
+      "hoa": "Flame Trial",
+      "tam": "Heart-Demon Trial"
+    },
+    "field": {
+      "transition": "Transition",
+      "waves": "Waves",
+      "rewardPreview": "Reward on success",
+      "penaltyPreview": "Penalty on failure",
+      "rewardLinhThach": "Spirit stones",
+      "rewardExpBonus": "Bonus EXP",
+      "rewardTitle": "Special title",
+      "penaltyExpLoss": "EXP lost",
+      "penaltyCooldown": "Cooldown",
+      "penaltyTaoMa": "Heart-Demon debuff"
+    },
+    "unit": {
+      "minutes": "min"
+    },
+    "button": {
+      "attempt": "Begin tribulation",
+      "attempting": "Enduring trial…",
+      "unavailable": "No tribulation available",
+      "notAtPeak": "Not eligible"
+    },
+    "empty": {
+      "noCharacter": "No character.",
+      "noNextRealm": "Already at peak realm, no further tribulation.",
+      "lowTier": "Transition from {from} → {to} requires no tribulation. Use normal Breakthrough."
+    },
+    "outcome": {
+      "successTitle": "Tribulation succeeded",
+      "failTitle": "Tribulation failed",
+      "dismiss": "Dismiss",
+      "transition": "{from} → {to}",
+      "wavesCompleted": "Cleared {count} waves",
+      "totalDamage": "Total damage {dmg}",
+      "rewardLinhThach": "Spirit stones earned: {amount}",
+      "rewardExpBonus": "Bonus EXP: {amount}",
+      "rewardTitle": "New title: {key}",
+      "penaltyExpLoss": "Lost {amount} EXP",
+      "penaltyCooldown": "Must wait until {ts} to retry",
+      "penaltyTaoMa": "Heart-Demon active until {ts}"
+    },
+    "attempt": {
+      "successToast": "Tribulation succeeded — ascended to {to}.",
+      "failToast": "Tribulation failed, train more before retrying."
+    },
+    "errors": {
+      "CHARACTER_NOT_FOUND": "No character.",
+      "NO_CHARACTER": "No character.",
+      "NOT_AT_PEAK": "Must reach 9th sub-realm with full EXP before attempting tribulation.",
+      "NO_NEXT_REALM": "Already at peak realm, no further tribulation.",
+      "NO_TRIBULATION_FOR_TRANSITION": "This transition requires no tribulation. Use normal Breakthrough.",
+      "COOLDOWN_ACTIVE": "Must wait for cooldown before retrying.",
+      "INVALID_RNG": "System error, please retry.",
+      "TRIBULATION_UNAVAILABLE": "Tribulation system is temporarily unavailable.",
+      "INVALID_INPUT": "Invalid input.",
+      "UNAUTHENTICATED": "Session expired.",
+      "IN_FLIGHT": "Processing…",
+      "UNKNOWN": "Tribulation attempt failed, please retry."
     }
   }
 }

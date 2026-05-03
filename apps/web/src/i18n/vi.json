@@ -42,7 +42,8 @@
       "cultivationMethodState": "Không lấy được trạng thái công pháp",
       "cultivationMethodEquip": "Vận công pháp thất bại",
       "achievementsState": "Không lấy được trạng thái thành tựu",
-      "achievementClaim": "Nhận thưởng thành tựu thất bại"
+      "achievementClaim": "Nhận thưởng thành tựu thất bại",
+      "tribulation": "Vượt kiếp thất bại"
     }
   },
   "locale": {
@@ -269,7 +270,8 @@
       "talents": "Ngộ Đạo",
       "alchemy": "Luyện Đan",
       "cultivationMethod": "Công Pháp",
-      "achievements": "Thành Tựu"
+      "achievements": "Thành Tựu",
+      "tribulation": "Thiên Kiếp"
     },
     "badge": {
       "bossActive": "Boss đang xuất thế",
@@ -1417,6 +1419,83 @@
         "IN_FLIGHT": "Đang xử lý…",
         "UNKNOWN": "Nhận thưởng thất bại, thử lại."
       }
+    }
+  },
+  "tribulation": {
+    "title": "Thiên Kiếp",
+    "subtitle": "Vượt qua kiếp số để bước lên cảnh giới mới. Server quyết định thành bại theo cơ chế deterministic.",
+    "currentRealm": "Cảnh giới hiện tại: {name}",
+    "notAtPeakHint": "Cần đạt Cửu Trọng (đỉnh cảnh giới) và đủ kinh nghiệm trước khi bắt đầu kiếp.",
+    "severity": {
+      "minor": "Tiểu Kiếp",
+      "major": "Đại Kiếp",
+      "heavenly": "Thiên Kiếp",
+      "saint": "Thánh Kiếp"
+    },
+    "type": {
+      "lei": "Lôi Kiếp",
+      "phong": "Phong Kiếp",
+      "bang": "Băng Kiếp",
+      "hoa": "Hoả Kiếp",
+      "tam": "Tâm Ma Kiếp"
+    },
+    "field": {
+      "transition": "Chuyển kiếp",
+      "waves": "Số đợt",
+      "rewardPreview": "Phần thưởng nếu vượt thành công",
+      "penaltyPreview": "Tổn thất nếu thất bại",
+      "rewardLinhThach": "Linh thạch",
+      "rewardExpBonus": "Kinh nghiệm bonus",
+      "rewardTitle": "Danh hiệu đặc biệt",
+      "penaltyExpLoss": "Mất kinh nghiệm",
+      "penaltyCooldown": "Cooldown",
+      "penaltyTaoMa": "Tâm Ma debuff"
+    },
+    "unit": {
+      "minutes": "phút"
+    },
+    "button": {
+      "attempt": "Bắt đầu vượt kiếp",
+      "attempting": "Đang vượt kiếp…",
+      "unavailable": "Chưa có kiếp",
+      "notAtPeak": "Chưa đủ điều kiện"
+    },
+    "empty": {
+      "noCharacter": "Chưa có nhân vật.",
+      "noNextRealm": "Đã đạt cảnh giới đỉnh, không còn kiếp.",
+      "lowTier": "Chuyển từ {from} → {to} không cần vượt kiếp. Dùng Đột phá thông thường."
+    },
+    "outcome": {
+      "successTitle": "Vượt kiếp thành công",
+      "failTitle": "Thất bại trong kiếp số",
+      "dismiss": "Đóng",
+      "transition": "{from} → {to}",
+      "wavesCompleted": "Đã vượt {count} đợt",
+      "totalDamage": "Tổng sát thương {dmg}",
+      "rewardLinhThach": "Linh thạch nhận: {amount}",
+      "rewardExpBonus": "Kinh nghiệm bonus: {amount}",
+      "rewardTitle": "Danh hiệu mới: {key}",
+      "penaltyExpLoss": "Mất {amount} kinh nghiệm",
+      "penaltyCooldown": "Phải chờ đến {ts} mới được vượt lại",
+      "penaltyTaoMa": "Bị Tâm Ma đến {ts}"
+    },
+    "attempt": {
+      "successToast": "Vượt kiếp thành công, đăng tiến {to}.",
+      "failToast": "Vượt kiếp thất bại, hãy luyện thêm rồi thử lại."
+    },
+    "errors": {
+      "CHARACTER_NOT_FOUND": "Chưa có nhân vật.",
+      "NO_CHARACTER": "Chưa có nhân vật.",
+      "NOT_AT_PEAK": "Cần đạt Cửu Trọng và đủ kinh nghiệm trước khi vượt kiếp.",
+      "NO_NEXT_REALM": "Đã đạt cảnh giới đỉnh, không còn kiếp.",
+      "NO_TRIBULATION_FOR_TRANSITION": "Chuyển cảnh giới này không cần kiếp, dùng Đột phá thông thường.",
+      "COOLDOWN_ACTIVE": "Phải chờ qua thời gian cooldown trước khi vượt lại.",
+      "INVALID_RNG": "Lỗi hệ thống, thử lại sau.",
+      "TRIBULATION_UNAVAILABLE": "Hệ thống vượt kiếp tạm khoá.",
+      "INVALID_INPUT": "Dữ liệu không hợp lệ.",
+      "UNAUTHENTICATED": "Phiên đăng nhập đã hết.",
+      "IN_FLIGHT": "Đang xử lý…",
+      "UNKNOWN": "Vượt kiếp thất bại, thử lại."
     }
   }
 }
