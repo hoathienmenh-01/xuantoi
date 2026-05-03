@@ -7,14 +7,7 @@
 > **30 dòng đầu = đủ context.** Các dòng dưới `## Snapshots` là chi tiết theo session.
 > **Cập nhật mỗi PR.** Nếu bạn vừa merge PR mới, sửa block này TRƯỚC, sau đó mới thêm snapshot bên dưới.
 
-- **Current `main` commit**: `222dc75` post PR #337 (Phase 11.1.D-2 Cultivation method statBonus.atk BossService wire). PR #246..#337 MERGED into main. **This session take-over**: rebase + force-push **PR #338 (IN-FLIGHT) Phase 11.10.G TribulationService BREAKTHROUGH achievement track** (branch `devin/1777819665-phase-11-10-g-tribulation-breakthrough-track`, originally branched từ `e37a71a` — rebased onto `222dc75` để resolve merge conflict trong AI_HANDOFF_REPORT.md sau khi PR #337 merge). SMALL backend-only PR closing achievement-event gap: `TribulationService.attemptTribulation()` SUCCESS path advance realm cao (vd `kim_dan → nguyen_anh`) NHƯNG trước đó không track `BREAKTHROUGH` event → 4 achievement catalog `BREAKTHROUGH` (`first_breakthrough`/`reach_truc_co`/`reach_kim_dan`/`reach_nguyen_anh`) de facto bỏ qua khi player clear realm cao qua tribulation. Pattern khớp `CultivationProcessor` low-tier auto-breakthrough (line 196 `this.achievements.trackEvent(c.id, 'BREAKTHROUGH', 1)`). **Approach**: inject `@Optional() achievements?: AchievementService` (5th constructor arg, backward-compat — legacy 4-arg constructor vẫn pass). Post-tx fail-soft try/catch (tribulation reward đã commit; tracking failure chỉ log warn, không undo). MissionService.track defer (Phase 11.10.G-3). 3 vitest mới (SUCCESS → first_breakthrough completedAt set; FAIL → no track; legacy 4-arg → no track no throw). typecheck/lint/test/build local GREEN. **Risk** 🟢 low — additive @Optional() arg; fail-soft post-tx; no schema; rollback trivial. **(LEGACY HISTORY KEEPS BELOW)**: PR #336 (Phase 11.1.D Cultivation method statBonus combat wire) MERGED → main `e37a71a`; PR #337 (Phase 11.1.D-2 Cultivation method statBonus.atk BossService wire) MERGED → main `222dc75`. PR #246..#335 MERGED into main.
-
-<details>
-<summary>(LEGACY pre-rebase HEAD snapshot — kept for reference)</summary>
-
 - **Current `main` commit**: `e37a71a` post PR #336 (Phase 11.1.D Cultivation method statBonus.atk/def combat wire). PR #246..#336 MERGED into main. **This session mở PR**: **PR (IN-FLIGHT) Phase 11.1.D-2 Cultivation method statBonus.atk BossService wire** — branch `devin/1777819174-phase-11-1-d2-method-boss-atk` từ `e37a71a`. SMALL backend-only PR symmetric với combat path PR #336: wire `methodStatBonusFor(char.equippedCultivationMethodKey).atkMul` vào `BossService.attack()` `charAtk` multiplier sau talent/buff/title atkMul. Catalog huyen-grade `cuu_cuc_kim_cuong_quyet` (atk +5%) v.v. trước đó được khai báo nhưng KHÔNG consume runtime ở boss path. `defMul` N/A (boss không reply); `hpMaxMul`/`mpMaxMul` defer (stat cap); method KHÔNG có spiritMul (chỉ atk/def/hpMax/mpMax). 3 vitest mới (huyen kim atk +5% → boss damage > baseline; pham starter `khai_thien_quyet` (0%) identity; legacy null identity). Test baseline: api 1600 → 1603 (+3 mới Phase 11.1.D-2 boss) + shared 1035 + web 918 = **3556 total vitest**. typecheck 3/3, lint 0 warnings, build 3/3 GREEN. **Risk** 🟢 low — pure runtime read of existing catalog field; helper fail-soft (key=null/invalid → identity 1.0); no schema; rollback trivial revert 1 file wire + 3 tests. **(LEGACY HISTORY)**: PR #336 Phase 11.1.D combat wire MERGED → main `e37a71a`. **Previous session PR**: **PR #336 Phase 11.1.D Cultivation method statBonus combat wire** — branch `devin/1777721013-phase-11-1-d-method-stat-combat` từ `12976aa`. SMALL backend-only PR wire `methodStatBonusFor(char.equippedCultivationMethodKey)` vào `CombatService.action()` `effPower`/`effDef`. Catalog huyen-grade `cuu_cuc_kim_cuong_quyet` (atk +5%, def +12%) trước đó `statBonus` được khai báo ở `CultivationMethodDef.statBonus` NHƯNG KHÔNG consume runtime — combat de facto bỏ qua công pháp stat bonus. Pure helper `methodStatBonusFor()` (cultivation-method.service.ts) compose `{ atkMul, defMul, hpMaxMul, mpMaxMul }` (legacy null hoặc invalid → identity 1.0; pham starter `khai_thien_quyet` 0% → identity 1.0; huyen kim 5%/12% → 1.05/1.12). `CombatService.action()` consume `atkMul`/`defMul` multiply vào effPower/effDef sau talent/buff/title mods. `hpMaxMul`/`mpMaxMul` defer (stat cap, không phải combat action). 4 vitest mới (huyen kim atk +5% → dmg ≥ baseline; huyen kim def +12% → reply HP loss ≤ baseline; pham starter identity dmg=19; legacy null identity dmg=19). Test baseline: api 1600 + shared 1035 + web 918 (+4 mới Phase 11.1.D combat) = 3553 total vitest. typecheck 3/3, lint 0 warnings, build 3/3 GREEN. **Risk** 🟢 low — pure runtime read of existing catalog field; helper fail-soft (key=null/invalid → identity); no schema; rollback trivial revert 1 file helper + 1 file wire + 4 tests. **(LEGACY HISTORY)**: PR #246..#334 MERGED into main (#330 Phase 11.6.H pagination + #331 docs roadmap sync + #332 Phase 11.6.J filter + #333 Phase 11.6.K stats summary + #334 docs roadmap sync). **This session mở PR**: **PR (IN-FLIGHT) Phase 11.10.F Achievement stats summary** — branch `devin/1777812768-phase-11-10-f-achievement-stats` từ `87356f5`. TINY frontend-only PR mở rộng Phase 11.10.E AchievementView với 4-badge stats line (total/locked/claimable/claimed) trên filter section. Pattern khớp Phase 11.6.K Tribulation stats. Pure presentation. Store thêm 3 computed: `totalCount` = `rows.length`, `claimedCount` = rows với `claimedAt !== null`, `lockedCount` = rows với `completedAt === null`. Existing `completedCount`/`claimableCount` giữ nguyên cho backward-compat (summary text header). Sanity invariants: `totalCount = lockedCount + completedCount`, `completedCount = claimableCount + claimedCount`. View thêm `<section data-testid="achievements-stats">` 4 badge phía trên filter section, conditional `v-if="loaded && totalCount > 0"`. i18n vi/en `achievements.stats.{label,total,locked,claimable,claimed}` — vi: "Tổng kết:", "Tổng {count}", "Chưa đạt {count}", "Có thể nhận {count}", "Đã nhận {count}". Tests: 7 store vitest mới (initial null/empty/mix/sanity invariants/reactive/reset) + 6 view vitest mới (no-render khi loaded=false hoặc empty, render 4 badge, counts text đúng, reactive cập nhật, DOM position trước filter). View test stub thêm 3 readonly getters mirror computed → existing 18 Phase 11.10.E tests vẫn pass. Test baseline: api 1596 + shared 1035 + web 905 → 918 (+13 mới Phase 11.10.F: 7 store + 6 view) = 3549 total vitest. typecheck 3/3, lint 0 warnings, build 3/3 GREEN. **Risk** 🟢 low — pure FE additive computed/UI; no backend touch; no schema; no breaking change to Phase 11.10.E behavior (existing summary text header preserved). **(LEGACY HISTORY)**: PR #332 Phase 11.6.J client-side filter (success/fail/all) Store thêm `historyFilter: ref<'all' | 'success' | 'fail'>` + `filteredHistory: computed<rows[]|null>` + `setHistoryFilter(filter)` action; reset() clear filter về 'all'. View thêm segmented control 3 button (all/success/fail) above list, conditional render khi `history.length > 0`; v-for đổi từ `history` → `filteredHistory`; thêm empty-after-filter hint khi filter loại hết rows. i18n vi/en `tribulation.history.filter.{label,all,success,fail,emptyAfterFilter}`. Test baseline: api 1596 + shared 1035 + web 868 → 890 (+22 mới Phase 11.6.J: 11 store + 11 view) = 3521 total vitest. typecheck 3/3, lint 0 warnings, build 3/3 GREEN. **Risk** 🟢 low — pure FE filter on client-loaded rows; no backend touch; no schema; no breaking change to existing Phase 11.6.G/H tests. **(LEGACY HISTORY)**: PR #330 Phase 11.6.H Tribulation history pagination "Load more" (consume cùng endpoint `GET /character/tribulation/log` đã có; backend KHÔNG đụng). **Anti-duplicate verified**: existing store/view chưa có `historyLimit`/`historyHasMore`/`historyMaxReached`/`loadMoreHistory`. **Approach** = expanding-limit (re-fetch with `?limit=N+20`) thay vì offset/cursor — server endpoint chỉ hỗ trợ `?limit` clamp [1,100], grow incrementally tới MAX 100 → đủ cho MVP, tránh schema/backend changes. Strategy: store `historyLimit` ref (mirror server `TRIBULATION_LOG_DEFAULT_LIMIT=20`); `historyHasMore` computed = `(rows.length === historyLimit && historyLimit < MAX)`; `historyMaxReached` computed = `(historyLimit === MAX && rows.length >= MAX)`; `loadMoreHistory()` action tăng `historyLimit += DEFAULT` (clamp MAX) rồi delegate `fetchHistory(newLimit)` (race-safe via `historyLoading` guard, short-circuit `'IN_FLIGHT'`/`'MAX_REACHED'`). `fetchHistory(limit?)` semantics đổi: nếu `limit` provided → clamp + set `historyLimit`; nếu omit → preserve `historyLimit` hiện tại (cho phép post-attempt refetch giữ nguyên expanded view). View thêm "Load more" button conditional `v-if="historyHasMore"` + max-reached hint conditional `v-else-if="historyMaxReached"`, click handler `onLoadMore()` forward error code → toast (chỉ toast cho real errors; `'IN_FLIGHT'`/`'MAX_REACHED'` silent). i18n vi/en keys mới `tribulation.history.{loadMore,loadMoreLoading,maxReached}`. **Files changed**: `apps/web/src/stores/tribulation.ts` (+74 lines: import `computed`, historyLimit ref + 2 computed + loadMoreHistory action + clampLimit helper + reset clear historyLimit), `apps/web/src/stores/__tests__/tribulation.test.ts` (+150 lines, 14 vitest mới Phase 11.6.H pagination + 2 mock constants), `apps/web/src/views/TribulationView.vue` (+33 lines: onLoadMore handler + Load more button section + max-reached hint), `apps/web/src/views/__tests__/TribulationView.test.ts` (+128 lines, 10 vitest mới Phase 11.6.H + state stub fields + i18n stub keys), `apps/web/src/i18n/vi.json` (+3 lines), `apps/web/src/i18n/en.json` (+3 lines). Test baseline: api 1596 / shared 1035 / web 844 → 868 (+24) = 3499 vitest. typecheck/lint/build 3/3 GREEN. Backward-compat 100% (purely additive UI; existing `fetchHistory(limit)` semantics preserved cho callers explicit limit; `fetchHistory()` no-arg cũ không kiểm `expect.toHaveBeenCalledWith()` nên không regress). Risk: low — idempotent GET, server-authoritative, no schema/migration touch. Limitation: chỉ pagination tới 100 entries gần nhất do server cap MAX_LIMIT; cần real cursor/offset nếu cần xem history >100 trong tương lai (Phase 11.6.I tiềm năng). <!-- legacy: Service mới `TribulationService.listAttemptLogs(charId, limit)` query `prisma.tribulationAttemptLog.findMany({ where: { characterId }, orderBy: { createdAt: 'desc' }, take })` + cast BigInt fields → string + DateTime → ISO. Endpoint parse `?limit=N` (default 20, max 100, invalid → fallback default), forward sang service. Exposed types: `TribulationAttemptLogView` interface, `TRIBULATION_LOG_DEFAULT_LIMIT`, `TRIBULATION_LOG_MAX_LIMIT`. **Files changed**: `apps/api/src/modules/character/tribulation.service.ts` (+85 lines, listAttemptLogs method + view interface + 2 const), `apps/api/src/modules/character/tribulation.service.test.ts` (+102 lines, 6 vitest), `apps/api/src/modules/character/character.controller.ts` (+33 lines: import Query + add endpoint + parse helper), `apps/api/src/modules/character/character.controller.tribulation-log.test.ts` (+241 lines mới, 8 vitest). Test baseline: api 1582 → 1596 (+14) / shared 1035 / web 817 = 3434 → 3448 vitest. typecheck/lint/build 3/3 GREEN. Backward-compat 100% (additive endpoint + helper). Risk: low — read-only GET, no schema/migration touch, server-authoritative. **Previous merged PR**: PR #327 Phase 11.6.E Tribulation state expose — branch `devin/1777804476-phase-11-6-e-tribulation-state-expose` từ `dfb4ee7`. SMALL full-stack PR mở rộng `CharacterStatePayload` shared interface (+`tribulationCooldownAt: string|null` + `taoMaUntil: string|null`) → `CharacterService.toState()` map từ Prisma DateTime → ISO string → `apps/web/src/views/TribulationView.vue` consume cho live cooldown banner / Tâm Ma debuff banner / pre-check button disable theo cooldown countdown (1 Hz `setInterval` ticker, format `m:ss` hoặc `h:mm:ss` cho >1h). Backward-compat: 2 field thuần additive (null cho character chưa attempt), `toState` luôn return ISO string nếu có. 4 vitest mới `character.service.test.ts` cho toState mapping (null + cooldown only + taoMa only + cả 2) + 8 vitest mới `TribulationView.test.ts` (cooldown banner render/hide, button disable+countdown label, taoMa banner, song song active, h:mm:ss format) + 1 vitest shared `ws-events.test.ts` cho payload shape. **Files changed**: `packages/shared/src/ws-events.ts` (+15 lines doc), `packages/shared/src/ws-events.test.ts` (+34 lines), `apps/api/src/modules/character/character.service.ts` (+4 lines toState mapping), `apps/api/src/modules/character/character.service.test.ts` (+47 lines, 4 vitest), `apps/web/src/views/TribulationView.vue` (+98 lines, ticker + cooldown banner + Tâm Ma banner + button disable wire + onUnmounted cleanup), `apps/web/src/views/__tests__/TribulationView.test.ts` (+135 lines, 8 vitest), `apps/web/src/components/__tests__/OnboardingChecklist.test.ts` (+2 lines fixture parity), `apps/web/src/i18n/vi.json` (+9 keys: `tribulation.button.cooldown` + `tribulation.cooldown.{title,remaining}` + `tribulation.taoMa.{title,remaining}`), `apps/web/src/i18n/en.json` (+9 keys parity). Test baseline: api 1578 → 1582 (+4) / shared 1034 → 1035 (+1) / web 809 → 817 (+8) = 3389 → 3434 vitest (+45). typecheck/lint/build 3/3 GREEN. **Previous merged PR**: PR #326 Phase 11.6.D Tribulation UI — branch `devin/1777803320-phase-11-6-d-tribulation-ui` từ `1e13861`. MEDIUM frontend-only PR expose Phase 11.6.B backend (`POST /character/tribulation` — `TribulationService.attemptTribulation` từ PR #242 + extended PR #281/#286) qua dedicated TribulationView UI. Trước PR này, server-authoritative tribulation endpoint đã có nhưng FE ZERO UI — user không thể trigger Thiên Kiếp từ UI. **Scope**: (1) `apps/web/src/api/tribulation.ts` mới — `TribulationOutcomeView`/`TribulationRewardView`/`TribulationPenaltyView` interface mirror `TribulationAttemptOutcome` server (success/penalty branch, BigInt fields exposed as `string` qua Prisma JSON serializer) + `attemptTribulation()` POST envelope wrapper với fallback Error. (2) `apps/web/src/stores/tribulation.ts` mới — Pinia `useTribulationStore` (state `lastOutcome`/`inFlight`/`lastError`, action `attempt()` race-protected via `inFlight` boolean, defensive nested error.code extraction, dual-mode return: `null` cho server-accepted attempts (caller xem `lastOutcome.success` để biết kiếp thành/bại), error code string cho server-rejected (NOT_AT_PEAK/COOLDOWN_ACTIVE/etc.)). (3) `apps/web/src/views/TribulationView.vue` mới — server-authoritative dedicated page hiển thị: (a) header với character realmFullName, (b) last outcome banner (success/fail branch với reward detail / penalty detail), (c) empty state cho `no_character` / `no_next_realm` / `low_tier` (transition không cần kiếp), (d) upcoming tribulation card với severity/type badges + reward preview (linhThach/expBonus/titleKey) + penalty preview (expLossRatio/cooldownMinutes/taoMaDebuffChance/taoMaDebuffDurationMinutes), (e) attempt button disable theo inFlight/atPeak/upcomingDef. Click `onAttempt` → store.attempt() → toast success/warning theo outcome, toast error code mapped i18n. Pre-check tribulation def qua shared `getTribulationForBreakthrough(c.realmKey, nextRealm(c.realmKey).key)` (client read-only check, server vẫn re-validate). (4) Route `/tribulation` thêm vào `apps/web/src/router/index.ts` + sidebar nav entry `劫 Thiên Kiếp` trong `apps/web/src/components/shell/AppShell.vue`. (5) `apps/web/src/i18n/{vi,en}.json` thêm 47 keys `tribulation.*` (severity/type/field/unit/button/empty/outcome/attempt/errors) + apiFallback.tribulation + shell.nav.tribulation, parity vi/en. **Test**: 5 api + 10 store + 17 view = 32 vitest mới. Web 777 → 809. **Local**: typecheck 3/3 GREEN, lint 0 warnings, shared 1034 / api 1578 / web 809 PASS, build 3/3 GREEN. KHÔNG đụng schema/migration/backend/seed (server-authoritative endpoint đã merged Phase 11.6.B). Risk thấp — UI-only, server vẫn validate gate + cooldown + sim. **Next safe task**: extend `CharacterStatePayload` để expose `tribulationCooldownAt` + `taoMaUntil` cho FE pre-check countdown, hoặc Phase 11.7.D Talent active/cast wire. -->
-
-</details>
 - **Previous merged PR**: [#329 feat(web,tribulation): Phase 11.6.G Tribulation history view — fetchAttemptLog + Pinia history state + TribulationView history list section](https://github.com/hoathienmenh-01/xuantoi/pull/329) — Frontend-only SMALL PR consume Phase 11.6.F endpoint (`GET /character/tribulation/log`) → render history list dưới TribulationView. 27 vitest web mới (817 → 844). Main bumped `17071b6` → `dde1175`. CI 5/5 GREEN.
 - **Previous merged PR**: [#323 feat(api,web,achievement): Phase 11.10.E Achievement HTTP wire + UI — GET /character/achievements + /achievements view + Pinia store + filter category/tier/status + claim button](https://github.com/hoathienmenh-01/xuantoi/pull/323) — LARGE backend+frontend PR expose Phase 11.10.B `AchievementService` runtime qua HTTP + UI. 10 vitest backend + 36 vitest frontend mới. Main bumped `c8a19ed` → `c28523d`. CI 5/5 GREEN.
 - **Previous merged PR**: [#322 feat(web,cultivation-method): Phase 11.1.C Cultivation Method (Công Pháp) UI — /cultivation-method view + Pinia store + equip button + filter grade](https://github.com/hoathienmenh-01/xuantoi/pull/322) — Frontend-only MEDIUM PR expose 2 backend endpoints (Phase 11.1.B). Main bumped `ba31a8b` → `c8a19ed`. CI 5/5 GREEN.
@@ -129,8 +122,6 @@
 ## Snapshots
 
 > Snapshot mới nhất ở trên cùng. Mỗi PR thêm 1 snapshot mô tả: PR đụng cái gì, baseline thay đổi thế nào, risk.
-
-> **Snapshot (this session take-over — PR #338 Phase 11.10.G TribulationService BREAKTHROUGH achievement track wire, REBASED onto main `222dc75`)**: feat/api — take-over rebase: branch `devin/1777819665-phase-11-10-g-tribulation-breakthrough-track` originally branched từ `e37a71a` (post PR #336). Sau khi PR #337 merged → main = `222dc75`, branch có merge conflict trong `docs/AI_HANDOFF_REPORT.md` (Executive Summary + Snapshot block). Take-over rebase: resolve conflicts, force-push. Code changes của PR #338 unchanged (3 vitest pass + post-tx fail-soft trackEvent). **Approach**: inject `@Optional() achievements?: AchievementService` (5th constructor arg, backward-compat — legacy 4-arg constructor `new TribulationService(prisma, currency, titleSvc, buffSvc)` vẫn pass). `TribulationService.attemptTribulation()` SUCCESS path post-tx fail-soft try/catch `achievements.trackEvent(charId, 'BREAKTHROUGH', 1)`. MissionService.track defer (Phase 11.10.G-3). **Scope** = `apps/api/src/modules/character/tribulation.service.ts` (+22 dòng / -1 dòng), `apps/api/src/modules/character/tribulation.service.test.ts` (+85 dòng, 3 vitest mới: SUCCESS → first_breakthrough completedAt set, FAIL → no track, legacy 4-arg → no track no throw). Pattern khớp `CultivationProcessor` low-tier auto-breakthrough. **Risk** 🟢 low — additive @Optional() arg; fail-soft post-tx (reward đã commit); no schema; no migration; rollback trivial revert (1 import + 1 ctor arg + 1 post-tx try/catch + 3 vitest cases). **Files changed**: `apps/api/src/modules/character/tribulation.service.ts` + `apps/api/src/modules/character/tribulation.service.test.ts` + `docs/AI_HANDOFF_REPORT.md` (this snapshot + executive summary).
 
 > **Snapshot (session 9r-25 resume part 2, PR IN-FLIGHT — Phase 11.1.D-2 Cultivation method statBonus.atk BossService wire, branched on main `e37a71a`)**: feat/api — autonomous loop tiếp tục sau khi PR #336 (Phase 11.1.D combat) merged. Symmetric task wire cùng `methodStatBonusFor` helper (đã merge ở Phase 11.1.D) vào BossService.attack(). Branch `devin/1777819174-phase-11-1-d2-method-boss-atk` từ `e37a71a`. SMALL backend-only PR. **Anti-duplicate verified**: pre-edit `grep "methodStatBonusFor" apps/api/src/modules/boss` → 0 kết quả; `grep "Phase 11.1.D-2" apps/api` → 0 kết quả. **Approach**: import existing helper (no new helper), wire `methodStat.atkMul` vào `charAtk` multiplier sau `talent.atkMul × buff.atkMul × title.atkMul`. **Scope conservative**: chỉ wire `atkMul` (boss không reply → `defMul` N/A; method KHÔNG có spiritMul → spirit branch không touch; hpMax/mpMax defer stat cap). **Scope** = (1) `apps/api/src/modules/boss/boss.service.ts` (+15 dòng / -1 dòng): import `methodStatBonusFor`, sau titleMods compute `methodStat = methodStatBonusFor(char.equippedCultivationMethodKey)`, multiply `methodStat.atkMul` vào `charAtk` (sau title.atkMul). (2) `apps/api/src/modules/boss/boss.service.test.ts` (+98 dòng, 3 vitest mới Phase 11.1.D-2): (a) huyen kim `cuu_cuc_kim_cuong_quyet` (atk +5%) → damage > baseline; (b) pham starter `khai_thien_quyet` (0%) identity → damage equal; (c) legacy null identity → damage equal. Test setup raw `prisma.character.update({ equippedCultivationMethodKey })`. **Test baseline**: api 1600 → 1603 (+3 mới Phase 11.1.D-2 boss) + shared 1035 + web 918 = **3556 total vitest**. typecheck 3/3, lint 0 warnings, build 3/3 GREEN. **Risk** 🟢 low — pure runtime read of existing catalog field; helper fail-soft (key=null/invalid → identity); no schema; no migration; rollback trivial revert 1 file wire + 3 tests. **Files changed**: `apps/api/src/modules/boss/boss.service.ts` + `apps/api/src/modules/boss/boss.service.test.ts` + `docs/AI_HANDOFF_REPORT.md`.
 
@@ -1872,5 +1863,2100 @@
 - **Files** (1 thay đổi): `docs/AI_HANDOFF_REPORT.md` (+34/-28 line — bump §3 Snapshot, §2 Current Branch/CI, §2 PR merged table, §16 Known Issues L6 Resolved, §20 Roadmap Immediate restruck).
 - **Risk**: Cực thấp — docs only, không touch code/test/migration.
 - **CI status**: 4/4 ✅ build×2 + e2e-smoke×2.
+||||||| 537a4d6
+- **Branch**: `devin/1777470949-docs-api-refresh`. **Base**: `main` @ `011e930` (sau PR #86 audit refresh merged). **Status**: docs-only PR session 9d.
+- **Mục tiêu** (Smart docs/handoff §7 — `docs/API.md` lệch thực tế): API.md cũ liệt kê endpoint từ session 6 (157 line, ~30 endpoint) + có lỗi sai (auth route ghi `/auth/...` nhưng code thực `@Controller('_auth')` → 404 nếu dev mới làm theo doc). Sau cascade PR #36/#54/#59/#60/#62/#63/#66/#71/#80/#81/#83/#84/#85/#88 đã thêm/sửa nhiều endpoint mới chưa được ghi.
+- **Phát hiện gap khi audit (đối chiếu `apps/api/src/modules/*/[*.controller.ts]`)**:
+  - **Path sai**: `/auth/register` etc. — code thực là `/_auth/register` (controller `@Controller('_auth')`).
+  - **Missing endpoint**: `/character/profile/:id` (PR #62), `/daily-login/me` + `/daily-login/claim` (PR #80, M9), `/leaderboard/power` (PR #59), `/shop/npc` + `/shop/buy`, `/me/next-actions` (smart UX), `/mail/unread-count` (PR #71, M7), `/admin/users/:id/inventory/revoke` (PR #66), `/admin/stats`, `/admin/economy/alerts` (PR #54), `/boss/admin/spawn` (PR #36), `/_auth/logout-all` (PR #83/#85, L6), `/topup/packages`, `/logs/me` (PR #88, M6).
+  - **Missing param**: `/admin/giftcodes` filter `q + status` (PR #81 G22), `/admin/topups` filter `q + from + to` (date+email), `/admin/audit` filter `action + q`, `/admin/users` filter `role + banned`.
+  - **Missing error code**: `CODE_EXISTS` (PR #84 G23), `ALREADY_ONBOARDED`, `NOT_AT_PEAK`, `INVALID_CURSOR` (PR #88).
+  - **Missing WS event**: `mission:progress` (PR #63).
+  - **Missing context**: global prefix `/api/`, intentional logout-vs-logout-all trade-off, env var `MISSION_RESET_TZ` / `MARKET_FEE_PCT` / `ADMIN_BOOTSTRAP_*`.
+- **Files** (1 thay đổi): `docs/API.md` rewrite từ 157 → ~190 line. Cấu trúc mới:
+  - Note about `/api/` global prefix.
+  - Tách section riêng: Auth, Character, Combat, Inventory, Market, Sect & Chat, Boss, **Daily Login**, **Leaderboard**, **Shop**, Mission, Mail, Giftcode, Topup & Admin, **Next Action**, **Logs (M6)**, WebSocket, Error codes, Environment.
+  - Mỗi endpoint ghi PR số + bối cảnh (rate-limit, audit reason, ledger reason).
+  - Error codes group theo domain + ghi rõ HTTP status nơi cần.
+- **Risk**: Cực thấp — docs only, không touch code/test/migration. Reference cho dev/AI mới.
+- **Rollback**: revert single PR.
+- **Test added**: 0 (docs only).
+- **CI status (local)**: typecheck ✅, lint ✅, build ✅. Test 369/123/47 không thay đổi.
+- **Runtime smoke**: N/A (docs).
+- **`AI_HANDOFF_REPORT.md updated`**: this Recent Changes entry.
+- **Bước tiếp theo**: FE tab "Hoạt động" wire `GET /logs/me` (sau khi PR #88 merge).
 
-</details>
+### PR #87 — `feat(shared): proverbs corpus expand 7 → 64 + corpus invariants test (L3)` — **Merged into main** (29/4 session 9d, CI 5/5 ✅)
+
+- **Branch**: `devin/1777469379-l3-proverbs-expand` (merged). **Base**: `main` @ `05b05c0` (sau PR #84 G23 merged). **Status**: Merged into main.
+- **Mục tiêu** (Smart UX polish §6 + Recommended Roadmap L3): `packages/shared/src/proverbs.ts` chỉ có 7 câu — splash loading lặp nhanh.
+- **Files** (2 thay đổi): `packages/shared/src/proverbs.ts` 7 → 64 câu (4 chủ đề, 16 câu/chủ đề); `packages/shared/src/proverbs.test.ts` +8 vitest invariants (≥50 câu, no-empty/trim, no-dup, consistent punctuation, randomProverb boundary). Tổng shared 47 → 55.
+- **CI**: 5/5 ✅. **Risk**: Cực thấp — data only.
+
+### PR #89 — `docs(api): refresh API.md — sync endpoints + global prefix /api note + WS mission:progress + auth route /_auth/* fix` — **Merged into main** @ `537a4d6` (29/4 ~13:35 UTC, CI 5/5 ✅)
+
+- **Branch**: `devin/1777470949-docs-api-refresh` (merged). **Base**: `main` @ `011e930`. **Merge commit**: `537a4d6`.
+- **Mục tiêu**: Sync `docs/API.md` với code thực sau cascade PR #36/#54/#59/#60/#62/#63/#66/#71/#80/#81/#83/#84/#85/#88 + fix auth route sai (`/auth/*` → đúng `/_auth/*`).
+- **Files**: `docs/API.md` (157 → ~190 line) + Recent Changes entry mô tả gap.
+- **Test added**: 0 (docs only). Test counts không thay đổi (api 369 / web 123 / shared 47/55).
+- **CI**: 5/5 ✅.
+- **Risk**: Cực thấp.
+
+### PR #85 — `test(web): SettingsView logout-all confirm modal integration — 7 test (L6b)` — **Merged into main** @ `bbb6718` (29/4 ~13:02 UTC, CI 5/5 xanh)
+
+- **Branch**: `devin/1777467454-l6b-settings-logout-vitest` (đã merged, có thể dọn). **Base**: `main` @ `78261eb` (sau khi PR #83 L6 merged). **Merge commit**: `bbb6718`. **Status**: Merged into main.
+- **Mục tiêu** (Smart testing/QA §5 — Render-level integration vitest cho L6 logout-all flow): PR #83 đã thêm `ConfirmModal.vue` + 13 unit test cho component nhưng **không** có integration test cho `SettingsView` xác minh modal được wire đúng (open trên nút logout-all, gọi `logoutAll()` đúng lúc, navigate `/auth` sau success, map error code qua i18n). Gap test có thể regress khi sửa SettingsView tương lai.
+- **Giải pháp** (test only, không sửa prod code):
+  - `apps/web/src/views/__tests__/SettingsView.test.ts` (new, ~225 line): mount full SettingsView với mock `@/api/auth` (`logoutAll`, `changePassword`), mock `vue-router` (`replace`), mock toast/auth/game store, stub AppShell. 7 test cases covering: (1) initial render không hiện modal + không gọi API; (2) click `[data-testid="settings-logout-all-btn"]` mở modal `[data-testid="logout-all-confirm-modal"]` mà không gọi API; (3) cancel modal đóng + không gọi API; (4) confirm gọi `logoutAll`, toast success, `router.replace('/auth')`, đóng modal; (5) error có code map qua `settings.errors.${code}` → toast text; (6) error code unmapped → fallback `settings.errors.UNKNOWN`; (7) phím Escape khi modal mở → đóng modal + không gọi API.
+- **Files** (1 file new):
+  - `apps/web/src/views/__tests__/SettingsView.test.ts` (+225 line)
+- **Risk**: Rất thấp — pure test add, no prod code touched. Mock pattern theo template `MissionView.test.ts` / `LeaderboardView.test.ts`.
+- **Rollback**: revert single PR.
+- **Test added**: +7 vitest web. Tổng web 116 → 123.
+- **CI status (local)**: typecheck ✅, lint ✅, web test ✅ (123/123), build ✅.
+- **`AI_HANDOFF_REPORT.md updated`**: Recent Changes (this entry).
+
+### PR #84 — `feat(api,web): giftcode duplicate code → CODE_EXISTS error (G23)` — **Merged into main** @ `05b05c0` (29/4 ~13:25 UTC, CI 4/4 ✅)
+
+- **Branch**: `devin/1777467022-g23-giftcode-duplicate-error`. **Base**: `main` @ `bbb6718`. **Status**: Merged into main; CI GitHub 4/4 ✅ (build ×2, e2e-smoke ×2) sau merge commit `8eff2ca` (session 9d resolve `docs/AI_HANDOFF_REPORT.md` conflict với origin/main — drop duplicate G23 entry).
+- **Mục tiêu** (Smart UX polish §6 — UX nit phát hiện trong G22 testing PR #81): Khi admin tạo giftcode trùng code, BE trả về `INVALID_INPUT` chung — FE hiện toast generic `Tham số không hợp lệ` rất khó hiểu.
+- **Giải pháp** (5 file, ~40 line +/-):
+  - `apps/api/src/modules/giftcode/giftcode.service.ts`: thêm `'CODE_EXISTS'` vào `GiftCodeErrorCode` union; `create()` line 148 throw `CODE_EXISTS` thay `INVALID_INPUT` khi duplicate.
+  - `apps/api/src/modules/admin/admin.controller.ts`: `handleErr` map `CODE_EXISTS` → HTTP 409 CONFLICT.
+  - `apps/web/src/i18n/{vi,en}.json`: thêm 6 key `admin.errors.{CODE_EXISTS, CODE_NOT_FOUND, CODE_EXPIRED, CODE_REVOKED, CODE_EXHAUSTED, ALREADY_REDEEMED}`. FE `AdminView.handleErr` đã có pattern lookup → tự pickup.
+  - `apps/api/src/modules/giftcode/giftcode.service.test.ts`: test "từ chối code trùng" assertion đổi `INVALID_INPUT` → `CODE_EXISTS`.
+- **Risk**: Thấp — error code rename, status 400 → 409 đúng semantic, FE check `error.code` field nên không bị ảnh hưởng HTTP status.
+- **Test**: 1 test rename + assert đổi. Tổng api 349/349 (giữ nguyên số test).
+- **CI**: 3/3 GitHub xanh.
+- **`AI_HANDOFF_REPORT.md updated`**: Recent Changes (this entry).
+
+Mỗi PR đều `Merged` vào `main`, branch base = `main`. Smoke local (typecheck/lint/test/build) đã chạy ở mỗi PR; smoke E2E 6/6 đã pass tại PR #44 (snapshot `4d8af10`); H6 Playwright golden path đã wire CI matrix qua PR #64.
+
+### PR #83 — `feat(web): logout-all confirm modal — replace window.confirm() (L6)` — **Merged into main** (CI 5/5)
+
+- **Branch**: `devin/1777466552-l6-logout-all-confirm-modal` → merged 29/4 ~12:50 UTC. CI: build ×2 ✅, e2e-smoke ×2 ✅, Devin Review ✅.
+- **Mục tiêu** (Smart UX polish §6 + Recommended Roadmap L6 — replace `window.confirm()` cho logout-all): SettingsView trước đây dùng native `window.confirm()` để confirm logout-all-devices — UX kém (browser-styled, không tích hợp i18n đầy đủ với title, không support keyboard escape gracefully, không thể disable trong loading). Closed beta cần modal đẹp tích hợp design system.
+- **Giải pháp**:
+  - **`apps/web/src/components/ui/ConfirmModal.vue`** (new, ~115 line): reusable confirm modal component với props `open / title / message / confirmText / cancelText / danger / loading / testId`. Emits `confirm` + `cancel`. Features: Teleport to body, backdrop click-self → cancel, Escape key → cancel (cả hai bị block khi `loading=true`), `danger=true` style đỏ cho phá huỷ flow, fallback i18n `common.confirm` / `common.cancel`. Slot mặc định để mở rộng khi cần custom body.
+  - **`apps/web/src/views/SettingsView.vue`** (modified): remove `window.confirm(t('settings.logoutAll.confirm'))` ở `submitLogoutAll`; thay bằng `<ConfirmModal>` ở cuối `<template>` với `danger` + `loading=submittingLogoutAll`. Thêm state `logoutAllConfirmOpen` + helpers `openLogoutAllConfirm` / `cancelLogoutAllConfirm`. Logout button gắn `data-testid="settings-logout-all-btn"`.
+- **i18n**: tận dụng key có sẵn (`common.confirm` / `common.cancel` / `common.loading` đã có). Không thêm key mới.
+- **Files** (3 thay đổi):
+  - `apps/web/src/components/ui/ConfirmModal.vue` (new)
+  - `apps/web/src/views/SettingsView.vue` (modified)
+  - `apps/web/src/components/__tests__/ConfirmModal.test.ts` (new, 13 vitest)
+- **Risk**: Thấp — pure FE work, không có migration / không đụng economy / không thay đổi BE / không thay đổi API contract. Logout-all flow giữ nguyên semantics: button click → confirm modal → user confirm → call `POST /auth/logout-all` → toast + router replace `/auth`. Modal cancel/escape/backdrop → đóng modal không gọi API.
+- **Rollback**: Revert single PR; không cần migration rollback.
+- **Test added**: +13 vitest web cho `ConfirmModal` (open/close, render title+message, default i18n label, custom label override, click confirm/cancel emit, loading disable + text "Đang xử lý…", Escape emit cancel, Escape khi loading bị block, backdrop click-self emit cancel, danger=true class red vs danger=false class amber, custom testId prefix, cleanup keydown listener khi unmount). Tổng web 103 → 116.
+- **CI status (local)**: typecheck ✅ (3 project), lint ✅, web test ✅ (116/116), api test ✅ (349/349 sau khi `pnpm infra:up` + `prisma migrate deploy`), shared test ✅ (47/47), build ✅. CI GitHub sẽ chạy 5/5 check.
+- **`AI_HANDOFF_REPORT.md updated`**: Recent Changes (this entry), Known Issues §17 L6 → Pending merge.
+
+### PR #82 — `test(web): MissionView claim flow vitest — 9 test (L5)` — **Merged into main** @ `45e42dc` (29/4 ~12:30 UTC, CI 5/5 xanh)
+
+- **Branch**: `devin/1777465473-l5-mission-claim-vitest`. **Base**: `main` @ `ec37f10` (sau khi PR #80/#81 merged). **Status**: code complete + local typecheck/lint/web test/shared test/build xanh; PR mở session 9c, CI sẽ chạy.
+- **Mục tiêu** (Smart testing/QA §5 + Recommended Roadmap L5 — render-level vitest cho mission claim flow): `MissionView.vue` (268 line) trước đây không có vitest riêng — coverage chỉ qua `lib/missionProgress.test.ts` (pure function `applyMissionProgressFrame`). FE `MissionView` có nhiều state-driven branches (claim button enable/disable, `claimed` badge, sort theo claimable/pending/done, tab filter DAILY/WEEKLY/ONCE, WS `mission:progress` live update) — gap test có thể regress khi refactor mission UI tương lai.
+- **Giải pháp**:
+  - **`apps/web/src/views/__tests__/MissionView.test.ts`** (new, ~310 line, 9 test): mount `MissionView` với mock `@/api/mission` (`listMissions`, `claimMission`), mock `@/ws/client.on` (capture `mission:progress` handler để chủ động trigger frame), mock stores (auth/game/toast) + vue-router. i18n VI thật-style.
+  - 9 test case:
+    1. `Nhận Thưởng enabled cho mission completable & chưa claim` — verify button không có `disabled` attr + badge "Sẵn sàng" hiện.
+    2. `Nhận Thưởng disabled khi mission chưa completable` — verify `disabled` attr + không có badge.
+    3. `Hiển thị badge "Đã nhận" và ẩn nút khi claimed=true` — claimed branch.
+    4. `Click Nhận Thưởng → gọi claimMission + toast success + cập nhật list` — full happy path.
+    5. `Claim lỗi ALREADY_CLAIMED → toast error i18n key tương ứng` — error branch (handleErr maps code → i18n).
+    6. `WS mission:progress frame → cập nhật currentAmount + completable enable nút` — covers `applyMissionProgressFrame` integration vào view: trước WS frame disabled → sau frame enabled, progress text "0 / 10" → "10 / 10".
+    7. `Sort: completable → chưa xong → đã claim trong cùng tab` — verify computed `filtered` order.
+    8. `Tab WEEKLY filter → ẩn DAILY mission` — verify period filter.
+    9. `Empty state khi tab không có mission nào` — verify i18n `mission.empty`.
+- **Files** (1 thay đổi): `apps/web/src/views/__tests__/MissionView.test.ts` (new).
+- **Risk**: Cực thấp — chỉ thêm test, không sửa code production. Không có migration / không đụng economy / không thay đổi BE/FE behavior.
+- **Rollback**: Revert single PR; chỉ xoá test file.
+- **Test added**: +9 vitest web (tổng web 94 → 103 pass).
+- **CI status (local)**: typecheck ✅ (3 project), lint ✅, web test ✅ (103/103), shared test ✅ (47/47), build ✅. CI GitHub sẽ chạy 5/5 check (build ×2, e2e-smoke ×2, Devin Review).
+- **`AI_HANDOFF_REPORT.md updated`**: Recent Changes (this entry), Tests section, Roadmap (gỡ L5 mission claim test khỏi gap list).
+
+### PR #81 — `feat(web): admin giftcode panel — list/filter/create/revoke` (G22) — **Merged into main** (CI 5/5 xanh)
+
+- **Branch**: `devin/1777458198-g22-admin-giftcode-fe`. **Base**: `main` @ `ec37f10`. **Status**: code complete + local typecheck/lint/web test/shared test/build xanh; PR mở session 9c, CI đang chạy.
+- **Mục tiêu** (Smart admin §3 + Recommended Roadmap G22): consumer FE cho admin giftcode endpoints đã có từ PR #74 — admin trước đây phải gọi API trực tiếp (curl/Postman) để tạo và list giftcode. Closed beta cần UI để vận hành team có thể tạo code khuyến mãi (welcome 100 LT, event reward, etc.) và thu hồi an toàn.
+- **Giải pháp FE**:
+  - **`apps/web/src/api/admin.ts`** (modified): thêm `AdminGiftCodeRow` + `AdminGiftCreateInput` + `GiftCodeStatus` types. Wrappers `adminListGiftcodes(filters?)`, `adminCreateGiftcode(input)`, `adminRevokeGiftcode(code)`. Helper pure-function `giftCodeStatusOf(row, now?)` mirror BE logic: REVOKED ưu tiên cao nhất → EXPIRED nếu `expiresAt < now` → EXHAUSTED nếu `redeemCount >= maxRedeems` → ACTIVE.
+  - **`apps/web/src/views/AdminView.vue`** (modified): thêm tab `giftcodes` (insert giữa `audit` và `boss`). Filter bar: input `q` (placeholder "Tìm theo mã"), select `status` (ACTIVE/REVOKED/EXPIRED/EXHAUSTED + All), button Search. Button "+ Tạo Giftcode" mở inline create form chỉ hiện cho ADMIN (`isAdmin()` guard). Form có 6 field: code (4–32, A-Z 0-9 _ -), Linh Thạch (string), Tiên Ngọc (number), EXP (string), Max Redeems (optional number), Expires In Days (optional number → BE nhận ISO datetime). Submit gọi `adminCreateGiftcode()` rồi refresh list. Table 7 cột (code/rewards/redeemed/expires/status/createdAt/actions). Status badge color-coded (emerald=ACTIVE, red=REVOKED, ink=EXPIRED/EXHAUSTED). Button Revoke chỉ hiện cho ADMIN + status=ACTIVE; confirm dialog trước khi revoke.
+  - **i18n VI/EN** (`apps/web/src/i18n/{vi,en}.json`): thêm `admin.tab.giftcodes`, `admin.giftcodes.{filter, status, col, empty, createBtn, createTitle, create.{code, linhThach, tienNgoc, exp, maxRedeems, maxRedeemsPlaceholder, expiresDays, expiresDaysPlaceholder}, submitCreate, creating, createdToast, revokeBtn, revokeConfirm, revokedToast, itemsLabel}`. Cả 2 ngôn ngữ.
+- **API contracts** (đã có sẵn từ PR #74):
+  - `GET /api/admin/giftcodes?q=&status=&limit=` → `{ ok:true, data:{ codes:[AdminGiftCodeRow] } }` — guard MOD/ADMIN.
+  - `POST /api/admin/giftcodes` body `{ code, rewardLinhThach, rewardTienNgoc, rewardExp, rewardItems, maxRedeems?, expiresAt? }` → `{ ok:true, data:{ code:AdminGiftCodeRow } }` — guard ADMIN, audit log `admin.giftcode.create`.
+  - `POST /api/admin/giftcodes/:code/revoke` → `{ ok:true, data:{ code:AdminGiftCodeRow } }` — guard ADMIN, audit log `admin.giftcode.revoke`.
+- **Tests** (+11 vitest web, total web 94/94):
+  - `apps/web/src/api/__tests__/admin.giftcodes.test.ts`: `giftCodeStatusOf` (6 case bao toàn priority logic), `adminListGiftcodes` (3 case: filter pass-through, default params, BE error throw), `adminCreateGiftcode`/`adminRevokeGiftcode` (2 case: payload + URL encoding).
+  - Mock `apiClient.get/post` từ `@/api/client`.
+- **Files** (5 thay đổi): `apps/web/src/api/admin.ts`, `apps/web/src/views/AdminView.vue`, `apps/web/src/i18n/{vi,en}.json`, `apps/web/src/api/__tests__/admin.giftcodes.test.ts`.
+- **Risk**: Thấp — pure FE work, không có migration / không đụng economy / không thay đổi BE. ADMIN guard double-checked (FE: `v-if="isAdmin()"` cho create/revoke buttons; BE: `RequireAdmin()` decorator có sẵn từ PR #74). Helper `giftCodeStatusOf` là pure function, deterministic, dễ test.
+- **Rollback**: Revert single PR; không cần migration rollback (no schema change).
+- **Runtime smoke còn thiếu**: Cần admin login → tab Giftcode → filter, tạo code "DEVIN_TEST_001" với 100 LT 5 redeem 7 ngày → revoke → quan sát toast + list refresh.
+- **`AI_HANDOFF_REPORT.md updated`**: §0 header, Recent Changes (this entry), §6 Completed Features (G22 done), §20 Roadmap (gỡ G22 khỏi Immediate).
+
+### PR #80 — `feat(api,web): M9 daily login reward — idempotent + ledger DAILY_LOGIN + FE card` — **Merged into main** @ `ec37f10` (29/4 ~10:25 UTC)
+
+- **Branch**: `devin/1777457450-m9-daily-login-reward` (rebased on `main` @ `f24fe63` sau PR #79 merge). **Base**: `main` @ `f24fe63`. **CI**: 5/5 xanh (build×2, e2e-smoke×2, Devin Review). Có fix-up commit thêm seed `DailyLoginClaim` cho 2 test `next-action.service.test.ts` (CULTIVATE_IDLE fallback) + thêm 2 test mới cho DAILY_LOGIN_AVAILABLE coverage.
+- **Mục tiêu** (Smart gameplay beta §9 — "Daily login reward đơn giản nếu đã có RewardClaimLog"): closed beta cần một feedback loop hằng ngày giữ player online + làm tone "tu tiên hằng ngày". `RewardClaimLog` chưa tồn tại → tạo model mới `DailyLoginClaim` có unique `(characterId, claimDateLocal)` để chống double-claim.
+- **Giải pháp BE**:
+  - **Schema** (`apps/api/prisma/schema.prisma`): thêm model `DailyLoginClaim { id, characterId, claimDateLocal:String, linhThachDelta:BigInt, streakAtClaim:Int, createdAt }` với `@@unique([characterId, claimDateLocal])` + `@@index([characterId, createdAt])`. `Character.dailyLoginClaims` relation. **Migration mới** `20260429100000_add_daily_login_claim`.
+  - **`apps/api/src/modules/daily-login/daily-login.service.ts`** (new, ~170 line): `DailyLoginService.status(userId)` → `{ todayDateLocal, canClaimToday, currentStreak, nextRewardLinhThach }`. `claim(userId)` → INSERT `DailyLoginClaim` + `CurrencyService.applyTx({ delta:100n, reason:'DAILY_LOGIN', refType:'DailyLoginClaim', refId:todayDateLocal })` trong **1 `$transaction`**. Catch `Prisma.P2002` (unique violation) → idempotent return `{ claimed:false, linhThachDelta:'0' }`. Streak: nếu hôm qua đã claim → `+1`, else reset `=1`. Helpers `getLocalDateString(now, tz)` (Intl.DateTimeFormat 'en-CA' YYYY-MM-DD), `addDaysLocal(dateLocal, days)`. Tz lấy từ `getMissionResetTz()` (mission.service) — Asia/Ho_Chi_Minh mặc định.
+  - **`apps/api/src/modules/daily-login/daily-login.controller.ts`** (new): `GET /daily-login/me` + `POST /daily-login/claim` (cùng auth pattern cookie `xt_access` như mission controller). Throw `NO_CHARACTER` → 404.
+  - **`apps/api/src/modules/daily-login/daily-login.module.ts`** (new): import `AuthModule` + `CharacterModule` (cho `CurrencyService`).
+  - **`apps/api/src/app.module.ts`**: import `DailyLoginModule`.
+  - **`apps/api/src/modules/character/currency.service.ts`**: thêm `'DAILY_LOGIN'` vào `LedgerReason` union.
+  - **NextAction smart §2** (`apps/api/src/modules/next-action/next-action.service.ts`): thêm `DAILY_LOGIN_AVAILABLE` (priority 2) — query `dailyLoginClaim.findUnique({ characterId_claimDateLocal })` cho ngày hôm nay, push action nếu chưa claim.
+  - **`apps/api/src/test-helpers.ts`**: `wipeAll` xoá `dailyLoginClaim` trước character.
+- **Giải pháp FE**:
+  - **`apps/web/src/api/dailyLogin.ts`** (new): `getDailyLoginStatus()` + `claimDailyLogin()` axios wrappers, `DailyLoginStatus` + `DailyLoginClaimResult` types (BigInt-as-string).
+  - **`apps/web/src/components/DailyLoginCard.vue`** (new): card amber border, hiển thị `availableHint` + button "Nhận quà" hoặc `claimedHint` + streak badge × N. Test ID `daily-login-card`/`daily-login-claim-btn`. Toast success/already-claimed.
+  - **`apps/web/src/views/HomeView.vue`**: render `<DailyLoginCard>` giữa `OnboardingChecklist` và `NextActionPanel`.
+  - **`apps/web/src/api/nextAction.ts`**: thêm `'DAILY_LOGIN_AVAILABLE'` vào `NextActionKey`.
+  - **i18n VI/EN** (`apps/web/src/i18n/{vi,en}.json`): `home.dailyLogin.{title, availableHint, claimedHint, claim, claiming, successToast, alreadyClaimedToast}` + `home.nextAction.items.DAILY_LOGIN_AVAILABLE`.
+- **Files** (17 thay đổi):
+  - **BE new**: `apps/api/src/modules/daily-login/daily-login.{service,controller,module}.ts`, `apps/api/src/modules/daily-login/daily-login.service.test.ts`, `apps/api/prisma/migrations/20260429100000_add_daily_login_claim/migration.sql`
+  - **BE modified**: `apps/api/prisma/schema.prisma`, `apps/api/src/app.module.ts`, `apps/api/src/modules/character/currency.service.ts`, `apps/api/src/modules/next-action/next-action.service.ts`, `apps/api/src/test-helpers.ts`
+  - **FE new**: `apps/web/src/api/dailyLogin.ts`, `apps/web/src/components/DailyLoginCard.vue`, `apps/web/src/components/__tests__/DailyLoginCard.test.ts`
+  - **FE modified**: `apps/web/src/api/nextAction.ts`, `apps/web/src/views/HomeView.vue`, `apps/web/src/i18n/vi.json`, `apps/web/src/i18n/en.json`
+- **API contracts mới**:
+  - `GET /api/daily-login/me` → `{ ok:true, data:{ todayDateLocal:'2026-04-29', canClaimToday:bool, currentStreak:int, nextRewardLinhThach:'100' } }`. 401 nếu chưa auth, 404 nếu không có character.
+  - `POST /api/daily-login/claim` → `{ ok:true, data:{ claimed:bool, linhThachDelta:'100'|'0', newStreak:int, claimDateLocal:'YYYY-MM-DD' } }`. Idempotent — call lần 2 cùng ngày trả `claimed:false, delta:'0'`.
+- **Tests**:
+  - `apps/api/src/modules/daily-login/daily-login.service.test.ts`: **+12 vitest** (helpers VN/UTC tz; `status()` first-time / no-character / already-claimed; `claim()` first → +100 LT + ledger DAILY_LOGIN + claim row; idempotent same-day không double credit; streak +1 sau hôm qua; streak reset sau gap >1 ngày; NO_CHARACTER throw).
+  - `apps/web/src/components/__tests__/DailyLoginCard.test.ts`: **+4 vitest** (canClaim render button; claimed render hint+streak; click claim → API + toast success + reload status; server idempotent → toast alreadyClaimed).
+  - **Total local verified 29/4 09:49 UTC**: api **347/347** ✅ (was 335 baseline, +12), web **83/83** ✅ (was 79, +4), shared 47/47 ✅ → tổng workspace **477 pass**.
+- **Local verified**: `pnpm --filter @xuantoi/api typecheck` ✅, `pnpm --filter @xuantoi/api lint` ✅, api test ✅, `pnpm --filter @xuantoi/web typecheck` ✅, `pnpm --filter @xuantoi/web lint` ✅, web test ✅. CI Playwright matrix sẽ verify trên PR.
+- **Risk**: low–medium. Migration mới (1 bảng + 1 unique index) — backward compatible, không touch dữ liệu cũ. Idempotency P2002 catch ngay cả nếu race 2 request cùng lúc. Reward `100n` linh thạch hardcode cho closed beta, có thể move env config sau.
+- **Rollback**: `git revert` → drop module. Nếu cần undo migration: `DROP TABLE "DailyLoginClaim";` (FK CASCADE từ Character → tự dọn). Ledger DAILY_LOGIN row giữ lại làm audit.
+- **Runtime smoke**: **chưa test live UI**. `Needs runtime smoke` — login player → vào `/` → click "Nhận quà" trong DailyLoginCard → verify toast + linh thạch tăng + button biến mất + reload page vẫn không claim được + sang ngày mới claim được tiếp + streak +1.
+
+### PR #77 — `feat(web): skeleton loaders for MarketView (buy + sell tabs) (L5 cont)` — **Merged into main** (commit `266bfe7`, CI 5/5 xanh)
+
+- **Branch**: `devin/1777454551-l5-market-skeleton`. **Base**: `main` @ `0d4abb4`. **Status**: **Merged into main** (PR #77, commit `266bfe7` 29/4 ~16:00 UTC, CI 5/5 xanh).
+- **Mục tiêu** (L5 skeleton series cont — Smart UX polish §6 from prompt user): MarketView trước đây không có skeleton — chỉ hiển thị empty/blank flash khi đang fetch buy listings + my listings + inventory. Người chơi có thể tưởng "không có gì" trong khi data chưa về.
+- **Giải pháp**:
+  - **`apps/web/src/views/MarketView.vue`**: import `SkeletonTable` + `SkeletonBlock`, thêm `loading = ref(true)` set false sau `refreshAll()` trong `onMounted`. Tab Mua: `<SkeletonTable :rows="6" :cols="4" test-id="market-buy-skeleton" />`. Tab Bán: 3 `<SkeletonBlock height="h-12" />` cho list myListings, ẩn empty state khi loading.
+  - **`apps/web/src/views/__tests__/MarketView.test.ts`** (new, 3 test): skeleton render khi pending fetch tab Mua → ẩn sau resolve; skeleton tab Bán render sau switch tab; empty state hiển thị khi listings rỗng (skeleton ẩn).
+- **Files**:
+  - `apps/web/src/views/MarketView.vue` (+15 / -3)
+  - `apps/web/src/views/__tests__/MarketView.test.ts` (new, 166 line, 3 test)
+  - `docs/AI_HANDOFF_REPORT.md` updated
+- **Tests**: +3 vitest web. Total local: **79/79** web (was 76, +3 MarketView).
+- **Local verified**: `pnpm typecheck` ✅ · `pnpm lint` ✅ · `pnpm --filter @xuantoi/web test` ✅ 79/79
+- **Risk**: low. UI-only polish. Không đụng API/DB. SkeletonTable/SkeletonBlock đã được test và dùng trong LeaderboardView/ProfileView/MissionView/AdminView từ PR #67/#68.
+- **Rollback**: `git revert`. Empty state cũ vẫn hoạt động.
+
+### PR #71 — `feat(api,web): GET /mail/unread-count + FE hydrate badge on mount (G17 — M7)` — **Merged into main** (commit `0d4abb4`, CI 5/5 xanh)
+
+> ⚠️ Note: Body cũ của entry này (Branch + Mục tiêu + Files + Tests bên dưới) bị copy nhầm từ PR #74 (giftcode filter q+status). PR #71 thực tế là `feat(api,web): GET /mail/unread-count + FE hydrate badge on mount` (G17 — M7), branch `devin/1777418952-g17-mail-unread-count`, +7 vitest API. Xem phần dưới `### PR #74 — admin giftcode list filter` cho chi tiết đúng. Để tránh re-flow document lớn, giữ lại format cũ; AI sau đọc ưu tiên nhãn `**Merged into main**` + commit hash.
+
+- **Branch**: `devin/1777418952-g17-mail-unread-count` (corrected from copy-pasted body). **Base**: `main` @ `2654b28`. **Status**: **Merged into main** (PR #71, commit `0d4abb4` 28/4 ~23:50 UTC, CI 5/5 xanh).
+- **Mục tiêu** (Smart admin §3 — "Bộ lọc tìm giftcode"): `GET /admin/giftcodes` chỉ accept `limit`. Closed beta tạo nhiều mã promo → admin cần lọc theo prefix code và status (active / revoked / expired / exhausted) để truy soát mã hỏng / hết hạn.
+- **Giải pháp**:
+  - **`GiftCodeService.list(limit, filters)`**: thêm `q` (substring uppercase, case-insensitive) + `status` (4 giá trị). ACTIVE = chưa revoke + chưa expire + chưa exhaust (loại exhaust ở app layer vì Prisma không filter compare 2 cột `redeemCount < maxRedeems`). EXHAUSTED tương tự.
+  - **`AdminController.giftList`**: 2 query params mới — `q` (max 64 char), `status` (whitelist 4 giá trị).
+- **Files**:
+  - `apps/api/src/modules/giftcode/giftcode.service.ts` (+34 / -3)
+  - `apps/api/src/modules/admin/admin.controller.ts` (+15 / -3)
+  - `apps/api/src/modules/giftcode/giftcode-list-filter.test.ts` (new, 102 line, **8 test**)
+- **Tests**: 8 test mới — không filter, q substring, status × 4 (ACTIVE / REVOKED / EXPIRED / EXHAUSTED), combine q+status, q không match → 0. Tổng API test: **270/270** local.
+- **Local verified**: `pnpm typecheck` ✅ · `pnpm lint` ✅ · `pnpm --filter @xuantoi/api test` ✅ · `pnpm build` ✅.
+- **Risk**: low. BE-only, additive query params (default behavior unchanged).
+- **FE consumer**: chưa có (admin FE giftcode management chưa tồn tại). Endpoint phục vụ external tool / admin CLI / future panel (G21).
+- **Runtime smoke**: `curl -H "Cookie: …" "http://localhost:3000/admin/giftcodes?status=ACTIVE&q=PROMO"` → list active codes match.
+- **Rollback**: revert; backward-compat caller chỉ có `?limit=`.
+- **Bước tiếp**: G21 — admin giftcode FE panel (consumer cho endpoint này), hoặc admin export CSV.
+
+---
+
+### PR #60 — `feat(api): rate-limit register endpoint per-IP (anti-bot, security hardening)` — prompt §8 — **Merged** `993a95f`
+
+- **Branch**: `devin/1777411089-g7-health-readiness`. **Base**: `main` (post-PR #59). **Status**: **Merged** 28/4 21:37 UTC (CI run `25079013093` xanh, 1m34s).
+- **Mục tiêu**: Smart production readiness (§8 prompt user — "Rate limit cho route nhạy cảm"). Trước đây `POST /auth/register` chỉ check `EMAIL_TAKEN` — KHÔNG có anti-spam. Attacker có thể spam endpoint tạo hàng nghìn account để pollution DB / email enumeration / argon2 CPU exhaust (argon2id 64MB memory + 3 timeCost/req → tốn server). Login đã có `RATE_LIMIT_MAX_FAILS=5/15min` per email+IP, chat đã có sliding-window rate limit; **register thì chưa**.
+- **Giải pháp**: Reuse `RateLimiter` interface từ `apps/api/src/common/rate-limiter.ts`. Inject limiter vào `AuthService` qua DI token `REGISTER_RATE_LIMITER`. Production dùng `RedisSlidingWindowRateLimiter` (phân tán giữa instance, key prefix `rl:register`); test/no-redis fallback `InMemorySlidingWindowRateLimiter`. Config `5 register/IP/15 phút`.
+- **Files**:
+  - `apps/api/src/modules/auth/auth.service.ts` — thêm `REGISTER_RATE_LIMITER` token + `REGISTER_RATE_LIMIT_MAX/WINDOW_MS` const, constructor `@Optional() @Inject(REGISTER_RATE_LIMITER)` 4th param, check `limiter.check(ip:${ctx.ip})` đầu hàm `register()` → throw `RATE_LIMITED` nếu vượt.
+  - `apps/api/src/modules/auth/auth.module.ts` — provider factory tạo limiter (Redis nếu có, in-memory fallback). RedisModule là @Global nên inject `REDIS_CONNECTION` optional ok.
+  - `apps/api/src/modules/auth/auth.service.test.ts` — fresh limiter per test (state in-memory persist giữa test). 2 test mới: `register quá 5 lần/IP/15 phút → RATE_LIMITED`, `register từ IP khác KHÔNG bị limit chéo`.
+- **Backward compat**: AuthService constructor giữ 3 param required, limiter 4th optional → các test cũ không cần đổi signature.
+- **i18n**: FE đã có `auth.errors.RATE_LIMITED` (`"Đã thử quá nhiều lần. Đạo hữu vui lòng thử lại sau."`) — không cần thêm key.
+- **Tests**: API +2 vitest. Pure additive.
+- **Risk**: low. Per-IP only (không khóa user existing). Limit hợp lý (5/IP/15min — user thường dùng phòng net, mobile không bao giờ cần đăng ký >5 acc/15min). Production dùng Redis distributed → multi-instance không bypass.
+- **Rollback**: revert. Register quay về behavior cũ (no rate limit).
+
+### PR #58 — `feat(web): smart onboarding checklist (HomeView panel, derived from character state)` — **Merged**
+
+- **Branch**: `devin/1777409659-g3-onboarding-checklist`. **Base**: `main` (post-PR #57). **Status**: **Merged** 28/4 20:59 UTC, commit `067a6c4`.
+- **Mục tiêu**: Smart onboarding (§1 prompt user) — hiển thị "Tân Thủ Chỉ Nam" panel trên `HomeView` với 4 step derived từ `game.character` — KHÔNG cần backend tracking riêng. Tự ẩn khi player hoàn thành cả 4.
+- **Files**:
+  - `apps/web/src/components/OnboardingChecklist.vue` (new) — 4 step: Khai lập đạo hiệu (`character != null`), Bái nhập tông môn (`sectKey != null`), Bắt đầu nhập định (`cultivating`), Đột phá đầu (`realmKey !== 'phamnhan'` hoặc `realmStage > 0`). Mỗi step chưa done có button "Đi" → `router.push` tới route phù hợp (`/onboarding`, `/sect`, `/`).
+  - `apps/web/src/views/HomeView.vue` — chèn component précédé `NextActionPanel`.
+  - `apps/web/src/i18n/vi.json` + `en.json` — 8 key mới `home.onboarding.title` / `.go` / `.steps.{character|sect|cultivate|breakthrough}`.
+  - `apps/web/src/components/__tests__/OnboardingChecklist.test.ts` (new) — 8 vitest test cover render visibility, counter, từng step done/undone, hide khi all done, click button → router.push.
+- **Tests**: web vitest 50 → 58 (+8). Pure additive.
+- **i18n**: vi + en đóng hộp 4 step. Tự nhiên tiếng Việt ("Khai lập đạo hiệu", "Bái nhập tông môn") đúng tông *tù tiên*.
+- **Risk**: low — component pure derived từ store state, ko fetch API mới, ko đổi schema. Worst case panel hiển nhầm → player ignore.
+- **Rollback**: revert PR. `HomeView` quay lại state cũ (không có panel onboarding).
+
+### PR G1-render — `test(web): render-level vitest cho NextActionPanel (6)` (G1 step 2) — **Merged as PR #56**
+
+- **Branch**: `devin/1777408703-g1-render-tests`. **Base**: `main` (post-PR #54 + #55). **Status**: Open (CI pending), rebased after PR #55 merge.
+- **Mục tiêu**: G1 step 2 — mở rộng vitest sang render-level test bằng `@vue/test-utils@^2.4.6` + `happy-dom`. Component `NextActionPanel` là bản thể hiện smart onboarding chính của `HomeView` (§3 prompt user) — cần test render contract.
+- **File**:
+  - `apps/web/src/components/__tests__/NextActionPanel.test.ts` (new) — 6 test:
+    1. Section ẩn khi `actions=[]` (sau resolve, ngoài loading).
+    2. Render danh sách + label translated + interpolation `{count}`/`{name, level}`.
+    3. Priority class branch: p≤1 rose, p≤3 amber, p>3 ink (default mute).
+    4. Click "Đi ngay" gọi `router.push(action.route)`.
+    5. API reject → actions=[] silent, section ẩn.
+    6. `defineExpose({refresh})` reload danh sách.
+  - Mock `@/api/nextAction` + `vue-router` qua `vi.mock`. i18n stub bằng `createI18n({legacy:false})` với messages tối thiểu.
+- **Tests**: web vitest 17 → 23 (test base off main post-PR #54). Khi PR #55 merge → 23+16=39.
+- **Risk**: zero — test-only.
+- **Rollback**: revert.
+
+### PR #54 — `feat(admin): smart economy alerts (negative currency / inventory / stale topup PENDING)` (G4) — **Merged**
+
+- **Branch**: `devin/1777407655-smart-admin-economy-alerts`. **Base**: `main` (post-PR #53 `2ae4cc0`). **Status**: **Merged** (28/4 20:33 UTC, CI 3/3 xanh gồm Devin Review). Merge SHA `d9fbbf1`.
+- **Mục tiêu**: Smart admin / economy safety (prompt §3-4) — phát hiện sớm 3 loại bất thường kinh tế trong closed beta:
+  1. Character có currency âm (`linhThach < 0` OR `tienNgoc < 0` OR `tienNgocKhoa < 0`) — invariant violation, cần alert ngay.
+  2. InventoryItem có `qty < 1` — nhẽ lạnh nhưng vẫn invariant (qty=0 nên bị xóa).
+  3. TopupOrder PENDING > `staleHours` (mặc định 24h) — admin lười duyệt.
+- **File**:
+  - `apps/api/src/modules/admin/admin.service.ts` — thêm method `getEconomyAlerts(staleHours = 24)` (read-only, `Promise.all` 3 query, `take: 100` per group).
+  - `apps/api/src/modules/admin/admin.controller.ts` — thêm route `GET /admin/economy/alerts?staleHours=24` (clamp 1..720). Mặc định AdminGuard → MOD+ADMIN đọc được.
+  - `apps/api/src/modules/admin/economy-alerts.test.ts` (new) — 7 vitest test (empty DB, neg linhThach, neg tienNgoc+tienNgocKhoa, neg inventory qty 0/-2, stale topup default, custom staleHours, sanity).
+  - `apps/web/src/api/admin.ts` — thêm interface `AdminEconomyAlerts` + `adminEconomyAlerts(staleHours = 24)`.
+  - `apps/web/src/views/AdminView.vue` — Stats tab thêm panel `Economy alerts` với 3 group (rose / rose / amber). `refreshStats()` đổi thành `Promise.all([adminStats(), adminEconomyAlerts()])`.
+  - `apps/web/src/i18n/{vi,en}.json` — thêm `admin.alerts.{title,subtitle,allClear,negativeCurrency,negativeInventory,stalePendingTopups}`.
+- **Tests**: API +7 (không đổi existing). Web vitest 17 vẫn pass. Typecheck/lint/build xanh.
+- **Risk**: **low** — endpoint read-only, không side-effect, không migration. Nếu API fail → alerts panel ẩn (handleErr toạt).
+- **Rollback**: revert PR. Không ảnh hưởng schema/data.
+
+### PR #53 — `feat(web,test): replay PR #47 — wire Vitest minimal + Playwright golden path scaffold (H5)` — PR B replay
+
+- **Branch**: `devin/1777406837-replay-pr47-vitest-playwright`. **Base**: `main` (post-PR #52 `82e6212`). **Status**: **Merged** (commit `2ae4cc0`).
+- Cherry-pick `32a33a6` từ feature branch vào main, conflict `docs/AI_HANDOFF_REPORT.md` resolved take `--ours`. Đã fix `apps/web/package.json` test từ `echo skipped` thành `vitest run`.
+- **File**: `apps/web/{vitest,playwright}.config.ts`, `apps/web/e2e/golden.spec.ts`, `apps/web/src/stores/__tests__/{toast,game}.test.ts` (17 test tổng).
+- **CI**: 3/3 xanh.
+
+### PR #52 — `docs(handoff): audit session 5 — bump snapshot to 68fa1a3 + flag PR #47 replay-gap` — audit only
+
+- **Branch**: `devin/1777406465-audit-session-5-pr50-51-pr47-replay-gap`. **Base**: `main`. **Status**: **Merged** (commit `82e6212`).
+- Discovery chính: PR #47 GitHub status `closed (merged)` nhưng commit `4ed913a` chỉ tồn tại trên feature branch, KHÔNG vào main → vitest/playwright config + 17 test chưa từng có ở main. Fix PR #50/#51 status Open → Merged trong report; §16 H5 → Open (replay needed); §21 PR B retitle "Replay PR #47".
+- **CI**: 2/2 xanh.
+
+### PR #51 — `feat(web): sidebar badges (mission claimable / boss active / topup pending) từ /me/next-actions`
+
+- **Branch**: `devin/1777401826-badges`. **Base**: `main`. **Status**: **Merged** (commit `699af81`).
+- **Mục tiêu**: Smart UX polish (prompt §20 mục 6) — Reuse `/me/next-actions` (PR #49) để hiển thị badge trên sidebar nav: `Missions` (số đếm claimable), `Boss` (chấm đỏ khi có boss live), `Topup` (chấm vàng khi có order PENDING). Mail nav vẫn dùng badge cũ từ WS `mail:new`.
+- **File**:
+  - `apps/web/src/stores/badges.ts` (new) — Pinia store, polling `/me/next-actions` mỗi 60s, expose computed `missionClaimable`, `mailUnclaimed`, `bossActive`, `topupPending`, `breakthroughReady`.
+  - `apps/web/src/components/shell/AppShell.vue` — import `useBadgesStore`, gọi `start()` onMounted + `stop()` onUnmounted; thêm 3 badge span trên Mission/Boss/Topup nav.
+  - `apps/web/src/views/HomeView.vue` — thêm `badges.refresh()` khi load (immediate refresh sau khi character ready).
+  - `apps/web/src/i18n/{vi,en}.json` — `shell.badge.bossActive` + `shell.badge.topupPending` cho tooltip.
+- **Polling**: 60s interval, silent fail (badges chỉ ẩn khi API fail). Stop khi shell unmount.
+- **Tests**: typecheck/lint/build xanh. Web vitest chưa wire ở main (PR #47 chưa merge), nên không thêm test web cho PR này — chỉ smoke manual khi PR merged.
+- **Risk**: low — pure FE polish, dùng endpoint read-only đã có. Polling 1 req/60s/user.
+- **Rollback**: revert PR. Không ảnh hưởng schema/data/backend.
+
+### PR #50 — `docs: thêm QA_CHECKLIST.md (smoke 15-phút trước release closed beta)`
+
+- **Branch**: `devin/1777400787-qa-checklist`. **Base**: `main`. **Status**: **Merged** (commit `68fa1a3`, docs only, CI 3/3 xanh).
+- **Mục tiêu**: Theo prompt §20 mục 5 + 7. Checklist manual smoke 15 phút phủ 12 nhóm (Auth → Admin) + healthcheck post-deploy.
+- **File**: `docs/QA_CHECKLIST.md` (new), `README.md` (link).
+- **Risk**: zero — pure docs.
+
+### PR #49 — `feat: smart next-action panel cho HomeView (smart onboarding)`
+
+- **Branch**: `devin/1777399841-smart-next-action`. **Base**: `main`. **Status**: **Merged** (CI 2/2 xanh).
+- **Mục tiêu**: Smart next-action (prompt §20 mục 2) — hiển thị "Nên làm gì tiếp?" trên HomeView dựa state: NO_CHARACTER / BREAKTHROUGH_READY / MISSION_CLAIMABLE / MAIL_UNCLAIMED / MAIL_UNREAD / BOSS_ACTIVE / TOPUP_PENDING / CULTIVATE_IDLE. Giá trị cao cho onboarding closed beta, risk low.
+- **File**:
+  - `apps/api/src/modules/next-action/next-action.service.ts` (new) — pure-read Prisma queries, sort theo priority 1..5 ASC.
+  - `apps/api/src/modules/next-action/next-action.controller.ts` (new) — `GET /me/next-actions` yêu cầu cookie `xt_access`.
+  - `apps/api/src/modules/next-action/next-action.module.ts` (new).
+  - `apps/api/src/modules/next-action/next-action.service.test.ts` (new, 13 test integration Postgres).
+  - `apps/api/src/app.module.ts` — mount `NextActionModule`.
+  - `apps/web/src/api/nextAction.ts` (new) — client `getNextActions()`.
+  - `apps/web/src/components/NextActionPanel.vue` (new) — panel render từng action với priority color (1=rose, 2-3=amber, 4-5=ink).
+  - `apps/web/src/views/HomeView.vue` — import + render `<NextActionPanel>`.
+  - `apps/web/src/i18n/vi.json` + `en.json` — thêm `home.nextAction.title|loading|go|items.*`.
+- **Logic ưu tiên**: P1 `NO_CHARACTER`/`BREAKTHROUGH_READY`/`MISSION_CLAIMABLE` · P2 `MAIL_UNCLAIMED` · P3 `MAIL_UNREAD`+`BOSS_ACTIVE` · P4 `TOPUP_PENDING` · P5 `CULTIVATE_IDLE` fallback. Mail expired / boss expired không gợi ý.
+- **Tests**: API total `235 pass` (+13 next-action). Shared `47`. Build xanh. Typecheck/lint xanh.
+- **Risk**: **low** — endpoint read-only, không side-effect, không migration. Nếu API fail → panel ẩn (empty actions).
+- **Rollback**: revert PR. Không ảnh hưởng schema/data.
+
+### PR #48 — `feat(api): split ADMIN vs MOD permission via @RequireAdmin (M8)`
+
+- **Branch**: `devin/1777398980-pr-e-admin-guard-split`. **Base**: `main`. **Status**: **Merged** (CI 2/2 xanh). **Resolve M8**.
+- **Mục tiêu**: M8 — fine-grained role split. Trước PR E, `AdminGuard` chấp nhận cả ADMIN + MOD cho mọi endpoint admin, dẫn tới MOD có quyền grant/approve/broadcast/spawn ngang ADMIN. Giờ MOD chỉ đọc + ban (PLAYER); ADMIN-only cho 9 action ảnh hưởng tài sản/policy.
+- **File**:
+  - `apps/api/src/modules/admin/require-admin.decorator.ts` (new) — `RequireAdmin()` decorator + `REQUIRE_ADMIN_KEY`.
+  - `apps/api/src/modules/admin/admin.guard.ts` — inject `Reflector`, đọc metadata `requireAdmin`; nếu set + role !== ADMIN → throw `ADMIN_ONLY` 403.
+  - `apps/api/src/modules/admin/admin.controller.ts` — apply `@RequireAdmin()` cho 8 endpoint POST: role / grant / approve-topup / reject-topup / giftcode-create / giftcode-revoke / mail-send / mail-broadcast.
+  - `apps/api/src/modules/boss/boss.controller.ts` — apply `@RequireAdmin()` cho `POST /boss/admin/spawn`.
+  - `apps/api/src/modules/admin/admin.guard.test.ts` (new, 8 test) — UNAUTHENTICATED, FORBIDDEN cho user không tồn tại / banned / PLAYER, ADMIN pass default + RequireAdmin, MOD pass default, MOD reject (`ADMIN_ONLY`) khi RequireAdmin.
+  - `apps/web/src/i18n/vi.json` + `apps/web/src/i18n/en.json` — thêm key `admin.errors.ADMIN_ONLY`.
+- **MOD vẫn được**: `GET /admin/users|topups|audit|stats|giftcodes` (read-only) + `POST /admin/users/:id/ban` (service `setBanned` đã có hierarchy: MOD chỉ ban được PLAYER).
+- **Tests**: API total `230 pass` (+8 admin guard test). Shared `47 pass`. Web `17 pass` (vitest). Build xanh.
+- **Risk**: low — chỉ thắt chặt MOD; ADMIN không đổi behavior. Service-layer guard (cũ) vẫn còn = defense-in-depth. Không migration, không data change.
+- **Rollback**: revert PR. AdminGuard fallback về behavior cũ (ADMIN + MOD pass).
+
+
+### PR #33 — `feat(api): bootstrap admin đầu tiên + seed 3 tông môn (H2 + H3)`
+
+- **Branch**: `devin/1777368742-bootstrap-admin-sect`. **Status**: Merged. **CI**: xanh.
+- **Commits chính**: `a8b5fb0 feat(api): bootstrap script tạo admin đầu tiên + 3 tông môn mặc định`, `8187896 fix(api): thêm require/module/NodeJS vào eslint globals cho scripts/`.
+- **Mục tiêu**: Fresh deploy chạy `pnpm --filter @xuantoi/api bootstrap` là có 1 ADMIN + 3 sect (Thanh Vân Môn, Huyền Thuỷ Cung, Tu La Điện). Idempotent — không ghi đè `passwordHash`.
+- **File**: `apps/api/scripts/bootstrap.ts` (new), `apps/api/scripts/bootstrap.test.ts` (new, 7 test), `apps/api/.env.example` thêm `INITIAL_ADMIN_EMAIL` + `INITIAL_ADMIN_PASSWORD`, `apps/api/package.json` thêm script `bootstrap`, `apps/api/tsconfig.json`/`vitest.config.ts`/`eslint.config.js` cover `scripts/`, `README.md` thêm bước bootstrap.
+- **Migration / seed**: không tạo migration mới — chỉ ghi vào `User` + `Sect` qua Prisma client.
+- **Test**: 7 test integration (real Postgres) — env validation, tạo mới, idempotent, promote PLAYER, promote PLAYER banned, `skipAdmin`, `skipSects`.
+- **Risk**: nếu `INITIAL_ADMIN_EMAIL` trùng email user PLAYER thật → promote (đã document).
+- **Follow-up**: không.
+
+### PR #34 — `test(api): inventory.service coverage 19 test (H4)`
+
+- **Branch**: `devin/1777369187-inventory-tests`. **Status**: Merged. **CI**: xanh.
+- **Commit chính**: `04724c0 test(api): inventory.service test coverage (H4)`.
+- **Mục tiêu**: Đóng gap H4 — InventoryService 0 test.
+- **File**: `apps/api/src/modules/inventory/inventory.service.test.ts` (new, 19 test). Không sửa service.
+- **Test breakdown**: `grant`+`list` (4), `equip`/`unequip` (7), `use` (5), `equipBonus` (2), `grantTx` (1).
+- **Risk**: chưa cover concurrency `Promise.all` — post-beta.
+- **Follow-up**: không.
+
+### PR #35 — `docs: 5 doc ops trước closed beta (RUN_LOCAL, DEPLOY, ADMIN_GUIDE, SECURITY, TROUBLESHOOTING)`
+
+- **Branch**: `devin/1777369332-docs-ops`. **Status**: Merged. **CI**: xanh (docs only).
+- **Commit chính**: `c827794 docs: add RUN_LOCAL/DEPLOY/ADMIN_GUIDE/SECURITY/TROUBLESHOOTING`.
+- **Mục tiêu**: Onboard contributor + admin mới.
+- **File**: `docs/RUN_LOCAL.md`, `docs/DEPLOY.md`, `docs/ADMIN_GUIDE.md`, `docs/SECURITY.md`, `docs/TROUBLESHOOTING.md` (5 file mới); `README.md` thêm link.
+- **Migration / seed / i18n / test**: không.
+- **Risk**: docs có thể outdated khi code đổi (low).
+- **Follow-up**: không.
+
+### PR #36 — `feat(boss): admin spawn endpoint + UI tab + audit (M2)`
+
+- **Branch**: `devin/1777369737-admin-boss-spawn`. **Status**: Merged. **CI**: xanh.
+- **Commits chính**: `416c6f5` (feat), `1ce753b` (fix tôn trọng admin level), `aa2b130` (fix race condition flip ACTIVE→EXPIRED), `56aa07d` (fix force-expire phải distribute reward + audit replacedBossId).
+- **Mục tiêu**: Admin chủ động spawn boss (cho QA, GM event live).
+- **BE**: `boss.service.ts` thêm `adminSpawn(actorId, opts)` + `BOSS_ALREADY_ACTIVE`/`INVALID_BOSS_KEY`/`INVALID_LEVEL`. `boss.controller.ts` `@Post('admin/spawn')` + `AdminGuard`. `boss.module.ts` import `AdminModule`. `admin.module.ts` export `AdminGuard`.
+- **FE**: `apps/web/src/api/admin.ts` `adminSpawnBoss()`. `AdminView.vue` thêm tab `boss`. i18n VI/EN +8 key + 3 error code.
+- **Audit**: `AdminAuditLog` action `BOSS_SPAWN`, có `replacedBossId` khi force-expire.
+- **Test**: `boss.service.test.ts` +7 test (spawn mới, default level, auto-rotate, ALREADY_ACTIVE, force replace, INVALID_BOSS_KEY rollback, level boundary). Tổng 16 test boss.
+- **Risk**: admin spam spawn → coi như feature (audit ghi rõ).
+- **Follow-up**: không.
+
+### PR #37 — `feat(settings): trang Settings + đổi mật khẩu + logout-all`
+
+- **Branch**: `devin/1777370196-settings-page`. **Status**: Merged. **CI**: xanh.
+- **Commit chính**: `96ed383 feat(settings): trang Settings + đổi mật khẩu + logout-all (M5/M7)`.
+- **Mục tiêu**: Self-service đổi password + logout all devices trước beta.
+- **BE**: `auth.service.ts` thêm `logoutAll(userId)` revoke toàn bộ refresh token active. `auth.controller.ts` `@Post('logout-all')` ⇒ path `/api/_auth/logout-all`.
+- **FE**: `views/SettingsView.vue` (new, 4 section: account info, change password, locale, logout-all). `router/index.ts` `/settings`. `AppShell.vue` link "Tâm Pháp". `api/auth.ts` `logoutAll()`. i18n VI/EN +25 key + `shell.nav.settings`.
+- **Test**: `auth.service.test.ts` +3 test cho `logoutAll` (revoke 2 active token, idempotent, không ảnh hưởng user khác). Tổng 18 test auth.
+- **Caveat**: Access token cũ (15 phút) vẫn valid sau `logoutAll` cho thiết bị khác → không bump `passwordVersion` vì password chưa đổi. Trade-off acceptable.
+- **Follow-up**: không.
+
+### PR #38 — `feat(character): GET /character/profile/:id + ProfileView`
+
+- **Branch**: `devin/1777370723-profile-view`. **Status**: Merged. **CI**: xanh.
+- **Commits chính**: `c738e36` (feat), `f675328 fix(profile): hiển thị tên cảnh giới đầy đủ`.
+- **Mục tiêu**: Public profile cho người chơi khác (cần cho leaderboard / market / chat tap-name).
+- **BE**: `character.service.ts` thêm `PublicProfileView` + `findPublicProfile(id)` — public-safe (không lộ exp/hp/mp/stamina/linhThach/tienNgoc/cultivating). Owner banned ⇒ `null`. `character.controller.ts` `@Get('profile/:id')` yêu cầu access cookie (anti-scrape).
+- **FE**: `api/character.ts` `getPublicProfile(id)`. `views/ProfileView.vue` (new). `router/index.ts` `/profile/:id`. `BossView.vue` cell tên người chơi → `RouterLink /profile/:id`. i18n +10 key.
+- **Test**: `character.service.test.ts` mới, 6 case (id null, full view, sect / no-sect, banned ⇒ null, role ADMIN/MOD lộ).
+- **Risk**: chưa rate-limit endpoint (low — id là cuid, hard enumerate).
+- **Follow-up**: leaderboard FE đã có (PR #59) — link tap-name → `/profile/:id`.
+
+### PR #39 — `feat(shop): NPC Shop module — GET /shop/npc + POST /shop/buy + ShopView`
+
+- **Branch**: `devin/1777371222-npc-shop`. **Status**: Merged. **CI**: xanh.
+- **Commit chính**: `2be7b74`.
+- **Mục tiêu**: Sink LINH_THACH cho beta player ngày 1 (không cần chờ market P2P).
+- **Shared**: `packages/shared/src/shop.ts` (new) — `NPC_SHOP` (11 entries: 3 đan HP/MP, 1 đan EXP, 1 quặng, 6 starter equipment Phàm/Linh phẩm, only LINH_THACH). Helpers `npcShopEntries`, `npcShopByKey`, `toShopEntryView`.
+- **BE**: `apps/api/src/modules/shop/{shop.module,shop.service,shop.controller}.ts` (new). `shop.service.ts` `buy(userId, itemKey, qty)` `$transaction(applyTx + grantTx)` với `LedgerReason='SHOP_BUY'`. `currency.service.ts` thêm `'SHOP_BUY'` vào `LedgerReason` union. `app.module.ts` register `ShopModule`.
+- **FE**: `api/shop.ts`, `views/ShopView.vue`, route `/shop`, nav "肆 NPC Tiệm", i18n +18 key.
+- **Test**: `shop.service.test.ts` mới, 10 case (anti-spoof boss item, INSUFFICIENT_FUNDS không trừ tiền, NON_STACKABLE_QTY_GT_1, validation qty, gộp stackable, NO_CHARACTER, instanceof error).
+- **Migration / seed**: không (Schema đã có sẵn).
+- **Risk**: stock infinite, không daily limit (intentional). Không có rate-limit.
+- **Follow-up**: PR #40 hook `ItemLedger` cho shop (đã làm — có dòng `SHOP_BUY` qua `grantTx`).
+
+### PR #45 — `i18n(vi): translate 12 admin keys still in English (L1 resolved)`
+
+- **Branch**: `devin/1777388675-i18n-reaudit`. **Status**: Merged (commit `e99a35f`). **CI**: xanh (2/2 pass).
+- **Commits chính**: `8249142 i18n(vi): translate 12 admin keys still in English (L1)`, `166c26f ci: re-trigger build`, `7e4ec86 ci: retry after runner availability check`.
+- **Mục tiêu**: Dứt điểm L1 — re-audit `apps/web/src/i18n/{vi,en}.json`. **554/554 key sync giữa 2 locale, 400 used `t()` key all resolve, 0 missing**. Trước fix có 28 key identical en≡vi → audit cuối: 18 universal/native term cố ý (`locale.vi/en`, `EXP`, `HP/MP`, `WS ✓/×`, `OK`, `Boss`, `A Linh`, `linh thạch`, `tiên ngọc`, `HOT`, `Email`), 10 key thực sự là gap (admin column labels + role) còn English trong `vi.json`. Fix 12 entries (10 + 2 confirm/toast liên quan) trong `vi.admin.*`.
+- **Diff bảng** (vi.json):
+  - `admin.roleLabel`: `Role: {role}` → `Vai trò: {role}`
+  - `admin.tab.audit`: `Audit` → `Nhật ký`
+  - `admin.users.col.role`: `Role` → `Vai trò`
+  - `admin.users.banned`: `BANNED` → `BỊ KHOÁ`
+  - `admin.users.roleChangeConfirm`: `Đổi role {email} → {role}?` → `Đổi vai trò {email} → {role}?`
+  - `admin.users.roleChangedToast`: `Đã đổi role.` → `Đã đổi vai trò.`
+  - `admin.topups.col.user`: `User` → `Người chơi`
+  - `admin.topups.col.status`: `Status` → `Trạng thái`
+  - `admin.topups.col.note`: `Note` → `Ghi chú`
+  - `admin.audit.col.actor`: `Actor` → `Người thực hiện`
+  - `admin.audit.col.action`: `Action` → `Hành động`
+  - `admin.audit.col.meta`: `Meta` → `Chi tiết`
+- **File**: `apps/web/src/i18n/vi.json` (+12/−12). `en.json` không đổi (đã đúng tiếng Anh). `docs/AI_HANDOFF_REPORT.md` (snapshot bump tại lúc tạo PR).
+- **Risk**: green — text-only fix 1 locale, không đụng logic/route/auth. Rollback = revert commit.
+
+### PR #44 — `replay: PR #42 (mission VN tz) + PR #43 (ledger index) onto main + smoke E2E pass`
+
+- **Branch**: `devin/1777377412-replay-pr-42-43`. **Status**: Merged (commit `4d8af10`). **CI**: xanh.
+- **Mục tiêu**: PR #42 (M1 mission VN tz) + PR #43 (M5 ledger index) đã merge vào branch phụ — replay vào `main`. Đồng thời chạy smoke E2E 6/6: register/onboard, mission VN tz `windowEnd=17:00Z`, shop buy + ItemLedger + CurrencyLedger row, settings change-password + logout-all, profile public view, admin boss spawn + AdminAuditLog, inventory↔ledger consistency.
+- **Resolve**: H1 (smoke E2E sau khi PR #33→#40 merged).
+
+### PR #43 — `feat(prisma): index actorUserId on CurrencyLedger + ItemLedger (M5)`
+
+- **Branch**: `devin/1777375666-currency-ledger-index`. **Status**: Merged (vào branch phụ; replay vào main qua PR #44).
+- **File**: `apps/api/prisma/schema.prisma` thêm `@@index([actorUserId, createdAt])` x2 (cho `CurrencyLedger` + `ItemLedger`). Migration `20260428112804_actor_user_id_index/migration.sql` (ADD INDEX only, an toàn rollback).
+- **Test**: 269 test cũ vẫn pass; không thêm test riêng (ADD INDEX không đổi logic).
+- **Risk**: thấp — ADD INDEX an toàn, không khoá bảng (size nhỏ tại `migrate deploy`).
+
+### PR #42 — `feat(mission): timezone-aware reset window (M1) + env MISSION_RESET_TZ`
+
+- **Branch**: `devin/1777375167-mission-tz`. **Status**: Merged (vào branch phụ; replay qua PR #44).
+- **Mục tiêu**: Mission cron reset không còn UTC mặc định. Thêm env `MISSION_RESET_TZ` (default `Asia/Ho_Chi_Minh`) + helper `getMissionResetTz()` + tz-aware `nextDailyWindowEnd`/`nextWeeklyWindowEnd`.
+- **File**: `apps/api/src/modules/mission/mission.service.ts`, `apps/api/.env.example`, `apps/api/src/modules/mission/mission.service.test.ts` (+7 test → 26 mission test).
+- **Test**: 26 mission test pass (3 UTC default + 4 VN tz + 3 env helper + 16 cũ).
+- **Risk**: thấp — helper pure + env optional (default backward-compat = `'UTC'` tại function-level).
+
+### PR #41 — `docs: audit PR #33–#40 + cập nhật AI_HANDOFF_REPORT.md`
+
+- **Branch**: `devin/1777374530-audit-pr-33-40-handoff`. **Status**: Merged (commit `65c28f7`).
+- **Mục tiêu**: Audit chuỗi PR #33→#40 vừa merge — bump snapshot trong report + chuyển H1/H2/H3/H4/M2/M4 sang Resolved + ghi rõ chuỗi 8 PR.
+
+### PR #40 — `feat(inventory): ItemLedger audit trail (M4) + hook 6 grant flows`
+
+- **Branch**: `devin/1777372035-item-ledger`. **Status**: Merged. **CI**: xanh.
+- **Commits chính**: `4553bb9` (feat), `b781163 fix(inventory): pass meta to grant/grantTx after merge với main (PR #34 + #39)`.
+- **Mục tiêu**: Đóng gap M4 — `ItemLedger` audit table cho mọi item flow.
+- **Schema**: `prisma/schema.prisma` thêm model `ItemLedger { characterId, itemKey, qtyDelta (signed Int), reason, refType?, refId?, actorUserId?, meta, createdAt }` + 4 index. Migration `20260428102849_itemledger` (ADD TABLE only, an toàn rollback).
+- **Reasons**: Inflow `COMBAT_LOOT` / `BOSS_REWARD` / `MARKET_BUY` / `MISSION_CLAIM` / `MAIL_CLAIM` / `GIFTCODE_REDEEM` / `SHOP_BUY` / `ADMIN_GRANT`. Outflow `USE` / `MARKET_SELL` / `ADMIN_REVOKE`.
+- **InventoryService**: `grant()`/`grantTx()` thêm tham số bắt buộc `meta: ItemLedgerMeta`. `grantOneTx()` ghi 1 dòng / item (không cộng dồn). `use()` ghi `qtyDelta=-1 reason='USE'` cùng `$transaction`.
+- **Callers**: `combat.service.ts` (`COMBAT_LOOT`), `boss.service.ts` (`BOSS_REWARD`), `giftcode.service.ts` (`GIFTCODE_REDEEM`), `mail.service.ts` (`MAIL_CLAIM`), `mission.service.ts` (`MISSION_CLAIM`), `shop.service.ts` (`SHOP_BUY`), `market.service.ts` post (`-qty MARKET_SELL stage=POST`), cancel (`+qty stage=CANCEL`), buy (`+qty MARKET_BUY` cho buyer).
+- **Test**: `inventory/item-ledger.test.ts` (new, 7 test) + `market.service.test.ts` +2 test (post/buy/cancel ledger flow). `test-helpers.ts` `wipeAll` xoá `itemLedger` trước `currencyLedger`.
+- **Risk**: volume ~10–50 row/player/ngày (đủ index, có thể partition sau).
+- **Follow-up**: equip/unequip không ghi ledger (đúng thiết kế — không thay đổi qty). `ADMIN_REVOKE` chưa có endpoint thật (chỉ enum cho future).
+
+### Audit gap (sau session 5 — tính trạng thực tế trên `main @ 68fa1a3`)
+
+- **⚠️ Web Vitest + Playwright (PR #47) KHÔNG ở main**: branch `devin/1777398483-h5-vitest-playwright` đã merge vào branch trung gian `devin/1777398022-audit-pr-45-blueprint-docs` (commit `4ed913a`) NHƯNG branch trung gian đó đã merge vào main TRƯỚC khi PR #47 được merge vào nó (PR #46 merge `1fc814d` mang `ddd3d56`, sau đó PR #47 merge `4ed913a` chỉ tồn tại trên feature branch). Tất cả file và thay đổi của PR #47 (vitest config, playwright config, e2e spec, store test, devDeps `vitest`/`@playwright/test`/`happy-dom`/`@vue/test-utils`, `apps/web/package.json` test script update) — **không** có mặt trên `main`.
+  - Lớp dễ kiểm tra: `ls apps/web/vitest.config.ts apps/web/playwright.config.ts apps/web/e2e/golden.spec.ts` ⇒ `No such file`.
+  - `grep '"test"' apps/web/package.json` vẫn ra `"echo \"(web) test skipped — wire vitest in Phase 1\""`.
+- **Smoke runtime** sau PR #51 (sidebar badges): **Needs runtime smoke** (badge polling 60s, AppShell mount/unmount lifecycle). Manual smoke dựa vào `docs/QA_CHECKLIST.md` section 1.
+- **Helper `itemName(key, locale)` (L4)** — chưa làm; tách PR riêng khi cần catalog item l10n cho `MissionView/MailView/GiftCodeView/ShopView`.
+- **Old text về "PR #47 wired"**: trước đây session 4 ghi audit gap như "E2E Playwright scaffolded (PR #47) — wired" + "Web Vitest wired (PR #47)" — **sai** với trạng thái `main`. Chính sửa ô này trong audit session 5.
+
+---
+
+## Completed Features (snapshot `main @ 81706a9` — 28/4 22:05 UTC)
+
+| Feature | Backend | Frontend | Test | Status |
+|---|---|---|---|---|
+| Auth (register / login / refresh / change-password / **logout-all** + **register IP rate-limit** PR #60) | `modules/auth/*` | `views/AuthView.vue` + `views/SettingsView.vue` + `stores/auth.ts` | **20 test** | **Done** |
+| Onboarding (chọn sect) | `modules/character/character.service.ts` | `views/OnboardingView.vue` | 6 test (profile) | **Done** |
+| Cultivation tick (BullMQ 30s) | `modules/cultivation/*` | `stores/game.ts` (WS `cultivate:tick`) | 5 test | **Done** |
+| Combat (dungeon turn-based) | `modules/combat/*` | `views/DungeonView.vue` | 7 test | **Done** |
+| Inventory (equip / unequip / use / stack) | `modules/inventory/*` | `views/InventoryView.vue` | 19 + 7 (ledger) test | **Done** |
+| Market P2P (post / buy / cancel + 5% fee) | `modules/market/*` | `views/MarketView.vue` | 10 test | **Done** |
+| Sect (list / create / join / leave / contribute) | `modules/sect/*` | `views/SectView.vue` | 7 test | **Done** |
+| Chat (world / sect + Redis sliding window 8/30s) | `modules/chat/*` | `components/shell/ChatPanel.vue` | 9 test | **Done** |
+| World Boss (current / attack + reward distribution) | `modules/boss/*` | `views/BossView.vue` | 16 test (incl. `adminSpawn`) | **Done** |
+| **Admin Boss Spawn** (PR #36) | `POST /api/boss/admin/spawn` + `AdminGuard` + audit `BOSS_SPAWN` | `AdminView.vue` tab boss | 7 test | **Done** |
+| Topup (manual approval) | `modules/topup/*` + `modules/admin/*` | `views/TopupView.vue` + `AdminView.vue` | 13 admin/topup test | **Done** |
+| Admin (users / topups / audit / stats / giftcodes / mail / boss) | `modules/admin/*` | `views/AdminView.vue` | 13 test | **Done** |
+| GiftCode (player redeem + admin CRUD) | `modules/giftcode/*` | `views/GiftCodeView.vue` + admin tab | 12 test | **Done** |
+| Mail (inbox / read / claim + admin send/broadcast + WS `mail:new` + cron prune) | `modules/mail/*` | `views/MailView.vue` + admin tab | 14 test | **Done** |
+| Mission (daily/weekly/once + claim + cron reset + **VN timezone**) | `modules/mission/*` | `views/MissionView.vue` | 26 test | **Done** |
+| Health (`/healthz`/`/readyz`/`/version`) | `modules/health/*` | — | 4 test | **Done** |
+| Ops housekeeping (BullMQ prune) | `modules/ops/*` | — | 7 test | **Done** |
+| Realtime (WS `/api/ws` JWT auth) | `modules/realtime/*` | `ws/client.ts` | 10 test | **Done** |
+| **Bootstrap CLI** (PR #33) | `apps/api/scripts/bootstrap.ts` | — | 7 test | **Done** |
+| **Settings page** (PR #37) | `POST /api/_auth/logout-all` | `views/SettingsView.vue` | 3 test | **Done** |
+| **Public Profile** (PR #38) | `GET /api/character/profile/:id` | `views/ProfileView.vue` | 6 test | **Done** |
+| **NPC Shop** (PR #39) | `modules/shop/*` (`/shop/npc`, `/shop/buy`) + catalog `NPC_SHOP` 11 entries | `views/ShopView.vue` | 10 test | **Done** |
+| **ItemLedger** audit (PR #40) | `prisma:ItemLedger` + hook 6 grant flows + market post/cancel/buy | — | 7 test (+ 2 market) | **Done** |
+| **Docs ops** (PR #35) | — | `docs/RUN_LOCAL.md` + `DEPLOY.md` + `ADMIN_GUIDE.md` + `SECURITY.md` + `TROUBLESHOOTING.md` | — | **Done** |
+| **Smart next-action** (PR #49) | `modules/next-action/*` (`GET /me/next-actions`) | `components/NextActionPanel.vue` (HomeView) + `stores/badges.ts` (sidebar badges PR #51) | **13 BE + 6 FE + 9 badges** test | **Done** |
+| **Smart admin economy alerts** (PR #54) | `AdminService.getEconomyAlerts(staleHours)` + `GET /admin/economy/alerts` | `views/AdminView.vue` Stats tab panel | **7 test** | **Done** |
+| **Smart onboarding checklist** (PR #58) | derived from `game.character` (no BE) | `components/OnboardingChecklist.vue` (HomeView) | **8 test** | **Done** |
+| **Leaderboard** (PR #59) | `modules/leaderboard/*` (`GET /api/leaderboard?limit=N`, top 50 by realm + power, clamp 1≤N≤50) | `views/LeaderboardView.vue` route `/leaderboard` | **7 BE + 6 FE** test | **Done** |
+| **i18n itemName helper** (PR #57) | `packages/shared` catalog (`items.ts` + `missions.ts`) | `apps/web/src/lib/itemName.ts` + dedupe across `MissionView`/`MailView`/`GiftCodeView`/`ShopView` | **11 test** | **Done** |
+| **Sidebar badges** (PR #51) | reuse `GET /me/next-actions` (PR #49) | `stores/badges.ts` 60s polling — mission/boss/topup | **9 test** (`stores/__tests__/badges.test.ts`) | **Done — Needs runtime smoke** |
+
+> Tất cả feature trên **đã merge code + test pass trong CI từng PR**, **chưa** smoke E2E sau khi tất cả merged đồng thời → mọi feature đánh `Needs runtime smoke` cho đến khi PR A (xem §21) chạy.
+
+---
+
+## 3. Tech Stack
+
+| Layer | Tool |
+|---|---|
+| Monorepo | `pnpm` workspace (`apps/*`, `packages/*`) — `pnpm@9.15.1`, Node `>=20` |
+| Backend framework | NestJS 10 (`@nestjs/core`, `@nestjs/platform-express`, `@nestjs/platform-socket.io`, `@nestjs/websockets`, `@nestjs/jwt`, `@nestjs/bullmq`) |
+| Frontend framework | Vue 3.5 + Vite 5 + TypeScript, Pinia 2, Vue Router 4, vue-i18n 10 |
+| CSS | Tailwind 3 + custom theme `ink/gold` |
+| Database | PostgreSQL 16 (dev: docker compose) |
+| ORM | Prisma 5.22 |
+| Redis / Queue | Redis 7 + BullMQ 5 (cultivation tick, ops prune, mission reset) |
+| Realtime | Socket.io 4.8 (custom `/ws` path, cookie JWT auth) |
+| Validation | Zod 3 (shared schemas ở `packages/shared`) |
+| Auth hash | argon2id (`argon2@^0.41`) |
+| Security | Helmet 8, CORS env-based, JWT access 15m + refresh 30d httpOnly, rotation + reuse-detect |
+| Build | `nest build` (api), `vite build` + `vue-tsc` (web), `tsup` (shared dual ESM/CJS) |
+| Test | Vitest (+ `unplugin-swc` để emit decorator metadata cho NestJS DI trong test) |
+| PWA | `vite-plugin-pwa` 0.20, `workbox-*` 7.3 |
+| i18n | `vue-i18n` 10 + `@intlify/unplugin-vue-i18n` |
+| Lint | ESLint 9 + `@vue/eslint-config-typescript`, `eslint-plugin-vue` |
+| Dev infra | docker-compose: postgres + redis + minio + mailhog |
+
+---
+
+## 4. Repository Structure
+
+```
+xuantoi/
+├── apps/
+│   ├── api/                NestJS backend
+│   └── web/                Vue 3 PWA
+├── packages/
+│   └── shared/             Zod schemas + catalogs (realms/items/missions/...)
+├── infra/
+│   └── docker-compose.dev.yml
+├── docs/
+└── .github/workflows/ci.yml
+```
+
+### apps/api
+
+- **Mục đích**: REST API + WS gateway + BullMQ workers.
+- **Entry**: `src/main.ts` (helmet, cookie-parser, CORS, assertProductionSecrets, bootstrap OpsService recurring).
+- **Root module**: `src/app.module.ts` — 20 import lines, đủ 18 feature module.
+- **Prisma schema**: `prisma/schema.prisma` (399 dòng, 28 model/enum).
+- **Migrations**: `prisma/migrations/` (5 migration: init Phase 0-8 → currency_ledger → mission_progress → mail → giftcode).
+- **AI mới nên đọc trước**:
+  1. `src/app.module.ts` — nhìn sơ đồ module.
+  2. `prisma/schema.prisma` — hiểu data model.
+  3. `src/modules/character/currency.service.ts` — mọi tiền đi qua đây.
+  4. `src/modules/realtime/realtime.gateway.ts` — WS auth pattern.
+  5. `src/common/all-exceptions.filter.ts` + `src/common/api-exception.ts` — envelope `{ ok, data|error }`.
+
+### apps/web
+
+- **Mục đích**: Vue 3 SPA + PWA.
+- **Entry**: `src/main.ts` → `App.vue` → router outlet + `AppShell.vue`.
+- **Views**: `src/views/*.vue` (14 trang).
+- **Stores**: `src/stores/{auth,game,toast}.ts`.
+- **API client**: `src/api/client.ts` + `src/api/{auth,character,combat,...}.ts`.
+- **WS client**: `src/ws/client.ts` (socket.io-client wrapper + reconnect).
+- **i18n**: `src/i18n/{vi,en}.json` (616 dòng mỗi file).
+- **AI mới nên đọc**:
+  1. `src/router/index.ts` — map route → view.
+  2. `src/stores/game.ts` — subscriber WS event `cultivate:tick`, `chat:msg`, `mail:new`.
+  3. `src/components/shell/AppShell.vue` — topbar, nav, locale switch.
+
+### packages/shared
+
+- **Mục đích**: source of truth cho FE + BE (không đi qua DB).
+- **Build**: `tsup` dual ESM/CJS.
+- **Export**: `enums`, `realms`, `proverbs`, `ws-events`, `api-contracts`, `combat`, `items`, `missions`, `boss`, `topup`.
+- **Test**: `realms.test.ts`, `catalog.test.ts`, `proverbs.test.ts` (3 test file, 30 test).
+
+### infra
+
+- `docker-compose.dev.yml` — postgres (mtt/mtt), redis, minio (admin/admin12345), mailhog. Chỉ dùng cho dev local, **chưa có compose production**.
+
+### docs
+
+- `README.md` (root) + `docs/API.md` + `docs/SEEDING.md` + `docs/BALANCE.md` + `docs/BETA_CHECKLIST.md`.
+- Chưa có: `DEPLOY.md`, `SECURITY.md`, `RUN_LOCAL.md` riêng (một phần trong README), `TROUBLESHOOTING.md`, `CHANGELOG.md`, `ADMIN_GUIDE.md`.
+
+### .github/workflows
+
+- `ci.yml` — chạy postgres + redis service, pnpm install, prisma generate + migrate, typecheck, lint, test, build. 2 job: `api` + `web`. Matrix node 20.
+
+---
+
+## 5. Backend Architecture
+
+Tất cả module trong `apps/api/src/modules/`. Controller thường tại `/<module>/*`. Mọi response bọc `{ ok, data | error }` do `AllExceptionsFilter` xử lý.
+
+| Module | Purpose | Controller prefix | Service | Files chính | Status | Notes |
+|---|---|---|---|---|---|---|
+| `auth` | Đăng ký/đăng nhập/refresh/đổi mật khẩu | `/auth` | `AuthService` | `auth.service.ts`, `auth.controller.ts`, `auth.service.test.ts` (15 test) | OK | argon2id + JWT rotation + reuse detect + rate limit login 5/15m. |
+| `character` | Onboarding + state + cultivate toggle + breakthrough + **CurrencyService** | `/character` | `CharacterService`, `CurrencyService` | `character.service.ts`, `currency.service.ts`, `currency.service.test.ts` (9 test) | OK | `CurrencyService.applyTx` là điểm duy nhất ghi `linhThach`/`tienNgoc` → atomic + ledger. |
+| `cultivation` | BullMQ cron tu luyện 30s/tick | — (worker only) | `CultivationService` + `CultivationProcessor` | `cultivation.processor.ts`, `cultivation.queue.ts`, `cultivation.processor.test.ts` (5 test) | OK | Emit WS `cultivate:tick`. Scale EXP theo `cultivationRateForRealm(order)` (PR #20). |
+| `realtime` | WS gateway `/ws` | `/ws` (WS) | `RealtimeService` | `realtime.gateway.ts`, `realtime.service.ts`, `realtime.gateway.test.ts` (10 test) | OK | Cookie `xt_access` hoặc `handshake.auth.token`. Auto-join `world` + `sect:<id>`. Map userId → Set<socketId>. |
+| `combat` | Dungeon list + encounter start/action/abandon | `/combat` | `CombatService` | `combat.service.ts`, `combat.service.test.ts` (7 test) | OK | Turn-based server-side. Reward qua `CurrencyService` + `InventoryService`. |
+| `inventory` | List + equip/unequip/use | `/inventory` | `InventoryService` | `inventory.service.ts`, `inventory.controller.ts` | **Không có test unit riêng** | Test gián tiếp qua combat/market. |
+| `market` | Listing P2P + post + buy + cancel + mine | `/market` | `MarketService` | `market.service.ts`, `market.service.test.ts` (8 test) | OK | Atomic transaction: buyer LINH_THACH − listingFee 5% + seller nhận 95%. Bilateral lock. |
+| `sect` | List/create/join/leave/contribute | `/sect` | `SectService` | `sect.service.ts`, `sect.service.test.ts` (7 test) | OK | Contribute LINH_THACH → sect treasury + user `congHien`. Chống race khi leave. |
+| `chat` | Gửi world/sect + history + rate limit | `/chat` | `ChatService` | `chat.service.ts`, `chat.service.test.ts` (9 test), `chat.module.ts` | OK | Redis sliding window 8 msg/30s (PR #24). Fallback in-memory khi không có Redis. Hook `MissionService.trackChatSend` (PR #25). |
+| `boss` | Current + attack | `/boss` | `BossService` | `boss.service.ts`, `boss.service.test.ts` (6 test) | OK | Damage attribution per character. Defeat → `distributeRewards` top1/top2-3/top4-10 + ledger `BOSS_REWARD`. |
+| `topup` | Packages + create order + mine | `/topup` | `TopupService` | `topup.service.ts` | **Không có test riêng** | Test gián tiếp qua `admin/topup-admin.service.test.ts` (11 test). |
+| `admin` | User list/ban/role/grant + topup approve/reject + audit + stats + giftcode CRUD + mail send/broadcast | `/admin` | `AdminService` | `admin.service.ts` (484 dòng), `admin.guard.ts`, `admin-stats.test.ts`, `topup-admin.service.test.ts` | OK | Guard role ADMIN|MOD. Mọi action ghi `AdminAuditLog`. Idempotent approve topup (check status trước). |
+| `giftcode` | Player redeem | `/giftcode` | `GiftCodeService` | `giftcode.service.ts`, `giftcode.service.test.ts` (12 test) | OK | Unique `(giftCodeId, userId)` → redeem once. Expire + revoke + max redeems. |
+| `mail` | Inbox + read + claim | `/mail` | `MailService` | `mail.service.ts`, `mail.service.test.ts` (14 test) | OK | Reward claim qua `CurrencyService` + `InventoryService`. Claim once. WS `mail:new` khi admin send (PR #31). |
+| `mission` | Progress tracker + claim reward + reset daily/weekly cron | `/missions` | `MissionService` + `MissionProcessor` + `MissionScheduler` | `mission.service.ts`, `mission.service.test.ts` (19 test), `mission.scheduler.ts`, `mission.processor.ts` | OK | Hook ở `cultivation.processor`, `combat.service`, `chat.service`, `sect.service`. Reset cron BullMQ. |
+| `health` | Liveness/readiness/version | `/healthz` `/readyz` `/version` | `HealthController` | `health.controller.ts`, `health.controller.test.ts` (3 test) | OK | Readyz check Postgres + Redis. |
+| `ops` | Housekeeping cron prune | — (worker only) | `OpsService` + `OpsProcessor` | `ops.processor.ts`, `ops.processor.test.ts` (6 test) | OK | Prune LoginAttempt 90d + RefreshToken revoked 30d + Mail claimed >90d. Scheduled mỗi `OPS_PRUNE_INTERVAL_MS`. |
+
+**Phụ thuộc chính giữa module**:
+- `CurrencyService` (ở `character`) được inject bởi: combat, market, sect, boss, admin, topup, giftcode, mail, mission. Bất kỳ mutation tiền nào đều phải qua đây.
+- `MissionService` (ở `mission`) được inject bởi: `chat.service` (`trackChatSend`), `combat.service` (`trackCombatWin`), `cultivation.processor` (`trackCultivateTick`), `sect.service` (`trackSectContribute`).
+- `RealtimeService` (ở `realtime`) được inject bởi: chat, cultivation, mail (để `emitToUser`).
+
+**Rủi ro backend**:
+- `InventoryService` không có test unit riêng — độ tin cậy dựa vào market/combat test. **Nên thêm** 4-5 test trực tiếp (equip/unequip swap, stack qty, idempotent use).
+- `TopupService` tương tự (test gián tiếp qua admin). User-side `createOrder` + `listMine` không có test khẳng định TOO_MANY_PENDING path.
+- `RealtimeGateway` extract token từ cookie bằng parser tự viết — không filter domain. OK cho single-origin, nhưng nếu có subdomain WS riêng cần review lại.
+
+---
+
+## 6. Frontend Architecture
+
+14 view, 15 route (kể cả `/` redirect + catch-all `:pathMatch`).
+
+| View | Route | Purpose | API Used | Store | Status | Missing/Notes |
+|---|---|---|---|---|---|---|
+| `AuthView.vue` | `/auth` | Đăng ký/đăng nhập | `/auth/register`, `/auth/login` | `auth` | OK | Hiển thị error code dịch sang text VI/EN. |
+| `OnboardingView.vue` | `/onboarding` | Tạo nhân vật | `/character/onboard` | `auth`, `game` | OK | A Linh bilingual (PR #18 text, PR #17 i18n). Chưa có full NPC avatar animation. |
+| `HomeView.vue` | `/home` | Dashboard + tu luyện toggle | `/character/me`, `/character/cultivate` | `game` | OK | EXP bar live update qua WS. |
+| `DungeonView.vue` | `/dungeon` | Combat PvE | `/combat/*` | `game` | OK | Có log + HP/MP bar. Chưa có animation skill. |
+| `InventoryView.vue` | `/inventory` | Inventory + equip/unequip/use | `/inventory/*` | `game` | OK | Chưa có filter theo quality/slot. |
+| `MarketView.vue` | `/market` | List + post listing + buy | `/market/*` | — | OK | Chưa có filter quality/price range. |
+| `SectView.vue` | `/sect` | List sect + join/leave/contribute + chat | `/sect/*`, `/chat/*` | `game` | OK | Chat live. Chưa có sect member ranking UI. |
+| `BossView.vue` | `/boss` | World boss + damage contribution | `/boss/*` | `game` | OK | Live update qua `boss:update` + `boss:end` + `boss:defeated`. |
+| `MissionView.vue` | `/missions` | Daily/Weekly/Once + claim | `/missions/me`, `/missions/claim` | — | OK | Countdown mỗi giây. Chưa có WS `mission:progress` push — user chủ động refresh. |
+| `MailView.vue` | `/mail` | Inbox + read + claim | `/mail/*` | — | OK | WS `mail:new` hiển thị badge (PR #31). Chưa có delete / archive. |
+| `GiftCodeView.vue` | `/giftcode` | Nhập code + redeem | `/giftcode/redeem` | — | OK | Chỉ input + show reward. Không có history. |
+| `TopupView.vue` | `/topup` | Packages + tạo order + lịch sử | `/topup/*` | — | OK | Chưa có tích hợp cổng thanh toán thật (intentional — beta). |
+| `AdminView.vue` | `/admin` | Admin panel (tabs: Users, Topups, Audit, Stats, GiftCodes, Mail) | `/admin/*` | — | OK | Guard `role === 'ADMIN' \|\| 'MOD'` ở client + server. |
+| `NotFoundView.vue` | `/:pathMatch(.*)*` | 404 | — | — | OK | Public, không cần auth. |
+
+**Router guard**: global `beforeEach` check `meta.public`; redirect `/auth` nếu không session.
+
+**Pinia stores**:
+- `auth.ts` — user, role, session refresh timer. Resolve `/auth/session` onMounted.
+- `game.ts` — character state + subscribe WS event `state:update`, `cultivate:tick`, `chat:msg`, `mail:new`, `boss:update`, `boss:end`, `boss:defeated`. `refresh()` method reload state.
+- `toast.ts` — queue toast success/error/info.
+
+**API client**: `src/api/client.ts` là axios instance với `withCredentials: true`, interceptor 401 → `/auth/refresh` retry 1 lần, nếu vẫn fail → redirect `/auth`. Mỗi module có file riêng (`auth.ts`, `combat.ts`, `mission.ts`, `mail.ts`, ...).
+
+**i18n**: `src/i18n/{vi,en}.json` 616 dòng mỗi file. Root namespace: `auth`, `onboarding`, `home`, `dungeon`, `inventory`, `market`, `sect`, `boss`, `mission`, `mail`, `giftcode`, `topup`, `admin`, `shell`, `chat`, `common`, `errors`. Locale switcher trong `AppShell.vue` persist qua localStorage.
+
+**Components chính** (`src/components/`):
+- `shell/AppShell.vue` — topbar + sidebar + locale switch + logout + chat panel.
+- `shell/ChatPanel.vue` — world/sect chat collapsible.
+- `common/MButton.vue` — loading state + i18n.
+
+**Rủi ro frontend**:
+- **Không có Vitest cho web** (`test` script hiện là `echo "skipped"`). Mọi test FE phải làm manual hoặc Playwright.
+- **Chưa có E2E Playwright**.
+- Một số view không fetch lại khi locale đổi runtime — i18n chỉ ảnh hưởng static text.
+
+---
+
+## 7. Shared Package
+
+`packages/shared/src/`:
+
+| File | Export |
+|---|---|
+| `index.ts` | Re-export tất cả |
+| `enums.ts` | `Role`, `Quality`, `ItemType`, `EquipSlot`, `Difficulty`, `CurrencyKind` (mirror Prisma enum) |
+| `realms.ts` | `REALMS[]` (28 stage), `realmByKey`, `expCostForStage`, `nextRealm`, `fullRealmName`, `cultivationRateForRealm` (scale 1.45^order) |
+| `proverbs.ts` | 30+ câu châm ngôn random cho loading screen |
+| `ws-events.ts` | `WsFrame`, `WsEventType`, `CharacterStatePayload`, `CultivateTickPayload`, heartbeat constants |
+| `api-contracts.ts` | Zod schema + TS type cho request/response tất cả endpoint |
+| `combat.ts` | `MONSTERS`, `DUNGEONS`, `SKILLS`, helpers |
+| `items.ts` | `ITEMS` (30 item đủ 9 slot), `rollDungeonLoot` |
+| `missions.ts` | `MISSIONS` (12 mission: 5 daily / 4 weekly / 3 once), `missionByKey`, `missionsByPeriod` |
+| `boss.ts` | Boss pool + `distributeRewards` |
+| `topup.ts` | Topup package list + contract |
+
+**Build**: `tsup` → `dist/index.mjs` + `dist/index.cjs` + `dist/index.d.ts`.
+
+**Import**: `import { REALMS, realmByKey, type CharacterStatePayload } from '@xuantoi/shared';`
+
+**Test**: 3 file, 30 test.
+
+---
+
+## 8. Database / Prisma Schema
+
+File: `apps/api/prisma/schema.prisma` (399 dòng, 19 model + 9 enum).
+
+### Migrations (theo thứ tự)
+
+1. `20260427210442_init_phase_0_8` — toàn bộ Phase 0-8 baseline.
+2. `20260427223631_add_currency_ledger` — thêm `CurrencyLedger`.
+3. `20260428050829_add_mission_progress` — `MissionProgress` + enum `MissionPeriod`.
+4. `20260428060000_add_mail` — `Mail`.
+5. `20260428070000_add_giftcode` — `GiftCode` + `GiftCodeRedemption`.
+
+### Bảng model chính
+
+| Model | Purpose | Important Relations | Risk/Notes |
+|---|---|---|---|
+| `User` | Account (email+password+role+passwordVersion+banned) | `refreshTokens`, `character` (1-1) | Soft-ban qua field `banned` (guard reject). |
+| `RefreshToken` | Rotation + reuse detection | `user` | `revokedAt` set khi reuse → revoke chain. Prune 30d qua Ops. |
+| `LoginAttempt` | Rate limit login 5/15m theo (ip, email) | — | Prune 90d qua Ops. |
+| `Character` | State nhân vật (exp, hp/mp, attr, linhThach, tienNgoc, sect…) | `inventory`, `ledger`, `mails`, `missionProgress` | `@unique` trên `userId` + `name`. Ghi tiền **phải** qua `CurrencyService`. |
+| `InventoryItem` | Item instance | `character` | Stack qty. itemKey ∈ `ITEMS` catalog (shared). |
+| `Listing` | Market P2P | seller (`Character`) | `@@unique` trên `(itemId)` khi OPEN đảm bảo 1 item ⇒ 1 listing active. |
+| `Sect` | Tông môn (treasury, member count) | members (`Character[]`) | SectKey ∈ `thanh_van`, `huyen_thuy`, `tu_la` (seed sẵn). |
+| `ChatMessage` | Chat world/sect history | `character`, `sect?` | Index `(channel, createdAt)` + `(sectId, createdAt)`. |
+| `WorldBoss` | Boss spawn + status | `damages` | Status enum ACTIVE/DEFEATED/EXPIRED. |
+| `BossDamage` | Per-character damage log | `boss`, `character` | Dùng để rank reward. |
+| `Encounter` | Dungeon fight state (turn, hp) | `character` | Status ACTIVE/WON/LOST/ABANDONED. |
+| `CurrencyLedger` | **Audit trail 100% thay đổi linhThach/tienNgoc** | `character` | Reason union: MARKET_BUY/MARKET_SELL/SECT_CONTRIBUTE/ADMIN_GRANT/ADMIN_TOPUP_APPROVE/BOSS_REWARD/COMBAT_LOOT/GIFTCODE_REDEEM/MAIL_CLAIM/MISSION_CLAIM. Delta có dấu. |
+| `TopupOrder` | User tạo order → admin approve | — | Status PENDING/APPROVED/REJECTED. TOO_MANY_PENDING guard (max 3). |
+| `AdminAuditLog` | Log mọi admin action | — | Ghi `actorId, action, meta, createdAt`. |
+| `Mail` | Inbox per character | `recipient` | `readAt`, `claimedAt`, `expiresAt`. Prune claimed >90d. |
+| `GiftCode` | Mã quà | `redemptions` | Unique `code`, `expiresAt`, `revokedAt`, `maxRedeems`. |
+| `GiftCodeRedemption` | User đã redeem | `giftCode` | `@@unique(giftCodeId, userId)` — 1 user 1 lần. |
+| `MissionProgress` | Progress theo (characterId, missionKey) trong windowStart/End | `character` | `@@unique(characterId, missionKey, periodStart)`. Reset cron daily/weekly. |
+
+### Migrate
+
+```bash
+# Apply migrations
+pnpm --filter @xuantoi/api exec prisma migrate deploy
+
+# Generate client
+pnpm --filter @xuantoi/api exec prisma generate
+
+# Reset (dev only — MẤT DATA)
+pnpm --filter @xuantoi/api exec prisma migrate reset --force --skip-seed
+```
+
+### Điểm cần cẩn thận
+
+- Không có migration rollback tự động — nếu cần, copy migration.sql vào một migration mới và viết `DROP`/revert thủ công.
+- `CurrencyLedger` index `(characterId, createdAt)` + `(reason, createdAt)` đủ cho query user + admin. Không có index `(actorUserId)` — thêm nếu cần query theo admin.
+- `MissionProgress` không có soft delete — reset cron tạo row mới theo period.
+
+---
+
+## 9. Core Gameplay Flows
+
+### Auth Flow
+- `POST /auth/register` → `AuthService.register` → argon2id hash → create User + set cookie `xt_access` + `xt_refresh`.
+- `POST /auth/login` → check `LoginAttempt` rate limit → verify hash → rotate refresh.
+- `GET /auth/session` → JWT guard → trả user + role.
+- `POST /auth/refresh` → verify refresh → rotate + issue new access (reuse detection: nếu token đã revoked → revoke cả chain).
+- `POST /auth/logout` → revoke current refresh + clear cookie.
+- `POST /auth/change-password` → `passwordVersion`++ → kill tất cả access token đang active (guard reject khi `version` lệch).
+- **File**: `apps/api/src/modules/auth/*`. FE: `apps/web/src/views/AuthView.vue` + `stores/auth.ts`.
+- **Test**: `auth.service.test.ts` (15 test).
+- **Risk còn lại**: cookie `SameSite=Lax` → khi deploy cross-origin cần đổi `None` + `Secure`. Chưa có email verification / reset password qua email.
+
+### Onboarding / Character Flow
+- User mới login → `GET /character/me` trả 404 → FE redirect `/onboarding`.
+- `POST /character/onboard` body `{ name, sectKey }` → tạo Character + gán vào Sect.
+- Redirect `/home`.
+- **File BE**: `character.service.ts`. **FE**: `OnboardingView.vue`.
+- **Test**: gián tiếp qua các test khác (makeUserChar helper).
+
+### Cultivation Flow
+- `POST /character/cultivate` body `{ on: true/false }` → toggle `Character.cultivating`.
+- BullMQ `cultivation` queue: repeatable job mỗi `CULTIVATION_TICK_MS=30s`.
+- `CultivationProcessor.process`: lấy tất cả `cultivating=true` → `realmByKey` + `cultivationRateForRealm(order)` → ghi EXP.
+- Nếu đủ EXP → auto-breakthrough hoặc chờ user call `POST /character/breakthrough`.
+- Sau khi ghi DB → `realtime.emitToUser(userId, 'cultivate:tick', payload)`.
+- FE `game.ts` subscribe `cultivate:tick` → update character.exp → EXP bar animate.
+- Mission hook `trackCultivateTick` → tăng daily/weekly mission progress.
+- **File**: `cultivation.processor.ts`, `cultivation.queue.ts`, `cultivation.service.ts`.
+- **Test**: `cultivation.processor.test.ts` (5 test) + WS live push test trong `realtime.gateway.test.ts`.
+- **Risk**: cron tick multi-instance chưa test — chỉ 1 api process đảm bảo không double credit. Khi scale cần Redis lock hoặc BullMQ limiter group.
+
+### Combat Flow
+- `GET /combat/dungeons` → list static từ `combat.ts` catalog.
+- `POST /combat/encounter/start` body `{ dungeonKey, difficulty }` → tạo `Encounter` ACTIVE.
+- `POST /combat/encounter/:id/action` body `{ skillKey }` → server compute damage/heal/status → update hp → ghi turn log.
+- Khi monster hp ≤ 0 → distribute loot: `CurrencyService.applyTx(LINH_THACH, ..., COMBAT_LOOT)` + `InventoryService.grant(items)`.
+- Thắng 100% hp lose → status LOST + hp=1.
+- Mission hook `trackCombatWin` → daily_kill_monster_5 etc.
+- **File**: `combat.service.ts`, `combat.controller.ts`. FE: `DungeonView.vue`.
+- **Test**: `combat.service.test.ts` (7 test).
+- **Risk**: công thức damage simple (attack − defense); chưa có status effect elaborated (buff/debuff chỉ có trong catalog nhưng xử lý đơn giản).
+
+### Inventory Flow
+- `GET /inventory` → list theo characterId.
+- `POST /inventory/equip` body `{ inventoryItemId }` → check slot + swap nếu đã có.
+- `POST /inventory/unequip` body `{ slot }`.
+- `POST /inventory/use` body `{ inventoryItemId, qty }` → consume potion → heal/buff.
+- **File**: `inventory.service.ts`. FE: `InventoryView.vue`.
+- **Risk**: không có test unit riêng (đã ghi ở §5).
+
+### Market Flow
+- `POST /market/post` body `{ inventoryItemId, price, qty }` → tạo Listing OPEN + move item ra escrow (giảm inventory qty).
+- `GET /market/listings` → list OPEN.
+- `POST /market/:id/buy` → TRANSACTION: buyer trừ LINH_THACH (price); seller nhận 95% (listingFee 5%); move item vào buyer inventory; listing status SOLD.
+- Bilateral lock: `updateMany` với guard `status=OPEN` → 1 thắng 1 fail, không double-buy.
+- `POST /market/:id/cancel` → return item về seller; status CANCELLED.
+- **File**: `market.service.ts`. FE: `MarketView.vue`.
+- **Test**: `market.service.test.ts` (8 test — bao gồm insufficient funds + double-buy prevention + cancel own).
+- **Risk**: fee 5% hard-code, chưa có config env.
+
+### Sect Flow
+- `POST /sect/create` body `{ key, name, desc }` — **chỉ admin** (guard).
+- `GET /sect/list` / `GET /sect/:id` — public info.
+- `POST /sect/:id/join` — character chưa có sect.
+- `POST /sect/leave` — đang có sect.
+- `POST /sect/contribute` body `{ amount }` → trừ LINH_THACH (reason `SECT_CONTRIBUTE`) → sect treasury += amount → user `congHien` += amount.
+- **File**: `sect.service.ts`. FE: `SectView.vue`.
+- **Test**: `sect.service.test.ts` (7 test).
+
+### Chat Flow
+- `POST /chat/world` body `{ text }` → rate limit 8 msg/30s → persist `ChatMessage` → broadcast `world` room WS.
+- `POST /chat/sect` → same nhưng room `sect:<id>`.
+- `GET /chat/history?channel=world|sect&limit=N` → lấy messages gần nhất.
+- Rate limit: Redis sliding window (key `rl:chat:<userId>`). Fallback in-memory khi không có Redis (thường chỉ ở test).
+- Mission hook `trackChatSend` → daily_chat_N.
+- **File**: `chat.service.ts`. FE: `ChatPanel.vue`.
+- **Test**: `chat.service.test.ts` (9 test).
+
+### Boss Flow
+- Boss spawn thủ công (qua admin) hoặc cron tương lai.
+- `GET /boss/current` → boss ACTIVE nếu có.
+- `POST /boss/attack` body `{ skillKey }` → compute damage → ghi `BossDamage` → emit `boss:update`.
+- Khi hp ≤ 0 → status DEFEATED → `distributeRewards` top1/top2-3/top4-10 → emit `boss:defeated` + `boss:end`.
+- Reward ghi ledger reason `BOSS_REWARD`.
+- **File**: `boss.service.ts`. FE: `BossView.vue`.
+- **Test**: `boss.service.test.ts` (6 test).
+- **Risk**: chưa có cron spawn boss tự động. Admin phải tạo manually (endpoint chưa có — **thiếu**).
+
+### Topup Flow
+- `GET /topup/packages` → list static.
+- `POST /topup/create` body `{ packageKey }` → tạo `TopupOrder` PENDING với `transferCode` unique. Guard TOO_MANY_PENDING (≥3 pending → reject).
+- User chuyển khoản ngân hàng kèm transferCode.
+- Admin mở `/admin` → Topups tab → xác nhận → `POST /admin/topups/:id/approve` → credit TIEN_NGOC + ledger `ADMIN_TOPUP_APPROVE` + `AdminAuditLog`.
+- Idempotent: check status PENDING trước khi credit.
+- **File**: `topup.service.ts` + `admin.service.ts`. FE: `TopupView.vue` + `AdminView.vue`.
+- **Test**: `topup-admin.service.test.ts` (11 test).
+- **Risk**: chưa có tự động webhook — 100% manual approve.
+
+### GiftCode Flow
+- Admin: `POST /admin/giftcodes` body `{ code, rewardLinhThach, rewardTienNgoc, rewardExp, rewardItems[], maxRedeems?, expiresAt? }`.
+- Player: `POST /giftcode/redeem` body `{ code }` → uppercase normalize → check expired/revoked/exhausted/already-redeemed → TRANSACTION credit rewards + tạo `GiftCodeRedemption` + ledger `GIFTCODE_REDEEM`.
+- Error codes: `CODE_NOT_FOUND/CODE_EXPIRED/CODE_REVOKED/CODE_EXHAUSTED/ALREADY_REDEEMED/NO_CHARACTER/INVALID_INPUT`.
+- **File**: `giftcode.service.ts`. FE: `GiftCodeView.vue` + Admin tab.
+- **Test**: `giftcode.service.test.ts` (12 test — bao gồm race `maxRedeems=1` 2 user đồng thời).
+
+### Mail Flow
+- Admin: `POST /admin/mail/send` body `{ recipientCharacterId, subject, body, reward*, items, expiresAt? }` hoặc `POST /admin/mail/broadcast` body cùng schema nhưng recipient=all.
+- Player: `GET /mail/me` → inbox (phân biệt read/unread, claimed). `POST /mail/:id/read` → set `readAt`. `POST /mail/:id/claim` → credit rewards + set `claimedAt` + ledger `MAIL_CLAIM`.
+- Claim once: guard `claimedAt IS NULL`.
+- WS `mail:new` khi admin send (PR #31) → FE badge.
+- Cron prune mail claimed >90d (PR #31).
+- **File**: `mail.service.ts`. FE: `MailView.vue`.
+- **Test**: `mail.service.test.ts` (14 test — bao gồm claim once + expired + no reward + broadcast).
+
+### Mission Flow
+- Catalog: `packages/shared/src/missions.ts` — 12 mission: 5 daily + 4 weekly + 3 once.
+- Tracker: mỗi module gọi `MissionService.track<Event>` (chat/combat/cultivate/sect).
+- Service update `MissionProgress.currentCount` per `(characterId, missionKey, periodStart)`.
+- `GET /missions/me` → list 3 period + status (pending/ready/claimed) + windowEnd.
+- `POST /missions/claim` body `{ missionKey }` → guard completed + not claimed → credit reward + ledger `MISSION_CLAIM` + set `claimedAt`.
+- Reset cron: `MissionScheduler.scheduleRecurring` → DAILY @ 00:00, WEEKLY @ Monday 00:00. Xoá/tạo new period.
+- Mission ONCE không reset.
+- **File**: `mission.service.ts`, `mission.scheduler.ts`, `mission.processor.ts`. FE: `MissionView.vue`.
+- **Test**: `mission.service.test.ts` (19 test).
+- **Risk**: chưa có WS `mission:progress` — user phải refresh. Khi reset cron chạy lệch giờ (timezone) — mặc định UTC. Nếu cần VN timezone, phải adjust trong scheduler.
+
+---
+
+## 10. WebSocket / Realtime
+
+### Gateway
+
+File: `apps/api/src/modules/realtime/realtime.gateway.ts`.
+
+- Path: `/ws`.
+- CORS: `origin: true, credentials: true`.
+- Auth 2 nguồn:
+  1. `handshake.auth.token` (ưu tiên — dùng trong test + có thể dùng cho mobile native).
+  2. Cookie `xt_access` (web).
+- Verify bằng `JwtService.verifyAsync` với `JWT_ACCESS_SECRET`. Fail → emit `error {code: UNAUTHENTICATED}` + disconnect.
+- Sau khi auth OK:
+  - `client.data.userId = payload.sub`.
+  - `realtime.attach(userId, socketId)` → map `Map<userId, Set<socketId>>`.
+  - Auto-join room `world`.
+  - Nếu user có `Character.sectId` → join `sect:<id>`.
+- Disconnect: `realtime.detach(userId, socketId)`.
+
+### RealtimeService methods
+
+- `emitToUser(userId, type, payload)` — lấy tất cả socket của user và emit.
+- `emitToSect(sectId, type, payload)` — emit vào `sect:<id>` room.
+- `emitToWorld(type, payload)` — emit `world` room.
+
+### Events
+
+| Event | Direction | Payload | Emitter |
+|---|---|---|---|
+| `state:update` | S→C | `CharacterStatePayload` | chưa dùng (placeholder) |
+| `cultivate:tick` | S→C | `CultivateTickPayload` | `CultivationProcessor` |
+| `logs:append` | S→C | — | chưa implement (G3 gap) |
+| `marquee` | S→C | `{ text }` | chưa implement |
+| `chat:msg` | S→C | `{ channel, id, text, from, ts }` | `ChatService.sendWorld/sendSect` |
+| `boss:spawn` / `boss:update` / `boss:end` / `boss:defeated` | S→C | boss state | `BossService` |
+| `mail:new` | S→C | `{ mailId, subject }` | `MailService.sendToCharacter` (PR #31) |
+| `ping` / `pong` | C↔S | heartbeat | `RealtimeGateway.onPing` |
+| `chat:send` | C→S | — | chưa dùng qua WS (dùng REST) |
+
+### Lỗi cũ + fix
+
+- **G1 + G2** (gap report phase-0-8): `cultivate:tick` và `chat:msg` không deliver FE → fix ở **PR #11**. Root cause: FE `VITE_WS_URL` chứa `path=/ws` khiến socket.io connect sai path. Đã strip path + để socket.io tự append `/ws`.
+
+### Test realtime
+
+- `realtime.gateway.test.ts` (10 test) — dựng Nest app ephemeral port + real socket.io-client:
+  - connect với cookie OK.
+  - connect với `handshake.auth.token` OK.
+  - `emitToUser` deliver đúng.
+  - anti-regression G1/G2 (cultivate tick + chat msg live).
+  - reject no/invalid/expired token.
+  - auto-join sect room khi có sectId.
+
+---
+
+## 11. Economy / Ledger / Anti-Fraud
+
+| Kiểm tra | Status | Ghi chú |
+|---|---|---|
+| `CurrencyService` | OK | `apps/api/src/modules/character/currency.service.ts`. Mọi mutation `linhThach`/`tienNgoc` chỉ qua `applyTx`. |
+| `CurrencyLedger` | OK | Schema + index. Ghi per mutation. |
+| `ItemLedger` | **Chưa có** | Item grant/consume không có audit table. Risk: không thể trace item duplication exploit. |
+| `RewardClaimLog` | **Có idempotent trong từng module** (MissionProgress.claimedAt, Mail.claimedAt, GiftCodeRedemption) nhưng **không có** unified reward log. |
+| `AdminAuditLog` | OK | Mọi admin action ghi. |
+| Topup approve idempotent | OK | Check status PENDING trước credit. |
+| Market buy atomic | OK | `updateMany` guard `status=OPEN`. |
+| Boss reward claim once | OK | Distribute 1 lần khi DEFEATED, không redo. |
+| GiftCode redeem once | OK | `@@unique(giftCodeId, userId)`. |
+| Mission reward claim once | OK | Guard `claimedAt IS NULL`. |
+| Mail reward claim once | OK | Guard `claimedAt IS NULL`. |
+
+**Grep kết quả** `linhThach: { increment`/`tienNgoc: { increment` trong code (không tính test):
+
+```
+apps/api/src/modules/character/currency.service.ts:72   data: { linhThach: { increment: input.delta } }
+apps/api/src/modules/character/currency.service.ts:88   data: { tienNgoc: { increment: deltaNum } }
+```
+
+→ **CHỈ CurrencyService** mutate tiền trực tiếp. Không bypass.
+
+**Risk còn lại**:
+- `ItemLedger` nên thêm khi bước sau — giúp audit duplication khi equip/unequip race + market fraud.
+- ~~`CurrencyLedger.actorUserId` chưa có index~~ — đã fix ở PR #43 (`@@index([actorUserId, createdAt])` cho cả CurrencyLedger và ItemLedger).
+
+---
+
+## 12. Tests
+
+| Area | Existing Tests | Missing | Priority |
+|---|---|---|---|
+| Auth | **18 test** (`auth.service.test.ts`) — +3 cho `logoutAll` (PR #37) | Email verification flow chưa có feature | — |
+| Email | **14 test** (`email.service.test.ts` session 9m) — mode selection (4: console default/explicit/smtp/smtp+auth), send console (2: log verify/text-only), sendPasswordResetEmail (6: default URL/custom URL/URL-encode/subject/expiry minutes/min-1-phút), SMTP_FROM (2: default/custom) | — | — |
+| Bootstrap | **7 test** (`scripts/bootstrap.test.ts`) (PR #33) | — | — |
+| Character/Currency | 9 test (`currency.service.test.ts`) | Test breakthrough multi-stage | Low |
+| Character/Profile | **6 test** (`character.service.test.ts`) (PR #38) | — | — |
+| Cultivation | **19 test** (`cultivation.processor.test.ts` 5 integration + `cultivation.processor.pure.test.ts` 11 pure unit PR #188 + `cultivation.service.test.ts` 3 pure unit PR #188) — pure unit cover: job.name guard, stamina regen SQL, empty cultivating early-return, EXP grant + payload shape, auto-breakthrough stage<9, stage-9 cap, mission.track failure isolation, per-char error isolation, CULTIVATE_SECONDS/GAIN_EXP/BREAKTHROUGH mission tracking, scheduleRecurring cleanup. | Multi-instance lock test (needs real DB concurrent) | Low |
+| Combat | 7 test (`combat.service.test.ts`) | Skill with status effect chain | Low |
+| Inventory | **19 test** (`inventory.service.test.ts`) (PR #34) + **7 test** (`item-ledger.test.ts`) (PR #40) | Concurrency `Promise.all` race | Low |
+| Market | **10 test** (`market.service.test.ts`) — +2 ledger flow (PR #40) | Fee config test | Low |
+| Sect | 7 test (`sect.service.test.ts`) | Leader transfer (feature chưa có) | Low |
+| Chat | **20 test** (`chat.service.test.ts` 9 + `chat.service.ws-history.test.ts` 11 PR #186) — +11 cover: WS emit `sendWorld`→broadcast / `sendSect`→emitToRoom / mutual exclusion, history ordering oldest-first / empty / sect A↔B isolation breach check / WORLD↔SECT isolation / `historySect` NO_CHARACTER/NO_SECT, view shape + text trim. | Redis failover test | Low |
+| Boss | **16 test** (`boss.service.test.ts`) — +7 cho `adminSpawn` (PR #36) | Spawn cron auto (feature chưa có) | Medium |
+| Admin/Topup | **13 test** (`admin-stats` 3 + `topup-admin` 10) + **17 test** (`topup.service.test.ts` session 9m) — createOrder happy/invalid/limit/isolation/uniqueness/persistence/slot-free, listForUser empty/sorted/isolation/cap-50, bankInfo, toView normal/fallback, economy safety (no currency change/no ledger entry) | — | — |
+| GiftCode | 12 test (`giftcode.service.test.ts`) + **5 race test** (`giftcode-race.test.ts` session 9m) — concurrent maxRedeems=1 (3 users), maxRedeems=2 (5 users), same-user double-redeem (unique index), concurrent items grant, revoke-during-redeem consistency | — | — |
+| Mail | **34 test** (`mail.service.test.ts` 14 + `mail.service.ws-and-prune.test.ts` 20 session 9n-L) — +20 cover WS `mail:new` emit spy cho sendToCharacter/broadcast + pruneExpired (claim cũ/expired không reward/expired có reward GIỮ) + validateInput edge cases (subject>120/body>2000/items>10/qty<=0/itemKey rỗng/reward âm/boundary OK) | Full WS integration end-to-end qua socket.io client | Low |
+| Mission | **34 test** (`mission.service.test.ts` 26 + `mission.processor.test.ts` 8 PR #187) — +8 pure unit cover: process('reset') order DAILY→WEEKLY, skip non-reset job name, skip empty name, error propagation (DAILY fail → no WEEKLY), 4 log branch combos (daily=weekly=0 / daily>0 / weekly>0 / both>0). | — | — |
+| **Shop** | **10 test** (`shop.service.test.ts`) (PR #39) | Daily limit (feature chưa có) | — |
+| Health | **14 test** (`health.controller.test.ts` 3 baseline integration: healthz/readyz happy/version + `health.controller.unit.test.ts` 10 pure-unit failure paths PR session 9p task A) — pure-unit cover: DB fail/Redis fail/Redis non-PONG/both fail/non-Error throw (string + object) stringify branch + healthz ts ISO round-trip + version env override (`APP_VERSION`/`GIT_SHA`) + version default fallback. Mocked Prisma/Redis → no infra:up needed; existing integration test giữ nguyên cho readyz happy path real DB+Redis. | — | — |
+| Ops | **7 test** (`ops.processor.test.ts`) | — | — |
+| Realtime | **30 test** (`realtime.gateway.test.ts` 10 + `realtime.service.test.ts` 20 session 9n-M) — pure unit cover attach/detach/emit/broadcast/room/bind idempotent | Ban user during connection | Medium |
+| Rate limiter | 8 test (`rate-limiter.test.ts`) | — | — |
+| **All-Exceptions Filter** | **21 test** (`all-exceptions.filter.test.ts` session 9n-N) — HttpException pass-through/wrap (4), status→code mapping (11: 400/401/403/404/409/429/5xx + 4xx fallback), security INTERNAL_ERROR no-leak (3 include Error/TypeError/non-Error), envelope shape strict (1); pure unit (fake ArgumentsHost). | — | — |
+| Shared (realms/catalog/proverbs/shop/topup/boss/combat/missions/core-types) | **220 test** (11 file, verified local 30/4 ~17:05 UTC) — boss 22 + catalog 17 + proverbs 11 + realms 27 + shop 9 + topup 10 + enums 17 (PR #175) + ws-events 19 (PR #175) + api-contracts 30 (PR #175) + combat 40 (PR #173) + missions 18 (PR #174). | — | — |
+| **Web Vitest** | **547 test** (56 file, verified local 30/4 ~17:05 UTC) — baseline 484 (51 file, post 9k) + session 9l +5 (SettingsView) + session 9n-F +4 (toast i18n) + session 9n-G +19 (api fallback i18n) + session 9n-K +20 (UI primitive SettingsView) + **session 9n-O +15 (ws/client.ts resolveWsOrigin PR #179)**. | Render-level cho `AppShell` nav badge interaction; runtime smoke for full claim/buy flow E2E. | Low |
+| **E2E Playwright** | **Wired** (PR #64) — `apps/web/e2e/golden.spec.ts` matrix job `e2e-smoke` với Postgres+Redis services, build api+web, run `E2E_SMOKE=1 pnpm --filter @xuantoi/web e2e:smoke`. | Full happy-path expand (M6 `/activity` browse, daily login claim, mission claim, market post/buy). | Low |
+| **Economy integration** | Rải rác trong từng service + `item-ledger.test.ts` consistency check + `pnpm audit:ledger` script | Cross-module: market post → buy, ngân sách sect | Low |
+| **Logs (G3 cũ/M6)** | **20 test** (`logs.service.test.ts`) (PR #88) — cursor encode/decode 6 + listForUser currency 11 + listForUser item 3 | — | — |
+
+**Tổng (`vitest run` thực tế, baseline session 9n trên main @ `d332a18` post session 9m close-out)**: **~431 test API (cần infra:up — +17 topup + 14 email + 5 giftcode-race session 9m, all merged) + 96 test shared + 509 test web = ~1036 test pass expected**. CI xanh trên cả 5 PR session 9m (#160..#164). Real Postgres + real Redis service trên CI; local dùng `infra/docker-compose.dev.yml` (`docker compose up -d pg redis`). Web count 509 (54 file). Shared count 96 (6 file). API count ~431 (+17 topup + 14 email + 5 giftcode-race session 9m).
+
+**Chạy**:
+```bash
+pnpm --filter @xuantoi/api test        # ~395 test (api modules + bootstrap + leaderboard + economy-alerts + next-action + logs + auth forgot/reset + admin self-demote + admin revoke inventory); cần Postgres+Redis qua `pnpm infra:up`
+pnpm --filter @xuantoi/shared test     # 96 test (6 file: boss 22 + catalog 17 + proverbs 11 + realms 27 + shop 9 + topup 10)
+pnpm --filter @xuantoi/web test        # 484 test (51 file, vitest 2.1.9 happy-dom) — +AdminView.test.ts 18 test session 9k task C
+pnpm test                              # toàn bộ — gộp shared + api + web
+```
+
+---
+
+## 13. Seed Data / Balance / Content
+
+### Seed
+
+- **Không có `prisma/seed.ts`** (dự án intentionally không seed vào DB — xem `docs/SEEDING.md`).
+- Static catalog trong `packages/shared`:
+  - `items.ts` — 30 item đủ 9 `EquipSlot` + consumables (PR #19).
+  - `combat.ts` — 9 monster + 3 dungeon + 10 skill (3 skill/sect + basic).
+  - `missions.ts` — 12 mission (5 daily, 4 weekly, 3 once) (PR #19).
+  - `realms.ts` — 28 cảnh giới balanced `1.45^order` (PR #20).
+  - `boss.ts` — boss pool.
+  - `topup.ts` — packages.
+- **Sect seed**: **Resolved by PR #33** — `pnpm --filter @xuantoi/api bootstrap` creates 3 default sects (Thanh Vân Môn, Huyền Thuỷ Cung, Tu La Điện) idempotently.
+
+**Idempotent?** Static catalog → type-safe, tree-shakable, reload no migrate. DB chỉ lưu reference key → import mới sẽ sync ngay khi code deploy.
+
+### Balance
+
+- `docs/BALANCE.md` giải thích công thức EXP, cultivation rate (1.45^order), market fee, boss reward tiering.
+- `cultivationRateForRealm(order)` tested (property test 28 stage ≤ 24h ở stage 1 — PR #20).
+
+### Thiếu
+
+- ~~Seed sect~~ — **Resolved by PR #33** (`pnpm --filter @xuantoi/api bootstrap` creates 3 sects).
+- ~~Seed admin user đầu tiên~~ — **Resolved by PR #33** (`bootstrap` creates admin from `INITIAL_ADMIN_EMAIL` + `INITIAL_ADMIN_PASSWORD` env vars).
+- Chưa có content scale: chỉ 3 dungeon + 9 monster cho 28 cảnh giới → late-game sẽ trống.
+- Chưa có seed quest chain (cốt truyện NPC) — chỉ có mission daily/weekly/once tĩnh.
+
+---
+
+## 14. i18n / PWA / UX
+
+| Item | Status | Ghi chú |
+|---|---|---|
+| i18n VI/EN dictionary | OK | `apps/web/src/i18n/{vi,en}.json` 616 dòng mỗi file, 17 namespace. PR #17 + #23 + mission/mail/giftcode. |
+| Locale switcher UI | OK | `AppShell.vue`. Persist localStorage. |
+| Hard-coded VN/EN còn sót? | **Có thể còn ít** | PR #23 đã gap fill nhưng chưa audit lại sau khi thêm mission/mail/giftcode. Khuyến nghị grep `['"`].*[À-ỹ].*['"]\` trong .vue/.ts trước beta. |
+| PWA manifest | OK | `apps/web/public/manifest.webmanifest` + vite-plugin-pwa generateSW. 32 entries precache 623 KiB. |
+| PWA icons | OK | `icons/icon-192.png`, `icon-512.png`, `icon-maskable-*.png`, `apple-touch-icon.png` (PR #18). |
+| A Linh onboarding bilingual | OK | PR #18 + i18n PR #17 key `onboarding.alinh.*`. |
+| Loading / empty / error state | Phần lớn OK | AuthView + OnboardingView + DungeonView có state đủ. Một số view (Boss, Giftcode history) chưa có skeleton loader. |
+| Mobile responsive | **Chưa xác minh runtime** | Tailwind breakpoint có nhưng chưa smoke test trên viewport < 375px. |
+
+---
+
+## 15. Docs
+
+| File | Có? | Nội dung |
+|---|---|---|
+| `README.md` | OK | Stack overview + quick start + architecture. |
+| `docs/API.md` | OK | Endpoint inventory đầy đủ (bảng cho từng module). PR #29. |
+| `docs/SEEDING.md` | OK | Static catalog strategy, helper functions list. PR #21. |
+| `docs/BALANCE.md` | OK | Cultivation formula, market fee, boss tiering. PR #21. |
+| `docs/BETA_CHECKLIST.md` | OK | Cut-line beta + ✅/⏳ items. PR #21. |
+| `docs/ADMIN_GUIDE.md` | **Có** (PR #35) | Promote admin, grant currency, ban user, topup approve, giftcode, mail broadcast. 7.6 KB. |
+| `docs/DEPLOY.md` | **Có** (PR #35) | Prod env, migration deploy, CSP, CORS, JWT secrets. 7.9 KB. |
+| `docs/SECURITY.md` | **Có** (PR #35 + PR #154 session 9k) | Threat model, secret rotation, rate limit, audit, logout-all behavior. 8.5 KB. |
+| `docs/RUN_LOCAL.md` | **Có** (PR #35) | Tách riêng từ README — full step-by-step. 4.7 KB. |
+| `docs/TROUBLESHOOTING.md` | **Có** (PR #35) | WS không connect, migration fail, Redis down, typecheck loop. 6.7 KB. |
+| `docs/CHANGELOG.md` | **Có** (PR #104 + PR #157 + session 9m catch-up) | Full changelog sessions 9d→9l. Session 9m PR thêm sections 9g/9h/9i/9j/9l. ~10 KB. |
+| `docs/RELEASE_NOTES.md` | **Có** (PR #120 + PR #157) | Closed beta press kit, roadmap, known issues. 9.8 KB. |
+| `docs/PRIVACY.md` | **Có** (PR #151 session 9k) | Closed-beta data retention policy. 9.3 KB. |
+| `docs/TOS.md` | **Có** (PR #151 session 9k) | Closed-beta tester agreement. 10.3 KB. |
+| `docs/BACKUP_RESTORE.md` | **Có** (PR #95) | Postgres backup/restore scripts + ops guide. 7.4 KB. |
+| `docs/QA_CHECKLIST.md` | **Có** (PR #50 + PR #113 + PR #152) | Smoke checklist 15 phút + Playwright how-to + pnpm smoke:beta. 13.8 KB. |
+| `docs/RUNTIME_SMOKE_9G.md` | **Có** (session 9g) | Runtime smoke test report. 9.2 KB. |
+| `docs/AI_HANDOFF_REPORT.md` | **Đang viết (file này)** | — |
+
+---
+
+## 16. Known Issues / Risks
+
+### Critical
+
+| # | Issue | File | Impact | Status / Fix |
+|---|---|---|---|---|
+| ~~C-TSNARROW-RESOLVEFN~~ | ~~main `0e9c438` typecheck đỏ do vue-tsc narrow `let resolveFn: ((v:unknown)=>void) \| null = null` → `never` qua Promise executor closure — TS2349 ở `GiftCodeView.test.ts:273`.~~ | `apps/web/src/views/__tests__/GiftCodeView.test.ts` | **Cao**: chặn CI mọi PR mới (build job fail) — PR #133 đã hit regression này 30/4 ~07:14 UTC (job_id `73726162152`). | **Resolved** by **PR session 9j task A** (branch `devin/1777533603-fix-main-typecheck-giftcode-resolvefn`) — đổi pattern sang `resolveHolder: { current: ... }` object-property (object property không bị narrow qua closure mutation vì TS treat properties as potentially aliased). Test `busy lock` vẫn pass, typecheck ✅, lint ✅, web vitest 302/302 ✅, build ✅. Chờ CI xanh rồi merge. Future guideline: **không dùng `let` narrow-prone pattern trong test helper** — luôn dùng ref-holder object hoặc `const` với initial placeholder khi cần gán từ Promise executor/callback async. |
+
+_(Trước commit `0e9c438`: Không có lỗi làm app không chạy / mất tiền / auth hỏng. CI xanh ở từng PR #33→#40, ~264 test pass.)_
+
+### High
+
+| # | Issue | File | Impact | Status / Fix |
+|---|---|---|---|---|
+| ~~H1~~ | ~~Chưa có smoke E2E sau khi PR #33→#40 merged vào main.~~ | — | — | **Resolved** (28/4 session 3) — smoke E2E pass 6/6: register/onboard, mission VN tz windowEnd=17:00Z, shop buy + ItemLedger + CurrencyLedger row, settings change-password + logout-all, profile public view, admin boss spawn + AdminAuditLog, inventory↔ledger consistency. Xem `test-report.md` (deliverable session). |
+| ~~H2~~ | ~~Không có seed script tạo admin đầu tiên.~~ | `apps/api/scripts/bootstrap.ts` | — | **Resolved** by **PR #33** (`pnpm --filter @xuantoi/api bootstrap`, idempotent, 7 test). |
+| ~~H3~~ | ~~Không có seed sect (Thanh Vân Môn, Huyền Thuỷ Cung, Tu La Điện).~~ | `apps/api/scripts/bootstrap.ts:DEFAULT_SECTS` | — | **Resolved** by **PR #33**. |
+| ~~H4~~ | ~~`InventoryService` không có test unit.~~ | `apps/api/src/modules/inventory/inventory.service.test.ts` | — | **Resolved** by **PR #34** (19 test). |
+| ~~H5~~ | ~~Web chưa có Vitest + E2E Playwright **trên `main`**.~~ | `apps/web/vitest.config.ts` + `playwright.config.ts` + `e2e/golden.spec.ts` + `src/{stores,components,lib,views}/__tests__/*.test.ts` | — | **Resolved** — PR #53 cherry-pick PR #47 vào main; PR #55/#56/#57/#58/#59 mở rộng coverage → **64 vitest pass** (toast 9 + game 8 + auth 7 + badges 9 + NextActionPanel 6 + OnboardingChecklist 8 + itemName 11 + LeaderboardView 6). Playwright scaffold sẵn, gate `E2E_FULL=1`, **chưa wire CI matrix** (mở issue tiếp khi cần full E2E — xem H6 dưới). |
+| ~~H6~~ | ~~Playwright golden path scaffold sẵn nhưng chưa có CI job chạy headless.~~ | `.github/workflows/ci.yml` | — | **Resolved by PR #64** (Merged into main) — added matrix job `e2e-smoke` với services postgres+redis, build api+web, run `E2E_SMOKE=1 pnpm --filter @xuantoi/web e2e:smoke`. CI hiện chạy golden path mỗi PR. |
+
+### Medium
+
+| # | Issue | Status / Fix |
+|---|---|---|
+| ~~M1~~ | ~~Cron mission reset dùng timezone UTC mặc định.~~ | **Resolved** by **PR #42** — thêm env `MISSION_RESET_TZ` (default `Asia/Ho_Chi_Minh`) + helper `getMissionResetTz()` + tz-aware `nextDailyWindowEnd`/`nextWeeklyWindowEnd` + 7 test mới. |
+| ~~M2~~ | ~~Boss spawn chỉ manual + admin endpoint chưa có.~~ | **Resolved** by **PR #36** (`POST /api/boss/admin/spawn` + UI tab + 7 test, audit `BOSS_SPAWN`). |
+| ~~M3~~ | ~~Chưa có WS `mission:progress` push.~~ | **Resolved by PR #63 + #65** (Merged into main) — BE `MissionWsEmitter` 500ms throttle per-user, emit `'mission:progress'` payload `{characterId, changes: MissionProgressChange[]}` sau `MissionService.track()`. FE `MissionView` subscribe và apply delta in-place. Files: `apps/api/src/modules/mission/mission-ws.emitter.ts`, `apps/web/src/views/MissionView.vue`. |
+| ~~M4~~ | ~~`ItemLedger` audit table chưa có.~~ | **Resolved** by **PR #40** (model + migration `20260428102849_itemledger` + hook 6 grant flows + market post/cancel/buy + 7 test trong `item-ledger.test.ts`). |
+| ~~M5~~ | ~~`CurrencyLedger.actorUserId` chưa index.~~ | **Resolved** by **PR #43** — thêm `@@index([actorUserId, createdAt])` cho cả `CurrencyLedger` và `ItemLedger`. Migration `20260428112804_actor_user_id_index` (ADD INDEX only). |
+| ~~M6~~ | ~~LogsModule (G3 cũ) chưa build — không có `/logs/me` endpoint.~~ | **Resolved by PR #88** (Merged into main @ `c6da89a`, 29/4 ~14:10 UTC) — `apps/api/src/modules/logs/{logs.service,logs.controller,logs.module}.ts` với `GET /logs/me?type=currency\|item&limit=20&cursor=<opaque>`, keyset pagination `(createdAt DESC, id DESC)`, BigInt serialize as string, character-isolation guard. +20 vitest API integration (cursor encode/decode 6 + listForUser currency 11 + listForUser item 3). **FE consumer Resolved by PR #91** (Merged into main @ `3283e42`, 29/4 ~14:55 UTC) — `apps/web/src/views/ActivityView.vue` + `apps/web/src/api/logs.ts` + sidebar link `帳 Hoạt Động` + i18n vi/en (24 ledger reason + 4 error code) + 10 vitest cover skeleton/empty/delta sign/tab switch/load more/error map. **Status**: Done / Needs runtime smoke (chuỗi M6 BE+FE cần verify với `pnpm dev` + `infra:up` + register/login → `/activity` tab → tab switch + load more). |
+| M7 | CSP production-ready nhưng chưa test deploy với CDN/asset domain khác. | **Open** — khi deploy: review `script-src`, `connect-src`. |
+| M8 | Admin guard kiểm `role === 'ADMIN' \|\| 'MOD'` — MOD có quyền broad gần ADMIN (grant currency, approve topup, broadcast mail, spawn boss). | **Resolved** by PR E — thêm `@RequireAdmin()` decorator + reflector trong `AdminGuard`; ADMIN-only cho grant / role-set / approve-topup / reject-topup / giftcode-create / giftcode-revoke / mail-send / mail-broadcast / boss-admin-spawn. MOD vẫn được: GET (read) + ban (đã có hierarchy MOD↦PLAYER ở service). 8 unit test thuê reflector cho guard. |
+| ~~M9~~ | ~~Settings logout-all không bump `passwordVersion` → access token cũ (15m) vẫn valid ở thiết bị khác.~~ | **Resolved by PR #154 + PR #155** (session 9k task F+G, merged into main) — intentional trade-off đã được document đầy đủ trong `docs/SECURITY.md §1 Authentication` (revoke refresh tokens nhưng không bump `passwordVersion`; access tokens 15-phút TTL vẫn valid trên device khác cho tới khi hết hạn; force-kill ngay phải đổi password hoặc bump `JWT_ACCESS_SECRET` + redeploy). Regression guard test trong `apps/api/src/modules/auth/auth.service.test.ts` lock-in behavior — nếu future code thêm `passwordVersion++` trong `logoutAll()`, test fail và docs cần cập nhật. |
+| M10 | Shop không có rate-limit + stock infinite + không daily limit. | **Open** — closed beta acceptable; sau beta thêm `dailyLimit`. |
+| ~~M11~~ | ~~`GET /character/profile/:id` không có rate-limit riêng.~~ | **Resolved by PR #62** (Merged into main) — reuse `RateLimiter` interface, DI token `PROFILE_RATE_LIMITER`, key `rl:profile:ip:${ip}`, **120 req/IP/15min**. Files: `apps/api/src/modules/character/{character.controller.ts, character.module.ts, character.controller.test.ts}`. +3 test. |
+
+### Low
+
+| # | Issue | Status / Fix |
+|---|---|---|
+| L1 | Hard-code VN/EN còn lẻ tẻ. | **Resolved (PR F)** — audit cuối: 554/554 key và vi.json/en.json sync, 400 used key all resolve. Fix 12 key admin vẫn English (`roleLabel`, `tab.audit`, `users.col.role`, `users.banned`, `roleChangeConfirm`, `roleChangedToast`, `topups.col.user/status/note`, `audit.col.actor/action/meta`). Các "identical en≡vi" còn lại (locale names, EXP, HP/MP, WS, OK, Boss, A Linh, currency names) là đúng ý đồ — universal/native term. |
+| ~~L2~~ | ~~Market fee 5% hard-code.~~ | **Resolved by PR #69** (Merged into main) — `MARKET_FEE_PCT` env var, validate bounds [0, 0.5], default 0.05. File: `apps/api/src/modules/market/market.service.ts`. |
+| ~~L3~~ | ~~Proverbs loading screen chỉ 7 câu — lặp nhanh.~~ | **Resolved by PR L3** (session 9d) — `packages/shared/src/proverbs.ts` mở rộng từ 7 → 64 câu chia 4 chủ đề (tu tâm 16 + hành đạo 16 + bản tính tự nhiên 16 + khí phách quân tử 16). +8 vitest mới (`PROVERBS corpus`: ≥50 câu, no-empty/trim, no-dup, consistent punctuation; `randomProverb` boundary cases rng=0/0.999/0.5 + per-index coverage). Tổng shared 47 → 55. |
+| ~~L4~~ | ~~Không có tên item localized.~~ | **Resolved** by **PR #57** — `apps/web/src/lib/itemName.ts` helper + 11 vitest test, dedupe across `MissionView`/`MailView`/`GiftCodeView`/`ShopView`. |
+| ~~L5~~ | ~~Một số view chưa skeleton loader.~~ | **Resolved** — `LeaderboardView` + `ProfileView` (PR #67 merged), `MissionView` + `AdminView` (PR #68 merged), `MarketView` (PR #77 merged). Skeleton coverage đầy đủ trên tất cả view chính. |
+| ~~L5b~~ | ~~`MissionView.vue` (268 line) chưa có vitest riêng.~~ | **Resolved by PR #82** (Merged into main @ `45e42dc`) — `apps/web/src/views/__tests__/MissionView.test.ts` +9 vitest cover claim button enable/disable, claimed badge, click claim happy path, error handler, WS `mission:progress` apply, sort, tab filter, empty state. |
+| ~~L6~~ | ~~Settings dùng `window.confirm()` cho logout-all.~~ | **Resolved by PR #83** (Merged into main @ `78261eb`, 29/4 ~12:50 UTC) — `apps/web/src/components/ui/ConfirmModal.vue` reusable component (Teleport, danger styling, loading lock, Escape/backdrop cancel) + `SettingsView.submitLogoutAll` mở modal thay vì `window.confirm()`. Lint default-prop fix tại commit `ca85265`. +13 vitest ConfirmModal. **Integration test follow-up resolved by PR #85** (Merged into main @ `bbb6718`, 29/4 ~13:02 UTC) — `apps/web/src/views/__tests__/SettingsView.test.ts` mount full SettingsView verify modal wired đúng (7 test). |
+| ~~L7~~ | ~~`ADMIN_REVOKE` reason đã định nghĩa trong `ItemLedger` nhưng chưa có endpoint admin thực thi.~~ | **Resolved by PR #66** (Merged into main) — `POST /admin/inventory/revoke` endpoint, ledger reason `ADMIN_REVOKE`, audit log. File: `apps/api/src/modules/admin/admin.service.ts`. +9 test. |
+
+---
+
+## 17. Missing Pages / Missing APIs
+
+### Frontend pages
+
+| Trang | Tình trạng | Cần trước beta? | Ghi chú |
+|---|---|---|---|
+| `ProfileView` | **Có** (PR #38) | — | `/profile/:id` route + `BossView` link. |
+| `SettingsView` | **Có** (PR #37) | — | `/settings` — đổi password + logout-all + locale. |
+| `ShopView` | **Có** (PR #39) | — | `/shop` — 11 entry NPC, chỉ LINH_THACH. |
+| `LeaderboardView` | **Có** (PR #59) | — | Top 50 by realm + power. Route `/leaderboard`, FE component test 6 vitest. |
+| `AlchemyView` (luyện đan) | Thiếu | Post-beta | Feature lớn. |
+| `RefineryView` (luyện khí) | Thiếu | Post-beta | Feature lớn. |
+| `ArenaView` (đấu trường PvP) | Thiếu | Post-beta | Feature lớn. |
+| `EventView` | Thiếu | Post-beta | Event mùa (lễ hội, double drop, …). |
+| `PetView` | Thiếu | Post-beta | Theo doc 04. |
+| `CompanionView` (đạo lữ / phụ tu) | Thiếu | Post-beta | Lớn + cần balance. |
+
+### APIs
+
+| API | Tình trạng | Cần trước beta? |
+|---|---|---|
+| `GET /api/character/profile/:id` | **Có** (PR #38) | — |
+| `POST /api/boss/admin/spawn` | **Có** (PR #36) | — |
+| `GET /api/shop/npc` + `POST /api/shop/buy` | **Có** (PR #39) | — |
+| `POST /api/_auth/logout-all` | **Có** (PR #37) | — |
+| `POST /api/_auth/forgot-password` + `POST /api/_auth/reset-password` | **Có** (PR #101 BE + #102 FE + #103 timing fix, Merged @ `3c1aa39`) — `auth.service.ts` + `ForgotPasswordView.vue` + `ResetPasswordView.vue` + 23 vitest + Mailhog scaffold. | — |
+| `POST /api/_auth/verify-email` | Thiếu | Closed beta không cần |
+| `GET /api/leaderboard/{power,topup,sect}` | **All 3 done**: `topByPower` (PR #59), `topByTopup` + `topBySect` thêm sau đó (`leaderboard.service.ts` 199 line, 27 vitest, controller test +14 vitest in-flight session 9p task H). | All done. |
+| `WS mission:progress` (server-push tracker) | **Có** (PR #63 BE emitter throttle 500ms + PR #65 FE handler `MissionView`) | — |
+| ~~`GET /api/logs/me` (G3 cũ)~~ | ~~Thiếu~~ | **Resolved by PR #88** (Merged into main @ `c6da89a`) — `apps/api/src/modules/logs/` module + 20 vitest. **FE `/activity` tab consumer**: Resolved by PR #91 (Merged into main @ `3283e42`) — `apps/web/src/views/ActivityView.vue` + 10 vitest. |
+| `POST /api/admin/inventory/revoke` (`ADMIN_REVOKE` ledger) | **Có** (PR #66 — endpoint + 9 vitest) | — |
+| `GET /api/mail/unread-count` (M7 hydrate badge) | **Có** (PR #71) | — |
+| `GET /api/admin/economy/alerts` (smart admin) | **Có** (PR #54) | — |
+| `GET /api/admin/economy/audit-ledger` (smart admin, on-demand audit) | **Có** (PR #112, Merged into main @ `f4e67f4`) — `apps/api/src/modules/admin/ledger-audit.ts` + endpoint + AdminView panel violet-500 + 6 BE vitest + 3 FE vitest. | — |
+| `POST /api/_auth/register` rate-limit per-IP | **Có** (PR #60 — 5/15min) | — |
+| `GET /api/me/next-actions` (smart onboarding) | **Có** (PR #49) | — |
+
+**Không có route FE đang gọi mà BE chưa có** — đã grep `apps/web/src/api/*.ts` khớp với `@Controller` tại `apps/api/src/modules/**/*.controller.ts`. Lưu ý: prefix global `/api`, auth controller tại `/_auth`, giftcode tại `/giftcodes`.
+
+---
+
+## 18. How To Run Locally
+
+```bash
+# 1. Clone + install
+git clone https://github.com/hoathienmenh-01/xuantoi.git
+cd xuantoi
+pnpm install
+
+# 2. Boot infra (postgres + redis + minio + mailhog)
+pnpm infra:up
+
+# 3. Env
+cp apps/api/.env.example apps/api/.env       # chỉnh nếu cần
+cp apps/web/.env.example apps/web/.env       # VITE_API_URL + VITE_WS_URL
+
+# 4. Prisma
+pnpm --filter @xuantoi/api exec prisma generate
+pnpm --filter @xuantoi/api exec prisma migrate deploy
+
+# 5. (Optional) seed admin đầu tiên — xem §19
+
+# 6. Dev (2 tab song song)
+pnpm -r --parallel run dev    # hoặc pnpm --filter @xuantoi/api dev & pnpm --filter @xuantoi/web dev
+
+# 7. Test + typecheck + lint + build
+pnpm typecheck
+pnpm lint
+pnpm --filter @xuantoi/api test
+pnpm --filter @xuantoi/shared test
+pnpm build
+```
+
+**Default env** (dev):
+- `DATABASE_URL=postgresql://mtt:mtt@localhost:5432/mtt?schema=public`
+- `REDIS_URL=redis://localhost:6379`
+- `JWT_ACCESS_SECRET=dev-access-secret`
+- `JWT_REFRESH_SECRET=dev-refresh-secret`
+- `NODE_ENV=development`
+- `CORS_ORIGINS=http://localhost:5173`
+
+**Production**: phải set `NODE_ENV=production` + cả `JWT_ACCESS_SECRET` + `JWT_REFRESH_SECRET` ≠ mặc định + `CORS_ORIGINS` csv. `main.ts:assertProductionSecrets` sẽ throw nếu thiếu.
+
+**Port**:
+- API: 3000 (mặc định Nest)
+- Web: 5173 (Vite)
+- Postgres: 5432
+- Redis: 6379
+- Minio: 9000 (+ console 9001)
+- Mailhog: 1025/8025
+
+---
+
+## 19. How To Promote Admin / Test Admin
+
+**Đã có bootstrap script (PR #33)**: `pnpm --filter @xuantoi/api bootstrap` — tạo admin đầu tiên từ `INITIAL_ADMIN_EMAIL` + `INITIAL_ADMIN_PASSWORD` trong `apps/api/.env` + 3 sect mặc định. Idempotent — chạy lại không lỗi.
+
+Nếu cần promote user khác hoặc chưa chạy bootstrap, có 2 cách thủ công:
+
+### Option A — SQL thủ công (dev)
+
+```bash
+pnpm --filter @xuantoi/api exec prisma studio
+# Mở http://localhost:5555 → bảng User → chọn user → role = ADMIN
+```
+
+Hoặc:
+
+```sql
+UPDATE "User" SET role = 'ADMIN' WHERE email = 'your@email.local';
+```
+
+### Option B — Đã có 1 admin sẵn (grant người khác)
+
+Admin hiện tại có thể vào `/admin` → Users → tìm → **Set role = ADMIN**. Mỗi action ghi `AdminAuditLog`.
+
+### Login admin
+
+- Login bình thường qua `/auth` với email + password đã đổi role.
+- Vào `/admin` (route sẽ guard role check cả FE + BE).
+
+### Quyền admin
+
+| Tab | Hành động | Endpoint |
+|---|---|---|
+| Users | list, ban/unban, set role, grant currency | `/admin/users*` |
+| Topups | list by status, approve, reject | `/admin/topups*` |
+| Audit | list log | `/admin/audit` |
+| Stats | user count, active, topup total | `/admin/stats` |
+| GiftCodes | list, create, revoke | `/admin/giftcodes*` |
+| Mail | send (1 char), broadcast | `/admin/mail/*` |
+
+### Hành động nguy hiểm
+
+- **Grant currency** không có limit — admin có thể cộng 10^18 linhThach. Ghi audit nhưng không rollback.
+- **Broadcast mail với reward lớn** → mọi character đều nhận. Không thể unsend.
+- **Set role** — ~~mất quyền ADMIN nếu tự demote chính mình~~ **Resolved**: FE chặn self-demote (tooltip `selfDemoteBlocked` + disabled) + BE guard `CANNOT_TARGET_SELF` (test `topup-admin.service.test.ts`).
+
+---
+
+## 20. Recommended Next Roadmap
+
+### Immediate (session 9n — sau khi session 9m đóng PR #160/#161/#162/#163/#164 merged vào main @ `d332a18`, 30/4 ~11:51 UTC)
+
+**Session 9m close-out (5/5 PR Merged)**:
+
+- 1. **Docs audit refresh session 9m kickoff** — Merged PR #160 @ `873a0a3`.
+- 2. **Docs CHANGELOG catch-up sessions 9g/9h/9i/9j/9l** — Merged PR #161 @ `9c1e63a`.
+- 3. **test(api): topup.service +17 vitest economy safety** — Merged PR #162 @ `0f56438`.
+- 4. **test(api): email.service +14 vitest unit (no DB needed)** — Merged PR #163 @ `ba17380`.
+- 5. **test(api): giftcode-race +5 vitest concurrent (double-grant prevention)** — Merged PR #164 @ `d332a18`.
+
+**Session 9n-A done**: PR #165 audit refresh merged @ `4b5b799`. **Session 9n-B done**: PR #166 audit-ledger CLI `--json` merged @ `0b1b6da`. **Session 9n-C (this PR)**: smart admin economy alerts thresholds env-tunable + 22 vitest unit + ADMIN_GUIDE §11.3 + `.env.example` docs. Then continue with highest-priority code task.
+
+**Backlog còn lại (post-9n-C, an toàn nếu credit còn)** — ưu tiên theo §22 priority order (Critical/High > runtime smoke > missing API/page > economy safety > E2E > admin/security > docs > i18n/UX > smart beta > post-beta):
+
+1. ~~**Smart audit helper script `audit:ledger`**~~ — **Done PR #76 BE + PR #112 endpoint + PR #166 `--json` + unit tests**. Pure logic ở `apps/api/src/modules/admin/ledger-audit.ts`; CLI wrapper ở `apps/api/scripts/audit-ledger.ts`; admin endpoint `GET /admin/economy/audit-ledger`. Cron example in `docs/ADMIN_GUIDE.md §11`.
+
+1b. ~~**Smart admin economy alerts thresholds env-tunable**~~ — **Done this session PR #167 (in-flight)**. `ECONOMY_ALERTS_DEFAULT_STALE_HOURS` / `_MIN_` / `_MAX_` override. Doc ở `ADMIN_GUIDE §11.3`, `.env.example`.
+
+2. ~~**API service tests còn thiếu (sau 9m)**~~ — **Mostly Done session 9o**: `chat.service.ws-history.test.ts` +11 vitest (PR #186 Merged), `mission.processor.test.ts` +8 vitest (PR #187 Merged), `cultivation.processor.pure.test.ts` +11 + `cultivation.service.test.ts` +3 vitest (PR #188 Merged). **Remaining low-priority gaps**: `chat.service.test.ts` Redis failover branch (Low), `boss.service.test.ts` spawn cron auto (feature chưa có, skip), cultivation multi-instance lock (needs real DB concurrent, Low).
+
+3. ~~**i18n parity audit cho mission/mail/giftcode/admin keys mới sau 9j**~~ — **Done session 9o**: grep `[À-ỹ]` trong `<template>` sections of all `.vue` files — **no hard-coded VN strings found** in production templates. All VN characters are in: comments, test fixtures, regex patterns (`OnboardingView NAME_RE`), or intentional labels (`Tiếng Việt` in SettingsView). Project i18n is clean.
+
+4. **Mobile responsive smoke** — viewport <375px audit cho AppShell + AdminView + InventoryView. Chưa có test E2E mobile-specific. **Risk 🟢 thấp** — Playwright config viewport.
+
+5. **Smart admin bulk actions** — multi-select user ban/grant với confirm modal + audit log. **Risk 🟡** — admin UI mới + API mới + admin seed test mở rộng. **Priority**: medium nếu không có Critical/High blocker.
+
+6. **`M7` CSP CDN prod verify** — chỉ khi deploy staging/prod, cần env thật. **Scope out** nếu không deploy.
+
+7. **`M10` shop daily limit (post-beta)** — model `ShopBuyDailyCounter` + reset cron → mỗi item key có `dailyLimit`, mặc định null = unlimited. **Risk 🟡** — schema change, cần migration + seed logic update + test coverage mới. **Priority**: post-beta nếu chưa cần.
+
+8. **Performance page-load benchmark** `/leaderboard` + `/admin` users tab khi >100 user. **Risk 🟢 thấp** — ops-only.
+
+9. **Smart admin: economy alerts thresholds tunable env** — hiện tại hard-code threshold (`STALE_PENDING_TOPUP_HOURS=72`, etc.). Thêm `.env` override + test. **Risk 🟢 thấp** — config only.
+
+10. **PWA offline shell verify** — chạy lighthouse offline, ghi nhận cache strategy còn miss endpoint nào. **Risk 🟢 thấp** — docs/audit only.
+
+---
+
+### Past session 9i (đã merged trên main, giữ lại để reference; không cần action)
+
+**Top priority (session 9i sẽ tự làm theo thứ tự, **xanh rồi mới qua**)**:
+
+A. ~~**Docs audit refresh session 9i**~~ — **Done by PR #119** (Merged into main @ `8ecfa72`, 30/4 ~06:21 UTC, CI 5/5 ✅).
+
+A2. **Docs audit refresh session 9i progress** — **In-flight PR (này)** — bump snapshot `e8c85df`, chuyển PR #119..#122 sang Merged, ghi PR #123/#124 Pending merge, bump baseline web vitest 207 → 236 (30 file), mở task G/H/I.
+
+B. ~~**`docs/RELEASE_NOTES.md` bootstrap (closed beta press kit)**~~ — **Done by PR #120** (Merged into main 30/4 ~06:23 UTC, CI 4/4 ✅).
+
+C. ~~**Smart admin giftcode active badge**~~ — **Done by PR #121** (Merged into main 30/4 ~06:25 UTC, CI 5/5 ✅) — `apps/web/src/lib/giftcodeBadge.ts` `countActiveUnused()` helper + 7 vitest + AdminView badge cyan-500 trên nav.
+
+D. ~~**Smart UX polish — toast duration policy by severity**~~ — **Done by PR #122** (Merged into main @ `e8c85df`, 30/4 ~06:32 UTC, CI 5/5 ✅) — `apps/web/src/lib/toastDuration.ts` `resolveToastDuration()` + `TOAST_DURATION_MS` policy (info 3000 / success 3500 / warning 5000 / error 6000) + 9 vitest.
+
+E. **Smart admin — admin user export CSV** — **Pending merge PR #123** (CI in-flight) — `apps/api/src/modules/admin/user-csv.ts` pure helper RFC 4180 + `exportUsers()` service + `GET /admin/users.csv` `@RequireAdmin()` endpoint + audit `user.exportCsv` + `adminExportUsersCsv()` FE wrapper + AdminView Export CSV button + 15 vitest.
+
+F. **Test coverage — HomeView smoke tests** — **Pending merge PR #124** (CI in-flight) — `apps/web/src/views/__tests__/HomeView.test.ts` 9 vitest cover onMounted routing branches (chưa auth/no character/có character/throw) + render + cultivate/breakthrough actions.
+
+G. ~~**Test coverage — AppShell skeleton tests**~~ — **Done by PR #126** (Merged into main 30/4 ~07:30 UTC, CI 5/5 ✅) — `apps/web/src/components/shell/__tests__/AppShell.test.ts` 15 vitest cover mobile nav toggle (3) + sidebar badges (5) + staff-only/cultivating/WS/logout (7).
+
+H. ~~**Smart admin — giftcode revoke UI flow**~~ — **Done by PR #127** (Merged into main @ `8a2be4a`, 30/4 ~07:50 UTC, CI 5/5 ✅) — `apps/web/src/lib/giftcodeRevoke.ts` `computeGiftcodeRevokeImpact()` + `mapGiftcodeRevokeErrorKey()` + 12 vitest + ConfirmModal danger style trong AdminView (impact preview: usage/expiry/warning) + 5 i18n key (vi/en). **Devin Review follow-up PR #129** sửa fallback UNAUTHENTICATED/FORBIDDEN/ADMIN_ONLY (đang Pending merge).
+
+J. **Smart helper — extractApiErrorCode pure error extractor** — **Pending merge PR #128** (CI in-flight) — `apps/web/src/lib/apiError.ts` + 17 vitest + adopt AdminView `handleErr` + AuthView 3 callsite. Bao phủ shape: direct / axios `response.data.code` / ES2022 `cause` / legacy `original` / null/primitive/empty/non-string reject.
+
+K. **Migration — adopt extractApiErrorCode trong 14 view còn lại** (next):
+  - TopupView, GiftCodeView, ResetPasswordView, MissionView, ShopView, MarketView, InventoryView, SettingsView (×2), SectView, DungeonView, BossView, MailView, LeaderboardView, ForgotPasswordView, ActivityView, ChatPanel.
+  - Tách thành 2-3 PR nhỏ (gameplay views / auth views / admin/chat) để giữ scope rõ.
+  - Risk: 🟢 thấp, refactor đơn thuần. Khi audit i18n verify lại error code key vẫn render đúng.
+
+I. **Beta runtime smoke matrix end-to-end** (Playwright `E2E_FULL=1`):
+  - Mở rộng `apps/web/e2e/golden.spec.ts` cover: register → onboarding → cultivate 60s tick → claim daily login → claim 1 mission → buy 1 shop item → check inventory → đọc 1 mail → mở leaderboard → admin login mock (skip nếu chưa có admin auth) → admin user export CSV download (smoke PR #123).
+  - Document trong `docs/QA_CHECKLIST.md` cách chạy local matrix.
+  - Risk: 🟡 vừa — phụ thuộc infra docker compose; có thể flaky.
+
+**Backlog (post-9i, an toàn nếu cần lấy thêm)**:
+- `M9` document SECURITY.md trường hợp logout-all không bump `passwordVersion` (đã verify SECURITY.md hiện có mục đó nếu nổi bật; nếu không → bổ sung).
+- `M10` shop daily limit (post-beta) — model `ShopBuyDailyCounter` + reset cron → mỗi item key có `dailyLimit`, mặc định null = unlimited.
+- Smart admin: bulk actions cho user list (multi-select ban, multi-select grant currency với confirm).
+- Smart QA: thêm `pnpm smoke:beta` script chạy 5-phút smoke (register → tu luyện → claim mission → buy shop → mail → boss).
+- Docs: `docs/PRIVACY.md` (closed beta data retention), `docs/TOS.md` (closed beta tester agreement).
+- Performance: page-load benchmark cho `/leaderboard` + `/admin` users tab khi >100 user (cursor pagination đã có nhưng FE chưa stress test).
+
+---
+
+**Session 9h items (đã merged trên main, giữ lại để reference; không cần action)**:
+
+A. ~~**Docs audit refresh session 9h**~~ — **Done by PR #111** (Merged into main @ `43f626e`, 30/4 ~04:25 UTC, CI 4/4 ✅).
+B. ~~**Replay orphan commit `7e27aa9` — admin audit-ledger endpoint + UI**~~ — **Done by PR #112** (Merged into main @ `f4e67f4`, 30/4 ~04:35 UTC, CI 5/5 ✅) — `apps/api/src/modules/admin/{ledger-audit.ts,admin.service.ts,admin.controller.ts,admin-audit-ledger.test.ts}` + `apps/web/src/api/admin.ts` + `AdminView.vue` panel violet-500 + i18n vi/en + 6 BE vitest + 3 FE vitest.
+C. ~~**Playwright golden expand — daily login + leaderboard tabs (gated `E2E_FULL=1`)**~~ — **Done by PR #113** (Merged into main @ `8cdb93c`, 30/4 ~04:45 UTC, CI 5/5 ✅) — `apps/web/e2e/golden.spec.ts` +95 line + `docs/QA_CHECKLIST.md` +25 line how-to.
+D. ~~**Smart onboarding expand — Leaderboard + Mail visit tracking (4→6 step)**~~ — **Done by PR #114** (Merged into main @ `885e56c`, 30/4 ~05:00 UTC, CI 5/5 ✅) — `apps/web/src/lib/onboardingVisits.ts` SSR-safe localStorage helper + `OnboardingChecklist.vue` 4→6 step + `LeaderboardView.vue` + `MailView.vue` markVisited onMounted + +6 vitest + +3 OnboardingChecklist test refactor.
+E. ~~**Smart admin economy report — top 10 whales + circulation**~~ — **Done by PR #115** (Merged into main @ `6f18ce6`, 30/4 ~05:15 UTC, CI 5/5 ✅) — `GET /admin/economy/report` + AdminView Stats panel cyan + 5 stat cards + 2 cột top whales + i18n 13 key/locale + 6 BE vitest + 3 FE vitest.
+F. ~~**Smart admin users filter expand — currency range + realmKey**~~ — **Done by PR #116** (Merged into main @ `7b6f927`, 30/4 ~05:30 UTC, CI 5/5 ✅) — `admin.service.ts listUsers()` +18 line filter + `admin.controller.ts @Get('users')` +30 line parse + +60 UI + i18n +6 key + 5 BE vitest + 5 FE vitest.
+G. ~~**Smart admin recent activity widget — Stats tab inline last 5 audit entries**~~ — **Done by PR #117** (Merged into main @ `0fc1431`, 30/4 ~05:49 UTC, CI 5/5 ✅) — `AdminView.vue` recentActivity panel violet-500 + i18n +9 key/locale.
+H. ~~**Smart admin tab badge — pending topup count**~~ — **Done by PR #118** (Merged into main @ `27552a8`, 30/4 ~06:18 UTC, CI 5/5 ✅) — `AdminView.vue` `pendingTopupCount` ref + load trong `refreshStats()` + 60s poll qua `refreshAlertsOnly()` + helper `refreshPendingTopupCount()` fire-and-forget gọi sau approve/reject (Devin Review fix `BUG_pr-review-job-3a340907d3a248428c84dde15b39402f_0001`) + badge amber-500 nav button "Nạp Tiên Ngọc" + i18n +1 key/locale `admin.topups.pendingBadgeTooltip`.
+
+---
+
+**Session 9g items (đã merged trên main, giữ lại để reference; không cần action)**:
+
+A. ~~**Docs audit refresh session 9g**~~ — **Done by PR #105** (Merged into main @ `a907eb1`, 29/4 ~19:00 UTC, CI 4/4 ✅).
+B. ~~**FE Admin Inventory Revoke UI**~~ — **Done by PR #106** (Merged into main @ `7d1965e`, 29/4 ~19:09 UTC, CI 5/5 ✅) — helper `adminRevokeInventory(...)` + nút "Thu hồi item" + modal AdminView Users tab + 7 vitest + i18n vi/en. L7 FE đóng.
+C. ~~**Smart UX polish + i18n parity guard**~~ — **Done by PR #107** (Merged into main @ `82f2020`, 29/4 ~19:30 UTC, CI 5/5 ✅) — wire `badges.breakthroughReady` thành sidebar dot indicator violet-400 + i18n parity test (6 vitest enforce vi/en symmetric + ICU placeholder parity). Web vitest 168 → 174 (file 21 → 22).
+D. ~~**Runtime smoke tích hợp full session 9d→9g**~~ — **Done by PR #108** (Merged into main @ `0a6c664`, 29/4 ~19:45 UTC, CI 5/5 ✅) — 41 endpoint flow verified, 0 Critical/High bugs, evidence in `docs/RUNTIME_SMOKE_9G.md`. F1 (Low) + F2 (info) findings recorded.
+E.a. ~~**Smart admin economy alerts badge + 60s polling**~~ — **Done by PR #109** (Merged into main @ `58fa69d`, 29/4 ~19:50 UTC, CI 5/5 ✅) — helper `countEconomyAlerts` + `alertSeverity`, badge red dot trên nav Stats, auto-poll 60s, +13 vitest. Web vitest 174 → 187 (file 22 → 23).
+F1. ~~**`apps/api/.env.example` SMTP_FROM quote fix**~~ — **Done by PR #110** (Merged into main @ `4c214eb`, 29/4 ~19:55 UTC, CI 5/5 ✅).
+
+---
+
+**Session 9f items (đã merged trên main, giữ lại để reference; không cần action)**:
+
+A. ~~**Docs audit refresh**~~ — **Done by PR #98** (Merged into main @ `4072a3d`, 29/4 ~17:18 UTC, CI 4/4 ✅).
+B. ~~**FE LeaderboardView tabs Power/Topup/Sect**~~ — **Done by PR #99** (Merged into main @ `5a93d22`, 29/4 ~17:35 UTC, CI 5/5 ✅) — consume BE PR #94, 3 tab + lazy-fetch + i18n vi/en + 10 vitest, web 133→137.
+C. ~~**Self-demote prevention (admin)**~~ — **Done by PR #100** (Merged into main @ `47d34b5`, 29/4 ~17:45 UTC, CI 5/5 ✅) — FE guards `AdminView.vue` + helper `adminGuards.ts` (12 vitest pure) + BE vitest +2 lock-in. Web vitest 137→149.
+D. ~~**forgot/reset-password full stack**~~ — **Done by PR #101 + PR #102** (Merged into main @ `6f3faf4`, 29/4 ~18:35 UTC) — BE endpoints + EmailService Mailhog scaffold + FE views + AuthView "Quên huyền pháp?" link + 11 BE vitest + 12 FE vitest. Đã apply Devin Review fix r3163113344 (token format `<id>.<secret>` O(1) lookup) trước merge.
+E. ~~**forgotPassword timing side-channel mitigation**~~ — **Done by PR #103** (Merged into main @ `3c1aa39`, 29/4 ~18:55 UTC, CI 5/5 ✅) — Devin Review post-merge fix r3163261711: thêm `argon2.hash` giả cho path không-có-user/banned để response time tương đương path-có-user. +1 vitest timing parity.
+F. ~~**`docs/CHANGELOG.md` bootstrap**~~ — **Done by PR #104** (Merged into main @ `c026f37`, 29/4 ~18:40 UTC, CI 5/5 ✅) — Keep-a-Changelog format adapted closed-beta, gom highlight PR #33→#103 thành section session 9d/9e/9f + Unreleased + Earlier. Mark §15 docs gap CHANGELOG.md → "Có (PR #104)".
+
+---
+
+**Legacy items (đã merged trên main, giữ lại để reference; không cần action)**:
+
+
+
+1. ~~**M9 — Daily login reward**~~ — **Done by PR #80** (Merged into main @ `ec37f10`, 29/4 ~10:25 UTC). Status: **Done / Needs runtime smoke** (chưa test live UI: login → Home → DailyLoginCard click claim → toast → +100 LT + streak badge).
+2. ~~**G22 — Admin giftcode FE panel**~~ — **Done by PR #81** (Merged into main @ `c4f3468`, 29/4 ~10:31 UTC). Status: **Done / Needs runtime smoke**.
+3. ~~**L5 — MissionView claim flow vitest**~~ — **Done by PR #82** (Merged into main @ `45e42dc`, 29/4 ~12:30 UTC). +9 vitest.
+4. ~~**L6 — Logout-all confirm modal**~~ — **Done by PR #83** (component, Merged into main @ `78261eb`) + **PR #85** (integration vitest, Merged into main @ `bbb6718`).
+5. ~~**G23 — Giftcode duplicate code → CODE_EXISTS error code**~~ — **Done by PR #84** (Merged into main @ `05b05c0`, 29/4 ~13:25 UTC).
+6. ~~**L3 — Proverbs corpus expansion**~~ — **Done by PR #87** (Merged into main @ `89e3fb6`, 29/4 session 9d, CI 5/5 ✅) — expand 7 → 64 câu chia 4 chủ đề + 8 vitest invariants.
+7. ~~**M6 — `GET /logs/me` endpoint (BE)**~~ — **Done by PR #88** (Merged into main @ `c6da89a`, 29/4 ~14:10 UTC, CI 5/5 ✅) — module BE + 20 vitest API.
+8. ~~**M6 — FE `/activity` tab consumer**~~ — **Done by PR #91** (Merged into main @ `3283e42`, 29/4 ~14:55 UTC, CI 5/5 ✅) — `apps/web/src/views/ActivityView.vue` + sidebar link + 10 vitest.
+9. ~~**Docs refresh API.md / QA_CHECKLIST.md / ADMIN_GUIDE.md / TROUBLESHOOTING.md**~~ — **Done by PR #89** (API.md `537a4d6`) + **PR #90** (QA_CHECKLIST.md + ADMIN_GUIDE.md + TROUBLESHOOTING.md `1cbf349`).
+10. **(NEW) Runtime smoke tích hợp toàn bộ PR #46→#91 merge cascade** — **Needs runtime smoke**. Checklist (15 phút, theo `docs/QA_CHECKLIST.md`): register/login (verify rate-limit 5/IP/15min), HomeView (next-action panel + onboarding checklist + DailyLoginCard claim flow), sidebar badges polling 60s, leaderboard render top 50 + tap-name → profile, admin economy alerts panel, mission claim + WS `mission:progress` real-time, mail unread badge hydrate trên login, NPC shop buy + ledger row, market post/cancel/buy với `MARKET_FEE_PCT` env, admin giftcode panel filter q/status + create + revoke (PR #81 + duplicate error rõ PR #84 `CODE_EXISTS`), admin user filter role+banned, admin audit filter action+actor, admin topup filter date+email, admin inventory revoke + `ADMIN_REVOKE` ledger, `pnpm audit:ledger` script, MarketView skeleton, SettingsView logout-all confirm modal, AuthView proverbs corpus đa dạng (PR #87), **`/activity` tab — currency tab + item tab + load more cursor + delta sign coloring + reason i18n + NO_CHARACTER guard** (PR #91 M6 FE consumer).
+11. ~~**`GET /api/leaderboard/topup` + `/sect`**~~ — **BE Done by PR #94** (Merged into main @ `fed47a6` session 9e, CI 5/5 ✅) — `apps/api/src/modules/leaderboard/{service,controller,test}.ts` thêm `topByTopup` (groupBy TopupOrder APPROVED, sum tienNgocAmount desc, exclude banned, skip user không char) + `topBySect` (Sect findMany order treasuryLinhThach desc → level desc → createdAt asc, leaderName + sectKey + memberCount). API: `GET /api/leaderboard/topup?limit=N` + `GET /api/leaderboard/sect?limit=N`. Test: +13 vitest (api 369→382). **FE consumer (LeaderboardView tab Power/Topup/Sect) chưa làm** — PR riêng FE only (ưu tiên cao nhất session 9f).
+12. **(NEW Top Priority) `POST /api/_auth/forgot-password` + `reset-password` + email scaffold qua Mailhog** (closed beta nice-to-have): self-service reset password thay vì admin DB flow. Risk thấp (chỉ thêm endpoint + token model). Value cao cho beta UX.
+13. ~~**Backup/restore script Postgres** + `docs/BACKUP_RESTORE.md`~~ — **Done by PR #95** (Merged into main session 9e, CI 5/5 ✅ + Devin Review credential mask fix) + **PR #96** (Merged @ `253c4b1` session 9e — SIGPIPE-safe verify + pg_terminate_backend trước DROP) — `scripts/backup-db.sh` + `scripts/restore-db.sh` + `pnpm backup:db` + `pnpm restore:db` npm scripts + `docs/BACKUP_RESTORE.md` (TL;DR + workflow + cron mẫu + disaster recovery checklist). Tested live: backup 21 table → 5966 byte gzip → restore success. Credentials masked trong stdout/log (Devin Review fix).
+14. ~~**Mobile responsive iPhone SE viewport (375×667)**~~ — **Partial Done by PR #97** (Merged into main @ `ee933ad` session 9e, CI 5/5 ✅) — AppShell hamburger + drawer sidebar `md:hidden` toggle với aria-label `shell.nav.toggle` (vi/en) + watch route auto-close + backdrop click; AdminView 4 table (users/topup/audit/giftcode) wrap `overflow-x-auto` + `min-w-[640px]/[560px]`. **Còn lại (post-PR #97)**: MissionView/MarketView đã dùng flex-wrap (acceptable nhưng chưa runtime verify trên emulator), ActivityView entry layout chưa kiểm tra → follow-up PR sau khi runtime smoke. **Needs runtime smoke** trên Chrome DevTools mobile emulator hoặc thiết bị thật iPhone SE.
+15. **M10 — Shop daily limit** + per-item rate-limit (post-beta nice-to-have).
+16. **M7 — CSP production CDN review** (chỉ khi triển khai prod).
+17. **M9 (auth) — Settings logout-all `passwordVersion` bump** (intentional trade-off post-beta — document trong `docs/SECURITY.md` hiện đã có).
+
+### Before Closed Beta
+
+7. ~~**M5 — `CurrencyLedger.actorUserId` index**~~: **Done** by **PR #43** (cover cả `ItemLedger.actorUserId`).
+8. ~~**M8 — Admin guard split**~~: **Done** by **PR E** — `@RequireAdmin()` decorator + reflector. ADMIN-only cho 9 action có ảnh hưởng tài sản/policy.
+9. ~~**L1 — i18n gap audit**~~: **Done** by **PR #45** + l10n tên item by **PR #57** (`itemName(key, t)` helper).
+10. **L7 — `POST /api/admin/inventory/revoke`** + UI tab Users (admin thu hồi item nhầm, ghi `ADMIN_REVOKE` ledger — reason đã định nghĩa sẵn).
+11. **L2 — Market fee 5% → config env** (`MARKET_FEE_BPS=500` default 500=5%).
+12. **Mobile responsive verify** trên iPhone SE viewport.
+13. **Health/CSP staging deploy** — verify `connectSrc` cho WS endpoint thực tế.
+
+### During Closed Beta
+
+14. Monitor `/healthz` + `/readyz` + ledger balance consistency check định kỳ (qua admin overview tab + `GET /admin/economy/alerts` PR #54).
+15. Thu thập user feedback + bug report.
+16. Balance tuning: cultivation rate, loot drop, market fee 5%, mission reward, NPC shop price.
+
+### After Beta
+
+17. **Alchemy** (luyện đan).
+18. **Refinery** (luyện khí forge).
+19. **Arena PvP**.
+20. **Pet system**.
+21. **Companion/Wife** (đạo lữ).
+22. **Battle Pass seasonal**.
+23. **Event system + cron spawn**.
+24. **Leaderboard mở rộng** — `GET /api/leaderboard/{topup,sect}` (power đã có PR #59).
+25. **Cross-server world boss**.
+26. **`POST /api/_auth/forgot-password` + `reset-password`** (email-based).
+27. **WS `mission:progress` push** (M3) + WS `mail:new` tích hợp test.
+28. ~~**`ADMIN_REVOKE` endpoint**~~ — đã chuyển lên Before Closed Beta (#10) chỗ còn thiếu thao tác admin recovery.
+
+---
+
+## 21. Exact PR Plan
+
+### Session 9j (đã đóng, cascade merged cascade vào main `2521672 → e342513`)
+
+| PR | Task | Status |
+|---|---|---|
+| #134 | task A — fix C-TSNARROW-RESOLVEFN typecheck red | **Merged into main** @ `2521672` |
+| #135 | task B — TopupView + MailView 24 vitest | **Merged into main** @ `fa8082a` |
+| ~~#136~~ | ~~task C — InventoryView 15 vitest~~ | **Merged vào branch stale (#135 base) — KHÔNG vào main**; replay qua #138 |
+| #137 | task D — ShopView 19 vitest | **Merged into main** @ `2ed8c29` |
+| #138 | task E — replay InventoryView vitest → main | **Merged into main** @ `6f060fe` |
+| #139 | task F — AuthView 14 vitest | **Merged into main** @ `4c7c87e` |
+| #140 | task G — OnboardingView 16 vitest | **Merged into main** @ `6529652` |
+| #141 | task H — DungeonView 13 vitest | **Merged into main** @ `3f631db` |
+| #142 | task I — SectView 12 vitest | **Merged into main** @ `ee68539` |
+| #143 | task J — NotFoundView + router manifest 8 vitest | **Merged into main** @ `e91bbb4` |
+| #144 | task K — BossView 12 vitest | **Merged into main** @ `d79bf6c` |
+| #145 | task L — ChatPanel + LocaleSwitcher 17 vitest | **Merged into main** @ `62f7ee3` |
+| #146 | task M / K3.11 — MButton + MToast 14 vitest | **Merged into main** @ `178ec14` |
+| #147 | task N — shared shop + topup catalog 19 vitest | **Merged into main** @ `d14ae2c` |
+| #148 | task O — shared BOSSES catalog 22 vitest | **Merged into main** @ `e342513` |
+
+### Session 9k (đã đóng, 7/7 PR merged vào main `5a815b3 → 2e54a1e`)
+
+| PR | Task | Status |
+|---|---|---|
+| #149 | task A — audit refresh session 9k kickoff | **Merged into main** @ `5a815b3` |
+| #150 | task C — AdminView 18 vitest | **Merged into main** @ `f1214a3` |
+| #151 | task D — docs PRIVACY.md + TOS.md | **Merged into main** @ `50a9884` |
+| #152 | task E — pnpm smoke:beta CLI | **Merged into main** @ `d19e8d1` |
+| #153 | task B — Playwright E2E_FULL +3 test | **Merged into main** @ `cfebbb2` |
+| #154 | task F — docs SECURITY.md §1 logout-all | **Merged into main** @ `16b8739` |
+| #155 | task G — test logoutAll passwordVersion guard (M9 lock) | **Merged into main** @ `2e54a1e` |
+
+### Session 9l (đã đóng, 4/4 PR merged vào main `739b10a → f103485`)
+
+| PR | Task | Status |
+|---|---|---|
+| #156 | task 1 — audit refresh session 9l kickoff | **Merged into main** @ `739b10a` |
+| #157 | task 2 — docs RELEASE_NOTES + CHANGELOG 9k close-out | **Merged into main** @ `64d02fd` |
+| #158 | task 3 — handoff M9 Resolved in §16 | **Merged into main** @ `a1079dc` |
+| #159 | task 4 — UI primitive tests ConfirmModal + Skeleton | **Merged into main** @ `f103485` |
+
+### Session 9m (đã đóng, 5/5 PR merged vào main `873a0a3 → d332a18`)
+
+| PR | Task | Status |
+|---|---|---|
+| #160 | session 9m-A — docs(handoff): audit refresh fix stale §2/§13/§15/§17/§19 | **Merged into main** @ `873a0a3` |
+| #161 | session 9m-B — docs(changelog): catch-up sessions 9g/9h/9i/9j/9l | **Merged into main** @ `9c1e63a` |
+| #162 | session 9m-C — test(api): topup.service +17 vitest economy safety | **Merged into main** @ `0f56438` |
+| #163 | session 9m-D — test(api): email.service +14 vitest unit | **Merged into main** @ `ba17380` |
+| #164 | session 9m-E — test(api): giftcode-race +5 vitest concurrent | **Merged into main** @ `d332a18` |
+
+### Session 9n (current)
+
+| PR | Task | Status |
+|---|---|---|
+| #165 | session 9n-A — docs(handoff): audit refresh post-9m close-out | **Merged into main** @ `4b5b799` |
+| #166 | session 9n-B — feat(api,docs): audit-ledger CLI --json + unit tests + ADMIN_GUIDE §11 | **Merged into main** @ `0b1b6da` |
+| #167 | session 9n-C — feat(api,docs): smart admin economy alerts thresholds env override + 22 vitest + ADMIN_GUIDE §11.3 + .env.example | **Merged into main** |
+| #168 | session 9n-D — docs(TROUBLESHOOTING): §15 ledger drift + §16 topup stale alerts flood | **Merged into main** |
+| #169 | session 9n-E — feat(api,docs): smart economy-alerts CLI + 18 vitest + extract queryEconomyAlerts() + ADMIN_GUIDE §11.3 | **Merged into main** |
+| #170 | session 9n-F — fix(web,i18n): toast.ts Pinia store i18n.global.t('toast.title.<type>') + 4 vitest | **Merged into main** |
+| #171 | session 9n-G — fix(web,i18n): api fallback Error messages `common.apiFallback.<op>` (9 chỗ auth/shop/character) + 19 vitest | **Merged into main** @ `c02573a` |
+| #172 | session 9n-H — docs(CHANGELOG): catch-up session 9m + 9n | **Pending merge** (rebased 30/4 ~15:45 UTC, CI ✅ on force-push) |
+| #173 | session 9n-I — test(shared): smart combat catalog integrity (+40 vitest) | **Pending merge** (rebased 30/4 ~15:45 UTC, CI ✅ on force-push) |
+| #174 | session 9n-J — test(shared): smart missions catalog integrity (+18 vitest) | **Pending merge** (rebased 30/4 ~15:45 UTC, CI ✅ on force-push) |
+
+### Session 9o (đã đóng, 4/4 PR merged vào main `b283cb9 → bb9f571`)
+
+| PR | Task | Status |
+|---|---|---|
+| #184 | session 9o — docs(handoff): audit refresh kickoff session 9o | **Merged into main** @ `b283cb9` |
+| #186 | session 9o — test(api): chat.service WS emit + history isolation +11 vitest | **Merged into main** @ `1b587bc` |
+| #187 | session 9o — test(api): mission.processor reset worker +8 vitest | **Merged into main** @ `295ae6b` |
+| #188 | session 9o — test(api): cultivation processor+service pure unit +14 vitest | **Merged into main** @ `59e0901` |
+| #189 | session 9o close-out — docs(handoff): bump snapshot 59e0901, mark #184/#186/#187/#188 merged | **Merged into main** @ `bb9f571` (30/4 ~17:52 UTC) |
+
+### Session 9p (current)
+
+| PR | Task | Status |
+|---|---|---|
+| #190 | session 9p task A — test(api): HealthController.readyz failure paths +10 pure unit | **Merged into main** @ `24597f0` (30/4 ~18:13 UTC, CI 5/5 ✅) |
+| #191 | session 9p task B — test(api): admin/ledger-audit auditResultToJson +12 pure unit | **Merged into main** @ `4b1d5b6` (30/4 ~18:35 UTC, CI ✅) |
+| #192 | session 9p task C — test(api): ops.service + mission.scheduler ghost-cleanup +12 pure unit | **Merged into main** @ `08b9f1f` (30/4 ~18:58 UTC, CI ✅) |
+| #193 | session 9p task D — docs(changelog): catch-up sessions 9n+ tail / 9o / 9p (PR #172→#192) | **Merged into main** @ `4c94944` (30/4 ~19:05 UTC, CI ✅) |
+| #194 | session 9p task E — test(shared): rollDungeonLoot + DUNGEON_LOOT + QUALITY maps +18 vitest | **Merged into main** @ `2bfa0e8` (30/4 ~19:13 UTC, CI ✅) |
+| #195 | session 9p task F — test(web): LocaleSwitcher render + click toggle +8 vitest | **Merged into main** @ `3109497` (30/4 ~19:21 UTC, CI ✅) |
+| #196 | session 9p task G — test(web): UI atoms MButton + MToast + SkeletonBlock + SkeletonTable +33 vitest | **Merged into main** @ `0eccccc` (30/4 ~19:30 UTC, CI ✅) |
+| #197 | session 9p task H — test(api): leaderboard.controller auth + delegation + limit parsing +14 vitest | **Merged into main** @ `643d8b8` (30/4 ~19:38 UTC, CI ✅) |
+| #198 | session 9p task I — test(api): daily-login + next-action + giftcode controller +36 vitest | **Merged into main** @ `cbefe05` (30/4 ~19:46 UTC, CI ✅) |
+| #199 | session 9p task J — test(api): logs + shop + topup controller +46 vitest | **Merged into main** @ `ecd08d6` (30/4 ~19:52 UTC, CI ✅) |
+| #200 | session 9p task K — test(api): mission + mail + chat controller +66 vitest | **Merged into main** @ `21c06ba` (30/4 ~20:08 UTC, CI ✅) |
+| #201 | session 9p task L — test(api): boss + combat + inventory controller +95 vitest | **Merged into main** (CI ✅) |
+| #202 | session 9p task M — test(api): market + sect + auth controller +126 vitest | **Merged into main** @ `a359875` (CI ✅) |
+| this PR | session 9p task N — test(api): admin.controller +97 vitest | **Pending merge** (in-flight) |
+
+### Session 9q..9r-29 (PR #195..#286)
+
+> Session 9q..9r-29 mở rộng nhanh qua nhiều PR nhỏ runtime + content + test (≈ 90 PR cascade). Để tránh §21 phình to lặp nội dung Executive Summary, **chi tiết per-PR đã được consolidate ở 30 dòng đầu của file (§0 Executive Summary)** + Snapshots block (§Snapshots) bên trên. Mọi PR #195..#286 đều đã **Merged into main**. Mọi PR đều ✅ CI 5/5 GREEN tại thời điểm merge.
+
+| PR range | Phase focus | Status |
+|---|---|---|
+| #195..#244 | Phase 9..10.G content scale (item/skill/dungeon/mission/boss pack) + admin/economy hardening | Merged into main |
+| #245 | TitleService.unlockTitleTx tx-aware variant (Phase 11.9.B prep) | Merged into main |
+| #246..#275 | Phase 11.X.M..V + 11.4.E + 11.7.D/E + 11.8.C runtime wires (combat/boss/cultivation buff/talent/title compose) | Merged into main |
+| #279 | Phase 11.10.G achievements catalog cross-ref invariants | Merged into main |
+| #280..#282 | Phase 11.9.C/C-2/C-3 title auto-unlock trilogy (breakthrough + tribulation + onboard) | Merged into main |
+| #283 | docs(CHANGELOG) catch-up session 9r-28 | Merged into main |
+| #284 | Phase 11.8.D-1 BuffService.applyBuffTx tx-aware refactor | Merged into main |
+| #285 | Phase 11.10.G-2 titles.unlockAchievementKey + reciprocity cross-ref | Merged into main |
+| #286 | Phase 11.8.D-2 Tribulation FAIL → debuff_taoma atomic apply (BuffService.applyBuffTx wire) | Merged into main @ `621c252` |
+| this PR (#TBD) | session 9r-29 close-out — docs(audit): refresh AI_HANDOFF_REPORT.md post PR #286 merged | **Pending merge** (in-flight) |
+
+#### PR session 9p task C (in-flight, this PR) — `test(api): ops.service + mission.scheduler ghost-cleanup +12 pure unit`
+
+- **Branch**: `devin/1777575164-scheduler-ghost-cleanup-unit-tests`. **Base**: `main` @ `4b1d5b6` (post PR #191 merge). **Status**: in-flight.
+- **Files**: `apps/api/src/modules/ops/ops.service.test.ts` (new 6 vitest) · `apps/api/src/modules/mission/mission.scheduler.test.ts` (new 6 vitest) · `docs/AI_HANDOFF_REPORT.md`.
+- **Why**: lock-in BullMQ ghost-cleanup invariant cho 2 scheduler — repeatable cũ phải bị xoá trước add lại để tránh job nhân đôi khi hot-reload / interval change. Pure-unit no Redis.
+- **Tests added**: 12 vitest unit (no DB/Redis).
+- **Branches locked** (mirrored cho cả ops + mission):
+  - queue rỗng → `add()` 1 lần với `repeat.every` từ constant queue + `removeOnComplete/removeOnFail` cap 10.
+  - 1 job cũ tên match → `removeRepeatableByKey(oldKey)` trước `add` (verify call order).
+  - 3 job cũ tên match → 3 lần `removeRepeatableByKey` đúng key.
+  - non-match name (`reset`/`prune`/`other`) → KHÔNG xoá nhầm.
+  - mix match + non-match → chỉ xoá match.
+  - constant interval lock (`OPS_PRUNE_INTERVAL_MS === 24h` / `MISSION_RESET_INTERVAL_MS === 10min`).
+- **CI status (local)**: typecheck ✅ · lint ✅ · 12/12 vitest mới ✅ · API 58 file / **653/653** ✅ (verified với real Postgres + Redis 30/4 18:54 UTC, was 56/641) · shared 220/220 ✅ · web 547/547 ✅.
+- **Risk**: 🟢 thấp — test-only, lock-in scheduler invariants. No runtime change.
+- **Rollback**: revert single PR (xóa 2 file test).
+
+#### PR session 9p task B (closed, merged) — `test(api): admin/ledger-audit auditResultToJson +12 pure unit`
+
+- **Branch**: `devin/1777573112-ledger-audit-json-tests`. **Base**: `main` @ `24597f0` (post PR #190 merge). **Status**: Merged @ `4b1d5b6` (30/4 ~18:35 UTC).
+- **Files**: `apps/api/src/modules/admin/ledger-audit-json.test.ts` (new 12 vitest pure-unit) · `docs/AI_HANDOFF_REPORT.md`.
+- **Why**: lock-in JSON serializer contract cho admin endpoint `GET /admin/economy/audit-ledger`. Bigint→string preserve precision khi vượt MAX_SAFE_INTEGER là chính lý do tồn tại serializer; chưa có test tương ứng.
+- **Tests added**: 12 vitest unit (no DB).
+- **Branches locked**:
+  - empty (arrays + scalars 0) → empty output identity.
+  - non-zero scalars `charactersScanned/itemKeysScanned` → passthrough.
+  - currency `100n` → `"100"`; `-150n` → `"-150"`; `0n` → `"0"`.
+  - bigint `9_007_199_254_740_993n` (MAX_SAFE_INTEGER+2) → `"9007199254740993"` round-trip.
+  - bigint `99_999_999_999_999_999n` (18-digit) → preserve.
+  - multi-row order + per-row independence preserved.
+  - inventory: `typeof === 'number'` giữ kiểu; negative `-2` preserved; itemKey 2 separator passthrough.
+  - JSON envelope: `JSON.stringify(out)` không throw + parse roundtrip equal.
+  - input không bị mutate: `typeof orig.[].ledgerSum === 'bigint'` sau call.
+- **CI status (local)**: typecheck ✅ · lint ✅ · new vitest 12/12 ✅ · API 56 file / **641/641** ✅ (verified với real Postgres + Redis 30/4 18:21 UTC) · shared 220/220 ✅ · web 547/547 ✅.
+- **Risk**: 🟢 thấp — test-only, lock-in serialization invariants. No runtime change.
+- **Rollback**: revert single PR (xóa 1 file test).
+
+#### PR session 9p task A (closed, merged) — `test(api): HealthController.readyz failure paths +10 pure unit`
+
+- **Branch**: `devin/1777572345-health-readyz-failure-unit-tests`. **Base**: `main` @ `bb9f571` (post PR #189 merge). **Status**: Merged @ `24597f0` (30/4 ~18:13 UTC).
+- **Files**: `apps/api/src/modules/health/health.controller.unit.test.ts` (new 10 vitest pure-unit) · `docs/AI_HANDOFF_REPORT.md`.
+- **Why**: production readiness — lock-in 503 + error envelope khi DB hoặc Redis down để khỏi sai khi rotate / restart cluster. Pure-unit (mock Prisma `$queryRaw` + Redis `ping`) → chạy không cần `infra:up`; integration test cũ giữ nguyên cho happy path real DB+Redis.
+- **Tests added**: 10 vitest unit (no DB).
+- **Branches locked**:
+  - DB throw (Error) → `db.ok=false` + `db.error=e.message` + `latencyMs` set + status 503.
+  - Redis throw (Error) → `redis.ok=false` + `redis.error=e.message` + `latencyMs` set + status 503.
+  - Redis returns non-PONG → `redis.ok=false` + `redis.error=undefined` (non-throw branch) + status 503.
+  - Cả 2 fail → `out.ok=false` + cả 2 error set (idempotent — không đè lẫn nhau).
+  - DB throw non-Error string → `String(e)` fallback branch.
+  - Redis throw non-Error object `{code:'ETIMEDOUT'}` → `String(e)='[object Object]'` branch.
+  - Happy path → không gọi `res.status()` (default 200).
+  - `healthz()` → `ok=true` + `uptimeMs ≥ 0` + `ts` ISO round-trip.
+  - `version()` → `APP_VERSION='1.2.3-test'` + `GIT_SHA='deadbeef'` reflected; default fallback `0.0.1` + `unknown` khi env unset.
+- **CI status (local)**: typecheck ✅ · lint ✅ · new vitest 10/10 ✅ · API 55 file / **629/629** ✅ (verified với real Postgres + Redis 30/4 18:09 UTC) · shared 220/220 ✅ · web 547/547 ✅ · build ✅.
+- **Risk**: 🟢 thấp — test-only, lock-in failure invariants. No runtime change, no schema change.
+- **Rollback**: revert single PR (xóa 1 file test).
+
+#### PR session 9n-K (closed, merged) — `test(shared): smart core-types catalog tests — enums/ws-events/api-contracts +66 vitest`
+- **Branch**: `devin/1777564100-shared-core-types-tests`. **Base**: `main` @ `c02573a` (post PR #171 merge). **Status**: in-flight.
+- **Files**: `packages/shared/src/enums.test.ts` (new 17 vitest) · `packages/shared/src/ws-events.test.ts` (new 19 vitest) · `packages/shared/src/api-contracts.test.ts` (new 30 vitest) · `docs/AI_HANDOFF_REPORT.md`.
+- **Why**: 3 file core types shared (tổng 231 dòng) trước đây không có test dedicated. Lỗi typo/đổi tên enum (vd `QUALITIES` bỏ `'THAN'`, `WS_HEARTBEAT_INTERVAL_MS` set > 60s, `AuthErrorCode` thêm/bớt code) sẽ không bị bắt ở compile time vì được dùng gián tiếp qua zod schema + type union. Test lock-in giá trị cụ thể + invariant quan hệ (heartbeat timeout < interval, throttle < cultivation tick).
+- **Tests added**: 66 vitest unit (no DB, no side effect).
+- **Invariants locked**:
+  - `ROLES` = exactly `[PLAYER, MOD, ADMIN]`; `QUALITIES` = 5-tier `[PHAM, LINH, HUYEN, TIEN, THAN]`.
+  - `ITEM_TYPES` ⊇ 6 base equip slots (cross-ref với `EQUIP_SLOTS`).
+  - `REALM_TIERS` = 6-tier phàm → vĩnh hằng (snake_case regex).
+  - `WS_HEARTBEAT_TIMEOUT_MS` < `WS_HEARTBEAT_INTERVAL_MS` < 60s (proxy guard).
+  - `MISSION_PROGRESS_PUSH_THROTTLE_MS` < `CULTIVATION_TICK_MS` (tránh drop legit event).
+  - `ApiOk/ApiErr` envelope shape + zod discriminated union.
+  - `Password` zod: ≥8 chars + phải có chữ + phải có số (message VN).
+  - `AuthErrorCode` = 7 codes; `AUTH_ERROR_VI` map mọi code → non-empty VN string (regex `[À-ỹ]` guard không leak EN).
+- **CI status (local)**: typecheck ✅ / lint ✅ / new vitest 66/66 ✅ / shared total 162/162 ✅ / web 532/532 ✅ / build ✅.
+- **Risk**: 🟢 thấp — test-only, lock invariants. No runtime behavior change.
+- **Rollback**: revert single PR (xóa 3 file test).
+
+#### Sẽ làm tiếp (session 9n) — sau khi 9n-K merge
+
+- **session 9n-L**: API test gap — `mail.service.test.ts` mở rộng WS `mail:new` integration; `chat.service.test.ts` Redis failover; `cultivation.processor.test.ts` multi-instance lock.
+- **session 9n-M**: Mobile responsive smoke — viewport <375px audit cho AppShell + AdminView + InventoryView qua Playwright config.
+- **session 9n-N**: Admin quick-action filter polish — bulk CSV export UX, topup approve batch confirm.
+- **session 9n-O**: Runtime smoke on local dev — verify `AppShell` nav badge render + `common.apiFallback.<op>` flow end-to-end.
+
+### Done (chuỗi #33→#45 đã merge trên `main` tại `e99a35f`)
+
+| PR | Plan cũ | Status |
+|---|---|---|
+| PR 1 — Seed admin + sect bootstrap (H2 + H3) | — | **Done** — PR #33 merged. |
+| PR 2 — InventoryService test (H4) | — | **Done** — PR #34 merged (19 test). |
+| PR 3 — Docs ADMIN_GUIDE + DEPLOY + RUN_LOCAL (+ SECURITY + TROUBLESHOOTING) | — | **Done** — PR #35 merged. |
+| PR 4 — NPC Shop + seed | — | **Done** — PR #39 merged (BE + FE + 11 entry catalog + 10 test + ledger SHOP_BUY). |
+| PR 5 — Admin boss spawn endpoint | — | **Done** — PR #36 merged (`POST /api/boss/admin/spawn` + UI tab + 7 test + audit). |
+| PR 7 — Settings page + change password UI + logout-all | — | **Done** — PR #37 merged (`POST /api/_auth/logout-all` + 3 test). |
+| PR 8 — Item Ledger | — | **Done** — PR #40 merged (model + migration `20260428102849_itemledger` + hook 6 grant flows + 7 test). |
+| (PR ngoài kế hoạch) PR 8b — Profile public API + ProfileView | — | **Done** — PR #38 merged. |
+
+### Pending (session 9i — sau khi PR #111..#118 cascade vào main 30/4 ~06:18 UTC)
+
+#### PR session 9i-A (in-flight, this PR #119) — `docs(handoff): session 9i audit refresh — bump snapshot 27552a8 + mark PR #111..#118 Merged + sync baseline web vitest 207/207 + add session 9i roadmap`
+- **Branch**: `devin/1777528782-audit-session-9i-refresh-pr117`. **Base**: ban đầu `main` @ `0fc1431`; rebase lên `main` @ `27552a8` (post PR #118 merge). **Status**: docs-only, in-flight.
+- **File**: `docs/AI_HANDOFF_REPORT.md` (header §0/§2/Recent Changes/§12 baseline/§20 roadmap session 9i/§21 PR Plan).
+- **Tests added**: 0 (docs-only).
+- **CI status (local)**: typecheck ✅ / lint ✅ / shared 55/55 ✅ / web 207/207 ✅. Build/api skipped (docs-only).
+- **Risk**: 0 (docs-only).
+- **Rollback**: revert single PR.
+
+#### PR session 9i-B (planned, after 9i-A merge) — `docs: bootstrap docs/RELEASE_NOTES.md (closed-beta-1 press kit)`
+- **Branch**: TBD `devin/<ts>-docs-release-notes-bootstrap`. **Base**: `main` post-9i-A.
+- **Plan**: tạo `docs/RELEASE_NOTES.md` mới — closed-beta-1 user-facing changelog (no PR number, focus user value). Sections: version, date, Highlights (Daily login claim, Leaderboard Power/Topup/Sect, Forgot/Reset password, Economy safety alerts, Mobile responsive AppShell, Smart admin tooling), Known limitations (no Pet/Wife/Arena/Event/PvP/Payment), Known issues (M7/M9/M10), How to report bugs (email/discord placeholder).
+- **File**: `docs/RELEASE_NOTES.md` (mới, ~120-180 line).
+- **Risk**: 0 (docs-only).
+- **Rollback**: revert single PR.
+
+#### PR session 9i-C (planned, after 9i-B merge) — `feat(web): smart admin giftcode unredeemed badge + helper + tests`
+- **Branch**: TBD `devin/<ts>-admin-giftcode-unused-badge`. **Base**: `main` post-9i-B.
+- **Plan**: mở rộng pattern PR #118 cho Giftcode tab. Helper pure `apps/web/src/lib/giftcodeBadge.ts` `countActiveUnused(codes)` (count `code.status === 'ACTIVE' && (code.maxRedeems - code.redeemedCount) > 0`). +4-6 vitest. AdminView: ref + load trong `refreshStats()` (parallel với pending topup load) + poll 60s qua `refreshAlertsOnly()` + re-fetch sau `submitGiftcodeForm()` và `revokeGiftcode()`. Badge amber-500 trên nav "Giftcode" khi count > 0. i18n +1 key.
+- **Risk**: thấp — read-only, additive, dùng API có sẵn (`GET /admin/giftcodes?status=ACTIVE`), không touch BE/schema.
+- **Rollback**: revert single PR.
+
+#### Past session 9h (đã done):
+
+#### ~~PR #111 (session 9h task A)~~ — `docs(handoff): session 9h audit refresh — bump snapshot 4c214eb + mark PR #109/#110 Merged + sync baseline web vitest 187/187 + add session 9h roadmap` — **Done by PR #111 (Merged into main @ `43f626e`, 30/4 ~04:25 UTC, CI 4/4 ✅)**.
+
+#### ~~PR #112 (session 9h task B)~~ — `feat(admin): replay orphan commit 7e27aa9 — GET /admin/economy/audit-ledger endpoint + AdminView panel button + 6 BE vitest + 3 FE vitest + i18n` — **Done by PR #112 (Merged into main @ `f4e67f4`, 30/4 ~04:35 UTC, CI 5/5 ✅)**.
+
+#### ~~PR #113 (session 9h task C)~~ — `test(web): expand Playwright golden path — daily login claim + leaderboard tabs (gated E2E_FULL=1)` — **Done by PR #113 (Merged into main @ `8cdb93c`, 30/4 ~04:45 UTC, CI 5/5 ✅)**.
+
+#### ~~PR #114 (session 9h task D)~~ — `feat(web): smart onboarding expand — track Leaderboard + Mail visits via localStorage (6-step checklist)` — **Done by PR #114 (Merged into main @ `885e56c`, 30/4 ~05:00 UTC, CI 5/5 ✅)**.
+
+#### ~~PR #115 (session 9h task E)~~ — `feat(admin): smart economy report — top 10 whales (linhThach + tienNgoc) + circulation snapshot via GET /admin/economy/report` — **Done by PR #115 (Merged into main @ `6f18ce6`, 30/4 ~05:15 UTC, CI 5/5 ✅)**.
+
+#### ~~PR #116 (session 9h task F)~~ — `feat(admin): smart users filter expand — currency range (linhThach/tienNgoc) + realmKey via GET /admin/users` — **Done by PR #116 (Merged into main @ `7b6f927`, 30/4 ~05:30 UTC, CI 5/5 ✅)**.
+
+#### ~~PR #117 (session 9h task G)~~ — `feat(admin): smart recent activity widget — inline last 5 audit entries on Stats tab` — **Done by PR #117 (Merged into main @ `0fc1431`, 30/4 ~05:49 UTC, CI 5/5 ✅)**.
+
+#### ~~PR #118 (session 9h task H)~~ — `feat(admin): smart tab badge — pending topup count on Topups tab nav` — **Done by PR #118 (Merged into main @ `27552a8`, 30/4 ~06:18 UTC, CI 5/5 ✅)** — take-over by session 9i: rebase lên `main @ 0fc1431` + Devin Review fix `pendingTopupCount` stale sau approve/reject (helper `refreshPendingTopupCount()` fire-and-forget).
+
+#### Past session 9g (đã done):
+
+#### ~~PR #105 (session 9g task A)~~ — `docs(handoff): session 9g audit refresh` — **Done by PR #105 (Merged into main @ `a907eb1`, 29/4 ~19:00 UTC, CI 4/4 ✅)**.
+- **File**: `docs/AI_HANDOFF_REPORT.md` (header §0/§2/Recent Changes/§12/§20/§21).
+
+#### ~~PR #106 (session 9g task B)~~ — `feat(web): admin inventory revoke UI — consume PR #66 BE` — **Done by PR #106 (Merged into main @ `7d1965e`, 29/4 ~19:09 UTC, CI 5/5 ✅)**.
+
+#### ~~PR #107 (session 9g task C)~~ — `feat(web): i18n parity test + wire breakthroughReady sidebar badge + smart UX polish` — **Done by PR #107 (Merged into main @ `82f2020`, 29/4 ~19:30 UTC, CI 5/5 ✅)**.
+
+#### ~~PR #108 (session 9g task D)~~ — `docs(handoff): session 9g task D — runtime smoke 9d→9g integration + report bump 82f2020` — **Done by PR #108 (Merged into main @ `0a6c664`, 29/4 ~19:45 UTC, CI 5/5 ✅)**.
+
+#### ~~PR #109 (session 9g task E.a)~~ — `feat(web): smart admin economy alerts badge + 60s polling — wire AdminView nav` — **Done by PR #109 (Merged into main @ `58fa69d`, 29/4 ~19:50 UTC, CI 5/5 ✅)**.
+- **File**: `apps/web/src/lib/adminAlerts.ts` (helper `countEconomyAlerts` + `alertSeverity`), `apps/web/src/views/AdminView.vue` (badge + 60s polling timer + onBeforeUnmount cleanup), `apps/web/src/i18n/{vi,en}.json` (+1 key `admin.alerts.badgeTooltip`), `apps/web/src/lib/__tests__/adminAlerts.test.ts` (+13 vitest).
+
+#### ~~PR #110 (session 9g task F1)~~ — `fix(env): quote SMTP_FROM trong .env.example để bash source .env không fail` — **Done by PR #110 (Merged into main @ `4c214eb`, 29/4 ~19:55 UTC, CI 5/5 ✅)**.
+- **File**: `apps/api/.env.example` line 31 quote `SMTP_FROM`.
+
+#### PR A — Smoke E2E + Runtime sanity (Immediate §20.1, historical session 4)
+- **Mục tiêu**: xác nhận `main @ ce6da28` chạy đúng sau khi #33→#40 merge.
+- **Bước**: `pnpm install && pnpm infra:up && prisma migrate deploy && bootstrap`. Chạy `pnpm dev`. Smoke 11 bước theo §20.1. Query `ItemLedger` + `CurrencyLedger` kiểm consistency.
+- **File**: chỉ ghi báo cáo trong `docs/AI_HANDOFF_REPORT.md` (Recent Changes / Smoke section). Không sửa code (nếu không phát hiện bug).
+- **Risk**: nếu phát hiện bug → mở PR fix riêng theo mức độ.
+
+#### ~~PR B — H5 Replay PR #47 (Vitest minimal + Playwright scaffold) vào `main`~~ — **Done** (cherry-pick `32a33a6` vào main, conflict `docs/AI_HANDOFF_REPORT.md` resolved take `--ours`)
+- **File**: `apps/web/vitest.config.ts` (new, vitest@^2.1.9 happy-dom), `apps/web/playwright.config.ts` (new, @playwright/test@^1.49.0), `apps/web/e2e/golden.spec.ts` (new, smoke + golden gated `E2E_FULL=1`), `apps/web/src/stores/__tests__/toast.test.ts` (new, 9 test), `apps/web/src/stores/__tests__/game.test.ts` (new, 8 test), `apps/web/package.json` (test script `vitest run` + 4 devDeps + scripts `test:watch`/`e2e`/`e2e:install`), `pnpm-lock.yaml`. **Không sửa** `.github/workflows/ci.yml` — step `pnpm test` recursive tự pickup vitest (+~2s).
+- **Test**: 17 vitest pass local. Playwright KHÔNG add vào CI (cần browser + full stack). API/shared test không đổi.
+- **Risk**: low — chỉ thêm test infrastructure, không sửa runtime code. CI build tốn thêm ~2s cho vitest run.
+
+#### ~~PR C — M1 Mission reset timezone env~~ — **Done** (PR #42)
+- **File**: `apps/api/src/modules/mission/mission.service.ts` (helper `getMissionResetTz` + tz-aware `nextDailyWindowEnd`/`nextWeeklyWindowEnd`), `apps/api/.env.example` (`MISSION_RESET_TZ=Asia/Ho_Chi_Minh`), `mission.service.test.ts` (+7 test).
+- **Test**: 26 mission test pass (3 UTC default + 4 VN tz + 3 env helper + 16 cũ).
+- **Risk**: thấp — helper pure + thêm env optional (default backward-compat = `'UTC'` tại function-level).
+
+#### ~~PR D — M5 `CurrencyLedger.actorUserId` index~~ — **Done** (PR #43)
+- **File**: `apps/api/prisma/schema.prisma` (`@@index([actorUserId, createdAt])` x2 cho `CurrencyLedger` + `ItemLedger`), migration `20260428112804_actor_user_id_index/migration.sql` (ADD INDEX only).
+- **Test**: không thêm test riêng — ADD INDEX không đổi logic. 269 test cũ vẫn pass.
+- **Risk**: thấp — ADD INDEX an toàn, không khoá bảng (Postgres `CREATE INDEX` non-concurrent phù hợp vì bảng cuối `migrate deploy` size nhỏ).
+
+#### ~~PR E — M8 Admin guard split (ADMIN vs MOD)~~ — Done
+- **File**: `apps/api/src/modules/admin/require-admin.decorator.ts` (new), `apps/api/src/modules/admin/admin.guard.ts` (refactor: inject `Reflector`, đọc metadata `requireAdmin`), `apps/api/src/modules/admin/admin.controller.ts` (apply `@RequireAdmin()` cho 8 endpoint), `apps/api/src/modules/boss/boss.controller.ts` (apply cho `POST /boss/admin/spawn`). Test: `apps/api/src/modules/admin/admin.guard.test.ts` (8 unit test với mocked `Reflector`).
+- **Endpoints ADMIN-only**: `POST /admin/users/:id/role`, `POST /admin/users/:id/grant`, `POST /admin/topups/:id/approve`, `POST /admin/topups/:id/reject`, `POST /admin/giftcodes`, `POST /admin/giftcodes/:code/revoke`, `POST /admin/mail/send`, `POST /admin/mail/broadcast`, `POST /boss/admin/spawn`.
+- **Endpoints MOD-allowed**: tất cả `GET /admin/*` (read-only) + `POST /admin/users/:id/ban` (đã có hierarchy MOD↦PLAYER ở `AdminService.setBanned`).
+- **i18n**: thêm key `admin.errors.ADMIN_ONLY` cho `vi.json` + `en.json`.
+- **Risk**: low — đổi quyền chỉ thắt chặt MOD, không ảnh hưởng PLAYER. ADMIN không bị ảnh hưởng. Service-layer guard (đã có sẵn cho `setRole` ADMIN-only + `grant`/`setBanned` hierarchy) là defense-in-depth.
+
+#### ~~PR F — L1 i18n gap re-audit~~ **Done (PR #45, merged commit `e99a35f`)**
+- Audit `apps/web/src/i18n/{vi,en}.json` 554/554 key sync, 400 used key all resolve, 0 missing.
+- Fix 12 key admin vẫn English trong `vi.json` (roleLabel, tab.audit, users.col.role, users.banned, roleChangeConfirm, roleChangedToast, topups.col.user/status/note, audit.col.actor/action/meta) → dịch sang Việt.
+- Helper `itemName(key, locale)` (L4) vẫn open — tách thành PR riêng khi có catalog item l10n.
+
+#### Thứ tự đề xuất cho AI tiếp theo
+**~~A (smoke)~~ → ~~B (Replay PR #47 — Vitest+Playwright)~~ → ~~C (timezone)~~ → ~~D (index)~~ → ~~E (guard split)~~ → ~~F (i18n)~~**.  
+(A Done qua PR #44 smoke E2E pass 6/6; B Done tại PR replay PR #47 [session 5]; C Done tại PR #42; D Done tại PR #43; E Done tại PR #48; F Done tại PR #45.)
+
+**Ưu tiên hành động sau PR B**: chuyển sang smart-feature tiếp hoặc closed-beta polish:
+- ~~**G1 (high value, low risk)**: Mở rộng vitest coverage cho `HomeView` (next-action panel render), `AppShell` (badge logic 60s polling), `MissionView` (claim button enable/disable). Reuse vitest infra của PR B.~~ — **Done** by **PR #55 + PR G1-render**:
+  - PR #55: useBadgesStore (9 test) + useAuthStore (7 test). Cover badge logic 60s polling + auth flow.
+  - PR G1-render: NextActionPanel render-level (6 test). Cover smart onboarding panel HomeView.
+  - Còn lại (low priority): `MissionView` claim flow render — tốn setup AppShell stub + multi-store mock, ROI giảm. Skip cho closed beta.
+- **G2 (medium, low)**: L4 helper `itemName(key, locale)` cho `MissionView/MailView/GiftCodeView/ShopView` — dịch tên item theo i18n.
+- **G3 (medium, medium)**: M3 WS `mission:progress` push (throttled `emitToUser` tại `MissionService.track*`).
+- ~~**G4 (smart admin)**: Admin Overview tab thêm alert nếu currency âm / item qty âm / topup pending >24h.~~ — **Done** by **PR #54** (Open, chờ CI). Endpoint `GET /admin/economy/alerts` + Stats tab panel + 7 test.
+- ~~**G5 (post-beta backlog)**: leaderboard~~ — **Done** (PR #59). Còn `ADMIN_REVOKE` endpoint (L7), Alchemy/Refinery/Arena (post-beta).
+- ~~**G6 (basic leaderboard)**~~ — **Done** (PR #59 — `GET /api/leaderboard?limit=N` + `LeaderboardView` route `/leaderboard`).
+- ~~**G7 (register IP rate-limit)**~~ — **Done** (PR #60 — 5 register/IP/15min, Redis distributed prod, in-memory fallback).
+- ~~**G8**: M11 — rate-limit `GET /character/profile/:id`~~ → **Merged into main** (PR #62).
+- ~~**G9**: M3 — WS `mission:progress` throttled push~~ → **Merged into main** (PR #63).
+- ~~**G11**: FE handler `mission:progress` (closed-loop cho PR #63 BE push)~~ → **Merged into main** (PR #65).
+- ~~**G10**: H6 — wire Playwright golden path vào GitHub Actions CI~~ → **Merged into main** (PR #64 — matrix job `e2e-smoke` với services postgres+redis).
+- ~~**G12**: L7 — `POST /admin/inventory/revoke` + ledger `ADMIN_REVOKE`~~ → **Merged into main** (PR #66, +9 vitest).
+- ~~**G13/G14**: L5 — skeleton loaders cho Leaderboard/Profile/Mission/Admin/Market~~ → **Merged into main** (PR #67/#68/#77).
+- ~~**G15**: L2 — `MARKET_FEE_PCT` env config~~ → **Merged into main** (PR #69).
+- ~~**G16/G18/G19/G20**: admin user/audit/topup/giftcode filter~~ → **Merged into main** (PR #70/#72/#73/#74).
+- ~~**G17**: M7 — `GET /mail/unread-count` + FE badge hydrate~~ → **Merged into main** (PR #71).
+- ~~**G21**: smart economy safety `pnpm audit:ledger` + 9 vitest~~ → **Merged into main** (PR #76).
+
+Không còn issue **High** mở trên main (H6 Playwright CI wire đã wire qua PR #64). Còn **Medium** (M6 logs/me, M7 CSP CDN review, M9 logout-all passwordVersion intentional trade-off, M10 shop daily limit) và **Low** (L3 proverbs corpus, L6 logout-all confirm modal). M3 / M11 / L2 / L4 / L5 / L7 đã Resolved (PR #63/#65/#62/#69/#57/#67-68-77/#66).
+
+Các hạng mục smart-feature đề xuất (không bắt buộc — AI tự quyết theo prompt user):
+- **Smart next-action / onboarding checklist** (§16 của prompt user mục 1–2): /home giợ widget "Nên làm gì tiếp?" dựa trên state (đủ EXP đột phá, mission claim-able, mail unread, boss đang mở, …).
+- **Smart admin economy alert** (mục 3–4): Admin Overview tab thêm alert nếu currency âm hoặc item qty âm hoặc topup pending quá 24h.
+- **Smart QA**: Playwright golden path đã nằm trong PR B; sau đó mở rộng coverage.
+- **Mission/Mail badge** trong AppShell nav (mục 6 — UX polish).
+- **`POST /api/admin/inventory/revoke`** (L7): kèm UI tab Users; hoãn đến khi có case thực.
+
+#### Post-beta backlog
+~~Leaderboard~~ (Done PR #59) / Alchemy / Refinery / Arena / Pet / Companion / Event / Battle Pass / `forgot-password` / `mission:progress` WS / `ADMIN_REVOKE` endpoint.
+
+---
+
+### Session 6 audit log (28/4 22:45 UTC — PR #65 G11 FE mission:progress handler)
+
+**PR #65 — G11: FE handler event `mission:progress` (stacked trên PR #63)**
+
+- **Branch**: `devin/1777416234-g11-fe-mission-handler`. **Base**: `devin/1777414636-g9-ws-mission-progress` (PR #63 branch). **Status**: **Pending merge**. Merge PR #63 trước, sau đó rebase PR #65 xuống `main` và merge.
+- **Mục tiêu**: Hoàn tất closed-loop của PR #63 ở phía FE — khi BE push frame `mission:progress` (sau `MissionService.track()`), FE nhận được event và merge delta vào `missions` ref của `MissionView.vue` → progress bar nhảy real-time không cần refetch.
+- **Giải pháp**:
+  - `apps/web/src/ws/client.ts`: thêm `'mission:progress'` vào mảng `events` để socket.io-client lắng nghe + dispatch tới handlers.
+  - **NEW** `apps/web/src/lib/missionProgress.ts` (38 line): fn `applyMissionProgressFrame(current, frame)` — immutable update. Invariants: không lùi `currentAmount` (server monotonic), không đổi `claimed`, không tạo mission mới, completable bị gộp `!m.claimed` để tránh bug UI.
+  - `apps/web/src/views/MissionView.vue`: `onMounted` subscribe `wsOn('mission:progress', ...)`; `onUnmounted` unsubscribe. `missions.value = applyMissionProgressFrame(missions.value, frame.payload)`.
+- **Files**:
+  - `apps/web/src/ws/client.ts` (+1 / -0)
+  - `apps/web/src/lib/missionProgress.ts` (new, 38 line)
+  - `apps/web/src/lib/__tests__/missionProgress.test.ts` (new, 126 line, 6 test)
+  - `apps/web/src/views/MissionView.vue` (+22 / -0: import + subscribe/unsubscribe)
+- **Tests**: web local pass **70/70** (was 64, +6 missionProgress).
+  - 6 unit test: apply `currentAmount`+`completable` delta cho key match; completable đẩy mission sẵn sàng claim; stale frame (currentAmount nhỏ hơn local) không lùi; `claimed=true` block completable reset; empty changes → no-op return same ref; unknown mission key → skip, không tạo mới.
+- **Local verified**: `pnpm typecheck` ✅ · `pnpm lint` ✅ · `pnpm --filter @xuantoi/web build` ✅ · `pnpm --filter @xuantoi/web test` ✅ 70/70.
+- **CI**: chờ push branch.
+- **Risk**: low.
+  - Chỉ subscribe trong `MissionView`, lúc unmount hủy subscription — không leak.
+  - `applyMissionProgressFrame` immutable, return cùng ref khi no-op — tránh trigger reactivity thừa.
+  - Không đổi API/DB/schema.
+- **Backward compat**: Nếu BE chưa push frame (vd PR #63 chưa merge), FE không nhận gì → graceful (polling cũ vẫn hoạt động).
+- **Runtime smoke**: Needs runtime smoke với BE + FE chạy đồng thời sau khi PR #63 + PR #65 cùng merge — verify DevTools → WS thấy frame, progress bar UI nhảy khi tu luyện.
+- **Rollback**: revert PR #65. FE mất realtime update; tính đúng đắn mission list không đổi.
+- **Bước tiếp**: G12 — L5 skeleton loaders / L7 admin revoke / L2 market fee config.
+
+---
+
+### Session 6 audit log (28/4 22:25 UTC — PR #63 G9 M3 WS mission:progress)
+
+**PR #63 — G9: WS `mission:progress` throttled push (M3 resolved)**
+
+- **Branch**: `devin/1777414636-g9-ws-mission-progress`. **Base**: `main` @ `81706a9` (sau PR #61). **Status**: **Pending merge** (CI chưa mở, chờ push).
+- **Mục tiêu**: M3 — sau khi `MissionService.track(...)` increment progress, push một frame `mission:progress` qua WebSocket cho user owner để FE cập nhật UI immediate, không cần polling/refetch. Throttle 500ms/user để tránh spam khi nhiều event dồn dập (vd cultivation tick + boss attack hit + chat msg cùng giay).
+- **Giải pháp**:
+  - `packages/shared/src/ws-events.ts`: thêm type `'mission:progress'` vào union `WsEventType` + interface `MissionProgressFramePayload` + `MissionProgressChange` + const `MISSION_PROGRESS_PUSH_THROTTLE_MS = 500`.
+  - **NEW** `apps/api/src/modules/mission/mission-ws.emitter.ts`: class `MissionWsEmitter` injectable. `pushProgress(userId, payload)` — throttle 500ms per-user; trong cửa sổ → drop (return false), ngoài → emit `realtime.emitToUser(userId, 'mission:progress', payload)` (return true). `now()` hàm inject để test deterministic không cần fake-timers.
+  - `mission.service.ts`: thêm DI token `MISSION_WS_EMITTER`, constructor 4th param `@Optional() @Inject(MISSION_WS_EMITTER) wsEmitter` (nếu null → silent skip). `track()` collect tất cả row được update thành công (CAS guard upd.count === 1) thành `MissionProgressChange[]`, sau đó query `character.userId` để emit. Không fail track nếu character thiếu (race-safe).
+  - `mission.module.ts`: import `RealtimeModule`, register `missionWsEmitterProvider` factory inject `RealtimeService`.
+  - `test-helpers.ts:makeMissionService`: thêm optional 2nd param `emitter` → backward-compat full (default `null`).
+- **Files**:
+  - `packages/shared/src/ws-events.ts` (+30 / -0)
+  - `apps/api/src/modules/mission/mission-ws.emitter.ts` (new, 47 line)
+  - `apps/api/src/modules/mission/mission.service.ts` (+45 / -10)
+  - `apps/api/src/modules/mission/mission.module.ts` (rewrite, +20 -0)
+  - `apps/api/src/test-helpers.ts` (+5 / -3)
+  - `apps/api/src/modules/mission/mission-ws.emitter.test.ts` (new, 96 line, 6 test)
+  - `apps/api/src/modules/mission/mission.service.test.ts` (+58 / -1, 1 integration test mới)
+- **Tests**: API local pass **266/266** (mới: 259 → 266, +7). Shared 47/47 · Web 64/64 · Build xanh.
+  - 6 emitter unit test: emit immediately, drop in window, emit after window, per-user isolation, empty changes drop, reset() works.
+  - 1 integration test: `track('CULTIVATE_SECONDS', 300)` gọi `emitToUser('userId', 'mission:progress', { changes: [daily, weekly] })` 1 lần; track thứ 2 trong 100ms drop; track thứ 3 sau 600ms emit lại với snapshot mới.
+- **CI**: chờ push branch.
+- **Risk**: low.
+  - Throttle drop in window → FE có thể bỏ lỡ update ít ôi nhưng không critical (FE mở trang `MissionView` vẫn refetch full list). Fallback an toàn.
+  - `wsEmitter` `@Optional()` với default null → tất cả tính đúng đắn của `track()` vẫn nguyên (nếu thiếu emitter, chỉ mất feature WS push).
+  - Không đổi schema, không migration.
+- **Backward compat**: `MissionService` constructor 4th param `@Optional()`, mọi callsite cũ (3-param) vẫn hợp lệ. `makeMissionService` 2nd param default `null`, mọi test cũ vẫn pass.
+- **i18n**: KHÔNG cần thêm key. Frame chỉ cần FE consume để update store.
+- **FE follow-up (NOT in this PR)**: thêm handler trong `apps/web/src/stores/realtime.ts` (hoặc tương đương) cho event `mission:progress` → update `mission` store snapshot. Hiện tại FE polling/refetch khi vào `MissionView` → chưa có frame này là graceful.
+- **Runtime smoke**: Needs runtime smoke (verify FE nhận đúng frame qua DevTools → Network → WS sau khi tu luyện / đánh boss / chat). Backend xanh ở mức unit-test (7 test mới); hành vi `RealtimeService.emitToUser` + `emit` đã cover ở chat/boss/mail từ trước.
+- **Rollback**: revert. `track()` quay về behavior cũ (chỉ update DB, không emit WS).
+- **Bước tiếp**: G10 — H6 wire Playwright vào GitHub Actions CI.
+
+---
+
+### Session 6 audit log (28/4 21:55 UTC — docs-only refresh)
+
+**Audit refresh** — PR docs only, branch `devin/1777413579-audit-session-6-report-refresh`.
+
+- **Goal**: Đồng bộ `AI_HANDOFF_REPORT.md` với trạng thái `main @ 993a95f` sau khi PR #58 + #59 + #60 merge (header cũ vẫn ghi #59/#60 "Open").
+- **Discrepancy phát hiện**:
+  1. Header snapshot vẫn ghi `(post-PR #54..#59 merged, cập nhật SHA khi PR #60 merge)` và "Đang mở: PR #60 G7" — sai (PR #60 đã merge `993a95f`).
+  2. PR #58 entry trong Recent Changes ghi `Status: Open (CI pending)` — sai (đã merge `067a6c4` 28/4 20:59 UTC).
+  3. §2 commit audit pointer `68fa1a3` — sai (main đã ở `993a95f`).
+  4. §2 bảng PR merged thiếu PR #52..#60.
+  5. §12 Tests: web vitest ghi `0 — Toàn bộ thiếu` — sai (64 test/8 file). Tổng test `222 + 47 = 269` — sai (`259 + 47 + 64 = 370`).
+  6. §16 Known Issues: H5 ghi `Resolved partial` (17 test) — sai (đã mở rộng đến 64 test, **Resolved**); L4 vẫn `Open` — sai (Done PR #57).
+  7. §17 Missing Pages: `LeaderboardView Thiếu` và `GET /leaderboard Thiếu` — sai (Done PR #59).
+  8. §20 Roadmap: Immediate vẫn ghi G1/G4/G6/G7 như `Open` — sai (đã done).
+- **Verify local 28/4 21:55 UTC**: `pnpm install`, `pnpm typecheck` xanh, `pnpm lint` xanh, `docker compose -f infra/docker-compose.dev.yml up -d pg redis` + `prisma migrate deploy`, `pnpm --filter @xuantoi/api test` 259/259 pass (25.8s, 26 file), `pnpm --filter @xuantoi/shared test` 47/47 pass, `pnpm --filter @xuantoi/web test` 64/64 pass (vitest 2.1.9 happy-dom), `pnpm build` xanh.
+- **CI main**: gần nhất run `25079013093` xanh 1m34s.
+- **Không đổi code/test/seed**. Chỉ fix report.
+- **Risk**: zero (docs-only).
+- **Next planned PR (sau khi #61 docs merge)**: PR G8 (M11 rate-limit profile) — analog PR #60.
+
+---
+
+### Session 5 audit log (28/4 19:56–20:25 UTC — PR #52 + PR #53 + PR #54)
+
+**PR #54 — G4 smart admin economy alerts**
+- Branch mới base off main (sau PR #53 merge tại `2ae4cc0`).
+- API: `AdminService.getEconomyAlerts(staleHours)` + route `GET /admin/economy/alerts`. 7 vitest test cover 3 loại alert + custom staleHours + empty DB.
+- FE: `adminEconomyAlerts()` client + Stats tab panel render 3 group; reuse `refreshStats()` flow.
+- i18n: `admin.alerts.*` vi/en.
+- Local: `pnpm typecheck` + `pnpm lint` + `pnpm build` xanh. `pnpm --filter @xuantoi/web test` 17/17 pass. `pnpm --filter @xuantoi/api test` skip local vì không có Postgres (CI sẽ chạy).
+- Risk: low — read-only endpoint, không schema/migration.
+
+---
+
+### Session 5 audit log (28/4 19:56–20:08 UTC — PR #52 + PR B replay) [histórico]
+
+**PR B — Replay PR #47 (cherry-pick `32a33a6` vào main)**
+- Branch mới base off main (sau khi PR #52 merge tại `82e6212`).
+- `git cherry-pick 32a33a6` → conflict `docs/AI_HANDOFF_REPORT.md` (file đã thay đổi nhiều từ session 4 đến 5). Resolve: `git checkout --ours docs/AI_HANDOFF_REPORT.md` (giữ report mới hơn của session 5), để PR B không đụng report. Sau đó update report riêng trong cùng PR (entry này).
+- Cherry-pick continue → commit giữ nguyên tác giả + message gốc PR #47.
+- `pnpm install` (mang 20 devDep mới cho vitest/playwright/happy-dom/test-utils).
+- `pnpm --filter @xuantoi/web test` → 17 pass (1.86s, vitest 2.1.9, happy-dom).
+- `pnpm typecheck` + `pnpm lint` + `pnpm build` → pass (xem checklist dưới).
+- Risk: low — chỉ thêm test infra, không đụng runtime code.
+
+---
+
+**PR #52 — audit session 5 (this changelog entry referenced)**
+
+- **Action**: pull `main` → `68fa1a3`. Verify trạng thái PR #46..#51 và phát hiện replay-gap PR #47.
+- **Discrepancy phát hiện**:
+  1. Snapshot pointer `e99a35f` lỗi thời — main đã tại `68fa1a3` (PR #46→#51 merged sau đó, trừ #47).
+  2. **Trạng thái PR #50 + #51** ghi "đang mở" — sai (đã merge `68fa1a3` và `699af81`).
+  3. **⚠️ Replay-gap PR #47**: GitHub PR API show `closed (merged)`, nhưng commit merge `4ed913a` chỉ tồn tại trên `origin/devin/1777398022-audit-pr-45-blueprint-docs`. `git branch --contains 4ed913a` ⇒ chỉ ra branch đó, không có `main`. File `apps/web/vitest.config.ts`, `apps/web/playwright.config.ts`, `apps/web/e2e/golden.spec.ts`, `apps/web/src/stores/__tests__/*.test.ts` **không tồn tại** trên `main @ 68fa1a3`. `apps/web/package.json` test script vẫn `"echo \"(web) test skipped — wire vitest in Phase 1\""`.
+  4. **H5 known issue** ghi "Resolved partial" qua PR #47 — sai cho trạng thái `main`. Đã đổi sang **Open (replay needed)**.
+  5. **Audit gap session 4** ghi "E2E Playwright scaffolded (PR #47) — wired" + "Web Vitest wired (PR #47)" — sai. Đã ghi đè bằng note replay-gap.
+  6. Section heading `Recent Changes (PR #33→#49 + PR #50 docs + PR #51 badges)` — đã đổi sang `(PR #33→#51 + replay-gap PR #47)`.
+  7. §21 PR B mô tả như mới tinh — đã retitle "Replay PR #47" để AI sau hiểu rõ có commit sẵn để cherry-pick.
+- **Fix đã áp dụng trong PR này (docs only)**:
+  1. Header snapshot `e99a35f` → `68fa1a3` + thêm cảnh báo replay-gap.
+  2. §2 commit audit + bảng PR merged gần đây thêm #46..#51 (#47 gạch ngang + note replay-gap).
+  3. Recent Changes PR #50/#51 đổi Open → Merged + commit ref.
+  4. Audit gap section viết lại theo thực tế main.
+  5. §16 H5 → Open (replay needed).
+  6. §20 Immediate roadmap reorder: replay PR #47 lên #2.
+  7. §21 PR B retitle + ghi rõ có commit `32a33a6` để cherry-pick.
+- **Local check session 5**: `pnpm install` → done; `pnpm --filter @xuantoi/api prisma:generate` → done; `pnpm --filter @xuantoi/shared build` → done; `pnpm typecheck` → pass (3/3 workspace); `pnpm lint` → pass (api + web `--max-warnings 0`); test/build skip (docs-only PR + chua có Postgres local).
+- **Risk**: green — docs-only PR, không đụng code/test/migration/schema.
+- **Roadmap kế**: PR B (replay PR #47) — base main, cherry-pick `32a33a6` (hoặc re-impl sạch); update `apps/web/package.json` test script. CI sẽ tự pickup vitest qua `pnpm test`.
+
+---
+
+### Session 4 audit log (28/4 — PR #46)
+
+- **Action**: pull `main` → `e99a35f`. Verify PR #45 (L1 i18n re-audit) đã merge. Confirm 0 PR open.
+- **Discrepancy phát hiện**:
+  1. Snapshot pointer `4d8af10` lỗi thời — main đã tại `e99a35f` (PR #45 merged).
+  2. Inconsistency: líne `Snapshot: 4d8af10` v.s. `Commit audit: ce6da28` (khác nhau 7 commit).
+  3. **Trạng thái** ghi PR F "đang mở" — sai (đã merge lúc 17:36 UTC 28/4).
+  4. Section heading `Recent Changes (PR #33→#40)` thiếu PR #41→#45.
+  5. **Audit gap** vẫn ghi "Smoke runtime chưa chạy" — sai (PR #44 đã smoke 6/6 pass).
+  6. Blueprint 04/05 chưa có trong repo — user expect `docs/04_*` + `docs/05_*` tồn tại.
+- **Fix đã áp dụng trong PR này**:
+  1–5. Cập nhật snapshot, audit commit, trạng thái, recent changes, audit gap.
+  6. Commit `docs/04_TECH_STACK_VA_DATA_MODEL.md` + `docs/05_KICH_BAN_BUILD_VA_PROMPT_AI.md` với banner "Historical blueprint, NOT the current source of truth".
+- **Local check**: `pnpm typecheck` → pass; `pnpm lint` → pass; `pnpm --filter @xuantoi/shared test` → 47/47 pass; (API test bỏ qua local — cần Postgres; CI chạy đầy đủ).
+- **Risk**: green — docs-only PR, không đụng code/test/migration.
+- **Roadmap kế**: PR B (Vitest minimal + Playwright golden path — H5).
+
+### Session 9 audit log (29/4 ~10:00 UTC — PR #79 docs cleanup sau khi PR #62..#78 merged cascade)
+
+**PR #79 — `docs(handoff): session 9 audit — fix stale Section 2/17/20/21 sau khi 17 PR merged session 6→8`** — **Pending merge**
+
+- **Branch**: `devin/1777456890-audit-session-9-progress`. **Base**: `main` @ `909d60c`. **Status**: **Pending merge**.
+- **Mục tiêu**: AI engineer mới nhận task mở repo, nhận thấy header (§1) đã được PR #78 cập nhật (snapshot c8123df, 16 PR list, 0 open) nhưng các section thân bài (§2 Current Branch / CI / PR Status, §17 Missing Pages/APIs, §20 Immediate Roadmap, §21 G items, một số entry "Recent Changes") vẫn còn các tuyên bố lỗi thời từ session 6 — cần cleanup để AI sau đọc duy nhất file này hiểu đúng hiện trạng.
+- **Discrepancy phát hiện qua audit (29/4 09:55 UTC)**:
+  1. **§2 Commit audit** vẫn ghi `81706a9 PR #61` (session 6) → thực tế `909d60c PR #78`.
+  2. **§2 PR open đáng kể** vẫn ghi "PR #62 G8 Pending merge" → thực tế **0 PR open** (verify GitHub UI: 0 open / 78 closed).
+  3. **§Recent Changes header** "PR #33→#60" → thực tế đã có entries cho PR #62..#77 trong body, nên đổi `#33→#78`.
+  4. **§Recent Changes PR #77 entry** ghi "Pending merge" → thực tế Merged into main commit `266bfe7`.
+  5. **§Recent Changes PR #71 entry** body bị copy nhầm content của PR #74 (giftcode filter q+status); branch ghi `devin/1777451169-g20-topup-csv-export` (sai) — đúng phải là `devin/1777418952-g17-mail-unread-count`. Đã thêm note ⚠️ giải thích & nhãn `Merged into main` chính xác.
+  6. **§17 Missing APIs**: `WS mission:progress` và `POST /api/admin/inventory/revoke` vẫn ghi "Thiếu" → thực tế Resolved (PR #63/#65 + PR #66). Bổ sung 4 hàng API mới đã có (PR #71/#54/#60/#49).
+  7. **§20 Immediate Roadmap**: 6 mục cũ (mostly đã merged hoặc Pending merge từ session 7) → thay bằng 9 mục Immediate session 9 sắp xếp theo ưu tiên (smoke runtime, M9 daily login, G22 admin giftcode FE, M6 logs/me, L5 mission claim test, L3/L6/M10/M7).
+  8. **§21 G items**: G8/G9/G10/G11/G12/G13/G14/G15/G16/G17/G18/G19/G20/G21 vẫn ghi "Pending merge" → đổi sang **Merged into main** kèm PR number.
+  9. **Closing summary**: "M11 done PR #62 pending merge" → "M11 Resolved (PR #62)".
+- **Files**: `docs/AI_HANDOFF_REPORT.md` (~10 surgical edits, không touch §3..§16, không touch Recent Changes detail PR #33..#76).
+- **Tests**: N/A — docs-only PR.
+- **Local verified (29/4 09:58 UTC)**:
+  - `pnpm install --frozen-lockfile` ✅
+  - `pnpm --filter @xuantoi/api prisma:generate` ✅
+  - `pnpm --filter @xuantoi/shared build` ✅
+  - `pnpm typecheck` ✅ (3 workspace, 0 error)
+  - `pnpm lint` ✅
+  - `pnpm --filter @xuantoi/shared test` ✅ **47/47**
+  - `pnpm --filter @xuantoi/web test` ✅ **79/79** (11 file)
+  - `pnpm build` ✅
+  - API test (`pnpm --filter @xuantoi/api test`) chưa chạy local — yêu cầu Postgres+Redis live (CI sẽ chạy full).
+- **CI status**: chờ push + GitHub Actions.
+- **Runtime smoke**: N/A — docs-only.
+- **Risk**: low. Docs-only, không đụng code/test/migration/i18n. Rollback dễ qua `git revert`.
+- **Roadmap kế (sau khi PR #79 merge)**: chọn 1 trong **Immediate §20.2/§20.3** — *M9 Daily Login Reward* (high value retention, idempotent qua `RewardClaimLog` đã có pattern) hoặc *G22 Admin Giftcode FE Panel* (consumer cho `GET /admin/giftcodes?q=&status=` đã merge PR #74, scope nhỏ, dễ test).
+- **Env config**: AI session này cũng đã suggest update `devin_env` cho repo: `pnpm install` → `pnpm prisma:generate` → `pnpm --filter @xuantoi/shared build` ở mỗi maintenance. Lý do: repo cần Prisma client + shared dist trước khi typecheck/test apps/api & apps/web (web vitest fail "Failed to resolve entry for package @xuantoi/shared" nếu không build shared trước).
+
+---
+
+## 22. Rules For The Next AI
+
+**LUẬT KHÔNG ĐƯỢC VI PHẠM** (copy từ user):
+
+1. Không push thẳng vào `main` — luôn qua PR.
+2. Không merge PR khi CI đỏ.
+3. Không tắt/skip test hoặc CI stage để cho qua.
+4. Không commit secret/token/key/cookie/`.env` thật. Dùng `.env.example` placeholder.
+5. Không xoá database hoặc reset production data.
+6. Không xoá repo, không xoá branch quan trọng.
+7. Không đổi default branch nếu không cần.
+8. Không thêm payment thật / tích hợp cổng thanh toán thật khi chưa có yêu cầu.
+9. Không làm mất quyền admin đầu tiên.
+10. Không xoá dữ liệu người chơi thật.
+
+**Quy tắc làm việc**:
+
+- Mỗi PR scope rõ. Ưu tiên PR nhỏ, dễ review.
+- Không refactor lan man ngoài phạm vi.
+- Viết ghi chú giả định trong PR body nếu phải tự quyết (ảnh hưởng dữ liệu? cách rollback?).
+- Chạy đủ 4 bước trước khi báo xong:
+  ```bash
+  pnpm typecheck && pnpm lint && pnpm --filter @xuantoi/api test && pnpm build
+  ```
+- Sau khi push, đợi CI 3/3 xanh (2 GitHub Actions build + Devin Review không block) rồi báo user.
+- Nếu credential/secret thiếu: placeholder + TODO trong PR, không hard-code.
+- Báo cáo 9 mục sau mỗi PR: Mục tiêu / File sửa-thêm / Dữ liệu seed-balance-i18n / Migration / Test / Lệnh đã chạy / CI status / Rủi ro còn lại / PR tiếp theo.
+
+**Lưu ý Nest DI trong test**:
+- Vitest cần `unplugin-swc` để emit decorator metadata — đã wire ở `apps/api/vitest.config.ts`. Khi thêm test Nest service mới với DI, constructor phải đủ tham số (không bypass).
+- Helper `makeMissionService(prisma)` trong `src/test-helpers.ts` — dùng cho test có hook mission.
+
+**Lưu ý migration**:
+- Mỗi migration thêm ADD TABLE / ADD COLUMN là an toàn.
+- Tránh DROP COLUMN / ALTER TYPE destructive khi đã có data.
+- Luôn test locally: `prisma migrate reset --force --skip-seed` + full test suite trước khi push.
+
+**Lưu ý security**:
+- Password hash = argon2id (không phải bcrypt).
+- JWT access 15m, refresh 30d, cookie httpOnly SameSite=Lax. Cross-origin production cần None + Secure.
+- Rate limit login 5 fail/15m/(ip+email).
+- `passwordVersion` tăng khi change-password → kill all active access.
+
+---
+
+## Appendix A — Quick commands cheat sheet
+
+```bash
+# Start fresh
+pnpm install && pnpm infra:up
+pnpm --filter @xuantoi/api exec prisma migrate reset --force --skip-seed
+pnpm -r --parallel run dev
+
+# Tests
+pnpm --filter @xuantoi/api test                    # 150 test
+pnpm --filter @xuantoi/shared test                 # 30 test
+
+# Specific test
+pnpm --filter @xuantoi/api exec vitest run src/modules/mission
+
+# Prisma
+pnpm --filter @xuantoi/api exec prisma studio
+pnpm --filter @xuantoi/api exec prisma migrate dev --name my_migration
+pnpm --filter @xuantoi/api exec prisma generate
+
+# Build
+pnpm build
+```
+
+## Appendix B — Key file paths for quick orientation
+
+| Mục đích | File |
+|---|---|
+| Module list | `apps/api/src/app.module.ts` |
+| Schema | `apps/api/prisma/schema.prisma` |
+| WS gateway | `apps/api/src/modules/realtime/realtime.gateway.ts` |
+| Currency wrapper | `apps/api/src/modules/character/currency.service.ts` |
+| Error envelope | `apps/api/src/common/all-exceptions.filter.ts` |
+| Auth cookies | `apps/api/src/common/auth-cookies.ts` |
+| Router FE | `apps/web/src/router/index.ts` |
+| Game store (WS subscribe) | `apps/web/src/stores/game.ts` |
+| API client | `apps/web/src/api/client.ts` |
+| Shell / nav / locale | `apps/web/src/components/shell/AppShell.vue` |
+| Shared entry | `packages/shared/src/index.ts` |
+| Realms catalog | `packages/shared/src/realms.ts` |
+| Mission catalog | `packages/shared/src/missions.ts` |
+| Docs hub | `docs/API.md`, `docs/SEEDING.md`, `docs/BALANCE.md`, `docs/BETA_CHECKLIST.md` |
+
+---
+
+_Kết thúc báo cáo. Chúc AI kế nhiệm may mắn — hãy giữ nguyên tinh thần đạo hữu (hoathienmenh-01): thà chậm mà chắc, CI phải xanh, tiền phải ghi ledger, và đừng bao giờ push thẳng `main`._
