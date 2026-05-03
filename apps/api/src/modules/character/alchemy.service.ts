@@ -1,12 +1,15 @@
 import { Injectable, Optional } from '@nestjs/common';
 import { CurrencyKind } from '@prisma/client';
 import {
-  getAlchemyRecipeDef,
+  ALCHEMY_FURNACE_MAX_LEVEL,
   alchemyRecipesAvailableAtFurnace,
-  simulateAlchemyAttempt,
+  getAlchemyFurnaceUpgradeDef,
+  getAlchemyRecipeDef,
   itemByKey,
   realmByKey,
+  simulateAlchemyAttempt,
   ALCHEMY_RECIPES,
+  type AlchemyFurnaceUpgradeDef,
   type AlchemyRecipeDef,
 } from '@xuantoi/shared';
 import { PrismaService } from '../../common/prisma.service';
@@ -211,6 +214,101 @@ export class AlchemyService {
     const level = await this.getFurnaceLevel(characterId);
     return alchemyRecipesAvailableAtFurnace(level);
   }
+
+  /**
+   * Phase 11.11.D-2 — Preview next furnace upgrade option.
+   * @returns null nếu character đã ở MAX_LEVEL, ngược lại trả về upgrade def
+   *   cho `currentLevel + 1`.
+   */
+  async getFurnaceUpgradePreview(
+    characterId: string,
+  ): Promise<AlchemyFurnaceUpgradeDef | null> {
+    const currentLevel = await this.getFurnaceLevel(characterId);
+    if (currentLevel >= ALCHEMY_FURNACE_MAX_LEVEL) return null;
+    return getAlchemyFurnaceUpgradeDef(currentLevel + 1) ?? null;
+  }
+
+  /**
+   * Phase 11.11.D-2 — Upgrade lò đan từ `currentLevel` lên `currentLevel + 1`.
+   *
+   * Server-authoritative:
+   *   - Verify character exists.
+   *   - Verify currentLevel < MAX_LEVEL (FURNACE_LEVEL_MAX).
+   *   - Lookup upgrade def cho `currentLevel + 1`. Nếu không tồn tại → FURNACE_LEVEL_MAX.
+   *   - Verify realm requirement nếu def.realmRequirement != null.
+   *   - Verify linhThach >= def.linhThachCost.
+   *   - Atomic $transaction:
+   *     1. Deduct linhThach via CurrencyService.applyTx (reason 'ALCHEMY_FURNACE_UPGRADE').
+   *     2. Increment alchemyFurnaceLevel by 1 via CAS guard
+   *        `where { id, alchemyFurnaceLevel: currentLevel }` (chống race nếu user
+   *        gọi 2 upgrade song song).
+   *
+   * @returns thông tin upgrade và level mới.
+   */
+  async upgradeFurnace(characterId: string): Promise<AlchemyUpgradeOutcome> {
+    return this.prisma.$transaction(async (tx) => {
+      const character = await tx.character.findUnique({
+        where: { id: characterId },
+        select: {
+          id: true,
+          realmKey: true,
+          linhThach: true,
+          alchemyFurnaceLevel: true,
+        },
+      });
+      if (!character) throw new AlchemyError('CHARACTER_NOT_FOUND');
+
+      const currentLevel = character.alchemyFurnaceLevel;
+      if (currentLevel >= ALCHEMY_FURNACE_MAX_LEVEL) {
+        throw new AlchemyError('FURNACE_LEVEL_MAX');
+      }
+
+      const targetLevel = currentLevel + 1;
+      const upgradeDef = getAlchemyFurnaceUpgradeDef(targetLevel);
+      if (!upgradeDef) {
+        // Defensive: catalog không có entry cho targetLevel.
+        throw new AlchemyError('FURNACE_LEVEL_MAX');
+      }
+
+      if (upgradeDef.realmRequirement) {
+        const charRealm = realmByKey(character.realmKey);
+        const reqRealm = realmByKey(upgradeDef.realmRequirement);
+        if (!charRealm || !reqRealm || charRealm.order < reqRealm.order) {
+          throw new AlchemyError('REALM_REQUIREMENT_NOT_MET');
+        }
+      }
+
+      if (character.linhThach < BigInt(upgradeDef.linhThachCost)) {
+        throw new AlchemyError('INSUFFICIENT_FUNDS');
+      }
+
+      // Deduct linhThach via ledger.
+      await this.currency.applyTx(tx, {
+        characterId,
+        currency: CurrencyKind.LINH_THACH,
+        delta: BigInt(-upgradeDef.linhThachCost),
+        reason: 'ALCHEMY_FURNACE_UPGRADE',
+        refType: 'AlchemyFurnaceUpgrade',
+        refId: `L${currentLevel}->L${targetLevel}`,
+      });
+
+      // CAS-guarded level bump (chống race).
+      const updated = await tx.character.updateMany({
+        where: { id: characterId, alchemyFurnaceLevel: currentLevel },
+        data: { alchemyFurnaceLevel: targetLevel },
+      });
+      if (updated.count !== 1) {
+        // Race với upgrade song song khác — abort transaction.
+        throw new AlchemyError('FURNACE_RACE');
+      }
+
+      return {
+        fromLevel: currentLevel,
+        toLevel: targetLevel,
+        linhThachConsumed: upgradeDef.linhThachCost,
+      };
+    });
+  }
 }
 
 // ---------- Return type ----------
@@ -225,12 +323,20 @@ export interface AlchemyCraftOutcome {
   inputsConsumed: Array<{ itemKey: string; qty: number }>;
 }
 
+export interface AlchemyUpgradeOutcome {
+  fromLevel: number;
+  toLevel: number;
+  linhThachConsumed: number;
+}
+
 // ---------- Error ----------
 
 export type AlchemyErrorCode =
   | 'RECIPE_NOT_FOUND'
   | 'CHARACTER_NOT_FOUND'
   | 'FURNACE_LEVEL_TOO_LOW'
+  | 'FURNACE_LEVEL_MAX'
+  | 'FURNACE_RACE'
   | 'REALM_REQUIREMENT_NOT_MET'
   | 'INSUFFICIENT_INGREDIENTS'
   | 'INSUFFICIENT_FUNDS';

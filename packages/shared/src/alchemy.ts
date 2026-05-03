@@ -318,6 +318,54 @@ export function alchemyRecipesAvailableAtFurnace(
   return ALCHEMY_RECIPES.filter((r) => r.furnaceLevel <= furnaceLevel);
 }
 
+// ============================================================================
+// Phase 11.11.D-2 — Furnace upgrade catalog
+// ============================================================================
+
+/**
+ * Static cost curve để upgrade lò đan từ level (toLevel - 1) lên `toLevel`.
+ * Character mặc định L1; có thể upgrade lên L2..L9 (max 9 = THAN tier).
+ *
+ * Convention:
+ * - `toLevel` ∈ [2, 9]; mỗi entry mô tả 1 step upgrade.
+ * - `linhThachCost` scale theo recipe gating (≥ chi phí 5–10 craft mỗi tier).
+ * - `realmRequirement` đồng bộ với recipe gating: L3-4 truc_co, L5-6 kim_dan,
+ *   L7-8 hoa_than, L9 do_kiep.
+ * - Catalog là source of truth — runtime KHÔNG hard-code cost.
+ */
+export interface AlchemyFurnaceUpgradeDef {
+  /** Target level sau upgrade (current = toLevel - 1) */
+  readonly toLevel: number;
+  /** LinhThach phải tốn cho upgrade này */
+  readonly linhThachCost: number;
+  /** Realm key tối thiểu (null = không yêu cầu) */
+  readonly realmRequirement: string | null;
+}
+
+export const ALCHEMY_FURNACE_DEFAULT_LEVEL = 1 as const;
+export const ALCHEMY_FURNACE_MAX_LEVEL = 9 as const;
+
+export const ALCHEMY_FURNACE_UPGRADES: readonly AlchemyFurnaceUpgradeDef[] = [
+  { toLevel: 2, linhThachCost: 500, realmRequirement: null },
+  { toLevel: 3, linhThachCost: 2_000, realmRequirement: 'truc_co' },
+  { toLevel: 4, linhThachCost: 5_000, realmRequirement: 'truc_co' },
+  { toLevel: 5, linhThachCost: 15_000, realmRequirement: 'kim_dan' },
+  { toLevel: 6, linhThachCost: 40_000, realmRequirement: 'kim_dan' },
+  { toLevel: 7, linhThachCost: 100_000, realmRequirement: 'hoa_than' },
+  { toLevel: 8, linhThachCost: 300_000, realmRequirement: 'hoa_than' },
+  { toLevel: 9, linhThachCost: 800_000, realmRequirement: 'do_kiep' },
+];
+
+/**
+ * Lookup upgrade def để chuyển từ (toLevel - 1) lên `toLevel`.
+ * @returns undefined nếu toLevel ngoài [2, 9].
+ */
+export function getAlchemyFurnaceUpgradeDef(
+  toLevel: number
+): AlchemyFurnaceUpgradeDef | undefined {
+  return ALCHEMY_FURNACE_UPGRADES.find((u) => u.toLevel === toLevel);
+}
+
 /**
  * Tổng cost ingredient (qty) cho 1 attempt — flatten input list.
  */

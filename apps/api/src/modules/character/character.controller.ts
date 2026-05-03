@@ -746,15 +746,23 @@ export class CharacterController {
     const character = await this.chars.findByUser(userId);
     if (!character) fail('NO_CHARACTER', HttpStatus.NOT_FOUND);
     try {
-      const [furnaceLevel, recipes] = await Promise.all([
+      const [furnaceLevel, recipes, nextUpgrade] = await Promise.all([
         this.alchemy.getFurnaceLevel(character.id),
         this.alchemy.listAvailableRecipes(character.id),
+        this.alchemy.getFurnaceUpgradePreview(character.id),
       ]);
       return {
         ok: true,
         data: {
           alchemy: {
             furnaceLevel,
+            nextUpgrade: nextUpgrade
+              ? {
+                  toLevel: nextUpgrade.toLevel,
+                  linhThachCost: nextUpgrade.linhThachCost,
+                  realmRequirement: nextUpgrade.realmRequirement,
+                }
+              : null,
             recipes: recipes.map((r) => ({
               key: r.key,
               name: r.name,
@@ -828,6 +836,56 @@ export class CharacterController {
                 qty: i.qty,
               })),
             },
+          },
+        },
+      };
+    } catch (e) {
+      if (e instanceof AlchemyError) {
+        fail(e.code, mapAlchemyErrorStatus(e.code));
+      }
+      throw e;
+    }
+  }
+
+  /**
+   * Phase 11.11.D-2 — Upgrade lò đan, server-authoritative POST.
+   *
+   *   - No body (target = currentLevel + 1, server quyết định).
+   *   - Validate auth → resolve character → reuse `AlchemyService.upgradeFurnace`
+   *     (atomic `prisma.$transaction` deduct linhThach qua `CurrencyLedger`
+   *     reason `ALCHEMY_FURNACE_UPGRADE` + CAS bump alchemyFurnaceLevel).
+   *   - Trả về `{ fromLevel, toLevel, linhThachConsumed }` + `nextUpgrade`
+   *     preview cho UI render tiếp.
+   */
+  @Post('alchemy/upgrade-furnace')
+  @HttpCode(200)
+  async alchemyUpgradeFurnace(@Req() req: Request) {
+    const userId = await this.requireUserId(req);
+    if (!this.alchemy) {
+      fail('ALCHEMY_UNAVAILABLE', HttpStatus.NOT_IMPLEMENTED);
+    }
+    const character = await this.chars.findByUser(userId);
+    if (!character) fail('NO_CHARACTER', HttpStatus.NOT_FOUND);
+    try {
+      const outcome = await this.alchemy.upgradeFurnace(character.id);
+      const nextUpgrade = await this.alchemy.getFurnaceUpgradePreview(character.id);
+      return {
+        ok: true,
+        data: {
+          alchemy: {
+            furnaceLevel: outcome.toLevel,
+            outcome: {
+              fromLevel: outcome.fromLevel,
+              toLevel: outcome.toLevel,
+              linhThachConsumed: outcome.linhThachConsumed,
+            },
+            nextUpgrade: nextUpgrade
+              ? {
+                  toLevel: nextUpgrade.toLevel,
+                  linhThachCost: nextUpgrade.linhThachCost,
+                  realmRequirement: nextUpgrade.realmRequirement,
+                }
+              : null,
           },
         },
       };
@@ -954,13 +1012,15 @@ function mapSkillErrorStatus(code: CharacterSkillError['code']): HttpStatus {
   }
 }
 
-/** Map AlchemyError code → HTTP status (Phase 11.11.C). */
+/** Map AlchemyError code → HTTP status (Phase 11.11.C, extended Phase 11.11.D-2). */
 function mapAlchemyErrorStatus(code: AlchemyError['code']): HttpStatus {
   switch (code) {
     case 'RECIPE_NOT_FOUND':
     case 'CHARACTER_NOT_FOUND':
       return HttpStatus.NOT_FOUND;
     case 'FURNACE_LEVEL_TOO_LOW':
+    case 'FURNACE_LEVEL_MAX':
+    case 'FURNACE_RACE':
     case 'REALM_REQUIREMENT_NOT_MET':
     case 'INSUFFICIENT_INGREDIENTS':
     case 'INSUFFICIENT_FUNDS':

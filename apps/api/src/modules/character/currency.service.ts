@@ -31,7 +31,8 @@ export type LedgerReason =
   | 'REFINE'
   | 'TRIBULATION_REWARD'
   | 'ACHIEVEMENT_REWARD'
-  | 'ALCHEMY_COST';
+  | 'ALCHEMY_COST'
+  | 'ALCHEMY_FURNACE_UPGRADE';
 
 export interface CurrencyApplyInput {
   characterId: string;

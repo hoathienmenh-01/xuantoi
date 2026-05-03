@@ -1,9 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import {
+  ALCHEMY_FURNACE_DEFAULT_LEVEL,
+  ALCHEMY_FURNACE_MAX_LEVEL,
+  ALCHEMY_FURNACE_UPGRADES,
   ALCHEMY_RECIPES,
   alchemyRecipesAvailableAtFurnace,
   alchemyRecipesByOutputItem,
   alchemyRecipesByQuality,
+  getAlchemyFurnaceUpgradeDef,
   getAlchemyIngredientTotal,
   getAlchemyRecipeDef,
   getExpectedAlchemyAttempts,
@@ -416,5 +420,83 @@ describe('AlchemyRecipeDef type assertion', () => {
     expect(Array.isArray(r.inputs)).toBe(true);
     expect(typeof r.successRate).toBe('number');
     expect(typeof r.furnaceLevel).toBe('number');
+  });
+});
+
+describe('ALCHEMY_FURNACE_UPGRADES catalog (Phase 11.11.D-2)', () => {
+  it('default level = 1 và max level = 9', () => {
+    expect(ALCHEMY_FURNACE_DEFAULT_LEVEL).toBe(1);
+    expect(ALCHEMY_FURNACE_MAX_LEVEL).toBe(9);
+  });
+
+  it('có đúng 8 entry cho L2..L9', () => {
+    expect(ALCHEMY_FURNACE_UPGRADES.length).toBe(8);
+    const levels = ALCHEMY_FURNACE_UPGRADES.map((u) => u.toLevel);
+    expect(levels).toEqual([2, 3, 4, 5, 6, 7, 8, 9]);
+  });
+
+  it('toLevel ascending và linhThachCost monotonic non-decreasing', () => {
+    for (let i = 1; i < ALCHEMY_FURNACE_UPGRADES.length; i++) {
+      expect(ALCHEMY_FURNACE_UPGRADES[i].toLevel).toBeGreaterThan(
+        ALCHEMY_FURNACE_UPGRADES[i - 1].toLevel,
+      );
+      expect(ALCHEMY_FURNACE_UPGRADES[i].linhThachCost).toBeGreaterThan(
+        ALCHEMY_FURNACE_UPGRADES[i - 1].linhThachCost,
+      );
+    }
+  });
+
+  it('linhThachCost > 0 và là integer finite', () => {
+    for (const u of ALCHEMY_FURNACE_UPGRADES) {
+      expect(Number.isInteger(u.linhThachCost)).toBe(true);
+      expect(u.linhThachCost).toBeGreaterThan(0);
+    }
+  });
+
+  it('realmRequirement nếu set phải tồn tại trong REALMS', () => {
+    for (const u of ALCHEMY_FURNACE_UPGRADES) {
+      if (u.realmRequirement !== null) {
+        const realm = REALMS.find((r) => r.key === u.realmRequirement);
+        expect(realm, `realm ${u.realmRequirement} for L${u.toLevel}`).toBeDefined();
+      }
+    }
+  });
+
+  it('realmRequirement đồng bộ recipe gating: L3-4 ≥ truc_co, L5-6 ≥ kim_dan, L7-8 ≥ hoa_than, L9 ≥ do_kiep', () => {
+    const find = (lv: number) =>
+      ALCHEMY_FURNACE_UPGRADES.find((u) => u.toLevel === lv)!;
+    expect(find(2).realmRequirement).toBeNull();
+    expect(find(3).realmRequirement).toBe('truc_co');
+    expect(find(4).realmRequirement).toBe('truc_co');
+    expect(find(5).realmRequirement).toBe('kim_dan');
+    expect(find(6).realmRequirement).toBe('kim_dan');
+    expect(find(7).realmRequirement).toBe('hoa_than');
+    expect(find(8).realmRequirement).toBe('hoa_than');
+    expect(find(9).realmRequirement).toBe('do_kiep');
+  });
+});
+
+describe('getAlchemyFurnaceUpgradeDef', () => {
+  it('lookup đúng entry theo toLevel', () => {
+    const u = getAlchemyFurnaceUpgradeDef(2);
+    expect(u).toBeDefined();
+    expect(u!.toLevel).toBe(2);
+    expect(u!.linhThachCost).toBe(500);
+  });
+
+  it('return undefined nếu toLevel ngoài [2, 9]', () => {
+    expect(getAlchemyFurnaceUpgradeDef(0)).toBeUndefined();
+    expect(getAlchemyFurnaceUpgradeDef(1)).toBeUndefined();
+    expect(getAlchemyFurnaceUpgradeDef(10)).toBeUndefined();
+    expect(getAlchemyFurnaceUpgradeDef(-1)).toBeUndefined();
+    expect(getAlchemyFurnaceUpgradeDef(2.5)).toBeUndefined();
+  });
+
+  it('lookup mỗi level từ 2 → 9 đều trả entry hợp lệ', () => {
+    for (let lv = 2; lv <= ALCHEMY_FURNACE_MAX_LEVEL; lv++) {
+      const u = getAlchemyFurnaceUpgradeDef(lv);
+      expect(u, `level ${lv}`).toBeDefined();
+      expect(u!.toLevel).toBe(lv);
+    }
   });
 });
