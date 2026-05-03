@@ -6,17 +6,40 @@ import { TALENTS } from '@xuantoi/shared';
 
 /**
  * Phase 11.X.AR — Talent Catalog read-only view test suite.
+ * Phase 11.X.AT — extends with learn button + Pinia talents store wiring +
+ * status filter + budget bar + toast.
  *
  * Bao phủ:
  *  - Render đủ TALENTS từ shared catalog (no filter).
  *  - Filter theo type (passive/active).
  *  - Filter theo element (kim/moc/thuy/hoa/tho/neutral).
+ *  - Filter status: learned / available / locked.
  *  - Empty state khi filter không khớp talent nào.
  *  - Effect summary format đúng cho passive (stat_mod / regen / damage_bonus)
  *    + active (damage / cc / heal / dot / utility).
+ *  - Budget bar render spent + remaining + budget total.
+ *  - Learn button label/disabled state đúng theo trạng thái (learned/lock/avail).
+ *  - Click Học → store.learn called + toast success.
+ *  - Click Học khi server reject → toast error i18n key đúng.
  */
 
 const replaceMock = vi.fn();
+const learnMock = vi.fn();
+const fetchStateMock = vi.fn().mockResolvedValue(undefined);
+const toastPushMock = vi.fn();
+
+const talentsState = {
+  learned: new Map<string, string>(),
+  spent: 0,
+  remaining: 5,
+  budget: 5,
+  loaded: true,
+  inFlight: new Set<string>(),
+  isLearned: (k: string) => talentsState.learned.has(k),
+  isLearning: (k: string) => talentsState.inFlight.has(k),
+  fetchState: fetchStateMock,
+  learn: learnMock,
+};
 
 vi.mock('@/stores/auth', () => ({
   useAuthStore: () => ({
@@ -28,6 +51,15 @@ vi.mock('@/stores/game', () => ({
   useGameStore: () => ({
     fetchState: vi.fn().mockResolvedValue(undefined),
     bindSocket: vi.fn(),
+    character: { realmKey: 'truc_co' },
+  }),
+}));
+vi.mock('@/stores/talents', () => ({
+  useTalentsStore: () => talentsState,
+}));
+vi.mock('@/stores/toast', () => ({
+  useToastStore: () => ({
+    push: toastPushMock,
   }),
 }));
 vi.mock('vue-router', () => ({
@@ -64,6 +96,13 @@ const i18n = createI18n({
           active: 'Chủ động',
           shown: 'Hiển thị {shown}/{total}',
         },
+        filterStatus: {
+          label: 'Tình trạng',
+          all: 'Tất cả',
+          learned: 'Đã học',
+          available: 'Có thể học',
+          locked: 'Chưa đủ',
+        },
         type: { passive: 'Bị động', active: 'Chủ động' },
         element: {
           kim: 'Kim',
@@ -95,6 +134,30 @@ const i18n = createI18n({
           activeDot: 'DoT{turns} ({aoe}) {mp}MP CD{cd}',
           activeUtility: 'Util {mp}MP CD{cd}',
         },
+        budget: {
+          title: 'Điểm',
+          spent: 'Dùng {spent}',
+          remaining: 'Còn {remaining}',
+          of: '/{budget}',
+          loading: 'Đang tải',
+        },
+        badge: { learned: 'Đã học' },
+        button: {
+          learn: 'Học',
+          learning: 'Đang học',
+          learned: 'Đã học',
+          realmTooLow: 'Cảnh giới chưa đủ',
+          insufficientPoints: 'Hết điểm',
+        },
+        learn: {
+          success: 'Đã học {name}',
+          errors: {
+            ALREADY_LEARNED: 'Đã học rồi',
+            REALM_TOO_LOW: 'Cảnh giới thấp',
+            INSUFFICIENT_TALENT_POINTS: 'Hết điểm',
+            UNKNOWN: 'Lỗi',
+          },
+        },
       },
     },
   },
@@ -104,10 +167,22 @@ function mountView() {
   return mount(TalentCatalogView, { global: { plugins: [i18n] } });
 }
 
+function resetState() {
+  talentsState.learned = new Map();
+  talentsState.spent = 0;
+  talentsState.remaining = 5;
+  talentsState.budget = 5;
+  talentsState.inFlight = new Set();
+  learnMock.mockReset();
+  fetchStateMock.mockClear();
+  toastPushMock.mockClear();
+}
+
 describe('TalentCatalogView — render & counts', () => {
   beforeEach(() => {
     setActivePinia(createPinia());
     vi.clearAllMocks();
+    resetState();
   });
 
   it('mặc định no filter: render đủ TALENTS.length card', async () => {
@@ -139,6 +214,7 @@ describe('TalentCatalogView — filter type', () => {
   beforeEach(() => {
     setActivePinia(createPinia());
     vi.clearAllMocks();
+    resetState();
   });
 
   it('filter type=passive → chỉ render talent passive', async () => {
@@ -149,7 +225,6 @@ describe('TalentCatalogView — filter type', () => {
     const cards = w.findAll('[data-testid^="talent-card-"]');
     const passiveCount = TALENTS.filter((t) => t.type === 'passive').length;
     expect(cards).toHaveLength(passiveCount);
-    // Verify không có talent active nào hiển thị.
     const activeKeys = TALENTS.filter((t) => t.type === 'active').map(
       (t) => t.key,
     );
@@ -175,6 +250,7 @@ describe('TalentCatalogView — filter element', () => {
   beforeEach(() => {
     setActivePinia(createPinia());
     vi.clearAllMocks();
+    resetState();
   });
 
   it('filter element=kim → chỉ render talent kim', async () => {
@@ -216,13 +292,12 @@ describe('TalentCatalogView — combined filter empty', () => {
   beforeEach(() => {
     setActivePinia(createPinia());
     vi.clearAllMocks();
+    resetState();
   });
 
   it('filter type+element không khớp talent nào → hiện empty state', async () => {
     const w = mountView();
     await flushPromises();
-    // Pick element + type combo không có trong catalog: neutral + active có thể empty
-    // hoặc ngược lại. Find combo trống thật:
     const allCombos: Array<{ type: 'passive' | 'active'; element: string }> = [];
     for (const type of ['passive', 'active'] as const) {
       for (const el of ['kim', 'moc', 'thuy', 'hoa', 'tho', 'neutral']) {
@@ -235,7 +310,6 @@ describe('TalentCatalogView — combined filter empty', () => {
       }
     }
     if (allCombos.length === 0) {
-      // Mọi combo đều có talent → skip empty test (catalog đã hoàn chỉnh).
       return;
     }
     const combo = allCombos[0];
@@ -253,12 +327,12 @@ describe('TalentCatalogView — effect summary format', () => {
   beforeEach(() => {
     setActivePinia(createPinia());
     vi.clearAllMocks();
+    resetState();
   });
 
   it('passive stat_mod hiện format "+pct% stat"', async () => {
     const w = mountView();
     await flushPromises();
-    // Tìm talent stat_mod đầu tiên (vd: talent_kim_thien_co +10% atk).
     const sample = TALENTS.find(
       (t) => t.passiveEffect?.kind === 'stat_mod' && t.passiveEffect.value > 1,
     );
@@ -308,6 +382,7 @@ describe('TalentCatalogView — auth redirect', () => {
   beforeEach(() => {
     setActivePinia(createPinia());
     vi.clearAllMocks();
+    resetState();
   });
 
   it('mỗi talent card có realm requirement + cost hiển thị', async () => {
@@ -317,5 +392,171 @@ describe('TalentCatalogView — auth redirect', () => {
     const card = w.find(`[data-testid="talent-card-${sample.key}"]`);
     expect(card.exists()).toBe(true);
     expect(card.text()).toContain(String(sample.talentPointCost));
+  });
+});
+
+describe('TalentCatalogView — Phase 11.X.AT learn flow', () => {
+  beforeEach(() => {
+    setActivePinia(createPinia());
+    vi.clearAllMocks();
+    resetState();
+  });
+
+  it('budget bar hiển thị spent/budget + remaining khi loaded', async () => {
+    talentsState.spent = 2;
+    talentsState.remaining = 3;
+    talentsState.budget = 5;
+    const w = mountView();
+    await flushPromises();
+    const spentEl = w.find('[data-testid="talents-budget-spent"]');
+    expect(spentEl.exists()).toBe(true);
+    expect(spentEl.text()).toContain('2');
+    expect(spentEl.text()).toContain('5');
+    const remainingEl = w.find('[data-testid="talents-budget-remaining"]');
+    expect(remainingEl.text()).toContain('3');
+  });
+
+  it('budget bar hiển thị loading khi store chưa loaded', async () => {
+    talentsState.loaded = false;
+    const w = mountView();
+    await flushPromises();
+    expect(w.find('[data-testid="talents-budget-spent"]').exists()).toBe(false);
+    expect(w.find('[data-testid="talents-budget"]').text()).toContain('Đang tải');
+    talentsState.loaded = true;
+  });
+
+  it('talent đã học → button disabled + label "Đã học" + badge learned', async () => {
+    const sample = TALENTS[0];
+    talentsState.learned = new Map([[sample.key, '2024-01-01T00:00:00Z']]);
+    const w = mountView();
+    await flushPromises();
+    const btn = w.find(`[data-testid="talent-learn-${sample.key}"]`);
+    expect(btn.attributes('disabled')).toBeDefined();
+    expect(btn.text()).toContain('Đã học');
+    expect(
+      w.find(`[data-testid="talent-badge-learned-${sample.key}"]`).exists(),
+    ).toBe(true);
+  });
+
+  it('talent realm cao hơn nhân vật → button disabled + label "Cảnh giới chưa đủ"', async () => {
+    // Mock character realm = truc_co (idx 1). Find talent với realmRequirement > truc_co.
+    const high = TALENTS.find((t) => t.realmRequirement === 'kim_dan');
+    if (!high) throw new Error('no kim_dan talent in catalog');
+    const w = mountView();
+    await flushPromises();
+    const btn = w.find(`[data-testid="talent-learn-${high.key}"]`);
+    expect(btn.attributes('disabled')).toBeDefined();
+    expect(btn.text()).toContain('Cảnh giới chưa đủ');
+  });
+
+  it('hết điểm ngộ đạo → button disabled + label "Hết điểm"', async () => {
+    talentsState.remaining = 0;
+    const w = mountView();
+    await flushPromises();
+    // Find a talent the character can otherwise reach (truc_co or below).
+    const sample = TALENTS.find(
+      (t) =>
+        t.realmRequirement === 'truc_co' || t.realmRequirement === 'luyen_khi',
+    );
+    if (!sample) throw new Error('no early talent in catalog');
+    const btn = w.find(`[data-testid="talent-learn-${sample.key}"]`);
+    expect(btn.attributes('disabled')).toBeDefined();
+    expect(btn.text()).toContain('Hết điểm');
+  });
+
+  it('click Học khi available → store.learn called + toast success', async () => {
+    learnMock.mockResolvedValueOnce(null);
+    const sample = TALENTS.find(
+      (t) => t.realmRequirement === 'truc_co' && t.talentPointCost <= 5,
+    );
+    if (!sample) throw new Error('no truc_co talent in catalog');
+    const w = mountView();
+    await flushPromises();
+    await w.find(`[data-testid="talent-learn-${sample.key}"]`).trigger('click');
+    await flushPromises();
+    expect(learnMock).toHaveBeenCalledWith(sample.key);
+    expect(toastPushMock).toHaveBeenCalledTimes(1);
+    const call = toastPushMock.mock.calls[0][0];
+    expect(call.type).toBe('success');
+    expect(call.text).toContain(sample.name);
+  });
+
+  it('click Học khi server reject ALREADY_LEARNED → toast error i18n', async () => {
+    learnMock.mockResolvedValueOnce('ALREADY_LEARNED');
+    const sample = TALENTS.find(
+      (t) => t.realmRequirement === 'truc_co' && t.talentPointCost <= 5,
+    );
+    if (!sample) throw new Error('no truc_co talent in catalog');
+    const w = mountView();
+    await flushPromises();
+    await w.find(`[data-testid="talent-learn-${sample.key}"]`).trigger('click');
+    await flushPromises();
+    expect(toastPushMock).toHaveBeenCalledTimes(1);
+    const call = toastPushMock.mock.calls[0][0];
+    expect(call.type).toBe('error');
+    expect(call.text).toContain('Đã học rồi');
+  });
+
+  it('click Học khi server reject UNKNOWN code → toast error fallback UNKNOWN', async () => {
+    learnMock.mockResolvedValueOnce('SOME_UNHANDLED_CODE');
+    const sample = TALENTS.find(
+      (t) => t.realmRequirement === 'truc_co' && t.talentPointCost <= 5,
+    );
+    if (!sample) throw new Error('no truc_co talent in catalog');
+    const w = mountView();
+    await flushPromises();
+    await w.find(`[data-testid="talent-learn-${sample.key}"]`).trigger('click');
+    await flushPromises();
+    expect(toastPushMock).toHaveBeenCalledTimes(1);
+    const call = toastPushMock.mock.calls[0][0];
+    expect(call.type).toBe('error');
+    expect(call.text).toBe('Lỗi');
+  });
+
+  it('filter status=learned → chỉ render talent đã học', async () => {
+    const learnedKey = TALENTS[0].key;
+    talentsState.learned = new Map([[learnedKey, '2024-01-01T00:00:00Z']]);
+    const w = mountView();
+    await flushPromises();
+    await w.find('[data-testid="talents-filter-status"]').setValue('learned');
+    await flushPromises();
+    const cards = w.findAll('[data-testid^="talent-card-"]');
+    expect(cards).toHaveLength(1);
+    expect(w.find(`[data-testid="talent-card-${learnedKey}"]`).exists()).toBe(
+      true,
+    );
+  });
+
+  it('filter status=available → loại trừ learned + locked', async () => {
+    const learnedKey = TALENTS[0].key;
+    talentsState.learned = new Map([[learnedKey, '2024-01-01T00:00:00Z']]);
+    talentsState.remaining = 5;
+    const w = mountView();
+    await flushPromises();
+    await w
+      .find('[data-testid="talents-filter-status"]')
+      .setValue('available');
+    await flushPromises();
+    expect(
+      w.find(`[data-testid="talent-card-${learnedKey}"]`).exists(),
+    ).toBe(false);
+    // Tất cả card hiển thị phải có status="available".
+    const cards = w.findAll('[data-testid^="talent-card-"]');
+    for (const card of cards) {
+      expect(card.attributes('data-status')).toBe('available');
+    }
+  });
+
+  it('filter status=locked → chỉ render talent realm hoặc points lock', async () => {
+    const w = mountView();
+    await flushPromises();
+    await w.find('[data-testid="talents-filter-status"]').setValue('locked');
+    await flushPromises();
+    const cards = w.findAll('[data-testid^="talent-card-"]');
+    for (const card of cards) {
+      expect(card.attributes('data-status')).toBe('locked');
+    }
+    // Phải có ít nhất 1 talent realm cao hơn truc_co.
+    expect(cards.length).toBeGreaterThan(0);
   });
 });

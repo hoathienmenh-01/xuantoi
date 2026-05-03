@@ -1,23 +1,29 @@
 <script setup lang="ts">
 /**
  * Phase 11.X.AR — Talent Catalog read-only view.
+ * Phase 11.X.AT — Wire `Học` button + Pinia talent store + filter status
+ * (đã học / có thể học / chưa đủ điều kiện) + budget bar + i18n error toast.
  *
- * Hiển thị 45 talent từ shared catalog (`@xuantoi/shared` `TALENTS`) cho người
- * chơi xem, **không có học/learn flow** (server-authoritative learn flow chưa
- * wire frontend). Mục tiêu: cho user thấy roadmap ngộ-đạo + 5-element
- * symmetry coverage đã hoàn tất Phase 11.X.AN..AQ.
+ * Hiển thị 54 talent từ shared catalog (`@xuantoi/shared` `TALENTS`) cho người
+ * chơi xem + học. Server-authoritative learn flow qua `useTalentsStore`
+ * (Phase 11.X.AS endpoint `POST /character/talents/learn`).
  *
  * Filters:
  * - Type: all | passive | active
  * - Element: all | kim | moc | thuy | hoa | tho | neutral
+ * - Status: all | learned | available | locked
  *
  * Mỗi talent card hiển thị:
- * - Tên + element badge + type badge
+ * - Tên + element badge + type badge + (đã học) badge nếu learned
  * - Realm requirement + talent point cost
  * - Description (lore)
  * - Effect summary format theo passiveEffect.kind / activeEffect.kind
+ * - Nút Học (disable nếu đã học / realm thấp / hết điểm / in-flight)
  *
- * KHÔNG đụng runtime/schema/seed — pure read từ catalog static data.
+ * Budget bar trên cùng: spent/budget + remaining count.
+ *
+ * KHÔNG đụng combat runtime/schema/seed — pure FE wire of existing server
+ * endpoint với optimistic-free state.
  */
 import { computed, onMounted, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
@@ -25,6 +31,7 @@ import { useRouter } from 'vue-router';
 import {
   TALENTS,
   ELEMENTS,
+  REALMS,
   realmByKey,
   type ElementKey,
   type TalentDef,
@@ -32,27 +39,74 @@ import {
 } from '@xuantoi/shared';
 import { useAuthStore } from '@/stores/auth';
 import { useGameStore } from '@/stores/game';
+import { useTalentsStore } from '@/stores/talents';
+import { useToastStore } from '@/stores/toast';
 import AppShell from '@/components/shell/AppShell.vue';
 
 type ElementFilter = ElementKey | 'neutral' | 'all';
 type TypeFilter = TalentType | 'all';
+type StatusFilter = 'all' | 'learned' | 'available' | 'locked';
 
 const auth = useAuthStore();
 const game = useGameStore();
+const talentsStore = useTalentsStore();
+const toast = useToastStore();
 const router = useRouter();
 const { t } = useI18n();
 
 const typeFilter = ref<TypeFilter>('all');
 const elementFilter = ref<ElementFilter>('all');
+const statusFilter = ref<StatusFilter>('all');
+
+/**
+ * Map realmKey → realmOrder (deterministic từ shared `REALMS`). Dùng client-side
+ * để tính realm gating khi server chưa fetch xong (server vẫn là source of
+ * truth khi POST /learn).
+ */
+const realmKeyToOrder = computed(() => {
+  const m = new Map<string, number>();
+  REALMS.forEach((r, idx) => m.set(r.key, idx));
+  return m;
+});
+
+const currentRealmOrder = computed<number>(() => {
+  const k = game.character?.realmKey;
+  if (!k) return 0;
+  return realmKeyToOrder.value.get(k) ?? 0;
+});
+
+function isRealmGate(talent: TalentDef): boolean {
+  const reqOrder = realmKeyToOrder.value.get(talent.realmRequirement);
+  if (reqOrder === undefined) return true;
+  return currentRealmOrder.value < reqOrder;
+}
+
+function isPointsGate(talent: TalentDef): boolean {
+  return talentsStore.remaining < talent.talentPointCost;
+}
+
+function statusOf(talent: TalentDef): 'learned' | 'available' | 'locked' {
+  if (talentsStore.isLearned(talent.key)) return 'learned';
+  if (isRealmGate(talent) || isPointsGate(talent)) return 'locked';
+  return 'available';
+}
 
 const filtered = computed<readonly TalentDef[]>(() => {
   return TALENTS.filter((talent) => {
     if (typeFilter.value !== 'all' && talent.type !== typeFilter.value) {
       return false;
     }
-    if (elementFilter.value === 'all') return true;
-    if (elementFilter.value === 'neutral') return talent.element === null;
-    return talent.element === elementFilter.value;
+    if (elementFilter.value !== 'all') {
+      if (elementFilter.value === 'neutral') {
+        if (talent.element !== null) return false;
+      } else if (talent.element !== elementFilter.value) {
+        return false;
+      }
+    }
+    if (statusFilter.value !== 'all') {
+      if (statusOf(talent) !== statusFilter.value) return false;
+    }
+    return true;
   });
 });
 
@@ -185,6 +239,49 @@ function effectSummary(talent: TalentDef): string {
   return talent.description;
 }
 
+/**
+ * Button label: ưu tiên trạng thái cụ thể nhất.
+ *  1. learning (in-flight) → "Đang học…"
+ *  2. learned → "Đã học"
+ *  3. realm too low → "Cảnh giới chưa đủ"
+ *  4. insufficient points → "Hết điểm ngộ đạo"
+ *  5. default → "Học"
+ */
+function learnButtonLabel(talent: TalentDef): string {
+  if (talentsStore.isLearning(talent.key)) return t('talents.button.learning');
+  if (talentsStore.isLearned(talent.key)) return t('talents.button.learned');
+  if (isRealmGate(talent)) return t('talents.button.realmTooLow');
+  if (isPointsGate(talent)) return t('talents.button.insufficientPoints');
+  return t('talents.button.learn');
+}
+
+function learnButtonDisabled(talent: TalentDef): boolean {
+  if (talentsStore.isLearning(talent.key)) return true;
+  if (talentsStore.isLearned(talent.key)) return true;
+  if (isRealmGate(talent)) return true;
+  if (isPointsGate(talent)) return true;
+  return false;
+}
+
+async function onLearn(talent: TalentDef): Promise<void> {
+  if (learnButtonDisabled(talent)) return;
+  const errCode = await talentsStore.learn(talent.key);
+  if (errCode === null) {
+    toast.push({
+      type: 'success',
+      text: t('talents.learn.success', { name: talent.name }),
+    });
+  } else {
+    const key = `talents.learn.errors.${errCode}`;
+    // Fallback to UNKNOWN if i18n key missing.
+    const text = t(key);
+    toast.push({
+      type: 'error',
+      text: text === key ? t('talents.learn.errors.UNKNOWN') : text,
+    });
+  }
+}
+
 onMounted(async () => {
   await auth.hydrate();
   if (!auth.isAuthenticated) {
@@ -193,6 +290,7 @@ onMounted(async () => {
   }
   await game.fetchState().catch(() => null);
   game.bindSocket();
+  await talentsStore.fetchState().catch(() => null);
 });
 </script>
 
@@ -210,6 +308,22 @@ onMounted(async () => {
           {{ t('talents.counts', { passive: counts.passive, active: counts.active }) }}
         </div>
       </header>
+
+      <section
+        class="bg-ink-700/30 border border-ink-300/20 rounded p-3 flex flex-wrap items-center gap-3 text-xs"
+        data-testid="talents-budget"
+      >
+        <span class="text-ink-300">{{ t('talents.budget.title') }}</span>
+        <template v-if="talentsStore.loaded">
+          <span class="text-amber-200" data-testid="talents-budget-spent">
+            {{ t('talents.budget.spent', { spent: talentsStore.spent }) }}{{ t('talents.budget.of', { budget: talentsStore.budget }) }}
+          </span>
+          <span class="text-emerald-200" data-testid="talents-budget-remaining">
+            {{ t('talents.budget.remaining', { remaining: talentsStore.remaining }) }}
+          </span>
+        </template>
+        <span v-else class="text-ink-300">{{ t('talents.budget.loading') }}</span>
+      </section>
 
       <section class="bg-ink-700/30 border border-ink-300/20 rounded p-3 flex flex-wrap items-center gap-3 text-xs">
         <div class="flex items-center gap-2">
@@ -238,6 +352,19 @@ onMounted(async () => {
             <option value="neutral">{{ t('talents.element.neutral') }}</option>
           </select>
         </div>
+        <div class="flex items-center gap-2">
+          <label class="text-ink-300">{{ t('talents.filterStatus.label') }}</label>
+          <select
+            v-model="statusFilter"
+            data-testid="talents-filter-status"
+            class="bg-ink-900 border border-ink-300/30 rounded px-2 py-1 text-ink-100"
+          >
+            <option value="all">{{ t('talents.filterStatus.all') }}</option>
+            <option value="learned">{{ t('talents.filterStatus.learned') }}</option>
+            <option value="available">{{ t('talents.filterStatus.available') }}</option>
+            <option value="locked">{{ t('talents.filterStatus.locked') }}</option>
+          </select>
+        </div>
         <span class="ml-auto text-ink-300" data-testid="talents-result-count">
           {{ t('talents.filter.shown', { shown: counts.filtered, total: counts.total }) }}
         </span>
@@ -257,10 +384,18 @@ onMounted(async () => {
           :key="talent.key"
           class="bg-ink-700/30 border border-ink-300/20 rounded p-3 space-y-2"
           :data-testid="`talent-card-${talent.key}`"
+          :data-status="statusOf(talent)"
         >
           <header class="flex items-baseline justify-between gap-2 flex-wrap">
             <h2 class="text-amber-200 text-base font-semibold">{{ talent.name }}</h2>
             <div class="flex items-center gap-1">
+              <span
+                v-if="talentsStore.isLearned(talent.key)"
+                class="px-2 py-0.5 rounded border text-[10px] uppercase tracking-wider bg-emerald-700/40 text-emerald-200 border-emerald-500/40"
+                :data-testid="`talent-badge-learned-${talent.key}`"
+              >
+                {{ t('talents.badge.learned') }}
+              </span>
               <span
                 class="px-2 py-0.5 rounded border text-[10px] uppercase tracking-wider"
                 :class="elementClass(talent.element)"
@@ -284,6 +419,20 @@ onMounted(async () => {
             <dt>{{ t('talents.field.effect') }}</dt>
             <dd class="text-ink-100 col-span-1">{{ effectSummary(talent) }}</dd>
           </dl>
+          <div class="flex justify-end pt-1">
+            <button
+              type="button"
+              class="px-3 py-1 rounded border text-xs tracking-wider"
+              :class="learnButtonDisabled(talent)
+                ? 'bg-ink-700/30 text-ink-400 border-ink-300/20 cursor-not-allowed'
+                : 'bg-amber-700/40 text-amber-100 border-amber-500/40 hover:bg-amber-600/50'"
+              :disabled="learnButtonDisabled(talent)"
+              :data-testid="`talent-learn-${talent.key}`"
+              @click="onLearn(talent)"
+            >
+              {{ learnButtonLabel(talent) }}
+            </button>
+          </div>
         </article>
       </section>
     </div>
