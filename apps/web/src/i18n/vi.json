@@ -1345,6 +1345,13 @@
     "loading": "Đang tải thành tựu…",
     "empty": "Không có thành tựu nào khớp bộ lọc.",
     "summary": "Hoàn thành: {completed} • Có thể nhận: {claimable}",
+    "stats": {
+      "label": "Tổng kết:",
+      "total": "Tổng {count}",
+      "locked": "Chưa đạt {count}",
+      "claimable": "Có thể nhận {count}",
+      "claimed": "Đã nhận {count}"
+    },
     "filter": {
       "category": "Phân loại",
       "tier": "Bậc",

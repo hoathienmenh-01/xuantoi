@@ -215,3 +215,84 @@ describe('useAchievementsStore — Phase 11.10.E', () => {
     expect(s.lastClaim).toBeNull();
   });
 });
+
+/** Phase 11.10.F — extra counts cho stats summary UI. */
+describe('useAchievementsStore — Phase 11.10.F stats counts', () => {
+  beforeEach(() => {
+    setActivePinia(createPinia());
+    vi.clearAllMocks();
+  });
+
+  it('totalCount=0 khi chưa load', () => {
+    const s = useAchievementsStore();
+    expect(s.totalCount).toBe(0);
+    expect(s.claimedCount).toBe(0);
+    expect(s.lockedCount).toBe(0);
+  });
+
+  it('totalCount=0 khi rows empty', () => {
+    const s = useAchievementsStore();
+    s.rows = [];
+    expect(s.totalCount).toBe(0);
+    expect(s.claimedCount).toBe(0);
+    expect(s.lockedCount).toBe(0);
+  });
+
+  it('counts đúng với mix of locked/completed-unclaimed/claimed', () => {
+    const s = useAchievementsStore();
+    s.rows = [
+      ROW_IN_PROGRESS, // locked (completedAt=null)
+      ROW_COMPLETED_UNCLAIMED, // claimable
+      ROW_CLAIMED, // claimed
+    ];
+    expect(s.totalCount).toBe(3);
+    expect(s.lockedCount).toBe(1);
+    expect(s.claimableCount).toBe(1);
+    expect(s.claimedCount).toBe(1);
+    expect(s.completedCount).toBe(2); // unclaimed + claimed
+  });
+
+  it('totalCount = lockedCount + completedCount (sanity)', () => {
+    const s = useAchievementsStore();
+    s.rows = [
+      ROW_IN_PROGRESS,
+      ROW_IN_PROGRESS,
+      ROW_COMPLETED_UNCLAIMED,
+      ROW_CLAIMED,
+    ];
+    expect(s.totalCount).toBe(s.lockedCount + s.completedCount);
+  });
+
+  it('completedCount = claimableCount + claimedCount (sanity)', () => {
+    const s = useAchievementsStore();
+    s.rows = [
+      ROW_IN_PROGRESS,
+      ROW_COMPLETED_UNCLAIMED,
+      ROW_COMPLETED_UNCLAIMED,
+      ROW_CLAIMED,
+    ];
+    expect(s.completedCount).toBe(s.claimableCount + s.claimedCount);
+  });
+
+  it('counts reactive khi rows thay đổi', () => {
+    const s = useAchievementsStore();
+    s.rows = [ROW_IN_PROGRESS];
+    expect(s.totalCount).toBe(1);
+    expect(s.lockedCount).toBe(1);
+    s.rows = [ROW_IN_PROGRESS, ROW_CLAIMED, ROW_COMPLETED_UNCLAIMED];
+    expect(s.totalCount).toBe(3);
+    expect(s.lockedCount).toBe(1);
+    expect(s.claimedCount).toBe(1);
+    expect(s.claimableCount).toBe(1);
+  });
+
+  it('counts về 0 sau reset()', () => {
+    const s = useAchievementsStore();
+    s.rows = [ROW_COMPLETED_UNCLAIMED, ROW_CLAIMED];
+    expect(s.totalCount).toBe(2);
+    s.reset();
+    expect(s.totalCount).toBe(0);
+    expect(s.claimedCount).toBe(0);
+    expect(s.lockedCount).toBe(0);
+  });
+});

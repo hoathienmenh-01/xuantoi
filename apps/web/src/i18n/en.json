@@ -1345,6 +1345,13 @@
     "loading": "Loading achievements…",
     "empty": "No achievements match the selected filter.",
     "summary": "Completed: {completed} • Claimable: {claimable}",
+    "stats": {
+      "label": "Stats:",
+      "total": "Total {count}",
+      "locked": "Locked {count}",
+      "claimable": "Claimable {count}",
+      "claimed": "Claimed {count}"
+    },
     "filter": {
       "category": "Category",
       "tier": "Tier",
