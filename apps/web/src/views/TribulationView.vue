@@ -261,6 +261,21 @@ async function reloadHistory(): Promise<void> {
   await tribulation.fetchHistory().catch(() => null);
 }
 
+/**
+ * Phase 11.6.H — load more history button handler. Store đã clamp +
+ * race-protect; chỉ cần forward error code sang toast nếu fail (KHÔNG
+ * 'IN_FLIGHT'/'MAX_REACHED' — UI ngăn click trước khi phát sinh).
+ */
+async function onLoadMore(): Promise<void> {
+  const errCode = await tribulation.loadMoreHistory();
+  if (errCode && errCode !== 'IN_FLIGHT' && errCode !== 'MAX_REACHED') {
+    toast.push({
+      type: 'error',
+      text: t('tribulation.history.loadError'),
+    });
+  }
+}
+
 const showOutcome = ref<boolean>(false);
 function dismissOutcome(): void {
   showOutcome.value = false;
@@ -726,6 +741,38 @@ onUnmounted(() => {
             </div>
           </li>
         </ul>
+
+        <!-- Phase 11.6.H — Load more button + max-reached hint -->
+        <div
+          v-if="tribulation.history && tribulation.history.length > 0"
+          class="pt-1 text-center"
+        >
+          <button
+            v-if="tribulation.historyHasMore"
+            type="button"
+            :disabled="tribulation.historyLoading"
+            data-testid="tribulation-history-load-more"
+            class="text-xs px-3 py-1.5 rounded border border-ink-300/30 bg-ink-700/40 text-ink-100 hover:bg-ink-700/60 disabled:bg-ink-700/20 disabled:text-ink-300 disabled:cursor-not-allowed"
+            @click="onLoadMore"
+          >
+            {{
+              tribulation.historyLoading
+                ? t('tribulation.history.loadMoreLoading')
+                : t('tribulation.history.loadMore')
+            }}
+          </button>
+          <p
+            v-else-if="tribulation.historyMaxReached"
+            class="text-[10px] text-ink-300"
+            data-testid="tribulation-history-max-reached"
+          >
+            {{
+              t('tribulation.history.maxReached', {
+                limit: tribulation.historyLimit,
+              })
+            }}
+          </p>
+        </div>
       </section>
     </div>
   </AppShell>

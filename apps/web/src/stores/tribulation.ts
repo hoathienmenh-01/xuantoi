@@ -1,4 +1,4 @@
-import { ref } from 'vue';
+import { computed, ref } from 'vue';
 import { defineStore } from 'pinia';
 import * as api from '@/api/tribulation';
 
@@ -44,6 +44,41 @@ export const useTribulationStore = defineStore('tribulation', () => {
   const historyLoading = ref(false);
   const historyError = ref<string | null>(null);
 
+  /**
+   * Phase 11.6.H — current pagination limit (server `?limit=N`). Mirror
+   * `TRIBULATION_LOG_DEFAULT_LIMIT` (20) initially. `loadMoreHistory()`
+   * tăng dần (+DEFAULT) cho tới khi đạt `TRIBULATION_LOG_MAX_LIMIT` (100).
+   * Server responds DESC by `createdAt` → mỗi lần fetch lại với limit lớn
+   * hơn sẽ trả về cả rows cũ + thêm rows cũ hơn nữa (replace, không append
+   * client-side; cần re-fetch để consistent với server snapshot).
+   */
+  const historyLimit = ref<number>(api.TRIBULATION_LOG_DEFAULT_LIMIT);
+
+  /**
+   * Phase 11.6.H — true khi có khả năng còn rows cũ hơn để load thêm.
+   * Heuristic: rows hiện tại đã đầy `historyLimit` (server trả đủ) AND
+   * `historyLimit` chưa chạm MAX. Nếu rows < limit → server đã trả hết
+   * (no more rows). Nếu limit === MAX → đã đạt giới hạn server cap.
+   */
+  const historyHasMore = computed<boolean>(() => {
+    const rows = history.value;
+    if (!rows) return false;
+    if (rows.length < historyLimit.value) return false;
+    return historyLimit.value < api.TRIBULATION_LOG_MAX_LIMIT;
+  });
+
+  /**
+   * Phase 11.6.H — true khi đã đạt MAX limit và rows lấp đầy — không thể
+   * load thêm dù còn rows cũ hơn ở server. UI hiển thị hint "Đã đạt giới
+   * hạn 100 lượt" thay vì button.
+   */
+  const historyMaxReached = computed<boolean>(() => {
+    const rows = history.value;
+    if (!rows) return false;
+    if (historyLimit.value < api.TRIBULATION_LOG_MAX_LIMIT) return false;
+    return rows.length >= api.TRIBULATION_LOG_MAX_LIMIT;
+  });
+
   function clearLastOutcome(): void {
     lastOutcome.value = null;
   }
@@ -77,13 +112,21 @@ export const useTribulationStore = defineStore('tribulation', () => {
    * Phase 11.6.G — fetch history from `GET /character/tribulation/log`.
    * Idempotent. Race-protected via `historyLoading` (chống double-fetch khi
    * mount nhanh nhiều lần). Trả về error code string hoặc `null` thành công.
+   *
+   * Phase 11.6.H — `limit?` arg semantics:
+   *   - Provided: clamp về [1, MAX] → store thành `historyLimit` (cho phép
+   *     post-attempt refetch dùng cùng size đã expand) → call API với clamp.
+   *   - Omitted: dùng `historyLimit.value` hiện tại (preserve user expand).
    */
   async function fetchHistory(limit?: number): Promise<string | null> {
     if (historyLoading.value) return 'IN_FLIGHT';
     historyLoading.value = true;
     historyError.value = null;
+    if (limit !== undefined) {
+      historyLimit.value = clampLimit(limit);
+    }
     try {
-      const res = await api.fetchAttemptLog(limit);
+      const res = await api.fetchAttemptLog(historyLimit.value);
       history.value = res.rows;
       return null;
     } catch (e) {
@@ -98,6 +141,28 @@ export const useTribulationStore = defineStore('tribulation', () => {
     }
   }
 
+  /**
+   * Phase 11.6.H — load more history rows bằng cách tăng `historyLimit`
+   * thêm `TRIBULATION_LOG_DEFAULT_LIMIT` (20) rồi re-fetch. Trả về:
+   *   - `'IN_FLIGHT'`: đang fetch, caller phải đợi.
+   *   - `'MAX_REACHED'`: đã đạt MAX limit, không thể load thêm.
+   *   - `null`: success, `history` đã được replace với rows mới (nhiều hơn).
+   *   - `<error_code>`: fetch fail, caller xử lý (e.g. show toast).
+   *
+   * Race-safe — gọi nhiều lần liên tiếp vẫn chỉ 1 fetch chạy nhờ
+   * `historyLoading` guard.
+   */
+  async function loadMoreHistory(): Promise<string | null> {
+    if (historyLoading.value) return 'IN_FLIGHT';
+    if (historyLimit.value >= api.TRIBULATION_LOG_MAX_LIMIT) {
+      return 'MAX_REACHED';
+    }
+    const newLimit = clampLimit(
+      historyLimit.value + api.TRIBULATION_LOG_DEFAULT_LIMIT,
+    );
+    return fetchHistory(newLimit);
+  }
+
   function reset(): void {
     lastOutcome.value = null;
     inFlight.value = false;
@@ -105,6 +170,7 @@ export const useTribulationStore = defineStore('tribulation', () => {
     history.value = null;
     historyLoading.value = false;
     historyError.value = null;
+    historyLimit.value = api.TRIBULATION_LOG_DEFAULT_LIMIT;
   }
 
   return {
@@ -114,9 +180,25 @@ export const useTribulationStore = defineStore('tribulation', () => {
     history,
     historyLoading,
     historyError,
+    historyLimit,
+    historyHasMore,
+    historyMaxReached,
     clearLastOutcome,
     attempt,
     fetchHistory,
+    loadMoreHistory,
     reset,
   };
 });
+
+/**
+ * Phase 11.6.H — clamp limit về [1, MAX] (mirror server-side clamp trong
+ * `TribulationService.listAttemptLogs`). Tránh gửi `?limit=999999` qua API.
+ */
+function clampLimit(limit: number): number {
+  if (!Number.isFinite(limit)) return api.TRIBULATION_LOG_DEFAULT_LIMIT;
+  return Math.max(
+    1,
+    Math.min(api.TRIBULATION_LOG_MAX_LIMIT, Math.floor(limit)),
+  );
+}

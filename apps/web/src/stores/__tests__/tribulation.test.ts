@@ -4,6 +4,8 @@ import { setActivePinia, createPinia } from 'pinia';
 vi.mock('@/api/tribulation', () => ({
   attemptTribulation: vi.fn(),
   fetchAttemptLog: vi.fn(),
+  TRIBULATION_LOG_DEFAULT_LIMIT: 20,
+  TRIBULATION_LOG_MAX_LIMIT: 100,
 }));
 
 import * as api from '@/api/tribulation';
@@ -289,5 +291,159 @@ describe('useTribulationStore — Phase 11.6.G fetchHistory', () => {
     expect(s.history).toBeNull();
     expect(s.historyLoading).toBe(false);
     expect(s.historyError).toBeNull();
+  });
+});
+
+/** Phase 11.6.H — pagination "Load more" tests. */
+describe('useTribulationStore — Phase 11.6.H pagination', () => {
+  beforeEach(() => {
+    setActivePinia(createPinia());
+    vi.clearAllMocks();
+  });
+
+  function makeRow(id: string): api.TribulationAttemptLogView {
+    return { ...STUB_LOG_ROW, id };
+  }
+
+  it('initial historyLimit = TRIBULATION_LOG_DEFAULT_LIMIT (20)', () => {
+    const s = useTribulationStore();
+    expect(s.historyLimit).toBe(20);
+  });
+
+  it('historyHasMore=false khi history null', () => {
+    const s = useTribulationStore();
+    expect(s.historyHasMore).toBe(false);
+    expect(s.historyMaxReached).toBe(false);
+  });
+
+  it('historyHasMore=false khi rows < historyLimit (server đã trả hết)', async () => {
+    mockedFetchLog.mockResolvedValueOnce({ rows: [makeRow('a')], limit: 20 });
+    const s = useTribulationStore();
+    await s.fetchHistory();
+    expect(s.history).toHaveLength(1);
+    expect(s.historyLimit).toBe(20);
+    expect(s.historyHasMore).toBe(false);
+    expect(s.historyMaxReached).toBe(false);
+  });
+
+  it('historyHasMore=true khi rows === historyLimit và limit < MAX', async () => {
+    const rows = Array.from({ length: 20 }, (_v, i) => makeRow(`r${i}`));
+    mockedFetchLog.mockResolvedValueOnce({ rows, limit: 20 });
+    const s = useTribulationStore();
+    await s.fetchHistory();
+    expect(s.history).toHaveLength(20);
+    expect(s.historyLimit).toBe(20);
+    expect(s.historyHasMore).toBe(true);
+    expect(s.historyMaxReached).toBe(false);
+  });
+
+  it('historyHasMore=false khi historyLimit đạt MAX (100), historyMaxReached=true khi rows full', async () => {
+    const rows = Array.from({ length: 100 }, (_v, i) => makeRow(`r${i}`));
+    mockedFetchLog.mockResolvedValueOnce({ rows, limit: 100 });
+    const s = useTribulationStore();
+    await s.fetchHistory(100);
+    expect(s.historyLimit).toBe(100);
+    expect(s.historyHasMore).toBe(false);
+    expect(s.historyMaxReached).toBe(true);
+  });
+
+  it('fetchHistory(limit) clamp [1, MAX] và set historyLimit', async () => {
+    mockedFetchLog.mockResolvedValueOnce({ rows: [], limit: 100 });
+    const s = useTribulationStore();
+    await s.fetchHistory(999_999);
+    expect(s.historyLimit).toBe(100);
+    expect(mockedFetchLog).toHaveBeenCalledWith(100);
+  });
+
+  it('fetchHistory(0) clamp về 1', async () => {
+    mockedFetchLog.mockResolvedValueOnce({ rows: [], limit: 1 });
+    const s = useTribulationStore();
+    await s.fetchHistory(0);
+    expect(s.historyLimit).toBe(1);
+    expect(mockedFetchLog).toHaveBeenCalledWith(1);
+  });
+
+  it('fetchHistory() (no arg) preserve historyLimit hiện tại', async () => {
+    const rows = Array.from({ length: 40 }, (_v, i) => makeRow(`r${i}`));
+    mockedFetchLog.mockResolvedValueOnce({ rows, limit: 40 });
+    const s = useTribulationStore();
+    s.historyLimit = 40;
+    await s.fetchHistory();
+    expect(mockedFetchLog).toHaveBeenLastCalledWith(40);
+    expect(s.historyLimit).toBe(40);
+  });
+
+  it('loadMoreHistory: tăng historyLimit thêm 20 và re-fetch với limit mới', async () => {
+    const rows40 = Array.from({ length: 40 }, (_v, i) => makeRow(`r${i}`));
+    mockedFetchLog.mockResolvedValueOnce({ rows: rows40, limit: 40 });
+    const s = useTribulationStore();
+    s.historyLimit = 20;
+    s.history = rows40.slice(0, 20);
+    const err = await s.loadMoreHistory();
+    expect(err).toBeNull();
+    expect(s.historyLimit).toBe(40);
+    expect(s.history).toHaveLength(40);
+    expect(mockedFetchLog).toHaveBeenLastCalledWith(40);
+  });
+
+  it('loadMoreHistory: clamp ở MAX khi tăng vượt 100', async () => {
+    const rows100 = Array.from({ length: 100 }, (_v, i) => makeRow(`r${i}`));
+    mockedFetchLog.mockResolvedValueOnce({ rows: rows100, limit: 100 });
+    const s = useTribulationStore();
+    s.historyLimit = 90;
+    s.history = rows100.slice(0, 90);
+    const err = await s.loadMoreHistory();
+    expect(err).toBeNull();
+    expect(s.historyLimit).toBe(100);
+    expect(mockedFetchLog).toHaveBeenLastCalledWith(100);
+  });
+
+  it('loadMoreHistory: trả "MAX_REACHED" khi historyLimit đã = MAX', async () => {
+    const s = useTribulationStore();
+    s.historyLimit = 100;
+    const err = await s.loadMoreHistory();
+    expect(err).toBe('MAX_REACHED');
+    expect(mockedFetchLog).not.toHaveBeenCalled();
+  });
+
+  it('loadMoreHistory: trả "IN_FLIGHT" khi đang fetch', async () => {
+    let resolveFn!: (v: {
+      rows: api.TribulationAttemptLogView[];
+      limit: number;
+    }) => void;
+    mockedFetchLog.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          resolveFn = resolve;
+        }),
+    );
+    const s = useTribulationStore();
+    const p1 = s.fetchHistory();
+    expect(s.historyLoading).toBe(true);
+    const r2 = await s.loadMoreHistory();
+    expect(r2).toBe('IN_FLIGHT');
+    expect(mockedFetchLog).toHaveBeenCalledTimes(1);
+    resolveFn({ rows: [], limit: 20 });
+    await p1;
+  });
+
+  it('loadMoreHistory: forward error code từ server', async () => {
+    mockedFetchLog.mockRejectedValueOnce({ code: 'NETWORK_ERROR' });
+    const s = useTribulationStore();
+    s.historyLimit = 20;
+    s.history = Array.from({ length: 20 }, (_v, i) => makeRow(`r${i}`));
+    const err = await s.loadMoreHistory();
+    expect(err).toBe('NETWORK_ERROR');
+    expect(s.historyError).toBe('NETWORK_ERROR');
+    // historyLimit đã được set lên 40 vì fetchHistory(40) đặt trước try.
+    expect(s.historyLimit).toBe(40);
+  });
+
+  it('reset: historyLimit về DEFAULT_LIMIT', () => {
+    const s = useTribulationStore();
+    s.historyLimit = 80;
+    s.history = [STUB_LOG_ROW];
+    s.reset();
+    expect(s.historyLimit).toBe(20);
   });
 });

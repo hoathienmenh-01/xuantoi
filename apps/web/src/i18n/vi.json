@@ -1524,7 +1524,10 @@
       "expLoss": "−{amount} EXP",
       "cooldownAt": "Cooldown đến {ts}",
       "taoMa": "Tâm Ma đến {ts}",
-      "createdAt": "Ngày: {ts}"
+      "createdAt": "Ngày: {ts}",
+      "loadMore": "Tải thêm",
+      "loadMoreLoading": "Đang tải thêm…",
+      "maxReached": "Đã đạt giới hạn {limit} lượt gần nhất."
     }
   }
 }

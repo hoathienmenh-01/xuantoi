@@ -1524,7 +1524,10 @@
       "expLoss": "−{amount} EXP",
       "cooldownAt": "Cooldown until {ts}",
       "taoMa": "Tâm Ma until {ts}",
-      "createdAt": "Date: {ts}"
+      "createdAt": "Date: {ts}",
+      "loadMore": "Load more",
+      "loadMoreLoading": "Loading more…",
+      "maxReached": "Reached the most recent {limit} attempts."
     }
   }
 }
