@@ -29,7 +29,8 @@ export type MissionGoalKind =
   | 'BUY_LISTING'
   | 'CHAT_MESSAGE'
   | 'SECT_CONTRIBUTE'
-  | 'BREAKTHROUGH';
+  | 'BREAKTHROUGH'
+  | 'ALCHEMY_CRAFT';
 
 export interface MissionReward {
   linhThach?: number;

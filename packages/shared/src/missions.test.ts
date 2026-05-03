@@ -65,6 +65,7 @@ describe('MISSIONS catalog', () => {
       'CHAT_MESSAGE',
       'SECT_CONTRIBUTE',
       'BREAKTHROUGH',
+      'ALCHEMY_CRAFT',
     ];
     for (const m of MISSIONS) {
       expect(validGoalKinds, `mission ${m.key} goalKind`).toContain(m.goalKind);

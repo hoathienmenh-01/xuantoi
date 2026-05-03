@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Optional } from '@nestjs/common';
 import { CurrencyKind } from '@prisma/client';
 import {
   getAlchemyRecipeDef,
@@ -11,6 +11,7 @@ import {
 } from '@xuantoi/shared';
 import { PrismaService } from '../../common/prisma.service';
 import { CurrencyService } from './currency.service';
+import { AchievementService } from './achievement.service';
 
 /**
  * Phase 11.11.B Alchemy (Luyện Đan) MVP runtime.
@@ -33,12 +34,17 @@ import { CurrencyService } from './currency.service';
  *
  * Phase 11.11.C sẽ thêm: upgradeFurnace (cost linhThach + material),
  * mastery bonus vào successRate, attempt log analytics.
+ *
+ * Phase 11.11.E: post-success fail-soft `AchievementService.trackEvent` cho
+ * goalKind `ALCHEMY_CRAFT` (apprentice 10 / master 100). KHÔNG track khi
+ * outcome.success === false. KHÔNG throw nếu achievement service lỗi.
  */
 @Injectable()
 export class AlchemyService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly currency: CurrencyService,
+    @Optional() private readonly achievements?: AchievementService,
   ) {}
 
   /**
@@ -174,6 +180,17 @@ export class AlchemyService {
         linhThachConsumed: recipe.linhThachCost,
         inputsConsumed: recipe.inputs.map((i) => ({ itemKey: i.itemKey, qty: i.qty })),
       };
+    }).then(async (outcome) => {
+      // Phase 11.11.E: track ALCHEMY_CRAFT achievement progress khi success.
+      // Wrap try/catch — fail-soft, không lan ra outcome.
+      if (outcome.success && this.achievements) {
+        try {
+          await this.achievements.trackEvent(characterId, 'ALCHEMY_CRAFT', 1);
+        } catch {
+          // bỏ qua
+        }
+      }
+      return outcome;
     });
   }
 
