@@ -430,6 +430,43 @@ describe('Helper: achievementsByElement', () => {
   });
 });
 
+describe('ACHIEVEMENTS Phase 11.10.F item rewards', () => {
+  // Phase 11.10.F mở wire `claimReward` items grant qua `InventoryService.grantTx`
+  // với 2 milestone bronze achievements exemplar. Tests dưới khẳng định:
+  // (1) wire không bị regress (≥ 2 catalog entries có items non-empty).
+  // (2) item key/qty cụ thể ứng với spec snapshot.
+  // (3) qty không phá economy bronze (≤ 10 mỗi entry — bảo vệ inventory bloat).
+  it('có ít nhất 2 achievement với reward.items non-empty (Phase 11.10.F exemplar)', () => {
+    const withItems = ACHIEVEMENTS.filter(
+      (a) => a.reward.items && a.reward.items.length > 0
+    );
+    expect(withItems.length).toBeGreaterThanOrEqual(2);
+  });
+
+  it('first_breakthrough → 5× huyet_chi_dan (cultivation milestone HP pill)', () => {
+    const a = getAchievementDef('first_breakthrough');
+    expect(a?.reward.items).toBeDefined();
+    expect(a?.reward.items?.length).toBe(1);
+    expect(a?.reward.items?.[0]).toEqual({ itemKey: 'huyet_chi_dan', qty: 5 });
+  });
+
+  it('first_dungeon_clear → 3× tinh_thiet (exploration milestone refine ore)', () => {
+    const a = getAchievementDef('first_dungeon_clear');
+    expect(a?.reward.items).toBeDefined();
+    expect(a?.reward.items?.length).toBe(1);
+    expect(a?.reward.items?.[0]).toEqual({ itemKey: 'tinh_thiet', qty: 3 });
+  });
+
+  it('mọi reward.items[*].qty ≤ 10 ở bronze tier (anti inventory-bloat)', () => {
+    for (const a of ACHIEVEMENTS) {
+      if (a.tier !== 'bronze') continue;
+      for (const it of a.reward.items ?? []) {
+        expect(it.qty).toBeLessThanOrEqual(10);
+      }
+    }
+  });
+});
+
 describe('Helper: visibleAchievements', () => {
   it('không chứa hidden achievement', () => {
     const visible = visibleAchievements();

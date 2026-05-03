@@ -25,6 +25,12 @@
  *   (validate `completedAt!=null` + grant reward + auto-unlock title qua
  *   `titleForAchievement(key)`) + event listener cho mỗi `goalKind`.
  *
+ * Phase 11.10.F — `reward.items` non-empty exemplars: `first_breakthrough`
+ *   (5× huyet_chi_dan) + `first_dungeon_clear` (3× tinh_thiet) thực thi wire
+ *   `achievement.service.claimAchievement` → `InventoryService.grantTx` qua
+ *   `ItemLedger reason='ACHIEVEMENT_REWARD'`. Các achievement còn lại vẫn
+ *   giữ item-empty để economy nhẹ (bảo vệ inventory bloat early game).
+ *
  * Curve (32 achievement baseline):
  * - Combat: 8 (first kill / 100 kill / 1000 kill / element-specialist × 5).
  * - Cultivation: 6 (first breakthrough / mỗi major realm milestone).
@@ -223,7 +229,15 @@ export const ACHIEVEMENTS: readonly AchievementDef[] = [
     goalAmount: 1,
     element: null,
     rewardTitleKey: 'achievement_first_breakthrough',
-    reward: { linhThach: 200, exp: 100 },
+    // Phase 11.10.F — first non-empty `reward.items` to exercise wire of
+    // PR #277 (`achievement.service.claimAchievement` → `inventory.grantTx`
+    // qua `ItemLedger reason='ACHIEVEMENT_REWARD'`). 5× huyet_chi_dan = HP
+    // pill PHAM giúp player sống sót fight đầu sau breakthrough.
+    reward: {
+      linhThach: 200,
+      exp: 100,
+      items: [{ itemKey: 'huyet_chi_dan', qty: 5 }],
+    },
     hidden: false,
   },
   {
@@ -309,7 +323,15 @@ export const ACHIEVEMENTS: readonly AchievementDef[] = [
     goalAmount: 1,
     element: null,
     rewardTitleKey: 'achievement_first_dungeon',
-    reward: { linhThach: 150, exp: 80 },
+    // Phase 11.10.F — second non-empty `reward.items` cho exploration
+    // milestone. 3× tinh_thiet (ORE LINH) tiếp đường cho refine flow
+    // (Phase 11.5.B `RefineService` cost). Khuyến khích player thử refine
+    // sau dungeon đầu tiên.
+    reward: {
+      linhThach: 150,
+      exp: 80,
+      items: [{ itemKey: 'tinh_thiet', qty: 3 }],
+    },
     hidden: false,
   },
   {
