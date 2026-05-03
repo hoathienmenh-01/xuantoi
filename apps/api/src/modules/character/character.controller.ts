@@ -547,6 +547,48 @@ export class CharacterController {
   }
 
   /**
+   * Phase 11.10.E Achievement state — return server-authoritative state cho
+   * UI achievement screen: tất cả visible achievement merge với progress
+   * /completedAt/claimedAt.
+   *
+   *   - Reuse `AchievementService.listAllWithProgress`.
+   *   - Hidden achievement chỉ hiện khi đã complete (anti-spoil).
+   *   - Sort theo thứ tự catalog (`ACHIEVEMENTS` array order).
+   *   - Idempotent GET — không thay đổi state.
+   */
+  @Get('achievements')
+  async achievementsState(@Req() req: Request) {
+    const userId = await this.requireUserId(req);
+    if (!this.achievement) {
+      fail('ACHIEVEMENT_UNAVAILABLE', HttpStatus.NOT_IMPLEMENTED);
+    }
+    const character = await this.chars.findByUser(userId);
+    if (!character) fail('NO_CHARACTER', HttpStatus.NOT_FOUND);
+    try {
+      const list = await this.achievement.listAllWithProgress(character.id);
+      return {
+        ok: true,
+        data: {
+          achievements: list.map((entry) => ({
+            achievementKey: entry.achievementKey,
+            progress: entry.progress,
+            completedAt:
+              entry.completedAt === null ? null : entry.completedAt.toISOString(),
+            claimedAt:
+              entry.claimedAt === null ? null : entry.claimedAt.toISOString(),
+            def: entry.def,
+          })),
+        },
+      };
+    } catch (e) {
+      if (e instanceof AchievementError) {
+        fail(e.code, mapAchievementErrorStatus(e.code));
+      }
+      throw e;
+    }
+  }
+
+  /**
    * Phase 11.10.C-1 Achievement claim — atomic grant linhThach/tienNgoc/exp
    * + auto-unlock title qua `titleForAchievement`.
    *

@@ -40,7 +40,9 @@
       "alchemyState": "Không lấy được công thức luyện đan",
       "alchemyCraft": "Luyện đan thất bại",
       "cultivationMethodState": "Không lấy được trạng thái công pháp",
-      "cultivationMethodEquip": "Vận công pháp thất bại"
+      "cultivationMethodEquip": "Vận công pháp thất bại",
+      "achievementsState": "Không lấy được trạng thái thành tựu",
+      "achievementClaim": "Nhận thưởng thành tựu thất bại"
     }
   },
   "locale": {
@@ -266,7 +268,8 @@
       "toggle": "Mở menu điều hướng",
       "talents": "Ngộ Đạo",
       "alchemy": "Luyện Đan",
-      "cultivationMethod": "Công Pháp"
+      "cultivationMethod": "Công Pháp",
+      "achievements": "Thành Tựu"
     },
     "badge": {
       "bossActive": "Boss đang xuất thế",
@@ -1307,6 +1310,88 @@
         "ALREADY_EQUIPPED": "Công pháp này đang được vận.",
         "IN_FLIGHT": "Đang xử lý…",
         "UNKNOWN": "Vận công pháp thất bại, thử lại."
+      }
+    }
+  },
+  "achievements": {
+    "title": "Thành Tựu Lục",
+    "subtitle": "Mỗi cột mốc trên đường đại đạo. Hoàn thành để nhận linh thạch, tiên ngọc, kinh nghiệm và danh hiệu.",
+    "loading": "Đang tải thành tựu…",
+    "empty": "Không có thành tựu nào khớp bộ lọc.",
+    "summary": "Hoàn thành: {completed} • Có thể nhận: {claimable}",
+    "filter": {
+      "category": "Phân loại",
+      "tier": "Bậc",
+      "status": "Trạng thái",
+      "all": "Tất cả",
+      "shown": "Hiển thị {shown}/{total} (kho: {catalog})"
+    },
+    "category": {
+      "combat": "Chiến đấu",
+      "cultivation": "Tu luyện",
+      "exploration": "Thám hiểm",
+      "social": "Xã giao",
+      "economy": "Kinh tế",
+      "milestone": "Cột mốc",
+      "collection": "Sưu tầm"
+    },
+    "tier": {
+      "bronze": "Đồng",
+      "silver": "Bạc",
+      "gold": "Vàng",
+      "platinum": "Bạch Kim",
+      "diamond": "Kim Cương"
+    },
+    "status": {
+      "completed": "Đã hoàn thành",
+      "unclaimed": "Có thể nhận",
+      "inProgress": "Đang tiến hành",
+      "claimed": "Đã nhận"
+    },
+    "element": {
+      "kim": "Kim",
+      "moc": "Mộc",
+      "thuy": "Thuỷ",
+      "hoa": "Hoả",
+      "tho": "Thổ",
+      "loi": "Lôi",
+      "phong": "Phong",
+      "bang": "Băng",
+      "doc": "Độc",
+      "am": "Âm",
+      "duong": "Dương",
+      "hon_don": "Hỗn Độn"
+    },
+    "field": {
+      "reward": "Phần thưởng"
+    },
+    "reward": {
+      "linhThach": "Linh Thạch",
+      "tienNgoc": "Tiên Ngọc",
+      "exp": "Kinh nghiệm",
+      "title": "Danh hiệu",
+      "items": "{count} vật phẩm"
+    },
+    "button": {
+      "claim": "Nhận thưởng",
+      "claiming": "Đang nhận…",
+      "claimed": "Đã nhận",
+      "locked": "Chưa hoàn thành"
+    },
+    "claim": {
+      "success": "Đã nhận thưởng thành tựu {name}.",
+      "errors": {
+        "ACHIEVEMENT_NOT_FOUND": "Thành tựu không tồn tại.",
+        "NOT_FOUND_PROGRESS": "Bạn chưa từng tiến độ thành tựu này.",
+        "NOT_COMPLETED": "Thành tựu chưa đạt mục tiêu.",
+        "ALREADY_CLAIMED": "Bạn đã nhận thưởng rồi.",
+        "CHARACTER_NOT_FOUND": "Chưa tạo nhân vật.",
+        "NO_CHARACTER": "Chưa tạo nhân vật.",
+        "ACHIEVEMENT_UNAVAILABLE": "Hệ thống thành tựu tạm khoá.",
+        "INVALID_INPUT": "Dữ liệu không hợp lệ.",
+        "UNAUTHENTICATED": "Phiên đăng nhập đã hết.",
+        "IN_FLIGHT": "Đang xử lý…",
+        "UNKNOWN": "Nhận thưởng thất bại, thử lại."
       }
     }
   }

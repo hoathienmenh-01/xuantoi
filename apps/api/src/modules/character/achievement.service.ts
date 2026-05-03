@@ -498,6 +498,58 @@ export class AchievementService {
       };
     });
   }
+
+  /**
+   * Phase 11.10.E — Trả về full state cho UI achievement screen: mỗi
+   * achievement trong catalog (lọc hidden chưa hoàn thành) merge với progress
+   * /completedAt/claimedAt từ row CharacterAchievement.
+   *
+   *   - Catalog là source of truth (32 baseline visible). Mỗi entry luôn có
+   *     mặt trong response, kể cả khi character chưa từng track (defaults
+   *     progress=0, completedAt=null, claimedAt=null).
+   *   - Hidden achievement chỉ hiện khi `completedAt != null` (hoặc
+   *     `claimedAt != null`) — tránh spoil cho UI.
+   *   - Sort: stable theo thứ tự catalog (`ACHIEVEMENTS` array order).
+   *   - Read-only — không thay đổi state. Idempotent.
+   */
+  async listAllWithProgress(
+    characterId: string,
+  ): Promise<
+    Array<{
+      achievementKey: string;
+      progress: number;
+      completedAt: Date | null;
+      claimedAt: Date | null;
+      def: AchievementDef;
+    }>
+  > {
+    const rows = await this.prisma.characterAchievement.findMany({
+      where: { characterId },
+    });
+    const byKey = new Map(rows.map((r) => [r.achievementKey, r] as const));
+    const out: Array<{
+      achievementKey: string;
+      progress: number;
+      completedAt: Date | null;
+      claimedAt: Date | null;
+      def: AchievementDef;
+    }> = [];
+    for (const def of ACHIEVEMENTS) {
+      const row = byKey.get(def.key);
+      const completedAt = row?.completedAt ?? null;
+      const claimedAt = row?.claimedAt ?? null;
+      // Hidden achievement: skip nếu chưa complete (anti-spoil).
+      if (def.hidden && completedAt === null && claimedAt === null) continue;
+      out.push({
+        achievementKey: def.key,
+        progress: row?.progress ?? 0,
+        completedAt,
+        claimedAt,
+        def,
+      });
+    }
+    return out;
+  }
 }
 
 export type AchievementErrorCode =
