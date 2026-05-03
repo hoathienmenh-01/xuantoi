@@ -21,7 +21,9 @@ import { setActivePinia, createPinia } from 'pinia';
 
 const replaceMock = vi.fn();
 const craftMock = vi.fn();
+const upgradeFurnaceMock = vi.fn();
 const fetchStateMock = vi.fn().mockResolvedValue(undefined);
+const gameFetchStateMock = vi.fn().mockResolvedValue(undefined);
 const toastPushMock = vi.fn();
 
 interface AlchemyOutcomeStub {
@@ -77,14 +79,30 @@ const STUB_RECIPES: AlchemyRecipeStub[] = [
   },
 ];
 
+interface AlchemyUpgradePreviewStub {
+  toLevel: number;
+  linhThachCost: number;
+  realmRequirement: string | null;
+}
+
+interface AlchemyUpgradeOutcomeStub {
+  fromLevel: number;
+  toLevel: number;
+  linhThachConsumed: number;
+}
+
 interface AlchemyStoreStub {
   furnaceLevel: number;
   recipes: AlchemyRecipeStub[];
   loaded: boolean;
   inFlight: Set<string>;
   lastOutcome: AlchemyOutcomeStub | null;
+  nextUpgrade: AlchemyUpgradePreviewStub | null;
+  upgradeInFlight: boolean;
+  lastUpgradeOutcome: AlchemyUpgradeOutcomeStub | null;
   fetchState: typeof fetchStateMock;
   craft: typeof craftMock;
+  upgradeFurnace: typeof upgradeFurnaceMock;
   isCrafting: (k: string) => boolean;
   reset: () => void;
 }
@@ -95,8 +113,12 @@ const alchemyState: AlchemyStoreStub = {
   loaded: true,
   inFlight: new Set<string>(),
   lastOutcome: null,
+  nextUpgrade: null,
+  upgradeInFlight: false,
+  lastUpgradeOutcome: null,
   fetchState: fetchStateMock,
   craft: craftMock,
+  upgradeFurnace: upgradeFurnaceMock,
   isCrafting: (k: string) => alchemyState.inFlight.has(k),
   reset: vi.fn(),
 };
@@ -109,7 +131,7 @@ vi.mock('@/stores/auth', () => ({
 }));
 vi.mock('@/stores/game', () => ({
   useGameStore: () => ({
-    fetchState: vi.fn().mockResolvedValue(undefined),
+    fetchState: gameFetchStateMock,
     bindSocket: vi.fn(),
     character: { realmKey: 'truc_co' },
   }),
@@ -182,6 +204,23 @@ const i18n = createI18n({
             UNKNOWN: 'Lỗi',
           },
         },
+        upgrade: {
+          title: 'Nâng cấp lò',
+          maxNotice: 'Lò tối đa',
+          realmReq: 'Cảnh: {realm}',
+          success: 'Lò {fromLevel} -> {toLevel}',
+          button: {
+            upgrade: 'Lên L{level}',
+            upgrading: 'Đang nâng',
+            maxLevel: 'Tối đa',
+          },
+          errors: {
+            INSUFFICIENT_FUNDS: 'Thiếu LT',
+            REALM_REQUIREMENT_NOT_MET: 'Cảnh chưa đủ',
+            FURNACE_LEVEL_MAX: 'Mức tối đa',
+            UNKNOWN: 'Lỗi nâng',
+          },
+        },
       },
     },
   },
@@ -197,9 +236,15 @@ function resetState() {
   alchemyState.loaded = true;
   alchemyState.inFlight = new Set();
   alchemyState.lastOutcome = null;
+  alchemyState.nextUpgrade = null;
+  alchemyState.upgradeInFlight = false;
+  alchemyState.lastUpgradeOutcome = null;
   craftMock.mockReset();
+  upgradeFurnaceMock.mockReset();
   fetchStateMock.mockReset();
   fetchStateMock.mockResolvedValue(undefined);
+  gameFetchStateMock.mockReset();
+  gameFetchStateMock.mockResolvedValue(undefined);
   toastPushMock.mockClear();
 }
 
@@ -454,5 +499,137 @@ describe('AlchemyView — craft button & toast', () => {
     const btn = w.find('[data-testid="alchemy-craft-recipe_tieu_phuc_dan"]');
     expect(btn.attributes('disabled')).toBeDefined();
     expect(btn.text()).toBe('Đang luyện');
+  });
+});
+
+describe('AlchemyView — Phase 11.11.D-3 furnace upgrade', () => {
+  beforeEach(() => {
+    setActivePinia(createPinia());
+    vi.clearAllMocks();
+    resetState();
+  });
+
+  it('upgrade section hiện preview khi nextUpgrade != null', async () => {
+    alchemyState.nextUpgrade = {
+      toLevel: 2,
+      linhThachCost: 500,
+      realmRequirement: null,
+    };
+    const w = mountView();
+    await flushPromises();
+    expect(w.find('[data-testid="alchemy-furnace-upgrade"]').exists()).toBe(true);
+    const preview = w.find('[data-testid="alchemy-upgrade-preview"]').text();
+    expect(preview).toContain('2');
+    expect(preview).toContain('500');
+    const btn = w.find('[data-testid="alchemy-upgrade-btn"]');
+    expect(btn.attributes('disabled')).toBeUndefined();
+    expect(btn.text()).toBe('Lên L2');
+  });
+
+  it('nextUpgrade=null → max notice + button disabled', async () => {
+    alchemyState.nextUpgrade = null;
+    alchemyState.furnaceLevel = 9;
+    const w = mountView();
+    await flushPromises();
+    expect(w.find('[data-testid="alchemy-upgrade-max"]').exists()).toBe(true);
+    expect(w.find('[data-testid="alchemy-upgrade-preview"]').exists()).toBe(false);
+    const btn = w.find('[data-testid="alchemy-upgrade-btn"]');
+    expect(btn.attributes('disabled')).toBeDefined();
+    expect(btn.text()).toBe('Tối đa');
+  });
+
+  it('upgradeInFlight=true → button disabled + label Đang nâng', async () => {
+    alchemyState.nextUpgrade = {
+      toLevel: 2,
+      linhThachCost: 500,
+      realmRequirement: null,
+    };
+    alchemyState.upgradeInFlight = true;
+    const w = mountView();
+    await flushPromises();
+    const btn = w.find('[data-testid="alchemy-upgrade-btn"]');
+    expect(btn.attributes('disabled')).toBeDefined();
+    expect(btn.text()).toBe('Đang nâng');
+  });
+
+  it('click upgrade success → toast success + refetch state', async () => {
+    alchemyState.nextUpgrade = {
+      toLevel: 2,
+      linhThachCost: 500,
+      realmRequirement: null,
+    };
+    upgradeFurnaceMock.mockImplementationOnce(async () => {
+      alchemyState.lastUpgradeOutcome = {
+        fromLevel: 1,
+        toLevel: 2,
+        linhThachConsumed: 500,
+      };
+      return null;
+    });
+    const w = mountView();
+    await flushPromises();
+    fetchStateMock.mockClear();
+    gameFetchStateMock.mockClear();
+    await w.find('[data-testid="alchemy-upgrade-btn"]').trigger('click');
+    await flushPromises();
+    expect(upgradeFurnaceMock).toHaveBeenCalledTimes(1);
+    expect(toastPushMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: 'success',
+        text: 'Lò 1 -> 2',
+      }),
+    );
+    expect(fetchStateMock).toHaveBeenCalledTimes(1);
+    expect(gameFetchStateMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('upgrade server error INSUFFICIENT_FUNDS → toast error i18n', async () => {
+    alchemyState.nextUpgrade = {
+      toLevel: 2,
+      linhThachCost: 500,
+      realmRequirement: null,
+    };
+    upgradeFurnaceMock.mockResolvedValueOnce('INSUFFICIENT_FUNDS');
+    const w = mountView();
+    await flushPromises();
+    await w.find('[data-testid="alchemy-upgrade-btn"]').trigger('click');
+    await flushPromises();
+    expect(toastPushMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: 'error',
+        text: 'Thiếu LT',
+      }),
+    );
+  });
+
+  it('upgrade unknown error code → toast error fallback UNKNOWN', async () => {
+    alchemyState.nextUpgrade = {
+      toLevel: 2,
+      linhThachCost: 500,
+      realmRequirement: null,
+    };
+    upgradeFurnaceMock.mockResolvedValueOnce('SOME_NEW_CODE');
+    const w = mountView();
+    await flushPromises();
+    await w.find('[data-testid="alchemy-upgrade-btn"]').trigger('click');
+    await flushPromises();
+    expect(toastPushMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: 'error',
+        text: 'Lỗi nâng',
+      }),
+    );
+  });
+
+  it('preview hiện realmRequirement khi có', async () => {
+    alchemyState.nextUpgrade = {
+      toLevel: 4,
+      linhThachCost: 5_000,
+      realmRequirement: 'truc_co',
+    };
+    const w = mountView();
+    await flushPromises();
+    const preview = w.find('[data-testid="alchemy-upgrade-preview"]').text();
+    expect(preview).toContain('truc_co');
   });
 });
