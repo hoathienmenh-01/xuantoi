@@ -8,17 +8,26 @@ vi.mock('@/i18n', () => ({
   },
 }));
 
-const { postMock } = vi.hoisted(() => ({
+const { postMock, getMock } = vi.hoisted(() => ({
   postMock: vi.fn(),
+  getMock: vi.fn(),
 }));
 
 vi.mock('@/api/client', () => ({
   apiClient: {
     post: postMock,
+    get: getMock,
   },
 }));
 
-import { attemptTribulation, type TribulationOutcomeView } from '@/api/tribulation';
+import {
+  attemptTribulation,
+  fetchAttemptLog,
+  TRIBULATION_LOG_DEFAULT_LIMIT,
+  TRIBULATION_LOG_MAX_LIMIT,
+  type TribulationAttemptLogView,
+  type TribulationOutcomeView,
+} from '@/api/tribulation';
 
 const STUB_SUCCESS_OUTCOME: TribulationOutcomeView = {
   success: true,
@@ -128,5 +137,108 @@ describe('api/tribulation — Phase 11.6.D client', () => {
   it('attemptTribulation: empty data → throws fallback Error', async () => {
     postMock.mockResolvedValueOnce({ data: { ok: true } });
     await expect(attemptTribulation()).rejects.toBeInstanceOf(Error);
+  });
+});
+
+const STUB_LOG_ROW: TribulationAttemptLogView = {
+  id: 'log-1',
+  tribulationKey: 'kim_dan_to_nguyen_anh',
+  fromRealmKey: 'kim_dan',
+  toRealmKey: 'nguyen_anh',
+  severity: 'major',
+  type: 'lei',
+  success: true,
+  wavesCompleted: 5,
+  totalDamage: 1234,
+  finalHp: 567,
+  hpInitial: 1000,
+  expBefore: '100000',
+  expAfter: '150000',
+  expLoss: '0',
+  taoMaActive: false,
+  taoMaExpiresAt: null,
+  cooldownAt: null,
+  linhThachReward: 1000,
+  expBonusReward: '50000',
+  titleKeyReward: 'do_kiep_thanh_cong',
+  attemptIndex: 1,
+  taoMaRoll: 0.5,
+  createdAt: '2026-05-02T01:00:00.000Z',
+};
+
+describe('api/tribulation — Phase 11.6.G fetchAttemptLog', () => {
+  beforeEach(() => {
+    postMock.mockReset();
+    getMock.mockReset();
+  });
+
+  it('fetchAttemptLog (no arg) → GET /character/tribulation/log không query', async () => {
+    getMock.mockResolvedValueOnce({
+      data: {
+        ok: true,
+        data: { rows: [STUB_LOG_ROW], limit: 20 },
+      },
+    });
+    const out = await fetchAttemptLog();
+    expect(getMock).toHaveBeenCalledWith('/character/tribulation/log');
+    expect(out.rows).toHaveLength(1);
+    expect(out.rows[0]!.id).toBe('log-1');
+    expect(out.limit).toBe(20);
+  });
+
+  it('fetchAttemptLog(5) → GET với ?limit=5', async () => {
+    getMock.mockResolvedValueOnce({
+      data: {
+        ok: true,
+        data: { rows: [], limit: 5 },
+      },
+    });
+    await fetchAttemptLog(5);
+    expect(getMock).toHaveBeenCalledWith('/character/tribulation/log?limit=5');
+  });
+
+  it('fetchAttemptLog(0) → GET với ?limit=0 (server clamp)', async () => {
+    getMock.mockResolvedValueOnce({
+      data: {
+        ok: true,
+        data: { rows: [], limit: 1 },
+      },
+    });
+    await fetchAttemptLog(0);
+    // Client KHÔNG clamp — server-authoritative clamp về [1, MAX]
+    expect(getMock).toHaveBeenCalledWith('/character/tribulation/log?limit=0');
+  });
+
+  it('fetchAttemptLog: empty rows → trả về rows=[]', async () => {
+    getMock.mockResolvedValueOnce({
+      data: {
+        ok: true,
+        data: { rows: [], limit: 20 },
+      },
+    });
+    const out = await fetchAttemptLog();
+    expect(out.rows).toEqual([]);
+  });
+
+  it('fetchAttemptLog: server reject (UNAUTHENTICATED) → throws preserving code', async () => {
+    getMock.mockResolvedValueOnce({
+      data: {
+        ok: false,
+        error: { code: 'UNAUTHENTICATED', message: 'Need login' },
+      },
+    });
+    await expect(fetchAttemptLog()).rejects.toMatchObject({
+      code: 'UNAUTHENTICATED',
+    });
+  });
+
+  it('fetchAttemptLog: empty data → throws fallback Error', async () => {
+    getMock.mockResolvedValueOnce({ data: { ok: true } });
+    await expect(fetchAttemptLog()).rejects.toBeInstanceOf(Error);
+  });
+
+  it('TRIBULATION_LOG constants match server defaults', () => {
+    expect(TRIBULATION_LOG_DEFAULT_LIMIT).toBe(20);
+    expect(TRIBULATION_LOG_MAX_LIMIT).toBe(100);
   });
 });

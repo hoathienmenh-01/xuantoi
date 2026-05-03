@@ -30,13 +30,18 @@ interface TribulationStateStub {
   lastOutcome: unknown;
   inFlight: boolean;
   lastError: string | null;
+  history: unknown[] | null;
+  historyLoading: boolean;
+  historyError: string | null;
   attempt: ReturnType<typeof vi.fn>;
   clearLastOutcome: ReturnType<typeof vi.fn>;
+  fetchHistory: ReturnType<typeof vi.fn>;
 }
 
 const replaceMock = vi.fn();
 const attemptMock = vi.fn();
 const clearLastOutcomeMock = vi.fn();
+const fetchHistoryMock = vi.fn().mockResolvedValue(null);
 const fetchStateMock = vi.fn().mockResolvedValue(undefined);
 const toastPushMock = vi.fn();
 
@@ -44,8 +49,12 @@ const tribulationState: TribulationStateStub = {
   lastOutcome: null,
   inFlight: false,
   lastError: null,
+  history: null,
+  historyLoading: false,
+  historyError: null,
   attempt: attemptMock,
   clearLastOutcome: clearLastOutcomeMock,
+  fetchHistory: fetchHistoryMock,
 };
 
 const gameState: { character: CharacterStub | null; realmFullName: string } = {
@@ -174,6 +183,26 @@ const i18n = createI18n({
           COOLDOWN_ACTIVE: 'Cooldown',
           UNKNOWN: 'Lỗi',
         },
+        history: {
+          title: 'Lịch sử',
+          loading: 'Đang tải',
+          empty: 'Chưa có lần nào',
+          loadError: 'Lỗi tải',
+          retry: 'Tải lại',
+          successBadge: 'Thành công',
+          failBadge: 'Thất bại',
+          attemptIndex: 'Lần #{index}',
+          transition: '{from} → {to}',
+          waves: '{count} đợt',
+          damage: '{dmg} dmg',
+          rewardLinhThach: '+{amount} LT',
+          rewardExpBonus: '+{amount} EXP',
+          rewardTitle: 'Title {key}',
+          expLoss: '−{amount} EXP',
+          cooldownAt: 'Cooldown {ts}',
+          taoMa: 'Tâm Ma {ts}',
+          createdAt: 'Ngày {ts}',
+        },
       },
     },
   },
@@ -187,10 +216,15 @@ function resetState() {
   tribulationState.lastOutcome = null;
   tribulationState.inFlight = false;
   tribulationState.lastError = null;
+  tribulationState.history = null;
+  tribulationState.historyLoading = false;
+  tribulationState.historyError = null;
   gameState.character = { realmKey: 'kim_dan', realmStage: 9 };
   gameState.realmFullName = 'Kim Đan Cửu Trọng';
   attemptMock.mockReset();
   clearLastOutcomeMock.mockReset();
+  fetchHistoryMock.mockReset();
+  fetchHistoryMock.mockResolvedValue(null);
   fetchStateMock.mockReset();
   fetchStateMock.mockResolvedValue(undefined);
   toastPushMock.mockClear();
@@ -560,5 +594,172 @@ describe('TribulationView — Phase 11.6.E cooldown + Tâm Ma', () => {
     await flushPromises();
     const remaining = w.find('[data-testid="tribulation-cooldown-remaining"]');
     expect(remaining.text()).toMatch(/\d+:\d{2}:\d{2}/);
+  });
+});
+
+const STUB_HISTORY_SUCCESS = {
+  id: 'log-success-1',
+  tribulationKey: 'kim_dan_to_nguyen_anh',
+  fromRealmKey: 'kim_dan',
+  toRealmKey: 'nguyen_anh',
+  severity: 'major',
+  type: 'lei',
+  success: true,
+  wavesCompleted: 5,
+  totalDamage: 1200,
+  finalHp: 567,
+  hpInitial: 1000,
+  expBefore: '100000',
+  expAfter: '150000',
+  expLoss: '0',
+  taoMaActive: false,
+  taoMaExpiresAt: null,
+  cooldownAt: null,
+  linhThachReward: 1000,
+  expBonusReward: '50000',
+  titleKeyReward: 'do_kiep_thanh_cong',
+  attemptIndex: 2,
+  taoMaRoll: 0.5,
+  createdAt: '2026-05-02T01:00:00.000Z',
+};
+
+const STUB_HISTORY_FAIL = {
+  id: 'log-fail-1',
+  tribulationKey: 'kim_dan_to_nguyen_anh',
+  fromRealmKey: 'kim_dan',
+  toRealmKey: 'nguyen_anh',
+  severity: 'major',
+  type: 'lei',
+  success: false,
+  wavesCompleted: 2,
+  totalDamage: 800,
+  finalHp: 0,
+  hpInitial: 1000,
+  expBefore: '100000',
+  expAfter: '50000',
+  expLoss: '50000',
+  taoMaActive: true,
+  taoMaExpiresAt: '2026-05-02T03:00:00.000Z',
+  cooldownAt: '2026-05-02T02:00:00.000Z',
+  linhThachReward: 0,
+  expBonusReward: '0',
+  titleKeyReward: null,
+  attemptIndex: 1,
+  taoMaRoll: 0.99,
+  createdAt: '2026-05-02T00:00:00.000Z',
+};
+
+describe('TribulationView — Phase 11.6.G history view', () => {
+  beforeEach(() => {
+    setActivePinia(createPinia());
+    vi.clearAllMocks();
+    resetState();
+  });
+
+  it('history section ALWAYS render (always present in DOM)', async () => {
+    const w = mountView();
+    await flushPromises();
+    expect(w.find('[data-testid="tribulation-history"]').exists()).toBe(true);
+  });
+
+  it('on mount → fetchHistory called once (idempotent GET)', async () => {
+    mountView();
+    await flushPromises();
+    expect(fetchHistoryMock).toHaveBeenCalled();
+  });
+
+  it('historyLoading=true → render loading state, không render list/empty/error', async () => {
+    tribulationState.historyLoading = true;
+    const w = mountView();
+    await flushPromises();
+    expect(w.find('[data-testid="tribulation-history-loading"]').exists()).toBe(true);
+    expect(w.find('[data-testid="tribulation-history-list"]').exists()).toBe(false);
+    expect(w.find('[data-testid="tribulation-history-empty"]').exists()).toBe(false);
+    expect(w.find('[data-testid="tribulation-history-error"]').exists()).toBe(false);
+  });
+
+  it('historyError set → render error state với loadError text', async () => {
+    tribulationState.historyError = 'NETWORK_ERROR';
+    const w = mountView();
+    await flushPromises();
+    const err = w.find('[data-testid="tribulation-history-error"]');
+    expect(err.exists()).toBe(true);
+    expect(err.text()).toContain('Lỗi tải');
+  });
+
+  it('history=[] → render empty state', async () => {
+    tribulationState.history = [];
+    const w = mountView();
+    await flushPromises();
+    expect(w.find('[data-testid="tribulation-history-empty"]').exists()).toBe(true);
+    expect(w.find('[data-testid="tribulation-history-list"]').exists()).toBe(false);
+  });
+
+  it('history với 1 success row → render row + success badge + reward', async () => {
+    tribulationState.history = [STUB_HISTORY_SUCCESS];
+    const w = mountView();
+    await flushPromises();
+    const list = w.find('[data-testid="tribulation-history-list"]');
+    expect(list.exists()).toBe(true);
+    const row = w.find('[data-testid="tribulation-history-row-log-success-1"]');
+    expect(row.exists()).toBe(true);
+    expect(row.text()).toContain('Thành công');
+    expect(row.text()).toContain('Lần #2');
+    expect(row.text()).toContain('1.000 LT');
+    expect(row.text()).toContain('50.000 EXP');
+    expect(row.text()).toContain('do_kiep_thanh_cong');
+  });
+
+  it('history với 1 fail row → render row + fail badge + penalty', async () => {
+    tribulationState.history = [STUB_HISTORY_FAIL];
+    const w = mountView();
+    await flushPromises();
+    const row = w.find('[data-testid="tribulation-history-row-log-fail-1"]');
+    expect(row.exists()).toBe(true);
+    expect(row.text()).toContain('Thất bại');
+    expect(row.text()).toContain('−50.000 EXP');
+    expect(row.text()).toContain('Cooldown');
+    expect(row.text()).toContain('Tâm Ma');
+  });
+
+  it('history với multi rows → render đúng thứ tự + count', async () => {
+    tribulationState.history = [STUB_HISTORY_SUCCESS, STUB_HISTORY_FAIL];
+    const w = mountView();
+    await flushPromises();
+    const rows = w.findAll('[data-testid^="tribulation-history-row-"]');
+    expect(rows).toHaveLength(2);
+    expect(rows[0]!.attributes('data-testid')).toBe(
+      'tribulation-history-row-log-success-1',
+    );
+    expect(rows[1]!.attributes('data-testid')).toBe(
+      'tribulation-history-row-log-fail-1',
+    );
+  });
+
+  it('click reload button → fetchHistory called lần thứ 2', async () => {
+    tribulationState.history = [];
+    const w = mountView();
+    await flushPromises();
+    fetchHistoryMock.mockClear();
+    await w.find('[data-testid="tribulation-history-reload"]').trigger('click');
+    expect(fetchHistoryMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('reload button HIDE khi historyLoading=true', async () => {
+    tribulationState.historyLoading = true;
+    const w = mountView();
+    await flushPromises();
+    expect(w.find('[data-testid="tribulation-history-reload"]').exists()).toBe(false);
+  });
+
+  it('attempt success → fetchHistory được gọi lại sau khi store.attempt resolve', async () => {
+    attemptMock.mockResolvedValueOnce(null);
+    tribulationState.lastOutcome = STUB_SUCCESS_OUTCOME;
+    const w = mountView();
+    await flushPromises();
+    fetchHistoryMock.mockClear();
+    await w.find('[data-testid="tribulation-attempt-button"]').trigger('click');
+    await flushPromises();
+    expect(fetchHistoryMock).toHaveBeenCalled();
   });
 });

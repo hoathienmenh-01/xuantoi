@@ -35,6 +35,15 @@ export const useTribulationStore = defineStore('tribulation', () => {
   const inFlight = ref(false);
   const lastError = ref<string | null>(null);
 
+  /**
+   * Phase 11.6.G — history of past attempts. `null` = chưa fetch (initial),
+   * `[]` = fetched but empty (chưa attempt lần nào). `historyLoading`/
+   * `historyError` cho UI loading + retry banner.
+   */
+  const history = ref<api.TribulationAttemptLogView[] | null>(null);
+  const historyLoading = ref(false);
+  const historyError = ref<string | null>(null);
+
   function clearLastOutcome(): void {
     lastOutcome.value = null;
   }
@@ -64,18 +73,50 @@ export const useTribulationStore = defineStore('tribulation', () => {
     }
   }
 
+  /**
+   * Phase 11.6.G — fetch history from `GET /character/tribulation/log`.
+   * Idempotent. Race-protected via `historyLoading` (chống double-fetch khi
+   * mount nhanh nhiều lần). Trả về error code string hoặc `null` thành công.
+   */
+  async function fetchHistory(limit?: number): Promise<string | null> {
+    if (historyLoading.value) return 'IN_FLIGHT';
+    historyLoading.value = true;
+    historyError.value = null;
+    try {
+      const res = await api.fetchAttemptLog(limit);
+      history.value = res.rows;
+      return null;
+    } catch (e) {
+      const code =
+        (e as { code?: string }).code ??
+        (e as { error?: { code?: string } }).error?.code ??
+        'UNKNOWN';
+      historyError.value = code;
+      return code;
+    } finally {
+      historyLoading.value = false;
+    }
+  }
+
   function reset(): void {
     lastOutcome.value = null;
     inFlight.value = false;
     lastError.value = null;
+    history.value = null;
+    historyLoading.value = false;
+    historyError.value = null;
   }
 
   return {
     lastOutcome,
     inFlight,
     lastError,
+    history,
+    historyLoading,
+    historyError,
     clearLastOutcome,
     attempt,
+    fetchHistory,
     reset,
   };
 });

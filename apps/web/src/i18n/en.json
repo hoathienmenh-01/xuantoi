@@ -1505,6 +1505,26 @@
       "UNAUTHENTICATED": "Session expired.",
       "IN_FLIGHT": "Processing…",
       "UNKNOWN": "Tribulation attempt failed, please retry."
+    },
+    "history": {
+      "title": "Tribulation History",
+      "loading": "Loading history…",
+      "empty": "No tribulation attempts yet.",
+      "loadError": "Failed to load tribulation history.",
+      "retry": "Reload",
+      "successBadge": "Success",
+      "failBadge": "Failed",
+      "attemptIndex": "Attempt #{index}",
+      "transition": "{from} → {to}",
+      "waves": "{count} waves",
+      "damage": "{dmg} damage",
+      "rewardLinhThach": "+{amount} linh thạch",
+      "rewardExpBonus": "+{amount} EXP bonus",
+      "rewardTitle": "Title: {key}",
+      "expLoss": "−{amount} EXP",
+      "cooldownAt": "Cooldown until {ts}",
+      "taoMa": "Tâm Ma until {ts}",
+      "createdAt": "Date: {ts}"
     }
   }
 }

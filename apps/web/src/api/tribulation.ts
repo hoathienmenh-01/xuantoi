@@ -91,3 +91,65 @@ export async function attemptTribulation(): Promise<TribulationOutcomeView> {
   if (!data.ok || !data.data) throw data.error ?? fallbackError('tribulation');
   return data.data.tribulation;
 }
+
+/**
+ * Phase 11.6.G — view shape của 1 row trong history list. Mirror
+ * `TribulationAttemptLogView` server (`apps/api/.../tribulation.service.ts`).
+ *
+ * BigInt fields (`expBefore`/`expAfter`/`expLoss`/`expBonusReward`) cast
+ * → string ở server side để giữ precision khi qua JSON.
+ *
+ * Date fields (`createdAt`/`cooldownAt`/`taoMaExpiresAt`) cast → ISO string.
+ */
+export interface TribulationAttemptLogView {
+  id: string;
+  tribulationKey: string;
+  fromRealmKey: string;
+  toRealmKey: string;
+  severity: string;
+  type: string;
+  success: boolean;
+  wavesCompleted: number;
+  totalDamage: number;
+  finalHp: number;
+  hpInitial: number;
+  expBefore: string;
+  expAfter: string;
+  expLoss: string;
+  taoMaActive: boolean;
+  taoMaExpiresAt: string | null;
+  cooldownAt: string | null;
+  linhThachReward: number;
+  expBonusReward: string;
+  titleKeyReward: string | null;
+  attemptIndex: number;
+  taoMaRoll: number;
+  createdAt: string;
+}
+
+/** Pagination defaults — match server `TRIBULATION_LOG_DEFAULT_LIMIT`/`MAX_LIMIT`. */
+export const TRIBULATION_LOG_DEFAULT_LIMIT = 20;
+export const TRIBULATION_LOG_MAX_LIMIT = 100;
+
+/**
+ * Phase 11.6.G — GET /character/tribulation/log?limit=N (Phase 11.6.F endpoint).
+ *
+ * Idempotent GET. Server clamp `?limit` về [1, MAX] + fallback default nếu
+ * invalid. Trả về DESC theo `createdAt`. Empty list nếu chưa từng attempt.
+ *
+ * Throw object preserving `code` từ envelope hoặc fallback Error nếu data
+ * vắng.
+ */
+export async function fetchAttemptLog(
+  limit?: number,
+): Promise<{ rows: TribulationAttemptLogView[]; limit: number }> {
+  const url =
+    limit !== undefined
+      ? `/character/tribulation/log?limit=${encodeURIComponent(String(limit))}`
+      : '/character/tribulation/log';
+  const { data } = await apiClient.get<
+    Envelope<{ rows: TribulationAttemptLogView[]; limit: number }>
+  >(url);
+  if (!data.ok || !data.data) throw data.error ?? fallbackError('tribulation');
+  return data.data;
+}
