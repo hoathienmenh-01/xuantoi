@@ -194,6 +194,43 @@ onMounted(async () => {
         </div>
       </header>
 
+      <!--
+        Phase 11.10.F — stats summary 4 badge (total/locked/claimable/claimed)
+        tính trên FULL `rows` (không phải filtered). Counts không đổi khi user
+        toggle category/tier/status filter.
+      -->
+      <section
+        v-if="achievements.loaded && achievements.totalCount > 0"
+        class="flex items-center gap-2 flex-wrap text-xs"
+        data-testid="achievements-stats"
+      >
+        <span class="text-ink-300">{{ t('achievements.stats.label') }}</span>
+        <span
+          class="px-2 py-0.5 rounded border bg-ink-700/30 border-ink-300/30 text-ink-100"
+          data-testid="achievements-stats-total"
+        >
+          {{ t('achievements.stats.total', { count: achievements.totalCount }) }}
+        </span>
+        <span
+          class="px-2 py-0.5 rounded border bg-slate-700/30 border-slate-500/40 text-slate-100"
+          data-testid="achievements-stats-locked"
+        >
+          {{ t('achievements.stats.locked', { count: achievements.lockedCount }) }}
+        </span>
+        <span
+          class="px-2 py-0.5 rounded border bg-amber-700/30 border-amber-500/40 text-amber-100"
+          data-testid="achievements-stats-claimable"
+        >
+          {{ t('achievements.stats.claimable', { count: achievements.claimableCount }) }}
+        </span>
+        <span
+          class="px-2 py-0.5 rounded border bg-emerald-700/30 border-emerald-500/40 text-emerald-100"
+          data-testid="achievements-stats-claimed"
+        >
+          {{ t('achievements.stats.claimed', { count: achievements.claimedCount }) }}
+        </span>
+      </section>
+
       <section class="flex flex-wrap gap-3 items-center text-xs">
         <div class="flex items-center gap-2">
           <label class="text-ink-300">{{ t('achievements.filter.category') }}</label>

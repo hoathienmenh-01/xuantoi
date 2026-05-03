@@ -107,6 +107,10 @@ interface AchStoreStub {
   lastClaim: unknown;
   completedCount: number;
   claimableCount: number;
+  // Phase 11.10.F — derived getters mirror Pinia computed.
+  readonly totalCount: number;
+  readonly claimedCount: number;
+  readonly lockedCount: number;
   fetchState: typeof fetchStateMock;
   isClaiming: (k: string) => boolean;
   findRow: (k: string) => RowStub | undefined;
@@ -121,6 +125,15 @@ const achState: AchStoreStub = {
   lastClaim: null,
   completedCount: 2,
   claimableCount: 1,
+  get totalCount(): number {
+    return this.rows.length;
+  },
+  get claimedCount(): number {
+    return this.rows.filter((r) => r.claimedAt !== null).length;
+  },
+  get lockedCount(): number {
+    return this.rows.filter((r) => r.completedAt === null).length;
+  },
   fetchState: fetchStateMock,
   isClaiming: (k: string) => achState.inFlight.has(k),
   findRow: (k: string) => achState.rows.find((r) => r.achievementKey === k),
@@ -175,6 +188,13 @@ const i18n = createI18n({
         loading: 'Đang tải',
         empty: 'Trống',
         summary: 'Hoàn thành: {completed} • Có thể nhận: {claimable}',
+        stats: {
+          label: 'Tổng kết:',
+          total: 'Tổng {count}',
+          locked: 'Chưa đạt {count}',
+          claimable: 'Có thể nhận {count}',
+          claimed: 'Đã nhận {count}',
+        },
         filter: {
           category: 'Phân loại',
           tier: 'Bậc',
@@ -487,5 +507,94 @@ describe('AchievementView — claim button', () => {
     const btn = w.find('[data-testid="achievements-claim-first_monster_kill"]');
     expect((btn.element as HTMLButtonElement).disabled).toBe(true);
     expect(btn.text()).toContain('Đang nhận');
+  });
+});
+
+/** Phase 11.10.F — stats summary 4-badge UI. */
+describe('AchievementView — Phase 11.10.F stats summary', () => {
+  beforeEach(() => {
+    setActivePinia(createPinia());
+    vi.clearAllMocks();
+    resetState();
+  });
+
+  it('không render stats khi loaded=false', async () => {
+    achState.loaded = false;
+    const w = mountView();
+    await flushPromises();
+    expect(w.find('[data-testid="achievements-stats"]').exists()).toBe(false);
+  });
+
+  it('không render stats khi rows empty (totalCount=0)', async () => {
+    achState.rows = [];
+    achState.loaded = true;
+    const w = mountView();
+    await flushPromises();
+    expect(w.find('[data-testid="achievements-stats"]').exists()).toBe(false);
+  });
+
+  it('render 4 stats badge (total/locked/claimable/claimed) khi có rows', async () => {
+    const w = mountView();
+    await flushPromises();
+    expect(w.find('[data-testid="achievements-stats"]').exists()).toBe(true);
+    expect(
+      w.find('[data-testid="achievements-stats-total"]').exists(),
+    ).toBe(true);
+    expect(
+      w.find('[data-testid="achievements-stats-locked"]').exists(),
+    ).toBe(true);
+    expect(
+      w.find('[data-testid="achievements-stats-claimable"]').exists(),
+    ).toBe(true);
+    expect(
+      w.find('[data-testid="achievements-stats-claimed"]').exists(),
+    ).toBe(true);
+  });
+
+  it('counts đúng cho mix rows: total=3, locked=1, claimable=1, claimed=1', async () => {
+    // resetState rows = [ROW_UNCLAIMED, ROW_CLAIMED, ROW_IN_PROGRESS]
+    const w = mountView();
+    await flushPromises();
+    expect(
+      w.find('[data-testid="achievements-stats-total"]').text(),
+    ).toContain('3');
+    expect(
+      w.find('[data-testid="achievements-stats-locked"]').text(),
+    ).toContain('1');
+    expect(
+      w.find('[data-testid="achievements-stats-claimable"]').text(),
+    ).toContain('1');
+    expect(
+      w.find('[data-testid="achievements-stats-claimed"]').text(),
+    ).toContain('1');
+  });
+
+  it('counts cập nhật khi rows thay đổi', async () => {
+    achState.rows = [ROW_UNCLAIMED];
+    const w = mountView();
+    await flushPromises();
+    expect(
+      w.find('[data-testid="achievements-stats-total"]').text(),
+    ).toContain('1');
+    expect(
+      w.find('[data-testid="achievements-stats-claimable"]').text(),
+    ).toContain('1');
+    expect(
+      w.find('[data-testid="achievements-stats-locked"]').text(),
+    ).toContain('0');
+  });
+
+  it('stats render trên filter section (DOM order)', async () => {
+    const w = mountView();
+    await flushPromises();
+    const stats = w.find('[data-testid="achievements-stats"]').element;
+    const filterCat = w.find('[data-testid="achievements-filter-category"]')
+      .element;
+    expect(stats).toBeTruthy();
+    expect(filterCat).toBeTruthy();
+    const pos = stats.compareDocumentPosition(filterCat);
+    // Filter is descendant-and-following, so result includes
+    // DOCUMENT_POSITION_FOLLOWING (4). Use simple ordering check.
+    expect(pos === Node.DOCUMENT_POSITION_FOLLOWING).toBe(true);
   });
 });

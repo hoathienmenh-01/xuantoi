@@ -54,6 +54,20 @@ export const useAchievementsStore = defineStore('achievements', () => {
         (r) => r.completedAt !== null && r.claimedAt === null,
       ).length,
   );
+  /**
+   * Phase 11.10.F — extra counts cho stats summary UI.
+   *   - `totalCount`: full catalog size (rows = catalog + progress merge).
+   *   - `claimedCount`: rows đã claimed (completed + claimedAt set).
+   *   - `lockedCount`: chưa complete (completedAt = null) → derived.
+   * `completedCount`/`claimableCount` đã có ở trên cho backward-compat.
+   */
+  const totalCount = computed(() => rows.value.length);
+  const claimedCount = computed(
+    () => rows.value.filter((r) => r.claimedAt !== null).length,
+  );
+  const lockedCount = computed(
+    () => rows.value.filter((r) => r.completedAt === null).length,
+  );
 
   /**
    * Server-authoritative claim. Returns error code (string) on failure,
@@ -107,6 +121,9 @@ export const useAchievementsStore = defineStore('achievements', () => {
     lastClaim,
     completedCount,
     claimableCount,
+    totalCount,
+    claimedCount,
+    lockedCount,
     fetchState,
     isClaiming,
     findRow,
