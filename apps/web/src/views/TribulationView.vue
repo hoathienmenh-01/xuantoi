@@ -10,14 +10,17 @@
  *
  * Layout:
  *   - Header: title + character realm + stage.
+ *   - Cooldown banner (nếu `tribulationCooldownAt` còn hiệu lực): live
+ *     countdown đến lúc retry được. Phase 11.6.E.
+ *   - Tâm Ma banner (nếu `taoMaUntil` còn hiệu lực): countdown debuff. Phase 11.6.E.
  *   - Upcoming tribulation card (nếu có def cho transition):
  *       - Tên + severity badge + type badge.
  *       - Description (lore).
  *       - Stat: số đợt (waves), reward preview (linhThach + expBonus +
  *         titleKey), failure penalty preview (expLossRatio + cooldownMinutes
  *         + taoMaDebuffChance).
- *       - Button "Vượt kiếp" — disable nếu inFlight, hoặc not at peak,
- *         hoặc no def.
+ *       - Button "Vượt kiếp" — disable nếu inFlight, not at peak, no def,
+ *         hoặc cooldown active. Phase 11.6.E pre-check tránh spam server reject.
  *   - Empty state (nếu không có def): hiển thị msg "low-tier transition,
  *     dùng Đột phá thông thường" hoặc "no next realm".
  *   - Last outcome banner (nếu vừa attempt phiên này):
@@ -25,12 +28,10 @@
  *       - Fail: "Thất bại" + penalty detail (expLoss + cooldownAt +
  *         taoMa nếu có).
  *
- * KHÔNG đụng schema/seed/runtime — pure FE wire của 1 endpoint Phase 11.6.B.
- *
- * MVP scope không pre-check cooldown từ character state (payload không có
- * `tribulationCooldownAt`). Server respond `COOLDOWN_ACTIVE` → toast lỗi.
+ * KHÔNG đụng schema/seed/runtime — pure FE wire của 1 endpoint Phase 11.6.B
+ * + 2 field expose Phase 11.6.E (`tribulationCooldownAt`/`taoMaUntil`).
  */
-import { computed, onMounted, ref } from 'vue';
+import { computed, onMounted, onUnmounted, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useRouter } from 'vue-router';
 import {
@@ -52,11 +53,63 @@ const toast = useToastStore();
 const router = useRouter();
 const { t } = useI18n();
 
+/**
+ * Live ticker — re-evaluate computed `cooldownActive`/`cooldownRemainingText`/
+ * `taoMaActive`/`taoMaRemainingText` mỗi giây để countdown chạy mượt mà
+ * không cần fetchState lặp lại.
+ */
+const nowMs = ref<number>(Date.now());
+let tickerHandle: ReturnType<typeof setInterval> | null = null;
+
 /** Current peak detection: stage 9 + character exists. */
 const atPeak = computed<boolean>(() => {
   const c = game.character;
   if (!c) return false;
   return c.realmStage >= 9;
+});
+
+/** Phase 11.6.E — cooldown active flag (server-side persisted timestamp). */
+const cooldownActive = computed<boolean>(() => {
+  const ts = game.character?.tribulationCooldownAt;
+  if (!ts) return false;
+  const ms = Date.parse(ts);
+  if (!Number.isFinite(ms)) return false;
+  return ms > nowMs.value;
+});
+
+/** Phase 11.6.E — Tâm Ma debuff active flag. */
+const taoMaActive = computed<boolean>(() => {
+  const ts = game.character?.taoMaUntil;
+  if (!ts) return false;
+  const ms = Date.parse(ts);
+  if (!Number.isFinite(ms)) return false;
+  return ms > nowMs.value;
+});
+
+function fmtRemaining(ms: number): string {
+  if (ms <= 0) return '0:00';
+  const totalSec = Math.ceil(ms / 1000);
+  const h = Math.floor(totalSec / 3600);
+  const m = Math.floor((totalSec % 3600) / 60);
+  const s = totalSec % 60;
+  if (h > 0) {
+    return `${h}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+  }
+  return `${m}:${String(s).padStart(2, '0')}`;
+}
+
+const cooldownRemainingText = computed<string>(() => {
+  const ts = game.character?.tribulationCooldownAt;
+  if (!ts) return '';
+  const ms = Date.parse(ts) - nowMs.value;
+  return fmtRemaining(ms);
+});
+
+const taoMaRemainingText = computed<string>(() => {
+  const ts = game.character?.taoMaUntil;
+  if (!ts) return '';
+  const ms = Date.parse(ts) - nowMs.value;
+  return fmtRemaining(ms);
 });
 
 /** Realm name + stage display (e.g. "Kim Đan Cửu Trọng"). */
@@ -100,6 +153,7 @@ const buttonDisabled = computed<boolean>(() => {
   if (tribulation.inFlight) return true;
   if (!upcomingDef.value) return true;
   if (!atPeak.value) return true;
+  if (cooldownActive.value) return true;
   return false;
 });
 
@@ -107,6 +161,9 @@ const buttonLabel = computed<string>(() => {
   if (tribulation.inFlight) return t('tribulation.button.attempting');
   if (!upcomingDef.value) return t('tribulation.button.unavailable');
   if (!atPeak.value) return t('tribulation.button.notAtPeak');
+  if (cooldownActive.value) {
+    return t('tribulation.button.cooldown', { remaining: cooldownRemainingText.value });
+  }
   return t('tribulation.button.attempt');
 });
 
@@ -198,6 +255,17 @@ onMounted(async () => {
   }
   await game.fetchState().catch(() => null);
   game.bindSocket();
+  // Phase 11.6.E — live countdown ticker (1 Hz), đủ smooth + đủ rẻ.
+  tickerHandle = setInterval(() => {
+    nowMs.value = Date.now();
+  }, 1000);
+});
+
+onUnmounted(() => {
+  if (tickerHandle !== null) {
+    clearInterval(tickerHandle);
+    tickerHandle = null;
+  }
 });
 </script>
 
@@ -219,6 +287,30 @@ onMounted(async () => {
           {{ t('tribulation.currentRealm', { name: currentRealmFull }) }}
         </div>
       </header>
+
+      <!-- Phase 11.6.E — cooldown banner (live countdown) -->
+      <section
+        v-if="cooldownActive"
+        class="rounded p-3 border bg-amber-900/30 border-amber-500/40 text-amber-100 text-xs"
+        data-testid="tribulation-cooldown-banner"
+      >
+        <div class="font-semibold mb-0.5">{{ t('tribulation.cooldown.title') }}</div>
+        <div data-testid="tribulation-cooldown-remaining">
+          {{ t('tribulation.cooldown.remaining', { remaining: cooldownRemainingText }) }}
+        </div>
+      </section>
+
+      <!-- Phase 11.6.E — Tâm Ma debuff banner -->
+      <section
+        v-if="taoMaActive"
+        class="rounded p-3 border bg-violet-900/30 border-violet-500/40 text-violet-100 text-xs"
+        data-testid="tribulation-taoma-banner"
+      >
+        <div class="font-semibold mb-0.5">{{ t('tribulation.taoMa.title') }}</div>
+        <div data-testid="tribulation-taoma-remaining">
+          {{ t('tribulation.taoMa.remaining', { remaining: taoMaRemainingText }) }}
+        </div>
+      </section>
 
       <!-- Last outcome banner (success or fail) -->
       <section

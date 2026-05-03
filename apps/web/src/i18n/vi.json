@@ -1458,7 +1458,16 @@
       "attempt": "Bắt đầu vượt kiếp",
       "attempting": "Đang vượt kiếp…",
       "unavailable": "Chưa có kiếp",
-      "notAtPeak": "Chưa đủ điều kiện"
+      "notAtPeak": "Chưa đủ điều kiện",
+      "cooldown": "Chờ {remaining}"
+    },
+    "cooldown": {
+      "title": "Đang trong thời gian cooldown",
+      "remaining": "Có thể vượt lại sau {remaining}"
+    },
+    "taoMa": {
+      "title": "Đang bị Tâm Ma quấy nhiễu",
+      "remaining": "Sẽ tan trong {remaining}"
     },
     "empty": {
       "noCharacter": "Chưa có nhân vật.",

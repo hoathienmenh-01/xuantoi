@@ -51,6 +51,20 @@ export interface CharacterStatePayload {
   sectKey: 'thanh_van' | 'huyen_thuy' | 'tu_la' | null;
   role: 'PLAYER' | 'MOD' | 'ADMIN';
   banned: boolean;
+  /**
+   * Phase 11.6.E — Tribulation cooldown timestamp (ISO 8601). Set khi
+   * `attemptTribulation` FAIL → block retry tới khi `now >= tribulationCooldownAt`.
+   * `null` khi chưa từng FAIL hoặc đã expired/cleared. Server vẫn re-validate
+   * trên `POST /character/tribulation` — FE chỉ dùng để gate UI countdown.
+   */
+  tribulationCooldownAt: string | null;
+  /**
+   * Phase 11.6.E — Tâm Ma debuff active timestamp (ISO 8601). Set khi
+   * `attemptTribulation` FAIL + RNG roll dưới `taoMaDebuffChance`.
+   * `null` khi chưa từng kích hoạt hoặc đã expired. Phase 11.8 (Buff
+   * runtime) sẽ áp modifier vào combat — MVP chỉ persist + audit.
+   */
+  taoMaUntil: string | null;
 }
 
 export interface CultivateTickPayload {
