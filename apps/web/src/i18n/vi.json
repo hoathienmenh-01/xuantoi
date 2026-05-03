@@ -1505,6 +1505,26 @@
       "UNAUTHENTICATED": "Phiên đăng nhập đã hết.",
       "IN_FLIGHT": "Đang xử lý…",
       "UNKNOWN": "Vượt kiếp thất bại, thử lại."
+    },
+    "history": {
+      "title": "Lịch sử vượt kiếp",
+      "loading": "Đang tải lịch sử…",
+      "empty": "Chưa có lần vượt kiếp nào.",
+      "loadError": "Không tải được lịch sử vượt kiếp.",
+      "retry": "Tải lại",
+      "successBadge": "Thành công",
+      "failBadge": "Thất bại",
+      "attemptIndex": "Lần #{index}",
+      "transition": "{from} → {to}",
+      "waves": "{count} đợt",
+      "damage": "{dmg} sát thương",
+      "rewardLinhThach": "+{amount} linh thạch",
+      "rewardExpBonus": "+{amount} EXP bonus",
+      "rewardTitle": "Danh hiệu: {key}",
+      "expLoss": "−{amount} EXP",
+      "cooldownAt": "Cooldown đến {ts}",
+      "taoMa": "Tâm Ma đến {ts}",
+      "createdAt": "Ngày: {ts}"
     }
   }
 }

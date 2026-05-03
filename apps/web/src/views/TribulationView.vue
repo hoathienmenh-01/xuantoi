@@ -231,6 +231,8 @@ async function onAttempt(): Promise<void> {
     }
     // refetch state để cập nhật realmKey/realmStage/exp/linhThach
     await game.fetchState().catch(() => null);
+    // Phase 11.6.G — refetch history sau khi attempt accept (1 row mới được ghi).
+    await tribulation.fetchHistory().catch(() => null);
   } else {
     const key = `tribulation.errors.${errCode}`;
     const text = t(key);
@@ -239,6 +241,24 @@ async function onAttempt(): Promise<void> {
       text: text === key ? t('tribulation.errors.UNKNOWN') : text,
     });
   }
+}
+
+/** Phase 11.6.G — format ISO date sang format ngắn human-readable. */
+function fmtDate(iso: string | null): string {
+  if (!iso) return '';
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return iso;
+  return d.toLocaleString('vi-VN', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+}
+
+async function reloadHistory(): Promise<void> {
+  await tribulation.fetchHistory().catch(() => null);
 }
 
 const showOutcome = ref<boolean>(false);
@@ -255,6 +275,8 @@ onMounted(async () => {
   }
   await game.fetchState().catch(() => null);
   game.bindSocket();
+  // Phase 11.6.G — fetch tribulation history (idempotent GET).
+  tribulation.fetchHistory().catch(() => null);
   // Phase 11.6.E — live countdown ticker (1 Hz), đủ smooth + đủ rẻ.
   tickerHandle = setInterval(() => {
     nowMs.value = Date.now();
@@ -554,6 +576,156 @@ onUnmounted(() => {
         >
           {{ t('tribulation.notAtPeakHint') }}
         </p>
+      </section>
+
+      <!-- Phase 11.6.G — Tribulation history (past attempts) -->
+      <section
+        class="bg-ink-700/30 border border-ink-300/20 rounded p-4 space-y-2"
+        data-testid="tribulation-history"
+      >
+        <header class="flex items-baseline justify-between gap-2 flex-wrap">
+          <h2 class="text-base font-semibold text-ink-100">
+            {{ t('tribulation.history.title') }}
+          </h2>
+          <button
+            v-if="!tribulation.historyLoading"
+            type="button"
+            class="text-[11px] text-ink-300 hover:text-ink-50 underline-offset-2 hover:underline"
+            data-testid="tribulation-history-reload"
+            @click="reloadHistory"
+          >
+            {{ t('tribulation.history.retry') }}
+          </button>
+        </header>
+
+        <div
+          v-if="tribulation.historyLoading"
+          class="text-xs text-ink-300"
+          data-testid="tribulation-history-loading"
+        >
+          {{ t('tribulation.history.loading') }}
+        </div>
+
+        <div
+          v-else-if="tribulation.historyError"
+          class="text-xs text-rose-300"
+          data-testid="tribulation-history-error"
+        >
+          {{ t('tribulation.history.loadError') }}
+        </div>
+
+        <div
+          v-else-if="tribulation.history && tribulation.history.length === 0"
+          class="text-xs text-ink-300"
+          data-testid="tribulation-history-empty"
+        >
+          {{ t('tribulation.history.empty') }}
+        </div>
+
+        <ul
+          v-else-if="tribulation.history && tribulation.history.length > 0"
+          class="space-y-2"
+          data-testid="tribulation-history-list"
+        >
+          <li
+            v-for="row in tribulation.history"
+            :key="row.id"
+            :class="[
+              'rounded p-3 border text-xs space-y-1',
+              row.success
+                ? 'bg-emerald-900/20 border-emerald-500/30 text-emerald-100'
+                : 'bg-rose-900/20 border-rose-500/30 text-rose-100',
+            ]"
+            :data-testid="`tribulation-history-row-${row.id}`"
+          >
+            <header class="flex items-baseline justify-between gap-2 flex-wrap">
+              <div class="flex items-baseline gap-2">
+                <span
+                  :class="[
+                    'text-[10px] px-1.5 py-0.5 rounded border',
+                    row.success
+                      ? 'bg-emerald-700/40 text-emerald-200 border-emerald-500/40'
+                      : 'bg-rose-700/40 text-rose-200 border-rose-500/40',
+                  ]"
+                  :data-testid="`tribulation-history-badge-${row.id}`"
+                >
+                  {{
+                    row.success
+                      ? t('tribulation.history.successBadge')
+                      : t('tribulation.history.failBadge')
+                  }}
+                </span>
+                <span class="text-ink-300">
+                  {{ t('tribulation.history.attemptIndex', { index: row.attemptIndex }) }}
+                </span>
+              </div>
+              <span class="text-[10px] text-ink-300">
+                {{ t('tribulation.history.createdAt', { ts: fmtDate(row.createdAt) }) }}
+              </span>
+            </header>
+
+            <div>
+              {{
+                t('tribulation.history.transition', {
+                  from: realmName(row.fromRealmKey),
+                  to: realmName(row.toRealmKey),
+                })
+              }}
+              ·
+              {{ t('tribulation.history.waves', { count: row.wavesCompleted }) }}
+              ·
+              {{ t('tribulation.history.damage', { dmg: fmtNum(row.totalDamage) }) }}
+            </div>
+
+            <div v-if="row.success" class="space-y-0.5">
+              <div v-if="row.linhThachReward > 0">
+                {{
+                  t('tribulation.history.rewardLinhThach', {
+                    amount: fmtNum(row.linhThachReward),
+                  })
+                }}
+              </div>
+              <div v-if="row.expBonusReward !== '0'">
+                {{
+                  t('tribulation.history.rewardExpBonus', {
+                    amount: fmtNum(row.expBonusReward),
+                  })
+                }}
+              </div>
+              <div v-if="row.titleKeyReward">
+                {{
+                  t('tribulation.history.rewardTitle', {
+                    key: row.titleKeyReward,
+                  })
+                }}
+              </div>
+            </div>
+
+            <div v-else class="space-y-0.5">
+              <div>
+                {{
+                  t('tribulation.history.expLoss', {
+                    amount: fmtNum(row.expLoss),
+                  })
+                }}
+              </div>
+              <div v-if="row.cooldownAt">
+                {{
+                  t('tribulation.history.cooldownAt', {
+                    ts: fmtDate(row.cooldownAt),
+                  })
+                }}
+              </div>
+              <div v-if="row.taoMaActive && row.taoMaExpiresAt">
+                {{
+                  t('tribulation.history.taoMa', {
+                    ts: fmtDate(row.taoMaExpiresAt),
+                  })
+                }}
+              </div>
+            </div>
+          </li>
+        </ul>
       </section>
     </div>
   </AppShell>

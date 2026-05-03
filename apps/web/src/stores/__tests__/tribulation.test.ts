@@ -3,6 +3,7 @@ import { setActivePinia, createPinia } from 'pinia';
 
 vi.mock('@/api/tribulation', () => ({
   attemptTribulation: vi.fn(),
+  fetchAttemptLog: vi.fn(),
 }));
 
 import * as api from '@/api/tribulation';
@@ -163,5 +164,130 @@ describe('useTribulationStore — Phase 11.6.D', () => {
     mockedAttempt.mockResolvedValueOnce(STUB_SUCCESS);
     await s.attempt();
     expect(s.lastError).toBeNull();
+  });
+});
+
+const mockedFetchLog = vi.mocked(api.fetchAttemptLog);
+
+const STUB_LOG_ROW: api.TribulationAttemptLogView = {
+  id: 'log-x-1',
+  tribulationKey: 'kim_dan_to_nguyen_anh',
+  fromRealmKey: 'kim_dan',
+  toRealmKey: 'nguyen_anh',
+  severity: 'major',
+  type: 'lei',
+  success: true,
+  wavesCompleted: 5,
+  totalDamage: 1234,
+  finalHp: 567,
+  hpInitial: 1000,
+  expBefore: '100000',
+  expAfter: '150000',
+  expLoss: '0',
+  taoMaActive: false,
+  taoMaExpiresAt: null,
+  cooldownAt: null,
+  linhThachReward: 1000,
+  expBonusReward: '50000',
+  titleKeyReward: 'do_kiep_thanh_cong',
+  attemptIndex: 1,
+  taoMaRoll: 0.5,
+  createdAt: '2026-05-02T01:00:00.000Z',
+};
+
+describe('useTribulationStore — Phase 11.6.G fetchHistory', () => {
+  beforeEach(() => {
+    setActivePinia(createPinia());
+    vi.clearAllMocks();
+  });
+
+  it('initial state: history null, historyLoading false, historyError null', () => {
+    const s = useTribulationStore();
+    expect(s.history).toBeNull();
+    expect(s.historyLoading).toBe(false);
+    expect(s.historyError).toBeNull();
+  });
+
+  it('fetchHistory success → history populated với rows, return null', async () => {
+    mockedFetchLog.mockResolvedValueOnce({ rows: [STUB_LOG_ROW], limit: 20 });
+    const s = useTribulationStore();
+    const err = await s.fetchHistory();
+    expect(err).toBeNull();
+    expect(s.history).toHaveLength(1);
+    expect(s.history?.[0]?.id).toBe('log-x-1');
+    expect(s.historyLoading).toBe(false);
+    expect(s.historyError).toBeNull();
+  });
+
+  it('fetchHistory empty server → history=[]', async () => {
+    mockedFetchLog.mockResolvedValueOnce({ rows: [], limit: 20 });
+    const s = useTribulationStore();
+    await s.fetchHistory();
+    expect(s.history).toEqual([]);
+  });
+
+  it('fetchHistory(limit=10) → forward limit qua api', async () => {
+    mockedFetchLog.mockResolvedValueOnce({ rows: [], limit: 10 });
+    const s = useTribulationStore();
+    await s.fetchHistory(10);
+    expect(mockedFetchLog).toHaveBeenCalledWith(10);
+  });
+
+  it('fetchHistory server reject UNAUTHENTICATED → historyError set, return code', async () => {
+    mockedFetchLog.mockRejectedValueOnce({ code: 'UNAUTHENTICATED' });
+    const s = useTribulationStore();
+    const err = await s.fetchHistory();
+    expect(err).toBe('UNAUTHENTICATED');
+    expect(s.historyError).toBe('UNAUTHENTICATED');
+    expect(s.history).toBeNull();
+  });
+
+  it('fetchHistory unknown error → trả "UNKNOWN"', async () => {
+    mockedFetchLog.mockRejectedValueOnce(new Error('network'));
+    const s = useTribulationStore();
+    const err = await s.fetchHistory();
+    expect(err).toBe('UNKNOWN');
+    expect(s.historyError).toBe('UNKNOWN');
+  });
+
+  it('fetchHistory double-call → second returns IN_FLIGHT (race protect)', async () => {
+    let resolveFn!: (v: {
+      rows: api.TribulationAttemptLogView[];
+      limit: number;
+    }) => void;
+    mockedFetchLog.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          resolveFn = resolve;
+        }),
+    );
+    const s = useTribulationStore();
+    const p1 = s.fetchHistory();
+    expect(s.historyLoading).toBe(true);
+    const r2 = await s.fetchHistory();
+    expect(r2).toBe('IN_FLIGHT');
+    expect(mockedFetchLog).toHaveBeenCalledTimes(1);
+    resolveFn({ rows: [], limit: 20 });
+    await p1;
+    expect(s.historyLoading).toBe(false);
+  });
+
+  it('fetchHistory clear historyError trên start', async () => {
+    const s = useTribulationStore();
+    s.historyError = 'OLD';
+    mockedFetchLog.mockResolvedValueOnce({ rows: [], limit: 20 });
+    await s.fetchHistory();
+    expect(s.historyError).toBeNull();
+  });
+
+  it('reset clear history + historyLoading + historyError', () => {
+    const s = useTribulationStore();
+    s.history = [STUB_LOG_ROW];
+    s.historyLoading = true;
+    s.historyError = 'X';
+    s.reset();
+    expect(s.history).toBeNull();
+    expect(s.historyLoading).toBe(false);
+    expect(s.historyError).toBeNull();
   });
 });
