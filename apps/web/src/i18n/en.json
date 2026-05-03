@@ -45,7 +45,11 @@
       "achievementClaim": "Failed to claim achievement reward",
       "tribulation": "Tribulation attempt failed",
       "spiritualRootState": "Failed to load spiritual root state",
-      "spiritualRootReroll": "Spiritual root reroll failed"
+      "spiritualRootReroll": "Spiritual root reroll failed",
+      "skillState": "Failed to load skill book",
+      "skillEquip": "Failed to equip skill",
+      "skillUnequip": "Failed to unequip skill",
+      "skillUpgrade": "Failed to upgrade skill mastery"
     }
   },
   "locale": {
@@ -273,6 +277,7 @@
       "alchemy": "Alchemy",
       "cultivationMethod": "Method",
       "spiritualRoot": "Root",
+      "skillBook": "Skill Book",
       "achievements": "Achievements",
       "tribulation": "Tribulation"
     },
@@ -1404,6 +1409,85 @@
         "IN_FLIGHT": "Processing…",
         "UNKNOWN": "Reroll failed, please retry."
       }
+    }
+  },
+  "skillBook": {
+    "title": "Skill Book",
+    "subtitle": "Skills you have learned. Equip up to 4 active skills (basic attack is exempt). Upgrade mastery to boost atk scale and reduce qi cost.",
+    "loading": "Loading skill book…",
+    "empty": "No skills match the filters.",
+    "equippedSummary": "Equipped: {equipped} / {max}",
+    "filter": {
+      "tier": "Tier",
+      "element": "Element",
+      "equipped": "State",
+      "all": "All",
+      "shown": "Showing {shown}/{total} (catalog {catalog})"
+    },
+    "tier": {
+      "basic": "Basic",
+      "intermediate": "Intermediate",
+      "advanced": "Advanced",
+      "master": "Master",
+      "legendary": "Legendary"
+    },
+    "element": {
+      "kim": "Metal",
+      "moc": "Wood",
+      "thuy": "Water",
+      "hoa": "Fire",
+      "tho": "Earth",
+      "none": "Neutral"
+    },
+    "equipFilter": {
+      "equipped": "Equipped",
+      "unequipped": "Unequipped"
+    },
+    "field": {
+      "mastery": "Mastery",
+      "atkScale": "ATK scale",
+      "mpCost": "MP cost",
+      "cooldown": "Cooldown",
+      "source": "Source"
+    },
+    "badge": {
+      "equipped": "Equipped"
+    },
+    "button": {
+      "equip": "Equip",
+      "equipping": "Equipping…",
+      "unequip": "Unequip",
+      "unequipping": "Unequipping…",
+      "upgrade": "Upgrade (-{cost} LT)",
+      "upgrading": "Upgrading…",
+      "upgradeMax": "Mastery max",
+      "upgradeUnknown": "Upgrade"
+    },
+    "equip": {
+      "success": "Equipped {name}."
+    },
+    "unequip": {
+      "success": "Unequipped {name}."
+    },
+    "upgrade": {
+      "success": "Upgraded {name}."
+    },
+    "errors": {
+      "NOT_LEARNED": "Skill not learned.",
+      "ALREADY_EQUIPPED": "Skill already equipped.",
+      "TOO_MANY_EQUIPPED": "Equipped skill cap reached.",
+      "INSUFFICIENT_FUNDS": "Not enough spirit stones to upgrade.",
+      "MASTERY_MAX": "Mastery already maxed.",
+      "REALM_NOT_FOUND": "Realm not resolvable.",
+      "REALM_TOO_LOW": "Realm too low.",
+      "WRONG_SECT": "Wrong sect.",
+      "METHOD_NOT_LEARNED": "Prerequisite cultivation method not learned.",
+      "CHARACTER_SKILL_UNAVAILABLE": "Skill system unavailable.",
+      "NO_CHARACTER": "No character yet.",
+      "INVALID_INPUT": "Invalid input.",
+      "UNAUTHENTICATED": "Session expired.",
+      "IN_FLIGHT": "Processing…",
+      "UNKNOWN": "Action failed, please retry."
     }
   },
   "achievements": {

@@ -126,6 +126,11 @@ const routes: RouteRecordRaw[] = [
     component: () => import('@/views/SpiritualRootView.vue'),
   },
   {
+    path: '/skill-book',
+    name: 'skill-book',
+    component: () => import('@/views/SkillBookView.vue'),
+  },
+  {
     path: '/achievements',
     name: 'achievements',
     component: () => import('@/views/AchievementView.vue'),
