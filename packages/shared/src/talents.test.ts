@@ -971,6 +971,141 @@ describe('composePassiveTalentMods', () => {
     expect(mods.damageBonusByElement.size).toBe(0);
   });
 
+  it('kim_sinh_dao → damageBonusByElement[thuy] = 1.1 (Phase 11.X.AQ producer thứ 1 chain tương sinh, kim sinh thuỷ)', () => {
+    const mods = composePassiveTalentMods(['talent_kim_sinh_dao']);
+    expect(mods.damageBonusByElement.size).toBe(1);
+    expect(mods.damageBonusByElement.get('thuy')).toBeCloseTo(1.1, 5);
+    // Cross-stat: stat_mod + regen + damage_bonus khác element giữ identity.
+    expect(mods.atkMul).toBe(1);
+    expect(mods.defMul).toBe(1);
+    expect(mods.hpMaxMul).toBe(1);
+    expect(mods.mpMaxMul).toBe(1);
+    expect(mods.spiritMul).toBe(1);
+    expect(mods.hpRegenFlat).toBe(0);
+    expect(mods.mpRegenFlat).toBe(0);
+  });
+
+  it('thuy_sinh_dao → damageBonusByElement[moc] = 1.1 (Phase 11.X.AQ producer thứ 2 chain tương sinh, thuỷ sinh mộc)', () => {
+    const mods = composePassiveTalentMods(['talent_thuy_sinh_dao']);
+    expect(mods.damageBonusByElement.size).toBe(1);
+    expect(mods.damageBonusByElement.get('moc')).toBeCloseTo(1.1, 5);
+    expect(mods.atkMul).toBe(1);
+    expect(mods.defMul).toBe(1);
+    expect(mods.hpMaxMul).toBe(1);
+    expect(mods.mpMaxMul).toBe(1);
+    expect(mods.spiritMul).toBe(1);
+    expect(mods.hpRegenFlat).toBe(0);
+    expect(mods.mpRegenFlat).toBe(0);
+  });
+
+  it('moc_sinh_dao → damageBonusByElement[hoa] = 1.1 (Phase 11.X.AQ producer thứ 3 chain tương sinh, mộc sinh hoả)', () => {
+    const mods = composePassiveTalentMods(['talent_moc_sinh_dao']);
+    expect(mods.damageBonusByElement.size).toBe(1);
+    expect(mods.damageBonusByElement.get('hoa')).toBeCloseTo(1.1, 5);
+    expect(mods.atkMul).toBe(1);
+    expect(mods.defMul).toBe(1);
+    expect(mods.hpMaxMul).toBe(1);
+    expect(mods.mpMaxMul).toBe(1);
+    expect(mods.spiritMul).toBe(1);
+    expect(mods.hpRegenFlat).toBe(0);
+    expect(mods.mpRegenFlat).toBe(0);
+  });
+
+  it('hoa_sinh_dao → damageBonusByElement[tho] = 1.1 (Phase 11.X.AQ producer thứ 4 chain tương sinh, hoả sinh thổ)', () => {
+    const mods = composePassiveTalentMods(['talent_hoa_sinh_dao']);
+    expect(mods.damageBonusByElement.size).toBe(1);
+    expect(mods.damageBonusByElement.get('tho')).toBeCloseTo(1.1, 5);
+    expect(mods.atkMul).toBe(1);
+    expect(mods.defMul).toBe(1);
+    expect(mods.hpMaxMul).toBe(1);
+    expect(mods.mpMaxMul).toBe(1);
+    expect(mods.spiritMul).toBe(1);
+    expect(mods.hpRegenFlat).toBe(0);
+    expect(mods.mpRegenFlat).toBe(0);
+  });
+
+  it('tho_sinh_dao → damageBonusByElement[kim] = 1.1 (Phase 11.X.AQ producer thứ 5 chain tương sinh, thổ sinh kim)', () => {
+    const mods = composePassiveTalentMods(['talent_tho_sinh_dao']);
+    expect(mods.damageBonusByElement.size).toBe(1);
+    expect(mods.damageBonusByElement.get('kim')).toBeCloseTo(1.1, 5);
+    expect(mods.atkMul).toBe(1);
+    expect(mods.defMul).toBe(1);
+    expect(mods.hpMaxMul).toBe(1);
+    expect(mods.mpMaxMul).toBe(1);
+    expect(mods.spiritMul).toBe(1);
+    expect(mods.hpRegenFlat).toBe(0);
+    expect(mods.mpRegenFlat).toBe(0);
+  });
+
+  it('combine all 5 tương sinh producers → 5 distinct elementTargets {thuy/moc/hoa/tho/kim} = 1.1 each (hoàn tất 5-element tương sinh chain Phase 11.X.AQ)', () => {
+    const mods = composePassiveTalentMods([
+      'talent_kim_sinh_dao',
+      'talent_thuy_sinh_dao',
+      'talent_moc_sinh_dao',
+      'talent_hoa_sinh_dao',
+      'talent_tho_sinh_dao',
+    ]);
+    // Tương sinh chain: kim→thuy, thuy→moc, moc→hoa, hoa→tho, tho→kim.
+    // Mỗi target distinct, không multiplicative stack vì chỉ 1 producer per target.
+    expect(mods.damageBonusByElement.size).toBe(5);
+    expect(mods.damageBonusByElement.get('thuy')).toBeCloseTo(1.1, 5);
+    expect(mods.damageBonusByElement.get('moc')).toBeCloseTo(1.1, 5);
+    expect(mods.damageBonusByElement.get('hoa')).toBeCloseTo(1.1, 5);
+    expect(mods.damageBonusByElement.get('tho')).toBeCloseTo(1.1, 5);
+    expect(mods.damageBonusByElement.get('kim')).toBeCloseTo(1.1, 5);
+    // Cross-stat: stat_mod + regen identity.
+    expect(mods.atkMul).toBe(1);
+    expect(mods.defMul).toBe(1);
+    expect(mods.hpMaxMul).toBe(1);
+    expect(mods.mpMaxMul).toBe(1);
+    expect(mods.spiritMul).toBe(1);
+    expect(mods.hpRegenFlat).toBe(0);
+    expect(mods.mpRegenFlat).toBe(0);
+  });
+
+  it('combine 5 tương khắc + 5 tương sinh producers → damageBonusByElement size = 5 với 4 multiplicative stack 1.15×1.1 = 1.265 + 1 single-source (kim) (2/2 damage_bonus chain complete)', () => {
+    // 5 tương khắc producer (Phase 11.X.AM):
+    //   kim→moc, thuy→hoa, moc→tho, hoa→kim, tho→thuy (đều 1.15)
+    // 5 tương sinh producer (this phase 11.X.AQ):
+    //   kim→thuy, thuy→moc, moc→hoa, hoa→tho, tho→kim (đều 1.1)
+    // Targets union:
+    //   moc: kim_phach_dao (1.15) only
+    //   hoa: thuy_diet_dao (1.15) only
+    //   tho: moc_xuyen_dao (1.15) only
+    //   thuy: tho_chan_dao (1.15) + kim_sinh_dao (1.1) → 1.15 × 1.1 = 1.265
+    //   kim: hoa_tam_dao (1.15) + tho_sinh_dao (1.1) → 1.265
+    //   moc: kim_phach_dao (1.15) + thuy_sinh_dao (1.1) → 1.265
+    //   hoa: thuy_diet_dao (1.15) + moc_sinh_dao (1.1) → 1.265
+    //   tho: moc_xuyen_dao (1.15) + hoa_sinh_dao (1.1) → 1.265
+    // → all 5 elements get 1.265 multiplicative stack, size = 5.
+    const mods = composePassiveTalentMods([
+      'talent_kim_phach_dao',
+      'talent_thuy_diet_dao',
+      'talent_moc_xuyen_dao',
+      'talent_hoa_tam_dao',
+      'talent_tho_chan_dao',
+      'talent_kim_sinh_dao',
+      'talent_thuy_sinh_dao',
+      'talent_moc_sinh_dao',
+      'talent_hoa_sinh_dao',
+      'talent_tho_sinh_dao',
+    ]);
+    expect(mods.damageBonusByElement.size).toBe(5);
+    expect(mods.damageBonusByElement.get('kim')).toBeCloseTo(1.265, 5);
+    expect(mods.damageBonusByElement.get('moc')).toBeCloseTo(1.265, 5);
+    expect(mods.damageBonusByElement.get('thuy')).toBeCloseTo(1.265, 5);
+    expect(mods.damageBonusByElement.get('hoa')).toBeCloseTo(1.265, 5);
+    expect(mods.damageBonusByElement.get('tho')).toBeCloseTo(1.265, 5);
+    // Cross-stat: stat_mod + regen identity.
+    expect(mods.atkMul).toBe(1);
+    expect(mods.defMul).toBe(1);
+    expect(mods.hpMaxMul).toBe(1);
+    expect(mods.mpMaxMul).toBe(1);
+    expect(mods.spiritMul).toBe(1);
+    expect(mods.hpRegenFlat).toBe(0);
+    expect(mods.mpRegenFlat).toBe(0);
+  });
+
   it('combine 5 hpRegen + 5 mpRegen producers → hpRegenFlat = 25 + mpRegenFlat = 25 (regen path symmetry, hpRegen + mpRegen độc lập theo statTarget)', () => {
     // 5 hpRegen producer (Phase 11.X.AN) + 5 mpRegen producer (Phase 11.X.AP)
     // → 2/2 regen path active đồng thời, isolated theo statTarget.
