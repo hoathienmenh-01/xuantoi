@@ -38,7 +38,9 @@
       "talentsState": "Không lấy được trạng thái ngộ đạo",
       "talentsLearn": "Không học được thần thông",
       "alchemyState": "Không lấy được công thức luyện đan",
-      "alchemyCraft": "Luyện đan thất bại"
+      "alchemyCraft": "Luyện đan thất bại",
+      "cultivationMethodState": "Không lấy được trạng thái công pháp",
+      "cultivationMethodEquip": "Vận công pháp thất bại"
     }
   },
   "locale": {
@@ -263,7 +265,8 @@
       "admin": "Quản Trị",
       "toggle": "Mở menu điều hướng",
       "talents": "Ngộ Đạo",
-      "alchemy": "Luyện Đan"
+      "alchemy": "Luyện Đan",
+      "cultivationMethod": "Công Pháp"
     },
     "badge": {
       "bossActive": "Boss đang xuất thế",
@@ -1231,6 +1234,79 @@
         "UNAUTHENTICATED": "Phiên đăng nhập đã hết.",
         "IN_FLIGHT": "Đang xử lý…",
         "UNKNOWN": "Luyện đan thất bại, thử lại."
+      }
+    }
+  },
+  "cultivationMethod": {
+    "title": "Công Pháp Đường",
+    "subtitle": "Quản lý công pháp đã học. Mỗi tu sĩ chỉ vận hành một công pháp tại một thời điểm — chọn theo cảnh giới + linh căn + tông môn.",
+    "loading": "Đang tải công pháp…",
+    "empty": "Không có công pháp nào khớp bộ lọc.",
+    "equippedSummary": "Đang vận: {key}",
+    "equippedNone": "Chưa vận công pháp nào.",
+    "filter": {
+      "grade": "Cấp bậc",
+      "all": "Tất cả",
+      "shown": "Hiển thị {shown}/{total} (kho: {catalog})"
+    },
+    "grade": {
+      "pham": "Phàm phẩm",
+      "huyen": "Huyền phẩm",
+      "tien": "Tiên phẩm",
+      "than": "Thần phẩm"
+    },
+    "element": {
+      "kim": "Kim",
+      "moc": "Mộc",
+      "thuy": "Thuỷ",
+      "hoa": "Hoả",
+      "tho": "Thổ",
+      "loi": "Lôi",
+      "phong": "Phong",
+      "bang": "Băng",
+      "doc": "Độc",
+      "am": "Âm",
+      "duong": "Dương",
+      "hon_don": "Hỗn Độn",
+      "none": "Vô hệ"
+    },
+    "source": {
+      "starter": "Khởi đầu",
+      "sect_shop": "Tông môn",
+      "dungeon_drop": "Bí cảnh",
+      "boss_drop": "Boss thế giới",
+      "event": "Sự kiện",
+      "quest_milestone": "Nhiệm vụ"
+    },
+    "field": {
+      "expMultiplier": "Tu luyện",
+      "source": "Nguồn"
+    },
+    "badge": {
+      "equipped": "Đang vận"
+    },
+    "button": {
+      "equip": "Vận công",
+      "equipping": "Đang vận…",
+      "equipped": "Đang vận"
+    },
+    "equip": {
+      "success": "Đã vận công pháp {name}.",
+      "errors": {
+        "METHOD_NOT_FOUND": "Công pháp không tồn tại.",
+        "NOT_LEARNED": "Bạn chưa học công pháp này.",
+        "REALM_NOT_FOUND": "Không tìm thấy cảnh giới hiện tại.",
+        "REALM_TOO_LOW": "Cảnh giới chưa đạt yêu cầu.",
+        "WRONG_SECT": "Công pháp này dành riêng cho tông môn khác.",
+        "FORBIDDEN_ELEMENT": "Linh căn của bạn xung đột với công pháp.",
+        "CHARACTER_NOT_FOUND": "Chưa tạo nhân vật.",
+        "NO_CHARACTER": "Chưa tạo nhân vật.",
+        "CULTIVATION_METHOD_UNAVAILABLE": "Hệ thống công pháp tạm khoá.",
+        "INVALID_INPUT": "Dữ liệu không hợp lệ.",
+        "UNAUTHENTICATED": "Phiên đăng nhập đã hết.",
+        "ALREADY_EQUIPPED": "Công pháp này đang được vận.",
+        "IN_FLIGHT": "Đang xử lý…",
+        "UNKNOWN": "Vận công pháp thất bại, thử lại."
       }
     }
   }
