@@ -34,7 +34,9 @@
       "logoutAll": "Logout all failed",
       "shopLoad": "Load shop failed",
       "shopBuy": "Purchase failed",
-      "onboard": "Onboard failed"
+      "onboard": "Onboard failed",
+      "talentsState": "Failed to load talent state",
+      "talentsLearn": "Failed to learn talent"
     }
   },
   "locale": {
@@ -1094,6 +1096,48 @@
       "activeHeal": "Heal ×{mul} HP · {mp} MP · CD {cd} turns",
       "activeDot": "Burn/poison {turns} turns ({aoe}) · {mp} MP · CD {cd} turns",
       "activeUtility": "Utility · {mp} MP · CD {cd} turns"
+    },
+    "budget": {
+      "title": "Insight points",
+      "spent": "Spent {spent}",
+      "remaining": "Remaining {remaining}",
+      "of": "/{budget}",
+      "loading": "Loading…"
+    },
+    "filterStatus": {
+      "label": "Status",
+      "all": "All",
+      "learned": "Learned",
+      "available": "Available",
+      "locked": "Locked"
+    },
+    "badge": {
+      "learned": "Learned"
+    },
+    "button": {
+      "learn": "Learn",
+      "learning": "Learning…",
+      "learned": "Learned",
+      "realmTooLow": "Realm too low",
+      "insufficientPoints": "No points left"
+    },
+    "learn": {
+      "success": "Learned {name}!",
+      "errors": {
+        "TALENT_NOT_FOUND": "Talent not found.",
+        "ALREADY_LEARNED": "You already learned this talent.",
+        "REALM_TOO_LOW": "Realm too low to learn.",
+        "INSUFFICIENT_TALENT_POINTS": "No insight points left.",
+        "INVALID_REALM_REQUIREMENT": "Invalid realm requirement.",
+        "INVALID_REALM": "Character realm invalid.",
+        "CHARACTER_NOT_FOUND": "Character not created.",
+        "NO_CHARACTER": "Character not created.",
+        "TALENT_UNAVAILABLE": "Talent system temporarily disabled.",
+        "INVALID_INPUT": "Invalid input.",
+        "UNAUTHENTICATED": "Session expired.",
+        "IN_FLIGHT": "Processing…",
+        "UNKNOWN": "Cannot learn, please retry."
+      }
     }
   }
 }

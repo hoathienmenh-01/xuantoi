@@ -34,7 +34,9 @@
       "logoutAll": "Đăng xuất tất cả thất bại",
       "shopLoad": "Lấy shop thất bại",
       "shopBuy": "Mua thất bại",
-      "onboard": "Khai đạo thất bại"
+      "onboard": "Khai đạo thất bại",
+      "talentsState": "Không lấy được trạng thái ngộ đạo",
+      "talentsLearn": "Không học được thần thông"
     }
   },
   "locale": {
@@ -1094,6 +1096,48 @@
       "activeHeal": "Hồi ×{mul} HP · {mp} MP · CD {cd} hiệp",
       "activeDot": "Bỏng/độc {turns} hiệp ({aoe}) · {mp} MP · CD {cd} hiệp",
       "activeUtility": "Hỗ trợ · {mp} MP · CD {cd} hiệp"
+    },
+    "budget": {
+      "title": "Điểm ngộ đạo",
+      "spent": "Đã dùng {spent}",
+      "remaining": "Còn {remaining}",
+      "of": "/{budget}",
+      "loading": "Đang tải…"
+    },
+    "filterStatus": {
+      "label": "Tình trạng",
+      "all": "Tất cả",
+      "learned": "Đã học",
+      "available": "Có thể học",
+      "locked": "Chưa đủ điều kiện"
+    },
+    "badge": {
+      "learned": "Đã học"
+    },
+    "button": {
+      "learn": "Học",
+      "learning": "Đang học…",
+      "learned": "Đã học",
+      "realmTooLow": "Cảnh giới chưa đủ",
+      "insufficientPoints": "Hết điểm ngộ đạo"
+    },
+    "learn": {
+      "success": "Đã học {name}!",
+      "errors": {
+        "TALENT_NOT_FOUND": "Không tìm thấy thần thông.",
+        "ALREADY_LEARNED": "Bạn đã học thần thông này.",
+        "REALM_TOO_LOW": "Cảnh giới chưa đủ để học.",
+        "INSUFFICIENT_TALENT_POINTS": "Hết điểm ngộ đạo.",
+        "INVALID_REALM_REQUIREMENT": "Yêu cầu cảnh giới không hợp lệ.",
+        "INVALID_REALM": "Cảnh giới nhân vật không hợp lệ.",
+        "CHARACTER_NOT_FOUND": "Chưa tạo nhân vật.",
+        "NO_CHARACTER": "Chưa tạo nhân vật.",
+        "TALENT_UNAVAILABLE": "Hệ thống ngộ đạo tạm khoá.",
+        "INVALID_INPUT": "Dữ liệu không hợp lệ.",
+        "UNAUTHENTICATED": "Phiên đăng nhập đã hết.",
+        "IN_FLIGHT": "Đang xử lý…",
+        "UNKNOWN": "Không thể học, thử lại."
+      }
     }
   }
 }
