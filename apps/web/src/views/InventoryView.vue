@@ -6,19 +6,27 @@ import {
   EQUIP_SLOTS,
   QUALITY_COLOR,
   REFINE_MAX_LEVEL,
+  combineGems as catalogCombineGems,
+  getGemDef,
   getRefineAttemptCost,
   itemByKey,
+  socketCapacityForQuality,
   type EquipSlot,
+  type GemCompatibleSlot,
+  type GemDef,
   type ItemDef,
 } from '@xuantoi/shared';
 import { useAuthStore } from '@/stores/auth';
 import { useGameStore } from '@/stores/game';
 import { useToastStore } from '@/stores/toast';
 import {
+  combineGemsApi,
   equipItem,
   listInventory,
   refineEquipment,
+  socketGem,
   unequipItem,
+  unsocketGem,
   useItem,
   type InventoryView,
   type RefineResult,
@@ -37,6 +45,71 @@ const items = ref<InventoryView[]>([]);
 const submitting = ref(false);
 /** Phase 11.5.C — per-row protection toggle (key = inventoryItemId). */
 const protectionFlags = ref<Record<string, boolean>>({});
+/** Phase 11.4.C — per-equipment-row gem-key selection (key = equipment inventoryItemId). */
+const gemSelections = ref<Record<string, string>>({});
+
+/**
+ * Phase 11.4.C — row đại diện một gem trong inventory. Backend `inventory.list()`
+ * fallback `getGemDef` nên gem rô  hiện thành `InventoryView` với `item.kind='MISC'`
+ * + `item.slot===undefined`. UI xác định gem rô = `getGemDef(itemKey)` truthy.
+ */
+function isGemRow(it: InventoryView): boolean {
+  return getGemDef(it.itemKey) !== undefined;
+}
+
+/** Phase 11.4.C — owned unequipped gems with qty > 0, indexed by gemKey. */
+const ownedGemQty = computed<Record<string, number>>(() => {
+  const map: Record<string, number> = {};
+  for (const it of items.value) {
+    if (it.equippedSlot) continue;
+    if (!isGemRow(it)) continue;
+    map[it.itemKey] = (map[it.itemKey] ?? 0) + it.qty;
+  }
+  return map;
+});
+
+/** Phase 11.4.C — gems có thể khảm vào equipment slot, owned + qty > 0. */
+function compatibleGems(equipment: InventoryView): GemDef[] {
+  if (!equipment.item.slot) return [];
+  const slot = equipment.item.slot as GemCompatibleSlot;
+  const out: GemDef[] = [];
+  for (const [gemKey, qty] of Object.entries(ownedGemQty.value)) {
+    if (qty <= 0) continue;
+    const gem = getGemDef(gemKey);
+    if (!gem) continue;
+    if (gem.compatibleSlots.includes('ANY') || gem.compatibleSlots.includes(slot)) {
+      out.push(gem);
+    }
+  }
+  return out;
+}
+
+/** Phase 11.4.C — socket capacity cho equipment dựa vào quality. */
+function capacityFor(equipment: InventoryView): number {
+  return socketCapacityForQuality(equipment.item.quality);
+}
+
+function gemBonusText(gem: GemDef): string {
+  const parts: string[] = [];
+  if (gem.bonus.atk) parts.push(t('inventory.bonus.atk', { v: gem.bonus.atk }));
+  if (gem.bonus.def) parts.push(t('inventory.bonus.def', { v: gem.bonus.def }));
+  if (gem.bonus.hpMax) parts.push(t('inventory.bonus.hpMax', { v: gem.bonus.hpMax }));
+  if (gem.bonus.mpMax) parts.push(t('inventory.bonus.mpMax', { v: gem.bonus.mpMax }));
+  if (gem.bonus.spirit) parts.push(t('inventory.bonus.spirit', { v: gem.bonus.spirit }));
+  return parts.join(' · ');
+}
+
+function gemElementLabel(gem: GemDef): string {
+  if (!gem.element) return t('inventory.gem.anyElement');
+  return t('inventory.gem.elementLabel', { element: t(`element.${gem.element}`, gem.element) });
+}
+
+/** Phase 11.4.C — catalog có rề gem có thể combine (qty ≥3 + nextTierKey ≡ có). */
+function canCombine(it: InventoryView): boolean {
+  if (!isGemRow(it)) return false;
+  if (it.qty < 3) return false;
+  return catalogCombineGems(it.itemKey) !== null;
+}
 
 function slotLabel(slot: EquipSlot): string {
   return t(`equipSlot.${slot}`);
@@ -158,6 +231,76 @@ async function onRefine(it: InventoryView): Promise<void> {
   }
 }
 
+async function onSocketGem(it: InventoryView): Promise<void> {
+  if (submitting.value) return;
+  const gemKey = gemSelections.value[it.id];
+  if (!gemKey) return;
+  submitting.value = true;
+  try {
+    await socketGem(it.id, gemKey);
+    const gemDef = getGemDef(gemKey);
+    toast.push({
+      type: 'success',
+      text: t('inventory.gem.socketSuccessToast', {
+        gem: gemDef?.name ?? gemKey,
+        equipment: it.item.name,
+      }),
+    });
+    items.value = await listInventory();
+    gemSelections.value[it.id] = '';
+  } catch (e) {
+    handleErr(e);
+  } finally {
+    submitting.value = false;
+  }
+}
+
+async function onUnsocketGem(it: InventoryView, slotIndex: number): Promise<void> {
+  if (submitting.value) return;
+  submitting.value = true;
+  try {
+    const result = await unsocketGem(it.id, slotIndex);
+    const gemDef = getGemDef(result.gemKey);
+    toast.push({
+      type: 'system',
+      text: result.gemReturned
+        ? t('inventory.gem.unsocketSuccessToast', {
+            gem: gemDef?.name ?? result.gemKey,
+            equipment: it.item.name,
+          })
+        : t('inventory.gem.unsocketDriftToast', { slot: slotIndex }),
+    });
+    items.value = await listInventory();
+  } catch (e) {
+    handleErr(e);
+  } finally {
+    submitting.value = false;
+  }
+}
+
+async function onCombineGem(it: InventoryView): Promise<void> {
+  if (submitting.value) return;
+  if (!canCombine(it)) return;
+  submitting.value = true;
+  try {
+    const result = await combineGemsApi(it.itemKey);
+    const srcDef = getGemDef(result.srcGemKey);
+    const resultDef = getGemDef(result.resultGemKey);
+    toast.push({
+      type: 'success',
+      text: t('inventory.gem.combineSuccessToast', {
+        src: srcDef?.name ?? result.srcGemKey,
+        result: resultDef?.name ?? result.resultGemKey,
+      }),
+    });
+    items.value = await listInventory();
+  } catch (e) {
+    handleErr(e);
+  } finally {
+    submitting.value = false;
+  }
+}
+
 function pushRefineToast(result: RefineResult): void {
   if (result.broken) {
     toast.push({ type: 'error', text: t('inventory.refine.brokenToast') });
@@ -264,6 +407,51 @@ function handleErr(e: unknown): void {
             <p v-else-if="it.item.effect" class="text-xs text-amber-200">
               {{ effectText(it.item) }}
             </p>
+            <!-- Phase 11.4.C — Gem row metadata (element, compatible slots, bonus). -->
+            <div v-if="isGemRow(it)" class="space-y-0.5">
+              <p
+                class="text-[10px] text-cyan-200"
+                data-testid="gem-meta"
+              >
+                {{ gemElementLabel(getGemDef(it.itemKey)!) }} ·
+                {{
+                  t('inventory.gem.compatibleSlotsLabel', {
+                    slots: getGemDef(it.itemKey)!.compatibleSlots.join(', '),
+                  })
+                }}
+              </p>
+              <p
+                class="text-[10px] text-emerald-300"
+                data-testid="gem-bonus"
+              >{{ gemBonusText(getGemDef(it.itemKey)!) }}</p>
+            </div>
+            <!-- Phase 11.4.C — Equipment socket inventory (read-only badges). -->
+            <div
+              v-if="it.item.slot && capacityFor(it) > 0"
+              class="text-[10px] text-cyan-200 mt-0.5"
+              data-testid="equip-sockets"
+            >
+              {{
+                t('inventory.gem.socketsLabel', {
+                  filled: it.sockets.length,
+                  max: capacityFor(it),
+                })
+              }}
+              <span
+                v-for="(socketGemKey, idx) in it.sockets"
+                :key="`${it.id}-socket-${idx}`"
+                class="ml-1 inline-flex items-center gap-1 rounded bg-cyan-900/40 px-1 py-[1px]"
+              >
+                {{ getGemDef(socketGemKey)?.name ?? socketGemKey }}
+                <button
+                  type="button"
+                  class="text-[10px] text-rose-300 hover:text-rose-200"
+                  data-testid="gem-unsocket-button"
+                  :disabled="submitting"
+                  @click="onUnsocketGem(it, idx)"
+                >{{ t('inventory.gem.unsocketButton') }}</button>
+              </span>
+            </div>
           </div>
           <div class="flex flex-col gap-1 items-stretch">
             <MButton v-if="it.item.slot" :loading="submitting" @click="onEquip(it)">
@@ -303,6 +491,48 @@ function handleErr(e: unknown): void {
                 }}
               </MButton>
             </template>
+            <!-- Phase 11.4.C — Gem socket UI cho equipment có capacity > 0 + slot trống. -->
+            <div
+              v-if="it.item.slot && capacityFor(it) > 0 && it.sockets.length < capacityFor(it)"
+              class="flex flex-col gap-1"
+            >
+              <select
+                v-model="gemSelections[it.id]"
+                class="text-[10px] bg-ink-900 border border-ink-300/40 px-1 py-0.5 text-ink-100"
+                data-testid="gem-select"
+              >
+                <option value="">{{ t('inventory.gem.selectPlaceholder') }}</option>
+                <option
+                  v-for="g in compatibleGems(it)"
+                  :key="`${it.id}-opt-${g.key}`"
+                  :value="g.key"
+                >
+                  {{ g.name }} (×{{ ownedGemQty[g.key] ?? 0 }})
+                </option>
+              </select>
+              <p
+                v-if="compatibleGems(it).length === 0"
+                class="text-[10px] text-ink-300/80 italic text-right"
+                data-testid="gem-no-compat"
+              >{{ t('inventory.gem.noOwnedGems') }}</p>
+              <MButton
+                :loading="submitting"
+                :disabled="!gemSelections[it.id]"
+                data-testid="gem-socket-button"
+                @click="onSocketGem(it)"
+              >
+                {{ t('inventory.gem.socketButton') }}
+              </MButton>
+            </div>
+            <!-- Phase 11.4.C — Gem row Hợp 3→1 button. -->
+            <MButton
+              v-if="canCombine(it)"
+              :loading="submitting"
+              data-testid="gem-combine-button"
+              @click="onCombineGem(it)"
+            >
+              {{ t('inventory.gem.combineButton') }}
+            </MButton>
           </div>
         </div>
       </section>

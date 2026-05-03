@@ -18,6 +18,10 @@ const equipItemMock = vi.fn();
 const unequipItemMock = vi.fn();
 const useItemMock = vi.fn();
 const refineEquipmentMock = vi.fn();
+// Phase 11.4.C — gem socket / unsocket / combine API mocks.
+const socketGemMock = vi.fn();
+const unsocketGemMock = vi.fn();
+const combineGemsApiMock = vi.fn();
 
 vi.mock('@/api/inventory', async () => {
   const actual = await vi.importActual<typeof import('@/api/inventory')>(
@@ -30,6 +34,9 @@ vi.mock('@/api/inventory', async () => {
     unequipItem: (...a: unknown[]) => unequipItemMock(...a),
     useItem: (...a: unknown[]) => useItemMock(...a),
     refineEquipment: (...a: unknown[]) => refineEquipmentMock(...a),
+    socketGem: (...a: unknown[]) => socketGemMock(...a),
+    unsocketGem: (...a: unknown[]) => unsocketGemMock(...a),
+    combineGemsApi: (...a: unknown[]) => combineGemsApiMock(...a),
   };
 });
 
@@ -112,8 +119,34 @@ const i18n = createI18n({
           INSUFFICIENT_FUNDS: 'Không đủ linh thạch.',
           INSUFFICIENT_MATERIAL: 'Thiếu nguyên liệu.',
           INSUFFICIENT_PROTECTION: 'Thiếu bội nguyên phù.',
+          GEM_INCOMPATIBLE_SLOT: 'Linh thạch không khớp slot.',
+          SOCKETS_FULL: 'Lỗ khảm đã đầy.',
+          NO_NEXT_TIER: 'Không thể hợp tiếp.',
+          INSUFFICIENT_QTY: 'Không đủ linh thạch.',
           UNKNOWN: 'Có lỗi xảy ra.',
         },
+        gem: {
+          socketsLabel: 'Khảm: {filled}/{max}',
+          selectPlaceholder: '— chọn —',
+          socketButton: 'Khảm',
+          unsocketButton: 'Gỡ',
+          combineButton: 'Hợp 3→1',
+          noOwnedGems: 'Chưa có linh thạch tương thích.',
+          elementLabel: 'Hệ {element}',
+          anyElement: 'Vô hệ',
+          compatibleSlotsLabel: 'Tương thích: {slots}',
+          socketSuccessToast: 'Đã khảm {gem} vào {equipment}.',
+          unsocketSuccessToast: 'Đã gỡ {gem} khỏi {equipment}.',
+          unsocketDriftToast: 'Đã gỡ slot {slot}.',
+          combineSuccessToast: 'Hợp thành 1× {result} từ 3× {src}.',
+        },
+      },
+      element: {
+        kim: 'Kim',
+        moc: 'Mộc',
+        thuy: 'Thủy',
+        hoa: 'Hỏa',
+        tho: 'Thổ',
       },
       equipSlot: {
         WEAPON: 'Vũ Khí',
@@ -191,6 +224,9 @@ beforeEach(() => {
   unequipItemMock.mockReset();
   useItemMock.mockReset();
   refineEquipmentMock.mockReset();
+  socketGemMock.mockReset();
+  unsocketGemMock.mockReset();
+  combineGemsApiMock.mockReset();
   routerReplaceMock.mockReset();
   toastPushMock.mockReset();
   authState.isAuthenticated = true;
@@ -749,5 +785,346 @@ describe('InventoryView — Phase 11.5.C refine flow', () => {
 
     resolveHolder.current?.(makeRefineResult());
     await flushPromises();
+  });
+});
+
+// ====================================================================
+// Phase 11.4.C — Gem socket / unsocket / combine tests
+// ====================================================================
+
+/**
+ * Gem inventory row fixture — backend `inventory.list()` synth ItemDef từ
+ * GemDef qua `gemDefAsItemDef` (kind='MISC', stackable, slot=undefined,
+ * bonuses copy từ gem.bonus).
+ */
+function makeGemInv(over: Partial<InventoryView> = {}): InventoryView {
+  const itemKey = (over.itemKey as string) ?? 'gem_kim_pham';
+  const item: ItemDef = makeItemDef({
+    key: itemKey,
+    name: itemKey === 'gem_kim_pham' ? 'Kim Phàm Linh Thạch' : itemKey,
+    description: 'Linh thạch',
+    kind: 'MISC',
+    quality: 'PHAM',
+    stackable: true,
+    slot: undefined,
+    bonuses: { atk: 1 },
+    price: 100,
+  });
+  return {
+    id: `gem_${itemKey}`,
+    itemKey,
+    qty: 1,
+    equippedSlot: null,
+    item,
+    sockets: [],
+    refineLevel: 0,
+    ...over,
+  };
+}
+
+describe('InventoryView — Phase 11.4.C gem rows render', () => {
+  it('gem row hiển element + compatible slots + bonus', async () => {
+    listInventoryMock.mockResolvedValue([makeGemInv({ qty: 2 })]);
+    const w = mountView();
+    await flushPromises();
+
+    const meta = w.find('[data-testid="gem-meta"]');
+    expect(meta.exists()).toBe(true);
+    expect(meta.text()).toContain('Hệ Kim');
+    expect(meta.text()).toContain('Tương thích');
+
+    const bonus = w.find('[data-testid="gem-bonus"]');
+    expect(bonus.exists()).toBe(true);
+    expect(bonus.text()).toContain('ATK');
+  });
+
+  it('non-gem row KHÔNG render gem-meta', async () => {
+    listInventoryMock.mockResolvedValue([makeInv()]);
+    const w = mountView();
+    await flushPromises();
+    expect(w.find('[data-testid="gem-meta"]').exists()).toBe(false);
+    expect(w.find('[data-testid="gem-bonus"]').exists()).toBe(false);
+  });
+
+  it('equipment có capacity > 0 (LINH+) → render socket label', async () => {
+    listInventoryMock.mockResolvedValue([
+      makeInv({ id: 'i_w_linh', item: makeItemDef({ quality: 'LINH' }) }),
+    ]);
+    const w = mountView();
+    await flushPromises();
+    const sockets = w.find('[data-testid="equip-sockets"]');
+    expect(sockets.exists()).toBe(true);
+    expect(sockets.text()).toContain('Khảm: 0/1');
+  });
+
+  it('equipment quality PHAM → capacity = 0, không render socket label', async () => {
+    listInventoryMock.mockResolvedValue([makeInv()]); // PHAM
+    const w = mountView();
+    await flushPromises();
+    expect(w.find('[data-testid="equip-sockets"]').exists()).toBe(false);
+    expect(w.find('[data-testid="gem-select"]').exists()).toBe(false);
+  });
+
+  it('equipment đã đầy socket → ẩn select + button khảm', async () => {
+    listInventoryMock.mockResolvedValue([
+      makeInv({
+        id: 'i_w_linh_full',
+        item: makeItemDef({ quality: 'LINH' }), // capacity 1
+        sockets: ['gem_kim_pham'],
+      }),
+    ]);
+    const w = mountView();
+    await flushPromises();
+    expect(w.find('[data-testid="gem-select"]').exists()).toBe(false);
+    expect(w.find('[data-testid="gem-socket-button"]').exists()).toBe(false);
+    // Nhưng vẫn render unsocket button cho gem đã khảm.
+    expect(w.find('[data-testid="gem-unsocket-button"]').exists()).toBe(true);
+  });
+});
+
+describe('InventoryView — Phase 11.4.C socket / unsocket flow', () => {
+  it('socketGem success → call API, toast + re-fetch list', async () => {
+    listInventoryMock.mockResolvedValueOnce([
+      makeInv({ id: 'i_eq', item: makeItemDef({ quality: 'LINH' }) }),
+      makeGemInv({ qty: 3 }),
+    ]);
+    socketGemMock.mockResolvedValue({
+      equipmentInventoryItemId: 'i_eq',
+      gemKey: 'gem_kim_pham',
+      slotIndex: 0,
+      sockets: ['gem_kim_pham'],
+    });
+    listInventoryMock.mockResolvedValueOnce([
+      makeInv({
+        id: 'i_eq',
+        item: makeItemDef({ quality: 'LINH' }),
+        sockets: ['gem_kim_pham'],
+      }),
+      makeGemInv({ qty: 2 }),
+    ]);
+
+    const w = mountView();
+    await flushPromises();
+
+    const select = w.find('[data-testid="gem-select"]');
+    expect(select.exists()).toBe(true);
+    await select.setValue('gem_kim_pham');
+
+    const btn = w.find('[data-testid="gem-socket-button"]');
+    expect(btn.exists()).toBe(true);
+    await btn.trigger('click');
+    await flushPromises();
+
+    expect(socketGemMock).toHaveBeenCalledWith('i_eq', 'gem_kim_pham');
+    expect(listInventoryMock).toHaveBeenCalledTimes(2);
+    expect(toastPushMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: 'success',
+        text: expect.stringContaining('Đã khảm'),
+      }),
+    );
+  });
+
+  it('socketGem trước khi chọn gem → button disabled, không gọi API', async () => {
+    listInventoryMock.mockResolvedValue([
+      makeInv({ id: 'i_eq', item: makeItemDef({ quality: 'LINH' }) }),
+      makeGemInv({ qty: 1 }),
+    ]);
+    const w = mountView();
+    await flushPromises();
+    const btn = w.find('[data-testid="gem-socket-button"]');
+    expect(btn.exists()).toBe(true);
+    expect((btn.element as HTMLButtonElement).disabled).toBe(true);
+    await btn.trigger('click');
+    await flushPromises();
+    expect(socketGemMock).not.toHaveBeenCalled();
+  });
+
+  it('socketGem error → handleErr toast với code mapping', async () => {
+    listInventoryMock.mockResolvedValue([
+      makeInv({ id: 'i_eq', item: makeItemDef({ quality: 'LINH' }) }),
+      makeGemInv({ qty: 1 }),
+    ]);
+    const apiErr = Object.assign(new Error('SOCKETS_FULL'), { code: 'SOCKETS_FULL' });
+    socketGemMock.mockRejectedValue(apiErr);
+
+    const w = mountView();
+    await flushPromises();
+    const select = w.find('[data-testid="gem-select"]');
+    await select.setValue('gem_kim_pham');
+    const btn = w.find('[data-testid="gem-socket-button"]');
+    await btn.trigger('click');
+    await flushPromises();
+
+    expect(toastPushMock).toHaveBeenCalledWith({
+      type: 'error',
+      text: 'Lỗ khảm đã đầy.',
+    });
+  });
+
+  it('compatibleGems lọc gem theo slot equipment (gem WEAPON-only KHÔNG hiển cho equipment ARMOR)', async () => {
+    listInventoryMock.mockResolvedValue([
+      // ARMOR LINH equipment.
+      makeInv({
+        id: 'i_armor',
+        itemKey: 'so_giap',
+        item: makeItemDef({
+          key: 'so_giap',
+          name: 'Sơ Giáp',
+          kind: 'ARMOR',
+          slot: 'ARMOR',
+          quality: 'LINH',
+        }),
+      }),
+      // gem_kim_pham bonus atk → compatibleSlots WEAPON-only theo catalog.
+      makeGemInv({ itemKey: 'gem_kim_pham', qty: 1 }),
+    ]);
+    const w = mountView();
+    await flushPromises();
+    // Select tồn tại nhưng chỉ có placeholder option (gem WEAPON-only filter ra).
+    const select = w.find('[data-testid="gem-select"]');
+    expect(select.exists()).toBe(true);
+    const options = select.findAll('option');
+    // Chỉ còn placeholder option.
+    expect(options.length).toBe(1);
+    expect(options[0].text()).toContain('chọn');
+    // Render fallback "Chưa có linh thạch tương thích".
+    expect(w.find('[data-testid="gem-no-compat"]').exists()).toBe(true);
+  });
+
+  it('unsocketGem success → call API, toast system + re-fetch', async () => {
+    listInventoryMock.mockResolvedValueOnce([
+      makeInv({
+        id: 'i_eq',
+        item: makeItemDef({ quality: 'LINH' }),
+        sockets: ['gem_kim_pham'],
+      }),
+    ]);
+    unsocketGemMock.mockResolvedValue({
+      equipmentInventoryItemId: 'i_eq',
+      gemKey: 'gem_kim_pham',
+      sockets: [],
+      gemReturned: true,
+    });
+    listInventoryMock.mockResolvedValueOnce([
+      makeInv({ id: 'i_eq', item: makeItemDef({ quality: 'LINH' }), sockets: [] }),
+      makeGemInv({ qty: 1 }),
+    ]);
+
+    const w = mountView();
+    await flushPromises();
+    const btn = w.find('[data-testid="gem-unsocket-button"]');
+    expect(btn.exists()).toBe(true);
+    await btn.trigger('click');
+    await flushPromises();
+
+    expect(unsocketGemMock).toHaveBeenCalledWith('i_eq', 0);
+    expect(listInventoryMock).toHaveBeenCalledTimes(2);
+    expect(toastPushMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: 'system',
+        text: expect.stringContaining('Đã gỡ'),
+      }),
+    );
+  });
+
+  it('unsocketGem catalog drift (gemReturned=false) → toast unsocketDriftToast', async () => {
+    listInventoryMock.mockResolvedValue([
+      makeInv({
+        id: 'i_eq',
+        item: makeItemDef({ quality: 'LINH' }),
+        sockets: ['gem_drift_unknown'],
+      }),
+    ]);
+    unsocketGemMock.mockResolvedValue({
+      equipmentInventoryItemId: 'i_eq',
+      gemKey: 'gem_drift_unknown',
+      sockets: [],
+      gemReturned: false,
+    });
+
+    const w = mountView();
+    await flushPromises();
+    const btn = w.find('[data-testid="gem-unsocket-button"]');
+    await btn.trigger('click');
+    await flushPromises();
+
+    expect(toastPushMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: 'system',
+        text: expect.stringContaining('Đã gỡ slot 0'),
+      }),
+    );
+  });
+});
+
+describe('InventoryView — Phase 11.4.C combine flow', () => {
+  it('gem qty >= 3 + có nextTier → render combine button', async () => {
+    listInventoryMock.mockResolvedValue([makeGemInv({ qty: 3 })]);
+    const w = mountView();
+    await flushPromises();
+    expect(w.find('[data-testid="gem-combine-button"]').exists()).toBe(true);
+  });
+
+  it('gem qty < 3 → ẩn combine button', async () => {
+    listInventoryMock.mockResolvedValue([makeGemInv({ qty: 2 })]);
+    const w = mountView();
+    await flushPromises();
+    expect(w.find('[data-testid="gem-combine-button"]').exists()).toBe(false);
+  });
+
+  it('gem THAN tier (no next tier) → ẩn combine button', async () => {
+    // gem_kim_than is highest tier — combineGems(catalog) returns null.
+    listInventoryMock.mockResolvedValue([
+      makeGemInv({ itemKey: 'gem_kim_than', qty: 5 }),
+    ]);
+    const w = mountView();
+    await flushPromises();
+    expect(w.find('[data-testid="gem-combine-button"]').exists()).toBe(false);
+  });
+
+  it('combineGems success → call API, toast success + re-fetch list', async () => {
+    listInventoryMock.mockResolvedValueOnce([makeGemInv({ qty: 3 })]);
+    combineGemsApiMock.mockResolvedValue({
+      srcGemKey: 'gem_kim_pham',
+      srcQtyConsumed: 3,
+      resultGemKey: 'gem_kim_linh',
+      resultQtyGained: 1,
+    });
+    listInventoryMock.mockResolvedValueOnce([
+      makeGemInv({ itemKey: 'gem_kim_linh', qty: 1 }),
+    ]);
+
+    const w = mountView();
+    await flushPromises();
+    const btn = w.find('[data-testid="gem-combine-button"]');
+    await btn.trigger('click');
+    await flushPromises();
+
+    expect(combineGemsApiMock).toHaveBeenCalledWith('gem_kim_pham');
+    expect(listInventoryMock).toHaveBeenCalledTimes(2);
+    expect(toastPushMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: 'success',
+        text: expect.stringContaining('Hợp thành'),
+      }),
+    );
+  });
+
+  it('combineGems error INSUFFICIENT_QTY → handleErr toast', async () => {
+    listInventoryMock.mockResolvedValue([makeGemInv({ qty: 3 })]);
+    const apiErr = Object.assign(new Error('INSUFFICIENT_QTY'), { code: 'INSUFFICIENT_QTY' });
+    combineGemsApiMock.mockRejectedValue(apiErr);
+
+    const w = mountView();
+    await flushPromises();
+    const btn = w.find('[data-testid="gem-combine-button"]');
+    await btn.trigger('click');
+    await flushPromises();
+
+    expect(toastPushMock).toHaveBeenCalledWith({
+      type: 'error',
+      text: 'Không đủ linh thạch.',
+    });
   });
 });

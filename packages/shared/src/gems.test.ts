@@ -11,6 +11,8 @@ import {
   canSocketGem,
   gemUpgradePathCost,
   socketCapacityForQuality,
+  gemDefAsItemDef,
+  itemOrGemByKey,
 } from './gems';
 import { ELEMENTS, type ElementKey } from './combat';
 
@@ -358,6 +360,59 @@ describe('socketCapacityForQuality (Phase 11.4.B)', () => {
     for (const grade of GEM_GRADES) {
       expect(socketCapacityForQuality(grade)).toBeLessThanOrEqual(4);
       expect(socketCapacityForQuality(grade)).toBeGreaterThanOrEqual(0);
+    }
+  });
+});
+
+describe('gemDefAsItemDef + itemOrGemByKey (Phase 11.4.C bridge)', () => {
+  it('gemDefAsItemDef: synth ItemDef từ GemDef', () => {
+    const gem = getGemDef('gem_kim_pham')!;
+    const def = gemDefAsItemDef(gem);
+    expect(def.key).toBe(gem.key);
+    expect(def.name).toBe(gem.name);
+    expect(def.kind).toBe('MISC');
+    expect(def.stackable).toBe(true);
+    expect(def.quality).toBe(gem.grade);
+    expect(def.price).toBe(gem.price);
+    expect(def.bonuses).toEqual(gem.bonus);
+    // Gem không equip trực tiếp → slot undefined.
+    expect(def.slot).toBeUndefined();
+  });
+
+  it('gemDefAsItemDef: bonuses copy, không phải reference', () => {
+    const gem = getGemDef('gem_hoa_huyen')!;
+    const def = gemDefAsItemDef(gem);
+    // Mutate def.bonuses không được ảnh hưởng catalog.
+    expect(def.bonuses).not.toBe(gem.bonus);
+  });
+
+  it('itemOrGemByKey: trả ItemDef cho item key bình thường (không qua gem fallback)', () => {
+    // 'huyet_chi_dan' = pill HP, có trong ITEMS catalog.
+    const def = itemOrGemByKey('huyet_chi_dan');
+    expect(def).toBeDefined();
+    expect(def?.key).toBe('huyet_chi_dan');
+    // Đã match item catalog trước, không phải synth gem.
+    expect(def?.kind).not.toBe('MISC'); // pill có kind PILL_HP
+  });
+
+  it('itemOrGemByKey: trả synth ItemDef cho gem key qua fallback', () => {
+    const def = itemOrGemByKey('gem_moc_tien');
+    expect(def).toBeDefined();
+    expect(def?.key).toBe('gem_moc_tien');
+    expect(def?.kind).toBe('MISC');
+    expect(def?.quality).toBe('TIEN');
+  });
+
+  it('itemOrGemByKey: trả undefined khi key không có trong cả 2 catalog', () => {
+    expect(itemOrGemByKey('khong_ton_tai_xyz_123')).toBeUndefined();
+  });
+
+  it('itemOrGemByKey: cover full 25 gem catalog', () => {
+    for (const gem of GEMS) {
+      const def = itemOrGemByKey(gem.key);
+      expect(def).toBeDefined();
+      expect(def?.kind).toBe('MISC');
+      expect(def?.quality).toBe(gem.grade);
     }
   });
 });

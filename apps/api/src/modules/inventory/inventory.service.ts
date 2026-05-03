@@ -4,6 +4,7 @@ import {
   composeSocketBonus,
   getRefineStatMultiplier,
   itemByKey,
+  itemOrGemByKey,
   type ItemDef,
   type RolledLoot,
 } from '@xuantoi/shared';
@@ -106,7 +107,10 @@ export class InventoryService {
     });
     const out: InventoryView[] = [];
     for (const r of rows) {
-      const item = itemByKey(r.itemKey);
+      // Phase 11.4.C — fallback `itemOrGemByKey` để gem inventory rows
+      // (itemKey = 'gem_*') không bị skip; trước đó `itemByKey` chỉ
+      // search ITEMS catalog → gem rows undefined → vô hình trên UI.
+      const item = itemOrGemByKey(r.itemKey);
       if (!item) continue;
       out.push({
         id: r.id,
