@@ -161,6 +161,44 @@ export interface TalentDef {
  * `talentPointCost: 1` + `kind: 'regen'` + `statTarget: 'hpMax'` + `value: 5`.
  * 5-element hpRegen ceiling = 5 × 5 = 25 flat HP regen mỗi tick combat.
  * Additive (không multiplicative) khác với atk/def/hpMax/spirit ceiling 1.61051.)
+ * (Phase 11.X.AO: thêm `talent_kim_linh_hai` (kim), `talent_thuy_linh_hai`
+ * (thuy), `talent_moc_linh_hai` (moc), `talent_hoa_linh_hai` (hoa),
+ * `talent_tho_linh_hai` (tho) +10% MP tối đa — producers thứ 1–5 cho
+ * `composePassiveTalentMods.mpMaxMul`. **Hoàn tất 5-element mpMax coverage
+ * roadmap** (lần đầu tiên fill mpMaxMul path — trước đó 0/5). Symmetric
+ * structure với 5-element atk/def/hpMax/spirit producers (cost 1.1 multiplicative
+ * stat_mod). Cùng `realmRequirement: 'kim_dan'` + `talentPointCost: 1` +
+ * `kind: 'stat_mod'` + `statTarget: 'mpMax'` + `value: 1.1`. 5-element mpMax
+ * ceiling = 1.1⁵ = 1.61051, khớp atk + def + hpMax + spirit ceiling.
+ * **5-element symmetry hoàn tất 5/5 stat_mod path** (atk + def + hpMax + spirit
+ * + mpMax) — tất cả statTarget của `PassiveTalentMods` đã có 5-element
+ * coverage.)
+ * (Phase 11.X.AP: thêm `talent_kim_linh_dan` (kim), `talent_thuy_linh_dan`
+ * (thuy), `talent_moc_linh_dan` (moc), `talent_hoa_linh_dan` (hoa),
+ * `talent_tho_linh_dan` (tho) +5 MP regen flat — producers thứ 1–5 cho
+ * `composePassiveTalentMods.mpRegenFlat`. **Hoàn tất 5-element mpRegen coverage
+ * roadmap** (lần đầu tiên fill mpRegenFlat path — trước đó 0/5). Symmetric
+ * structure với 5-element hpRegen producers (Phase 11.X.AN). Cùng
+ * `realmRequirement: 'truc_co'` early-game + `talentPointCost: 1` +
+ * `kind: 'regen'` + `statTarget: 'mpMax'` + `value: 5`. 5-element mpRegen ceiling
+ * = 5 × 5 = 25 flat MP regen mỗi tick combat. Additive (không multiplicative)
+ * — đối xứng với hpRegen path. **5-element symmetry hoàn tất 2/2 regen path**
+ * (hpRegen + mpRegen) và toàn bộ stat_mod + regen path của `PassiveTalentMods`
+ * (7/7 statTarget path: atkMul + defMul + hpMaxMul + spiritMul + mpMaxMul +
+ * hpRegenFlat + mpRegenFlat) đã có 5-element coverage.)
+ * (Phase 11.X.AQ: thêm `talent_kim_sinh_dao` (kim sinh thuỷ),
+ * `talent_thuy_sinh_dao` (thuỷ sinh mộc), `talent_moc_sinh_dao` (mộc sinh hoả),
+ * `talent_hoa_sinh_dao` (hoả sinh thổ), `talent_tho_sinh_dao` (thổ sinh kim)
+ * +10% damage vs target element — 5 producers cho `composePassiveTalentMods
+ * .damageBonusByElement` theo chain tương sinh. **Hoàn tất 5-element tương sinh
+ * chain damage_bonus coverage roadmap**, counterpart đối xứng với tương khắc
+ * chain Phase 11.X.AM. Chain tương sinh: kim sinh thuỷ, thuỷ sinh mộc, mộc
+ * sinh hoả, hoả sinh thổ, thổ sinh kim. Cùng `realmRequirement: 'kim_dan'`
+ * + `talentPointCost: 1` (so với tương khắc cost 2) + `value: 1.1` (so với
+ * tương khắc 1.15) — tương sinh nhẹ hơn cost lẫn bonus, đối xứng vai trò secondary
+ * damage_bonus path. Lore: tu sĩ thấu hiểu đạo tương sinh, hoá khí hệ mình
+ * sinh ra trong đường công, đả thương kẻ địch hệ đó dễ dàng hơn. Sau PR này
+ * **2/2 damage_bonus chain complete** (tương khắc 5/5 + tương sinh 5/5).)
  *
  * Stable order: passive trước → active sau.
  */
@@ -251,6 +289,23 @@ export const TALENTS: readonly TalentDef[] = [
     activeEffect: null,
   },
   {
+    key: 'talent_kim_sinh_dao',
+    name: 'Kim Sinh Đạo',
+    description:
+      'Kim ngưng thuỷ tính trong đường công (kim sinh thuỷ), +10% sát thương lên kẻ thù hệ Thuỷ (tương sinh).',
+    type: 'passive',
+    element: 'kim',
+    realmRequirement: 'kim_dan',
+    talentPointCost: 1,
+    passiveEffect: {
+      kind: 'damage_bonus',
+      value: 1.1,
+      statTarget: null,
+      elementTarget: 'thuy',
+    },
+    activeEffect: null,
+  },
+  {
     key: 'talent_kim_linh_quy',
     name: 'Kim Linh Quy',
     description: 'Kim khí ngưng tụ tự sửa nhục thân, +5 HP regen mỗi tick combat.',
@@ -262,6 +317,39 @@ export const TALENTS: readonly TalentDef[] = [
       kind: 'regen',
       value: 5,
       statTarget: 'hpMax',
+      elementTarget: null,
+    },
+    activeEffect: null,
+  },
+  {
+    key: 'talent_kim_linh_hai',
+    name: 'Kim Linh Hải',
+    description:
+      'Linh hải kim khí không đáy, mở rộng dung lượng linh khí, +10% MP tối đa.',
+    type: 'passive',
+    element: 'kim',
+    realmRequirement: 'kim_dan',
+    talentPointCost: 1,
+    passiveEffect: {
+      kind: 'stat_mod',
+      value: 1.1,
+      statTarget: 'mpMax',
+      elementTarget: null,
+    },
+    activeEffect: null,
+  },
+  {
+    key: 'talent_kim_linh_dan',
+    name: 'Kim Linh Đan',
+    description: 'Kim linh đan lưu chuyển trong cơ thể, +5 MP regen mỗi tick combat.',
+    type: 'passive',
+    element: 'kim',
+    realmRequirement: 'truc_co',
+    talentPointCost: 1,
+    passiveEffect: {
+      kind: 'regen',
+      value: 5,
+      statTarget: 'mpMax',
       elementTarget: null,
     },
     activeEffect: null,
@@ -350,6 +438,23 @@ export const TALENTS: readonly TalentDef[] = [
     activeEffect: null,
   },
   {
+    key: 'talent_thuy_sinh_dao',
+    name: 'Thuỷ Sinh Đạo',
+    description:
+      'Thuỷ dưỡng mộc khí sinh cơ (thuỷ sinh mộc), +10% sát thương lên kẻ thù hệ Mộc (tương sinh).',
+    type: 'passive',
+    element: 'thuy',
+    realmRequirement: 'kim_dan',
+    talentPointCost: 1,
+    passiveEffect: {
+      kind: 'damage_bonus',
+      value: 1.1,
+      statTarget: null,
+      elementTarget: 'moc',
+    },
+    activeEffect: null,
+  },
+  {
     key: 'talent_thuy_linh_quy',
     name: 'Thuỷ Linh Quy',
     description: 'Thuỷ khí cuồn cuộn tưới mát kinh mạch, +5 HP regen mỗi tick combat.',
@@ -366,6 +471,39 @@ export const TALENTS: readonly TalentDef[] = [
     activeEffect: null,
   },
   {
+    key: 'talent_thuy_linh_hai',
+    name: 'Thuỷ Linh Hải',
+    description:
+      'Thuỷ linh hải bao la dừng trữ linh khí vô tận, +10% MP tối đa.',
+    type: 'passive',
+    element: 'thuy',
+    realmRequirement: 'kim_dan',
+    talentPointCost: 1,
+    passiveEffect: {
+      kind: 'stat_mod',
+      value: 1.1,
+      statTarget: 'mpMax',
+      elementTarget: null,
+    },
+    activeEffect: null,
+  },
+  {
+    key: 'talent_thuy_linh_dan',
+    name: 'Thuỷ Linh Đan',
+    description: 'Thuỷ linh đan giọt sương tưới linh khí, +5 MP regen mỗi tick combat.',
+    type: 'passive',
+    element: 'thuy',
+    realmRequirement: 'truc_co',
+    talentPointCost: 1,
+    passiveEffect: {
+      kind: 'regen',
+      value: 5,
+      statTarget: 'mpMax',
+      elementTarget: null,
+    },
+    activeEffect: null,
+  },
+  {
     key: 'talent_moc_linh_quy',
     name: 'Mộc Linh Quy',
     description: 'Linh khí mộc tự hồi, +5 HP regen mỗi tick combat.',
@@ -377,6 +515,39 @@ export const TALENTS: readonly TalentDef[] = [
       kind: 'regen',
       value: 5,
       statTarget: 'hpMax',
+      elementTarget: null,
+    },
+    activeEffect: null,
+  },
+  {
+    key: 'talent_moc_linh_hai',
+    name: 'Mộc Linh Hải',
+    description:
+      'Mộc linh hải sinh cơ bất tận, mở rộng đan điền linh khí, +10% MP tối đa.',
+    type: 'passive',
+    element: 'moc',
+    realmRequirement: 'kim_dan',
+    talentPointCost: 1,
+    passiveEffect: {
+      kind: 'stat_mod',
+      value: 1.1,
+      statTarget: 'mpMax',
+      elementTarget: null,
+    },
+    activeEffect: null,
+  },
+  {
+    key: 'talent_moc_linh_dan',
+    name: 'Mộc Linh Đan',
+    description: 'Mộc linh đan nảy lộc sinh khí lưu chuyển, +5 MP regen mỗi tick combat.',
+    type: 'passive',
+    element: 'moc',
+    realmRequirement: 'truc_co',
+    talentPointCost: 1,
+    passiveEffect: {
+      kind: 'regen',
+      value: 5,
+      statTarget: 'mpMax',
       elementTarget: null,
     },
     activeEffect: null,
@@ -467,6 +638,23 @@ export const TALENTS: readonly TalentDef[] = [
     activeEffect: null,
   },
   {
+    key: 'talent_moc_sinh_dao',
+    name: 'Mộc Sinh Đạo',
+    description:
+      'Mộc sinh hoả diêm thiêu đốt (mộc sinh hoả), +10% sát thương lên kẻ thù hệ Hoả (tương sinh).',
+    type: 'passive',
+    element: 'moc',
+    realmRequirement: 'kim_dan',
+    talentPointCost: 1,
+    passiveEffect: {
+      kind: 'damage_bonus',
+      value: 1.1,
+      statTarget: null,
+      elementTarget: 'hoa',
+    },
+    activeEffect: null,
+  },
+  {
     key: 'talent_hoa_tam_dao',
     name: 'Hoả Tâm Đạo',
     description: 'Tâm tựa hoả thiêu, +15% sát thương lên kẻ thù hệ Kim (tương khắc).',
@@ -479,6 +667,23 @@ export const TALENTS: readonly TalentDef[] = [
       value: 1.15,
       statTarget: null,
       elementTarget: 'kim',
+    },
+    activeEffect: null,
+  },
+  {
+    key: 'talent_hoa_sinh_dao',
+    name: 'Hoả Sinh Đạo',
+    description:
+      'Hoả sinh thổ đổi phương hệ Thổ phù hợp đường công (hoả sinh thổ), +10% sát thương lên kẻ thù hệ Thổ (tương sinh).',
+    type: 'passive',
+    element: 'hoa',
+    realmRequirement: 'kim_dan',
+    talentPointCost: 1,
+    passiveEffect: {
+      kind: 'damage_bonus',
+      value: 1.1,
+      statTarget: null,
+      elementTarget: 'tho',
     },
     activeEffect: null,
   },
@@ -562,6 +767,39 @@ export const TALENTS: readonly TalentDef[] = [
       kind: 'regen',
       value: 5,
       statTarget: 'hpMax',
+      elementTarget: null,
+    },
+    activeEffect: null,
+  },
+  {
+    key: 'talent_hoa_linh_hai',
+    name: 'Hoả Linh Hải',
+    description:
+      'Hoả linh hải sôi trào thắp sáng đan điền linh khí, +10% MP tối đa.',
+    type: 'passive',
+    element: 'hoa',
+    realmRequirement: 'kim_dan',
+    talentPointCost: 1,
+    passiveEffect: {
+      kind: 'stat_mod',
+      value: 1.1,
+      statTarget: 'mpMax',
+      elementTarget: null,
+    },
+    activeEffect: null,
+  },
+  {
+    key: 'talent_hoa_linh_dan',
+    name: 'Hoả Linh Đan',
+    description: 'Hoả linh đan thiêu hồi linh khí không ngừng, +5 MP regen mỗi tick combat.',
+    type: 'passive',
+    element: 'hoa',
+    realmRequirement: 'truc_co',
+    talentPointCost: 1,
+    passiveEffect: {
+      kind: 'regen',
+      value: 5,
+      statTarget: 'mpMax',
       elementTarget: null,
     },
     activeEffect: null,
@@ -651,6 +889,23 @@ export const TALENTS: readonly TalentDef[] = [
     activeEffect: null,
   },
   {
+    key: 'talent_tho_sinh_dao',
+    name: 'Thổ Sinh Đạo',
+    description:
+      'Thổ ngưng kim kim quặng tinh nguyên (thổ sinh kim), +10% sát thương lên kẻ thù hệ Kim (tương sinh).',
+    type: 'passive',
+    element: 'tho',
+    realmRequirement: 'kim_dan',
+    talentPointCost: 1,
+    passiveEffect: {
+      kind: 'damage_bonus',
+      value: 1.1,
+      statTarget: null,
+      elementTarget: 'kim',
+    },
+    activeEffect: null,
+  },
+  {
     key: 'talent_tho_linh_quy',
     name: 'Thổ Linh Quy',
     description: 'Thổ khí trầm hậu vun đắp khí huyết, +5 HP regen mỗi tick combat.',
@@ -662,6 +917,39 @@ export const TALENTS: readonly TalentDef[] = [
       kind: 'regen',
       value: 5,
       statTarget: 'hpMax',
+      elementTarget: null,
+    },
+    activeEffect: null,
+  },
+  {
+    key: 'talent_tho_linh_hai',
+    name: 'Thổ Linh Hải',
+    description:
+      'Thổ linh hải trầm ổn cố định khí hải và đan điền, +10% MP tối đa.',
+    type: 'passive',
+    element: 'tho',
+    realmRequirement: 'kim_dan',
+    talentPointCost: 1,
+    passiveEffect: {
+      kind: 'stat_mod',
+      value: 1.1,
+      statTarget: 'mpMax',
+      elementTarget: null,
+    },
+    activeEffect: null,
+  },
+  {
+    key: 'talent_tho_linh_dan',
+    name: 'Thổ Linh Đan',
+    description: 'Thổ linh đan vùi sâu nuôi dưỡng linh khí bền bỉ, +5 MP regen mỗi tick combat.',
+    type: 'passive',
+    element: 'tho',
+    realmRequirement: 'truc_co',
+    talentPointCost: 1,
+    passiveEffect: {
+      kind: 'regen',
+      value: 5,
+      statTarget: 'mpMax',
       elementTarget: null,
     },
     activeEffect: null,
