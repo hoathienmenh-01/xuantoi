@@ -424,15 +424,31 @@ Thêm depth cho progression: công pháp, skill upgrade, linh căn, thể chất
 - 70 vitest cover catalog shape + ref REALMS valid + curve sanity + helpers + sim deterministic + error paths.
 - KHÔNG schema migration, KHÔNG runtime hook (catalog-only foundation cho 11.7.B runtime).
 
-#### 11.7.B PR: Talent / Thần Thông runtime (Pending)
+#### 11.7.B PR: Talent / Thần Thông runtime — DONE ✅ (PR #244 merged)
 
-- Module mới `apps/api/src/modules/talent/` (controller + service + DTO).
-- Prisma migration: `CharacterTalent { id, characterId, talentKey, learnedAt, mpCooldownUntil, attemptCount }` + indexed on `(characterId, talentKey)` UNIQUE.
-- Service `TalentService.learnTalent(characterId, talentKey)` → validate qua `canCharacterLearnTalent` + persist + giảm point budget.
-- Service `TalentService.useActiveTalent(characterId, talentKey, combatId)` → check cooldown + check mp + call `simulateActiveTalent` + apply damage/heal/cc/dot vào CombatService runtime + atomic mp consume + cooldown set.
-- Wire `composePassiveTalentMods(character.learnedTalentKeys)` vào `CharacterStatService.computeStats` để áp passive stat mod + drop/exp bonus.
-- REST `GET /talent/available` + `POST /talent/learn` + `POST /talent/use` + `GET /talent/points`.
-- Migration + rollback note + audit log.
+- Module `apps/api/src/modules/character/talent.service.ts` + `apps/api/src/modules/character/character.controller.ts` (talent endpoints).
+- Prisma model `CharacterTalent { id, characterId, talentKey, learnedAt }` (cooldown defer Phase 11.7.E).
+- Service `TalentService.learnTalent(characterId, talentKey)` validate qua `canCharacterLearnTalent` + persist + giảm talent point budget.
+- Service `TalentService.listLearned` + `getMods` (passive compose) — dùng cho stat compose runtime.
+- Wire `composePassiveTalentMods(character.learnedTalentKeys)` vào `CombatService.action` (atk/def/element bonus apply on damage compose).
+- REST `GET /character/talent/list` + `POST /character/talent/learn` + `GET /character/talent/points`.
+- 70+ vitest service + controller cover học/refund/passive compose + reject paths.
+
+#### 11.7.D PR: Talent active wire vào CombatService — DONE ✅ (this PR / merge target)
+
+- `apps/api/src/modules/combat/combat.service.ts` — extend `CombatError` union với `TALENT_NOT_LEARNED` + `TALENT_NOT_ACTIVE`. `action(skillKey)` lookup `skillByKey` null → fallback `getTalentDef(skillKey)` → route sang `actionViaActiveTalent` flow nếu `type='active'`.
+- `actionViaActiveTalent` server-authoritative: validate ownership qua `TalentService.listLearned` + MP cost từ `activeEffect.mpCost` + buff control gate (`controlTurnsMax > 0` → reject CONTROLLED) + execute deterministic via `simulateActiveTalent(def, atk, spirit)` + element multipliers (`playerElementMul × talentElementMul × buffElementMul` cho damage kind).
+- Effect mapping: `damage` → monster HP -= `result.damage × elementMuls`; `heal` → restore HP clamp `hpMax` + skip monster reply; `cc` (root/stun) → log + skip monster reply; `dot` (burn) → log + skip monster reply (DOT cumulative cross-turn defer Phase 11.X.M); `utility` (escape `talent_phong_lui`) → encounter ABANDONED + early return.
+- Persist via `prisma.$transaction` cùng `currency.applyTx` (`COMBAT_LOOT` reason) + `inventory.grant` (loot khi WON) + mission/achievement track (`KILL_MONSTER` / `CLEAR_DUNGEON` fail-soft).
+- 10 vitest mới cover full effect path + 3 reject path (TALENT_NOT_LEARNED, MP_LOW, TALENT_NOT_ACTIVE, TalentService không inject reject).
+- KHÔNG schema migration, KHÔNG breaking change cho skill flow legacy.
+
+#### 11.7.E PR: Talent active cooldown schema persist (Pending)
+
+- Schema migration `CharacterTalent.cooldownTurnsRemaining Int @default(0)` (hoặc `cooldownExpiresAt DateTime?`).
+- `CombatService.action` (skill flow + active talent flow): decrement-per-turn + reject `TALENT_ON_COOLDOWN` nếu đang cooldown.
+- Set cooldown khi cast active talent thành công (`activeEffect.cooldownTurns` từ catalog).
+- Update test fixture + migration test.
 
 #### 11.8.A PR: Buff/Debuff catalog foundation — DONE ✅ (this branch / merge target)
 
