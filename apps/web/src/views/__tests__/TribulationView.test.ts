@@ -1207,8 +1207,9 @@ describe('TribulationView — Phase 11.6.K history stats', () => {
       .element;
     expect(stats).toBeTruthy();
     expect(filter).toBeTruthy();
-    // DOCUMENT_POSITION_FOLLOWING (4) → stats comes BEFORE filter
-    // eslint-disable-next-line no-bitwise
-    expect(stats.compareDocumentPosition(filter) & 0x04).toBeTruthy();
+    // DOCUMENT_POSITION_FOLLOWING (4) → stats comes BEFORE filter.
+    // Use Node.DOCUMENT_POSITION_FOLLOWING constant (=4) to avoid bitwise op.
+    const pos = stats.compareDocumentPosition(filter);
+    expect(pos === Node.DOCUMENT_POSITION_FOLLOWING).toBe(true);
   });
 });
