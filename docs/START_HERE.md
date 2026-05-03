@@ -6,6 +6,8 @@
 
 ## 0. NGUYÊN TẮC NGUỒN SỰ THẬT (MUST READ)
 
+> **Fast but Safe Delivery Mode** — AI/dev mới phải tuân thủ [`AI_WORKFLOW_RULES.md`](./AI_WORKFLOW_RULES.md) (8 luật: UI Module / Docs Update / Handoff Structure / Test Fast Path / Batching / Safety Correction / Speed Target / Next Task Auto-Selection). Mục tiêu: làm nhanh hơn nhưng vẫn đúng — KHÔNG ép minimum 100 dòng diff, KHÔNG fake green, KHÔNG tắt CI.
+
 Khi tài liệu xung đột nhau, ưu tiên theo thứ tự sau:
 
 1. **Code hiện tại trên `main`** — luôn là nguồn sự thật cuối cùng.
@@ -21,7 +23,7 @@ Khi tài liệu xung đột nhau, ưu tiên theo thứ tự sau:
 
 | Bạn muốn... | Đọc file | Vì sao |
 |---|---|---|
-| **Biết luật delivery / scope khi viết PR** (UI Module Rule, gom scope, không micro-PR) | [`AI_WORKFLOW_RULES.md`](./AI_WORKFLOW_RULES.md) | **MUST READ trước PR đầu tiên.** Định nghĩa cách chia PR (UI module phải gom trọn 1 PR). |
+| **Biết luật delivery / scope khi viết PR** (Fast but Safe Delivery Mode: UI Module / Docs Update / Handoff Structure / Test Fast Path / Batching / Safety Correction / Speed Target / Next Task Auto-Selection) | [`AI_WORKFLOW_RULES.md`](./AI_WORKFLOW_RULES.md) | **MUST READ trước PR đầu tiên.** 8 luật để làm nhanh nhưng vẫn đúng (không ép minimum 100 dòng, không fake green, không tắt CI). |
 | **Biết trạng thái thật hiện tại của repo** (đã làm gì, baseline test, model nào đã có, PR nào vừa merge) | [`AI_HANDOFF_REPORT.md`](./AI_HANDOFF_REPORT.md) — đọc **`## Current Executive Summary`** (30 dòng đầu) là đủ; muốn chi tiết theo session đọc tiếp `## Snapshots`. | Cập nhật mỗi PR. Đây là nguồn sự thật về "hôm nay đang ở đâu". |
 | **Biết game sẽ đi đâu, fantasy là gì, core loop, 13 gameplay system, product principles** | [`GAME_DESIGN_BIBLE.md`](./GAME_DESIGN_BIBLE.md) | Vision + thiết kế dài hạn. Đọc xong hiểu "Xuân Tôi muốn trở thành cái gì". |
 | **Biết phase nào nên làm tiếp, entry/exit criteria, module nào bị cấm chưa được build** | [`LONG_TERM_ROADMAP.md`](./LONG_TERM_ROADMAP.md) | Phase 9 → 17 với dependency rule + DO-NOT-BUILD-YET list. |
@@ -40,7 +42,7 @@ Khi tài liệu xung đột nhau, ưu tiên theo thứ tự sau:
 
 Đọc đủ **để không phá hệ thống**:
 
-1. [`AI_WORKFLOW_RULES.md`](./AI_WORKFLOW_RULES.md) — **MUST READ.** UI Module Rule + delivery/scope rules. Tránh chia một màn hình UI thành 4-5 micro-PR.
+1. [`AI_WORKFLOW_RULES.md`](./AI_WORKFLOW_RULES.md) — **MUST READ.** Fast but Safe Delivery Mode (8 luật): UI Module Rule, Docs Update Rule, Handoff Report Structure Rule, Test Fast Path Rule, Batching Rule, Safety Correction Rule, Speed Target, Next Task Auto-Selection.
 2. [`AI_HANDOFF_REPORT.md`](./AI_HANDOFF_REPORT.md) — snapshot trên cùng. Biết hôm nay ở đâu.
 3. [`LONG_TERM_ROADMAP.md`](./LONG_TERM_ROADMAP.md) §0 + phase tương ứng. Confirm dependency rule + entry criteria phase đó đã đạt.
 4. Doc chuyên biệt theo nội dung PR (xem §1).
@@ -50,7 +52,7 @@ Khi tài liệu xung đột nhau, ưu tiên theo thứ tự sau:
 
 ### 2.2 AI/dev review PR
 
-1. [`AI_WORKFLOW_RULES.md`](./AI_WORKFLOW_RULES.md) — UI Module Rule + delivery/scope rules. Reject PR nếu một màn hình UI bị chia thành micro-PR pagination/filter/stats riêng.
+1. [`AI_WORKFLOW_RULES.md`](./AI_WORKFLOW_RULES.md) — Fast but Safe Delivery Mode. Reject PR nếu: UI module bị chia thành micro-PR pagination/filter/stats riêng (UI MODULE RULE); docs handoff bị tách PR riêng (DOCS UPDATE RULE); test fake green / skip test cũ / tắt CI (SAFETY CORRECTION); gom scope không liên quan (BATCHING RULE).
 2. [`AI_HANDOFF_REPORT.md`](./AI_HANDOFF_REPORT.md) snapshot mới nhất — biết baseline.
 3. [`GAME_DESIGN_BIBLE.md`](./GAME_DESIGN_BIBLE.md) §K (Module dependency rule) — confirm PR không lấn sân phase chưa tới.
 4. [`ECONOMY_MODEL.md`](./ECONOMY_MODEL.md) §3 (Invariants) — nếu PR đụng currency/item, mọi mutation phải qua CurrencyService/ItemService và có ledger row.
@@ -88,7 +90,7 @@ Khi tài liệu xung đột nhau, ưu tiên theo thứ tự sau:
 ### 3.1 Long-term design (mới — 2026-04, đọc đầu tiên)
 
 - [`START_HERE.md`](./START_HERE.md) ← **bạn đang ở đây**.
-- [`AI_WORKFLOW_RULES.md`](./AI_WORKFLOW_RULES.md) — UI Module Rule + delivery/scope rules. **MUST READ trước PR đầu tiên.**
+- [`AI_WORKFLOW_RULES.md`](./AI_WORKFLOW_RULES.md) — Fast but Safe Delivery Mode (8 luật delivery/scope). **MUST READ trước PR đầu tiên.**
 - [`GAME_DESIGN_BIBLE.md`](./GAME_DESIGN_BIBLE.md) — vision + core loop + 13 system + principles.
 - [`LONG_TERM_ROADMAP.md`](./LONG_TERM_ROADMAP.md) — Phase 9 → 17.
 - [`ECONOMY_MODEL.md`](./ECONOMY_MODEL.md) — currency invariants + anti-abuse.
@@ -158,9 +160,10 @@ Khi tài liệu xung đột nhau, ưu tiên theo thứ tự sau:
 
 Nếu chỉ có 3 phút:
 
-1. Mở [`AI_HANDOFF_REPORT.md`](./AI_HANDOFF_REPORT.md). Đọc snapshot trên cùng → biết baseline + đã ship gì.
-2. Mở [`LONG_TERM_ROADMAP.md`](./LONG_TERM_ROADMAP.md) §0.2 (dependency rule) + DO-NOT-BUILD-YET list cuối file.
-3. Quay lại §1 file này, đọc 1 doc tương ứng với task.
+1. Mở [`AI_WORKFLOW_RULES.md`](./AI_WORKFLOW_RULES.md). Lướt 8 section heading — biết Fast but Safe Delivery Mode để không tách micro-PR / không quên handoff / không fake green.
+2. Mở [`AI_HANDOFF_REPORT.md`](./AI_HANDOFF_REPORT.md). Đọc Executive Summary trên cùng → biết baseline + đã ship gì.
+3. Mở [`LONG_TERM_ROADMAP.md`](./LONG_TERM_ROADMAP.md) §0.2 (dependency rule) + DO-NOT-BUILD-YET list cuối file.
+4. Quay lại §1 file này, đọc 1 doc tương ứng với task.
 
 Còn lại đọc khi cần.
 
@@ -168,5 +171,6 @@ Còn lại đọc khi cần.
 
 ## 6. CHANGELOG
 
-- **2026-05-03** — Add `AI_WORKFLOW_RULES.md` to required reading (§1 decision table, §2.1 + §2.2 role guides, §3.1 docs map). Lý do: tránh chia một màn hình UI thành 4-5 micro-PR (UI Module Rule).
+- **2026-05-03 (PR Fast-but-Safe Delivery Mode)** — Mở rộng `AI_WORKFLOW_RULES.md` thành 8 luật: UI Module Rule (giữ), Docs Update Rule, Handoff Report Structure Rule, Test Fast Path Rule, Batching Rule, Safety Correction Rule, Speed Target, Next Task Auto-Selection. Cập nhật §0 (Fast-but-Safe banner), §1 decision table, §2.1 + §2.2 role guides, §3.1 docs map, §5 TL;DR.
+- **2026-05-03 (PR UI Module Rule)** — Add `AI_WORKFLOW_RULES.md` to required reading (§1 decision table, §2.1 + §2.2 role guides, §3.1 docs map). Lý do: tránh chia một màn hình UI thành 4-5 micro-PR (UI Module Rule).
 - **2026-04-30** — Tạo file. Author: Devin AI session 9q (sau khi `docs/` đạt 25 file, AI mới dễ ngợp).
