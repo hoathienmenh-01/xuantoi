@@ -9,6 +9,7 @@ import {
   Optional,
   Param,
   Post,
+  Query,
   Req,
 } from '@nestjs/common';
 import type { Request } from 'express';
@@ -26,6 +27,8 @@ import {
 import { GemError, GemService } from './gem.service';
 import { RefineError, RefineService } from './refine.service';
 import {
+  TRIBULATION_LOG_DEFAULT_LIMIT,
+  TRIBULATION_LOG_MAX_LIMIT,
   TribulationError,
   TribulationService,
 } from './tribulation.service';
@@ -547,6 +550,34 @@ export class CharacterController {
   }
 
   /**
+   * Phase 11.6.F Tribulation log — list recent tribulation attempts của
+   * character đang đăng nhập.
+   *
+   *   - Auth gate (cookie session → userId → character).
+   *   - Idempotent GET — không thay đổi state.
+   *   - Sort theo `createdAt` DESC.
+   *   - Optional `?limit=N` (1..100, default 20). Invalid → fallback default.
+   *   - 503 nếu module chưa wire (`TRIBULATION_UNAVAILABLE`).
+   *   - BigInt fields cast → string ở `TribulationService.listAttemptLogs`
+   *     để FE serialize an toàn (ko mất precision).
+   */
+  @Get('tribulation/log')
+  async tribulationLog(@Req() req: Request, @Query('limit') limit?: string) {
+    const userId = await this.requireUserId(req);
+    if (!this.tribulation) {
+      fail('TRIBULATION_UNAVAILABLE', HttpStatus.NOT_IMPLEMENTED);
+    }
+    const character = await this.chars.findByUser(userId);
+    if (!character) fail('NO_CHARACTER', HttpStatus.NOT_FOUND);
+    const parsedLimit = parseTribulationLogLimit(limit);
+    const rows = await this.tribulation.listAttemptLogs(
+      character.id,
+      parsedLimit,
+    );
+    return { ok: true, data: { rows, limit: parsedLimit } };
+  }
+
+  /**
    * Phase 11.10.E Achievement state — return server-authoritative state cho
    * UI achievement screen: tất cả visible achievement merge với progress
    * /completedAt/claimedAt.
@@ -952,6 +983,19 @@ function mapTribulationErrorStatus(
     default:
       return HttpStatus.BAD_REQUEST;
   }
+}
+
+/**
+ * Phase 11.6.F — parse `?limit=N` query string an toàn.
+ * Invalid (non-numeric, NaN, <=0) → fallback `TRIBULATION_LOG_DEFAULT_LIMIT`.
+ * Cap > MAX → MAX. Service cũng có `Math.max/min` guard nhưng controller
+ * normalize trước để response shape `data.limit` luôn match thực tế cap.
+ */
+function parseTribulationLogLimit(limit: string | undefined): number {
+  if (limit === undefined || limit === '') return TRIBULATION_LOG_DEFAULT_LIMIT;
+  const n = Number(limit);
+  if (!Number.isFinite(n) || n <= 0) return TRIBULATION_LOG_DEFAULT_LIMIT;
+  return Math.min(TRIBULATION_LOG_MAX_LIMIT, Math.floor(n));
 }
 
 /** Map TalentError code → HTTP status. */

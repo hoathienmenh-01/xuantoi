@@ -320,6 +320,96 @@ export class TribulationService {
       };
     });
   }
+
+  /**
+   * Phase 11.6.F — list recent tribulation attempt logs cho 1 character.
+   *
+   * Trả về tối đa `limit` row gần nhất (sort theo `createdAt` DESC). Idempotent
+   * GET — không thay đổi state. Server-authoritative: caller phải resolve
+   * `characterId` từ session userId trước khi gọi.
+   *
+   * @param characterId character id (server-trusted).
+   * @param limit số row tối đa (1..MAX_LIMIT). Default 20.
+   * @returns array `TribulationAttemptLogView` với BigInt fields cast → string
+   *   để FE serialize an toàn (ko mất precision).
+   */
+  async listAttemptLogs(
+    characterId: string,
+    limit: number = TRIBULATION_LOG_DEFAULT_LIMIT,
+  ): Promise<TribulationAttemptLogView[]> {
+    const safeLimit = Math.max(
+      1,
+      Math.min(TRIBULATION_LOG_MAX_LIMIT, Math.floor(limit)),
+    );
+    const rows = await this.prisma.tribulationAttemptLog.findMany({
+      where: { characterId },
+      orderBy: { createdAt: 'desc' },
+      take: safeLimit,
+    });
+    return rows.map((r) => ({
+      id: r.id,
+      tribulationKey: r.tribulationKey,
+      fromRealmKey: r.fromRealmKey,
+      toRealmKey: r.toRealmKey,
+      severity: r.severity,
+      type: r.type,
+      success: r.success,
+      wavesCompleted: r.wavesCompleted,
+      totalDamage: r.totalDamage,
+      finalHp: r.finalHp,
+      hpInitial: r.hpInitial,
+      expBefore: r.expBefore.toString(),
+      expAfter: r.expAfter.toString(),
+      expLoss: r.expLoss.toString(),
+      taoMaActive: r.taoMaActive,
+      taoMaExpiresAt: r.taoMaExpiresAt ? r.taoMaExpiresAt.toISOString() : null,
+      cooldownAt: r.cooldownAt ? r.cooldownAt.toISOString() : null,
+      linhThachReward: r.linhThachReward,
+      expBonusReward: r.expBonusReward.toString(),
+      titleKeyReward: r.titleKeyReward,
+      attemptIndex: r.attemptIndex,
+      taoMaRoll: r.taoMaRoll,
+      createdAt: r.createdAt.toISOString(),
+    }));
+  }
+}
+
+/**
+ * Phase 11.6.F — pagination defaults cho `listAttemptLogs`.
+ * MAX cap để tránh DOS qua `?limit=999999`.
+ */
+export const TRIBULATION_LOG_DEFAULT_LIMIT = 20;
+export const TRIBULATION_LOG_MAX_LIMIT = 100;
+
+/**
+ * Phase 11.6.F — view-friendly shape của `TribulationAttemptLog`.
+ * BigInt fields cast → string (giữ precision khi qua JSON), DateTime cast
+ * → ISO string. Mirror `TribulationOutcomeView` nhưng giữ snapshot fields.
+ */
+export interface TribulationAttemptLogView {
+  id: string;
+  tribulationKey: string;
+  fromRealmKey: string;
+  toRealmKey: string;
+  severity: string;
+  type: string;
+  success: boolean;
+  wavesCompleted: number;
+  totalDamage: number;
+  finalHp: number;
+  hpInitial: number;
+  expBefore: string;
+  expAfter: string;
+  expLoss: string;
+  taoMaActive: boolean;
+  taoMaExpiresAt: string | null;
+  cooldownAt: string | null;
+  linhThachReward: number;
+  expBonusReward: string;
+  titleKeyReward: string | null;
+  attemptIndex: number;
+  taoMaRoll: number;
+  createdAt: string;
 }
 
 export interface TribulationAttemptOutcome {

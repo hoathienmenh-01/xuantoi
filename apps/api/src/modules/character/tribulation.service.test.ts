@@ -667,3 +667,131 @@ describe('TribulationService.attemptTribulation with BuffService (Phase 11.8.D-2
     expect(buffs).toHaveLength(0);
   });
 });
+
+describe('TribulationService.listAttemptLogs (Phase 11.6.F)', () => {
+  /**
+   * Sau mỗi FAIL attempt, character.exp giảm + cooldown set + realmStage giữ
+   * nguyên 9. Để chạy nhiều attempts liên tiếp trong test, refill về peak gate.
+   */
+  async function refillToPeak(characterId: string) {
+    await prisma.character.update({
+      where: { id: characterId },
+      data: {
+        tribulationCooldownAt: null,
+        exp: KIM_DAN_COST_9 + 1000n,
+        realmStage: 9,
+        hp: 100,
+        hpMax: 100,
+      },
+    });
+  }
+
+  it('character chưa attempt → trả về mảng rỗng', async () => {
+    const ctx = await setupCharAtKimDanPeak();
+    const rows = await svc.listAttemptLogs(ctx.characterId);
+    expect(rows).toEqual([]);
+  });
+
+  it('attempt FAIL rồi list → có 1 row, BigInt cast → string, DateTime cast → ISO', async () => {
+    const ctx = await setupCharAtKimDanPeak({ hpMax: 100 }); // hp thấp → fail
+    const out = await svc.attemptTribulation(ctx.characterId, () => 0.99);
+    expect(out.success).toBe(false);
+
+    const rows = await svc.listAttemptLogs(ctx.characterId);
+    expect(rows).toHaveLength(1);
+    const row = rows[0]!;
+    expect(row.tribulationKey).toBe(out.tribulationKey);
+    expect(row.success).toBe(false);
+    expect(row.fromRealmKey).toBe('kim_dan');
+    expect(row.toRealmKey).toBe('nguyen_anh');
+    expect(typeof row.expBefore).toBe('string');
+    expect(typeof row.expAfter).toBe('string');
+    expect(typeof row.expLoss).toBe('string');
+    expect(typeof row.expBonusReward).toBe('string');
+    expect(BigInt(row.expBefore) >= 0n).toBe(true);
+    expect(typeof row.createdAt).toBe('string');
+    expect(() => new Date(row.createdAt).toISOString()).not.toThrow();
+    expect(row.cooldownAt).not.toBeNull();
+    expect(row.titleKeyReward).toBeNull();
+    expect(row.linhThachReward).toBe(0);
+    expect(row.attemptIndex).toBe(1);
+  });
+
+  it('multi attempt → sort theo createdAt DESC (mới nhất đầu tiên)', async () => {
+    const ctx = await setupCharAtKimDanPeak({ hpMax: 100 });
+    await svc.attemptTribulation(
+      ctx.characterId,
+      () => 0.99,
+      new Date('2026-05-02T00:00:00Z'),
+    );
+    await refillToPeak(ctx.characterId);
+    await svc.attemptTribulation(
+      ctx.characterId,
+      () => 0.99,
+      new Date('2026-05-02T01:00:00Z'),
+    );
+    await refillToPeak(ctx.characterId);
+    await svc.attemptTribulation(
+      ctx.characterId,
+      () => 0.99,
+      new Date('2026-05-02T02:00:00Z'),
+    );
+
+    const rows = await svc.listAttemptLogs(ctx.characterId);
+    expect(rows).toHaveLength(3);
+    expect(rows[0]!.attemptIndex).toBe(3);
+    expect(rows[1]!.attemptIndex).toBe(2);
+    expect(rows[2]!.attemptIndex).toBe(1);
+    expect(new Date(rows[0]!.createdAt).getTime()).toBeGreaterThan(
+      new Date(rows[1]!.createdAt).getTime(),
+    );
+  });
+
+  it('limit cap → trả về tối đa N row mới nhất', async () => {
+    const ctx = await setupCharAtKimDanPeak({ hpMax: 100 });
+    for (let i = 0; i < 5; i++) {
+      if (i > 0) await refillToPeak(ctx.characterId);
+      await svc.attemptTribulation(
+        ctx.characterId,
+        () => 0.99,
+        new Date(`2026-05-02T0${i}:00:00Z`),
+      );
+    }
+
+    const rows = await svc.listAttemptLogs(ctx.characterId, 2);
+    expect(rows).toHaveLength(2);
+    expect(rows[0]!.attemptIndex).toBe(5);
+    expect(rows[1]!.attemptIndex).toBe(4);
+  });
+
+  it('limit invalid (<=0, NaN, >MAX) → service guard cap về [1, MAX]', async () => {
+    const ctx = await setupCharAtKimDanPeak({ hpMax: 100 });
+    await svc.attemptTribulation(ctx.characterId, () => 0.99);
+
+    // limit=0 → cap về 1
+    const r0 = await svc.listAttemptLogs(ctx.characterId, 0);
+    expect(r0).toHaveLength(1);
+
+    // limit=-5 → cap về 1
+    const rNeg = await svc.listAttemptLogs(ctx.characterId, -5);
+    expect(rNeg).toHaveLength(1);
+
+    // limit=999_999 → cap về MAX (cũng = 1 vì chỉ có 1 row).
+    const rMax = await svc.listAttemptLogs(ctx.characterId, 999_999);
+    expect(rMax).toHaveLength(1);
+  });
+
+  it('character khác → KHÔNG leak log của character này (where filter charId)', async () => {
+    const ctxA = await setupCharAtKimDanPeak({ hpMax: 100 });
+    await svc.attemptTribulation(ctxA.characterId, () => 0.99);
+    const ctxB = await setupCharAtKimDanPeak({ hpMax: 100 });
+    await svc.attemptTribulation(ctxB.characterId, () => 0.99);
+    await refillToPeak(ctxB.characterId);
+    await svc.attemptTribulation(ctxB.characterId, () => 0.99);
+
+    const rowsA = await svc.listAttemptLogs(ctxA.characterId);
+    expect(rowsA).toHaveLength(1);
+    const rowsB = await svc.listAttemptLogs(ctxB.characterId);
+    expect(rowsB).toHaveLength(2);
+  });
+});
