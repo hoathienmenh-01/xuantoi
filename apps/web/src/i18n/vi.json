@@ -45,7 +45,11 @@
       "achievementClaim": "Nhận thưởng thành tựu thất bại",
       "tribulation": "Vượt kiếp thất bại",
       "spiritualRootState": "Không lấy được trạng thái linh căn",
-      "spiritualRootReroll": "Tái khai linh căn thất bại"
+      "spiritualRootReroll": "Tái khai linh căn thất bại",
+      "skillState": "Không lấy được pháp quyển",
+      "skillEquip": "Vận thuật pháp thất bại",
+      "skillUnequip": "Gỡ thuật pháp thất bại",
+      "skillUpgrade": "Thăng cấp thuật pháp thất bại"
     }
   },
   "locale": {
@@ -273,6 +277,7 @@
       "alchemy": "Luyện Đan",
       "cultivationMethod": "Công Pháp",
       "spiritualRoot": "Linh Căn",
+      "skillBook": "Pháp Quyển",
       "achievements": "Thành Tựu",
       "tribulation": "Thiên Kiếp"
     },
@@ -1404,6 +1409,85 @@
         "IN_FLIGHT": "Đang xử lý…",
         "UNKNOWN": "Tái khai thất bại, thử lại."
       }
+    }
+  },
+  "skillBook": {
+    "title": "Pháp Quyển",
+    "subtitle": "Thuật pháp đã học. Vận tối đa 4 thuật (đòn thường ngoại lệ). Nâng thuần thục để tăng sát thương và giảm linh khí.",
+    "loading": "Đang tải pháp quyển…",
+    "empty": "Không có thuật pháp nào khớp bộ lọc.",
+    "equippedSummary": "Đang vận: {equipped} / {max}",
+    "filter": {
+      "tier": "Cấp",
+      "element": "Hệ",
+      "equipped": "Trạng thái",
+      "all": "Tất cả",
+      "shown": "Hiển thị {shown}/{total} (kho {catalog})"
+    },
+    "tier": {
+      "basic": "Sơ cấp",
+      "intermediate": "Trung cấp",
+      "advanced": "Cao cấp",
+      "master": "Đại sư",
+      "legendary": "Huyền thoại"
+    },
+    "element": {
+      "kim": "Kim",
+      "moc": "Mộc",
+      "thuy": "Thuỷ",
+      "hoa": "Hoả",
+      "tho": "Thổ",
+      "none": "Vô hệ"
+    },
+    "equipFilter": {
+      "equipped": "Đang vận",
+      "unequipped": "Chưa vận"
+    },
+    "field": {
+      "mastery": "Thuần thục",
+      "atkScale": "Hệ số sát thương",
+      "mpCost": "Linh khí",
+      "cooldown": "Hồi chiêu (lượt)",
+      "source": "Nguồn"
+    },
+    "badge": {
+      "equipped": "Đang vận"
+    },
+    "button": {
+      "equip": "Vận",
+      "equipping": "Đang vận…",
+      "unequip": "Gỡ",
+      "unequipping": "Đang gỡ…",
+      "upgrade": "Thăng (-{cost} LT)",
+      "upgrading": "Đang thăng…",
+      "upgradeMax": "Thuần thục tối đa",
+      "upgradeUnknown": "Thăng cấp"
+    },
+    "equip": {
+      "success": "Đã vận {name}."
+    },
+    "unequip": {
+      "success": "Đã gỡ {name}."
+    },
+    "upgrade": {
+      "success": "Đã thăng cấp {name}."
+    },
+    "errors": {
+      "NOT_LEARNED": "Chưa học thuật pháp này.",
+      "ALREADY_EQUIPPED": "Đã vận sẵn thuật này.",
+      "TOO_MANY_EQUIPPED": "Vượt giới hạn thuật pháp đang vận.",
+      "INSUFFICIENT_FUNDS": "Linh thạch không đủ để thăng cấp.",
+      "MASTERY_MAX": "Đã đạt thuần thục tối đa.",
+      "REALM_NOT_FOUND": "Không xác định được cảnh giới.",
+      "REALM_TOO_LOW": "Cảnh giới chưa đủ.",
+      "WRONG_SECT": "Tông môn không phù hợp.",
+      "METHOD_NOT_LEARNED": "Chưa học công pháp tiền đề.",
+      "CHARACTER_SKILL_UNAVAILABLE": "Hệ thống pháp quyển chưa sẵn sàng.",
+      "NO_CHARACTER": "Chưa khai đạo.",
+      "INVALID_INPUT": "Dữ liệu không hợp lệ.",
+      "UNAUTHENTICATED": "Phiên đăng nhập đã hết.",
+      "IN_FLIGHT": "Đang xử lý…",
+      "UNKNOWN": "Thao tác thất bại, thử lại."
     }
   },
   "achievements": {

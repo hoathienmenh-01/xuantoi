@@ -589,4 +589,57 @@ test.describe('Golden path — full stack required', () => {
       /0/,
     );
   });
+
+  // ===================================================================
+  // SPEC #17 — Phase 11.2.C Skill Book UI display.
+  //
+  // Visit `/skill-book` cho fresh char → server lazy-grant `basic_attack`
+  // (Phase 11.2.B `grantStarterIfMissing` chạy trong onboard) + GET trả
+  // về `{ maxEquipped: 4, learned: [{ skillKey: 'basic_attack', ... }] }`.
+  //
+  // Verify:
+  //   - Skill card `basic_attack` render với tier badge "Sơ cấp".
+  //   - Equipped badge present (basic_attack starter auto-equipped).
+  //   - Equipped count summary "1 / 4".
+  //   - Filter dropdowns visible.
+  //
+  // KHÔNG bấm equip / upgrade — fresh char không có sect skill khác để
+  // equip; flow đầy đủ defer cho QA manual smoke.
+  // ===================================================================
+  test('skill-book — auto-grant basic_attack + tier badge + equipped summary', async ({ page }) => {
+    await registerAndOnboard(page, { emailPrefix: 'e2e_skill_book' });
+    await page.goto('/skill-book');
+
+    await expect(page).toHaveURL(/\/skill-book/);
+
+    // Card cho basic_attack (lazy-granted bởi grantStarterIfMissing).
+    await expect(page.locator('[data-testid="skill-book-card-basic_attack"]')).toBeVisible({
+      timeout: 10_000,
+    });
+
+    // Tier badge cho basic_attack = 'basic' → i18n 'Sơ cấp'.
+    await expect(page.locator('[data-testid="skill-book-tier-basic_attack"]')).toContainText(
+      /Sơ cấp/,
+    );
+
+    // Equipped badge — basic_attack auto-equipped.
+    await expect(
+      page.locator('[data-testid="skill-book-equipped-badge-basic_attack"]'),
+    ).toBeVisible();
+
+    // Mastery row "1 / 5".
+    await expect(page.locator('[data-testid="skill-book-mastery-basic_attack"]')).toContainText(
+      /1\s*\/\s*5/,
+    );
+
+    // Equipped summary "1 / 4".
+    await expect(page.locator('[data-testid="skill-book-equipped-count"]')).toContainText(
+      /1\s*\/\s*4/,
+    );
+
+    // Filter selects visible.
+    await expect(page.locator('[data-testid="skill-book-filter-tier"]')).toBeVisible();
+    await expect(page.locator('[data-testid="skill-book-filter-element"]')).toBeVisible();
+    await expect(page.locator('[data-testid="skill-book-filter-equipped"]')).toBeVisible();
+  });
 });

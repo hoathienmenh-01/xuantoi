@@ -222,6 +222,13 @@ async function logout(): Promise<void> {
           根 {{ t('shell.nav.spiritualRoot') }}
         </RouterLink>
         <RouterLink
+          to="/skill-book"
+          class="px-3 py-2 rounded hover:bg-ink-700/60"
+          active-class="bg-ink-700/60 text-ink-50"
+        >
+          術 {{ t('shell.nav.skillBook') }}
+        </RouterLink>
+        <RouterLink
           to="/tribulation"
           class="px-3 py-2 rounded hover:bg-ink-700/60"
           active-class="bg-ink-700/60 text-ink-50"
