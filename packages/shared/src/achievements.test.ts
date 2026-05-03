@@ -45,6 +45,7 @@ const VALID_GOAL_KINDS: readonly MissionGoalKind[] = [
   'CHAT_MESSAGE',
   'SECT_CONTRIBUTE',
   'BREAKTHROUGH',
+  'ALCHEMY_CRAFT',
 ];
 
 describe('ACHIEVEMENTS catalog shape', () => {

@@ -2,6 +2,11 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { PrismaService } from '../../common/prisma.service';
 import { CurrencyService } from './currency.service';
 import { AlchemyService, AlchemyError, ALCHEMY_RECIPE_COUNT } from './alchemy.service';
+import { AchievementService } from './achievement.service';
+import { TitleService } from './title.service';
+import { CharacterService } from './character.service';
+import { InventoryService } from '../inventory/inventory.service';
+import { RealtimeService } from '../realtime/realtime.service';
 import { makeUserChar, wipeAll } from '../../test-helpers';
 import {
   ALCHEMY_RECIPES,
@@ -408,6 +413,88 @@ describe('listAvailableRecipes', () => {
     await expect(svc.listAvailableRecipes('nonexistent')).rejects.toMatchObject({
       code: 'CHARACTER_NOT_FOUND',
     });
+  });
+});
+
+// ============================================================================
+// Phase 11.11.E — Achievement integration (ALCHEMY_CRAFT goalKind)
+// ============================================================================
+
+describe('Phase 11.11.E — Achievement ALCHEMY_CRAFT trackEvent wire', () => {
+  const RECIPE_KEY = 'recipe_tieu_phuc_dan';
+
+  function makeAchievementSvc(): AchievementService {
+    const title = new TitleService(prisma);
+    const realtime = new RealtimeService();
+    const chars = new CharacterService(prisma, realtime);
+    const inventory = new InventoryService(prisma, realtime, chars);
+    return new AchievementService(prisma, currency, title, inventory);
+  }
+
+  it('success outcome → progress pill_apprentice +1 (track ALCHEMY_CRAFT)', async () => {
+    const ach = makeAchievementSvc();
+    const svcWired = new AlchemyService(prisma, currency, ach);
+    const { characterId } = await makeUserChar(prisma, { linhThach: 10000n });
+    await grantIngredients(characterId, [{ itemKey: 'linh_thao', qty: 10 }]);
+
+    const outcome = await svcWired.attemptCraft(characterId, RECIPE_KEY, () => 0.0);
+    expect(outcome.success).toBe(true);
+
+    const progress = await ach.getProgress(characterId, 'pill_apprentice');
+    expect(progress?.progress).toBe(1);
+    expect(progress?.completedAt).toBeNull();
+  });
+
+  it('success outcome → progress pill_master +1 đồng thời (cùng goalKind)', async () => {
+    const ach = makeAchievementSvc();
+    const svcWired = new AlchemyService(prisma, currency, ach);
+    const { characterId } = await makeUserChar(prisma, { linhThach: 10000n });
+    await grantIngredients(characterId, [{ itemKey: 'linh_thao', qty: 10 }]);
+
+    await svcWired.attemptCraft(characterId, RECIPE_KEY, () => 0.0);
+
+    const masterProg = await ach.getProgress(characterId, 'pill_master');
+    expect(masterProg?.progress).toBe(1);
+  });
+
+  it('fail outcome → KHÔNG track ALCHEMY_CRAFT (chỉ count success)', async () => {
+    const ach = makeAchievementSvc();
+    const svcWired = new AlchemyService(prisma, currency, ach);
+    const { characterId } = await makeUserChar(prisma, { linhThach: 10000n });
+    await grantIngredients(characterId, [{ itemKey: 'linh_thao', qty: 10 }]);
+
+    // RNG = 0.99 → fail (success rate < 1.0)
+    const outcome = await svcWired.attemptCraft(characterId, RECIPE_KEY, () => 0.99);
+    expect(outcome.success).toBe(false);
+
+    const progress = await ach.getProgress(characterId, 'pill_apprentice');
+    expect(progress?.progress ?? 0).toBe(0);
+  });
+
+  it('thiếu Optional AchievementService → success outcome KHÔNG throw, không track', async () => {
+    // svc đã build ở beforeAll không có achievements (DI undefined).
+    const { characterId } = await makeUserChar(prisma, { linhThach: 10000n });
+    await grantIngredients(characterId, [{ itemKey: 'linh_thao', qty: 10 }]);
+
+    const outcome = await svc.attemptCraft(characterId, RECIPE_KEY, () => 0.0);
+    expect(outcome.success).toBe(true);
+    // Không có row achievement nào trong DB cho character này.
+    const all = await prisma.characterAchievement.findMany({ where: { characterId } });
+    expect(all.length).toBe(0);
+  });
+
+  it('multiple craft success → progress tích luỹ (3 craft → progress 3)', async () => {
+    const ach = makeAchievementSvc();
+    const svcWired = new AlchemyService(prisma, currency, ach);
+    const { characterId } = await makeUserChar(prisma, { linhThach: 100000n });
+    await grantIngredients(characterId, [{ itemKey: 'linh_thao', qty: 30 }]);
+
+    await svcWired.attemptCraft(characterId, RECIPE_KEY, () => 0.0);
+    await svcWired.attemptCraft(characterId, RECIPE_KEY, () => 0.0);
+    await svcWired.attemptCraft(characterId, RECIPE_KEY, () => 0.0);
+
+    const progress = await ach.getProgress(characterId, 'pill_apprentice');
+    expect(progress?.progress).toBe(3);
   });
 });
 

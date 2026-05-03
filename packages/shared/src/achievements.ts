@@ -580,6 +580,36 @@ export const ACHIEVEMENTS: readonly AchievementDef[] = [
     reward: { linhThach: 8_000, exp: 4_000 },
     hidden: false,
   },
+
+  // ===== ALCHEMY (Luyện Đan) — 2 (Phase 11.11.E) =====
+  {
+    key: 'pill_apprentice',
+    nameVi: 'Đan Tu Nhập Môn',
+    nameEn: 'Pill Apprentice',
+    description: 'Luyện thành công 10 viên đan dược (bất kể phẩm bậc).',
+    category: 'milestone',
+    tier: 'bronze',
+    goalKind: 'ALCHEMY_CRAFT',
+    goalAmount: 10,
+    element: null,
+    rewardTitleKey: null,
+    reward: { linhThach: 200, exp: 100 },
+    hidden: false,
+  },
+  {
+    key: 'pill_master',
+    nameVi: 'Đan Tu Đại Sư',
+    nameEn: 'Pill Master',
+    description: 'Luyện thành công 100 viên đan dược tích luỹ.',
+    category: 'milestone',
+    tier: 'gold',
+    goalKind: 'ALCHEMY_CRAFT',
+    goalAmount: 100,
+    element: null,
+    rewardTitleKey: null,
+    reward: { linhThach: 5_000, exp: 2_000 },
+    hidden: false,
+  },
 ];
 
 const ACHIEVEMENTS_BY_KEY = new Map<string, AchievementDef>(
