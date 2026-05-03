@@ -40,7 +40,9 @@
       "alchemyState": "Failed to load alchemy recipes",
       "alchemyCraft": "Failed to craft pill",
       "cultivationMethodState": "Failed to load cultivation method state",
-      "cultivationMethodEquip": "Failed to equip cultivation method"
+      "cultivationMethodEquip": "Failed to equip cultivation method",
+      "achievementsState": "Failed to load achievements state",
+      "achievementClaim": "Failed to claim achievement reward"
     }
   },
   "locale": {
@@ -266,7 +268,8 @@
       "toggle": "Toggle navigation menu",
       "talents": "Talents",
       "alchemy": "Alchemy",
-      "cultivationMethod": "Method"
+      "cultivationMethod": "Method",
+      "achievements": "Achievements"
     },
     "badge": {
       "bossActive": "World boss is live",
@@ -1307,6 +1310,88 @@
         "ALREADY_EQUIPPED": "This method is already equipped.",
         "IN_FLIGHT": "Processing…",
         "UNKNOWN": "Activation failed, please retry."
+      }
+    }
+  },
+  "achievements": {
+    "title": "Achievements",
+    "subtitle": "Each milestone on your path of cultivation. Complete them to claim spirit stones, immortal jade, EXP and titles.",
+    "loading": "Loading achievements…",
+    "empty": "No achievements match the selected filter.",
+    "summary": "Completed: {completed} • Claimable: {claimable}",
+    "filter": {
+      "category": "Category",
+      "tier": "Tier",
+      "status": "Status",
+      "all": "All",
+      "shown": "Showing {shown}/{total} (catalog: {catalog})"
+    },
+    "category": {
+      "combat": "Combat",
+      "cultivation": "Cultivation",
+      "exploration": "Exploration",
+      "social": "Social",
+      "economy": "Economy",
+      "milestone": "Milestone",
+      "collection": "Collection"
+    },
+    "tier": {
+      "bronze": "Bronze",
+      "silver": "Silver",
+      "gold": "Gold",
+      "platinum": "Platinum",
+      "diamond": "Diamond"
+    },
+    "status": {
+      "completed": "Completed",
+      "unclaimed": "Claimable",
+      "inProgress": "In progress",
+      "claimed": "Claimed"
+    },
+    "element": {
+      "kim": "Metal",
+      "moc": "Wood",
+      "thuy": "Water",
+      "hoa": "Fire",
+      "tho": "Earth",
+      "loi": "Lightning",
+      "phong": "Wind",
+      "bang": "Ice",
+      "doc": "Poison",
+      "am": "Yin",
+      "duong": "Yang",
+      "hon_don": "Chaos"
+    },
+    "field": {
+      "reward": "Reward"
+    },
+    "reward": {
+      "linhThach": "Spirit Stones",
+      "tienNgoc": "Immortal Jade",
+      "exp": "EXP",
+      "title": "Title",
+      "items": "{count} items"
+    },
+    "button": {
+      "claim": "Claim reward",
+      "claiming": "Claiming…",
+      "claimed": "Claimed",
+      "locked": "Not completed"
+    },
+    "claim": {
+      "success": "Claimed reward for {name}.",
+      "errors": {
+        "ACHIEVEMENT_NOT_FOUND": "Achievement does not exist.",
+        "NOT_FOUND_PROGRESS": "You have not made progress on this achievement yet.",
+        "NOT_COMPLETED": "Achievement goal not yet reached.",
+        "ALREADY_CLAIMED": "You have already claimed this reward.",
+        "CHARACTER_NOT_FOUND": "Character not found.",
+        "NO_CHARACTER": "Character not created yet.",
+        "ACHIEVEMENT_UNAVAILABLE": "Achievement system is temporarily unavailable.",
+        "INVALID_INPUT": "Invalid input.",
+        "UNAUTHENTICATED": "Session expired.",
+        "IN_FLIGHT": "Processing…",
+        "UNKNOWN": "Claim failed, please retry."
       }
     }
   }

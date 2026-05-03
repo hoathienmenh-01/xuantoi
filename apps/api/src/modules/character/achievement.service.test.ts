@@ -373,6 +373,57 @@ describe('AchievementService.getProgressByGoalKind', () => {
   });
 });
 
+describe('AchievementService.listAllWithProgress (Phase 11.10.E)', () => {
+  it('return tất cả visible achievement với defaults khi character chưa track gì', async () => {
+    const ctx = await makeUserChar(prisma);
+    const list = await svc.listAllWithProgress(ctx.characterId);
+
+    // Visible (non-hidden) achievement subset của ACHIEVEMENT_CATALOG_COUNT.
+    const visibleCount = shared.visibleAchievements().length;
+    expect(list).toHaveLength(visibleCount);
+    expect(list.length).toBeLessThanOrEqual(ACHIEVEMENT_CATALOG_COUNT);
+    list.forEach((entry) => {
+      expect(entry.progress).toBe(0);
+      expect(entry.completedAt).toBeNull();
+      expect(entry.claimedAt).toBeNull();
+      expect(entry.def.hidden).toBe(false);
+    });
+  });
+
+  it('reflect progress + completedAt + claimedAt từ row', async () => {
+    const ctx = await makeUserChar(prisma);
+    await svc.incrementProgress(ctx.characterId, 'first_monster_kill', 1);
+    await svc.incrementProgress(ctx.characterId, 'kill_100_monsters', 30);
+    await svc.claimReward(ctx.characterId, 'first_monster_kill');
+
+    const list = await svc.listAllWithProgress(ctx.characterId);
+    const firstKill = list.find((e) => e.achievementKey === 'first_monster_kill');
+    expect(firstKill?.progress).toBe(1);
+    expect(firstKill?.completedAt).toBeInstanceOf(Date);
+    expect(firstKill?.claimedAt).toBeInstanceOf(Date);
+
+    const kill100 = list.find((e) => e.achievementKey === 'kill_100_monsters');
+    expect(kill100?.progress).toBe(30);
+    expect(kill100?.completedAt).toBeNull();
+    expect(kill100?.claimedAt).toBeNull();
+  });
+
+  it('catalog order — entry 0 là achievement đầu tiên trong ACHIEVEMENTS', async () => {
+    const ctx = await makeUserChar(prisma);
+    const list = await svc.listAllWithProgress(ctx.characterId);
+    const visible = shared.visibleAchievements();
+    expect(list[0].achievementKey).toBe(visible[0].key);
+  });
+
+  it('skip hidden achievement chưa complete (anti-spoil)', async () => {
+    const ctx = await makeUserChar(prisma);
+    const list = await svc.listAllWithProgress(ctx.characterId);
+    list.forEach((entry) => {
+      expect(entry.def.hidden).toBe(false);
+    });
+  });
+});
+
 describe('AchievementService — cross-character isolation', () => {
   it('progress char A không leak qua char B', async () => {
     const a = await makeUserChar(prisma);
