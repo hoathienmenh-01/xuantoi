@@ -1926,4 +1926,102 @@ describe('BossService', () => {
       );
     });
   });
+
+  // ── Phase 11.1.D-2 — Cultivation method statBonus.atkPercent BossService wire ───
+  // Symmetric với Phase 11.1.D combat path. Wire `methodStatBonusFor(char.equippedCultivationMethodKey)`
+  // vào `BossService.attack()` charAtk multiplier. Catalog huyen-grade
+  // `cuu_cuc_kim_cuong_quyet` (atk +5%) v.v. trước đó được khai báo nhưng
+  // KHÔNG consume runtime ở boss path. Pham starter `khai_thien_quyet` (0%) →
+  // identity. Legacy null key → identity. Tests dùng raw prisma update để set
+  // equippedCultivationMethodKey trực tiếp (bypass realm/element checks).
+  describe('Cultivation method statBonus wire (Phase 11.1.D-2)', () => {
+    afterEach(() => {
+      vi.restoreAllMocks();
+    });
+
+    it('huyen kim method (atk +5%) → damage cao hơn baseline (no method)', async () => {
+      vi.spyOn(Math, 'random').mockReturnValue(0.5);
+      const baseline = await makeUserChar(prisma, {
+        mp: 100,
+        stamina: 100,
+        power: 100,
+        realmKey: 'kim_dan',
+      });
+      const methodUser = await makeUserChar(prisma, {
+        mp: 100,
+        stamina: 100,
+        power: 100,
+        realmKey: 'kim_dan',
+      });
+      await prisma.character.update({
+        where: { id: methodUser.characterId },
+        data: { equippedCultivationMethodKey: 'cuu_cuc_kim_cuong_quyet' },
+      });
+
+      await spawnBoss({ currentHp: 1_000_000n });
+
+      const baselineOut = await boss.attack(baseline.userId, undefined);
+      const methodOut = await boss.attack(methodUser.userId, undefined);
+
+      // method atk +5% → damage(method) > damage(baseline).
+      expect(BigInt(methodOut.result.damageDealt)).toBeGreaterThan(
+        BigInt(baselineOut.result.damageDealt),
+      );
+    });
+
+    it('pham starter khai_thien_quyet (statBonus 0%) → identity (damage equal)', async () => {
+      vi.spyOn(Math, 'random').mockReturnValue(0.5);
+      const a = await makeUserChar(prisma, {
+        mp: 100,
+        stamina: 100,
+        power: 100,
+        realmKey: 'kim_dan',
+      });
+      const b = await makeUserChar(prisma, {
+        mp: 100,
+        stamina: 100,
+        power: 100,
+        realmKey: 'kim_dan',
+      });
+      await prisma.character.update({
+        where: { id: b.characterId },
+        data: { equippedCultivationMethodKey: 'khai_thien_quyet' },
+      });
+      await spawnBoss({ currentHp: 1_000_000n });
+
+      const outA = await boss.attack(a.userId, undefined);
+      const outB = await boss.attack(b.userId, undefined);
+
+      // pham starter all 0% → atkMul = 1.0 → damage equal.
+      expect(BigInt(outA.result.damageDealt)).toBe(
+        BigInt(outB.result.damageDealt),
+      );
+    });
+
+    it('legacy character (equippedCultivationMethodKey=null) → identity (no method bonus)', async () => {
+      vi.spyOn(Math, 'random').mockReturnValue(0.5);
+      const a = await makeUserChar(prisma, {
+        mp: 100,
+        stamina: 100,
+        power: 100,
+        realmKey: 'kim_dan',
+      });
+      const b = await makeUserChar(prisma, {
+        mp: 100,
+        stamina: 100,
+        power: 100,
+        realmKey: 'kim_dan',
+      });
+      // Both characters: makeUserChar default equippedCultivationMethodKey=null
+      await spawnBoss({ currentHp: 1_000_000n });
+
+      const outA = await boss.attack(a.userId, undefined);
+      const outB = await boss.attack(b.userId, undefined);
+
+      // Cả 2 char null method → methodStatBonusFor identity → damage equal.
+      expect(BigInt(outA.result.damageDealt)).toBe(
+        BigInt(outB.result.damageDealt),
+      );
+    });
+  });
 });

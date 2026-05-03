@@ -36,6 +36,7 @@ import { AchievementService } from '../character/achievement.service';
 import { TalentService } from '../character/talent.service';
 import { BuffService } from '../character/buff.service';
 import { TitleService } from '../character/title.service';
+import { methodStatBonusFor } from '../character/cultivation-method.service';
 import { InventoryService } from '../inventory/inventory.service';
 import { MissionService } from '../mission/mission.service';
 
@@ -257,12 +258,23 @@ export class BossService implements OnModuleInit, OnModuleDestroy {
     const titleMods: TitleMods = this.titles
       ? await this.titles.getMods(char.id)
       : composeTitleMods([]);
+    // Phase 11.1.D-2 — Cultivation method statBonus.atkPercent wire vào
+    // BossService.attack() charAtk. Symmetric với combat Phase 11.1.D
+    // (combat.service.ts effPower/effDef). Catalog huyen-grade
+    // `cuu_cuc_kim_cuong_quyet` (atk +5%) v.v. trước đó được khai báo nhưng
+    // KHÔNG consume runtime ở boss path. Pure helper `methodStatBonusFor`
+    // legacy (key=null) → identity. Pham starter `khai_thien_quyet` (0%) →
+    // identity. defMul/hpMaxMul/mpMaxMul N/A boss (boss không reply, không
+    // stat cap recompute). Method KHÔNG có spiritMul (chỉ atk/def/hpMax/mpMax),
+    // nên spirit branch (atkScale > 1) không apply method bonus.
+    const methodStat = methodStatBonusFor(char.equippedCultivationMethodKey);
     const charAtk =
       Math.floor(
         (char.power + equip.atk) *
           talentMods.atkMul *
           buffMods.atkMul *
-          titleMods.atkMul,
+          titleMods.atkMul *
+          methodStat.atkMul,
       ) +
       (skill.atkScale > 1
         ? Math.floor(
