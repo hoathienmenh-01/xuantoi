@@ -36,7 +36,9 @@
       "shopBuy": "Mua thất bại",
       "onboard": "Khai đạo thất bại",
       "talentsState": "Không lấy được trạng thái ngộ đạo",
-      "talentsLearn": "Không học được thần thông"
+      "talentsLearn": "Không học được thần thông",
+      "alchemyState": "Không lấy được công thức luyện đan",
+      "alchemyCraft": "Luyện đan thất bại"
     }
   },
   "locale": {
@@ -260,7 +262,8 @@
       "activity": "Hoạt Động",
       "admin": "Quản Trị",
       "toggle": "Mở menu điều hướng",
-      "talents": "Ngộ Đạo"
+      "talents": "Ngộ Đạo",
+      "alchemy": "Luyện Đan"
     },
     "badge": {
       "bossActive": "Boss đang xuất thế",
@@ -1179,6 +1182,55 @@
         "UNAUTHENTICATED": "Phiên đăng nhập đã hết.",
         "IN_FLIGHT": "Đang xử lý…",
         "UNKNOWN": "Không thể học, thử lại."
+      }
+    }
+  },
+  "alchemy": {
+    "title": "Luyện Đan Đường",
+    "subtitle": "Luyện đan từ linh thảo + đan phương — server roll RNG, không hoàn lại nguyên liệu khi thất bại.",
+    "loading": "Đang tải đan phương…",
+    "empty": "Không có đan phương nào khớp bộ lọc.",
+    "furnaceLevel": "Lò luyện cấp {level}",
+    "furnaceReq": "Cần lò {level}",
+    "filter": {
+      "quality": "Phẩm bậc",
+      "all": "Tất cả",
+      "shown": "Hiển thị {shown}/{total}"
+    },
+    "quality": {
+      "PHAM": "Phàm phẩm",
+      "LINH": "Linh phẩm",
+      "HUYEN": "Huyền phẩm",
+      "TIEN": "Tiên phẩm",
+      "THAN": "Thần phẩm"
+    },
+    "field": {
+      "output": "Đan thành phẩm",
+      "inputs": "Nguyên liệu",
+      "cost": "Chi phí",
+      "linhThach": "Linh Thạch",
+      "successRate": "Tỉ lệ thành công"
+    },
+    "button": {
+      "craft": "Luyện đan",
+      "crafting": "Đang luyện…"
+    },
+    "craft": {
+      "success": "Luyện thành công {name} × {qty}!",
+      "fail": "Luyện thất bại {name}, đan tan, nguyên liệu mất.",
+      "errors": {
+        "RECIPE_NOT_FOUND": "Đan phương không tồn tại.",
+        "FURNACE_LEVEL_TOO_LOW": "Lò luyện chưa đủ cấp.",
+        "REALM_REQUIREMENT_NOT_MET": "Cảnh giới chưa đủ để luyện đan này.",
+        "INSUFFICIENT_INGREDIENTS": "Thiếu nguyên liệu trong túi.",
+        "INSUFFICIENT_FUNDS": "Không đủ Linh Thạch.",
+        "CHARACTER_NOT_FOUND": "Chưa tạo nhân vật.",
+        "NO_CHARACTER": "Chưa tạo nhân vật.",
+        "ALCHEMY_UNAVAILABLE": "Hệ thống luyện đan tạm khoá.",
+        "INVALID_INPUT": "Dữ liệu không hợp lệ.",
+        "UNAUTHENTICATED": "Phiên đăng nhập đã hết.",
+        "IN_FLIGHT": "Đang xử lý…",
+        "UNKNOWN": "Luyện đan thất bại, thử lại."
       }
     }
   }

@@ -1,0 +1,264 @@
+<script setup lang="ts">
+/**
+ * Phase 11.11.D — Alchemy (Luyện Đan) view.
+ *
+ * Hiển thị recipes server trả về (đã filter theo furnace level của char) +
+ * cho phép craft 1 lần. Server-authoritative:
+ *  - GET /character/alchemy/recipes → load `furnaceLevel` + recipes[].
+ *  - POST /character/alchemy/craft { recipeKey } → craft (consume input/cost
+ *    + roll RNG); outcome có thể success=true (granted output qty) hoặc
+ *    success=false (vẫn consume linh thạch + ingredients, roll fail).
+ *
+ * Filters:
+ *  - Quality: all | PHAM | LINH | HUYEN | TIEN | THAN
+ *
+ * Mỗi recipe card hiển thị:
+ *  - Tên + quality badge + furnace requirement badge
+ *  - Description (lore)
+ *  - Output: 1 dòng Item × qty
+ *  - Inputs: list itemKey × qty (frontend không có tên item ở đây, chỉ key —
+ *    InventoryView mới có item lookup; alchemy view chỉ show key vì server
+ *    truyền key, không truyền localized name. UI nâng cao hơn defer Phase
+ *    11.11.D-2)
+ *  - Cost: linh thạch + success rate %
+ *  - Nút Luyện đan (disable nếu in-flight)
+ *
+ * KHÔNG đụng schema/seed/runtime — pure FE wire của 2 endpoint Phase 11.11.C.
+ */
+import { computed, onMounted, ref } from 'vue';
+import { useI18n } from 'vue-i18n';
+import { useRouter } from 'vue-router';
+import { useAuthStore } from '@/stores/auth';
+import { useGameStore } from '@/stores/game';
+import { useAlchemyStore } from '@/stores/alchemy';
+import { useToastStore } from '@/stores/toast';
+import type { AlchemyRecipeView } from '@/api/alchemy';
+import AppShell from '@/components/shell/AppShell.vue';
+
+type QualityFilter =
+  | 'all'
+  | 'PHAM'
+  | 'LINH'
+  | 'HUYEN'
+  | 'TIEN'
+  | 'THAN';
+
+const auth = useAuthStore();
+const game = useGameStore();
+const alchemy = useAlchemyStore();
+const toast = useToastStore();
+const router = useRouter();
+const { t } = useI18n();
+
+const qualityFilter = ref<QualityFilter>('all');
+
+const filtered = computed<AlchemyRecipeView[]>(() => {
+  if (qualityFilter.value === 'all') return alchemy.recipes;
+  return alchemy.recipes.filter((r) => r.outputQuality === qualityFilter.value);
+});
+
+const counts = computed(() => ({
+  total: alchemy.recipes.length,
+  filtered: filtered.value.length,
+}));
+
+function qualityClass(q: AlchemyRecipeView['outputQuality']): string {
+  switch (q) {
+    case 'PHAM':
+      return 'bg-stone-700/40 text-stone-200 border-stone-500/40';
+    case 'LINH':
+      return 'bg-emerald-700/40 text-emerald-200 border-emerald-500/40';
+    case 'HUYEN':
+      return 'bg-sky-700/40 text-sky-200 border-sky-500/40';
+    case 'TIEN':
+      return 'bg-violet-700/40 text-violet-200 border-violet-500/40';
+    case 'THAN':
+      return 'bg-amber-700/40 text-amber-200 border-amber-500/40';
+    default:
+      return 'bg-ink-700/40 text-ink-200 border-ink-300/30';
+  }
+}
+
+function craftButtonLabel(recipe: AlchemyRecipeView): string {
+  if (alchemy.isCrafting(recipe.key)) return t('alchemy.button.crafting');
+  return t('alchemy.button.craft');
+}
+
+function craftButtonDisabled(recipe: AlchemyRecipeView): boolean {
+  return alchemy.isCrafting(recipe.key);
+}
+
+async function onCraft(recipe: AlchemyRecipeView): Promise<void> {
+  if (craftButtonDisabled(recipe)) return;
+  const errCode = await alchemy.craft(recipe.key);
+  if (errCode === null) {
+    const outcome = alchemy.lastOutcome;
+    if (outcome && outcome.success) {
+      toast.push({
+        type: 'success',
+        text: t('alchemy.craft.success', {
+          name: recipe.name,
+          qty: outcome.outputQty,
+        }),
+      });
+    } else {
+      toast.push({
+        type: 'warning',
+        text: t('alchemy.craft.fail', { name: recipe.name }),
+      });
+    }
+    // Re-fetch state để cập nhật furnaceLevel + recipes (defensive — service
+    // hiện không thay đổi furnaceLevel sau craft, nhưng nếu Phase 11.11.D-2
+    // unlock furnace upgrade thì cần)
+    await alchemy.fetchState().catch(() => null);
+  } else {
+    const key = `alchemy.craft.errors.${errCode}`;
+    const text = t(key);
+    toast.push({
+      type: 'error',
+      text: text === key ? t('alchemy.craft.errors.UNKNOWN') : text,
+    });
+  }
+}
+
+onMounted(async () => {
+  await auth.hydrate();
+  if (!auth.isAuthenticated) {
+    router.replace('/auth');
+    return;
+  }
+  await game.fetchState().catch(() => null);
+  game.bindSocket();
+  await alchemy.fetchState().catch(() => null);
+});
+</script>
+
+<template>
+  <AppShell>
+    <div class="max-w-5xl mx-auto space-y-4">
+      <header class="flex items-baseline justify-between gap-3 flex-wrap">
+        <div>
+          <h1 class="text-2xl tracking-widest font-bold">{{ t('alchemy.title') }}</h1>
+          <p class="text-xs text-ink-300 mt-1">
+            {{ t('alchemy.subtitle') }}
+          </p>
+        </div>
+        <div
+          class="text-xs text-ink-300"
+          data-testid="alchemy-furnace-level"
+        >
+          {{ t('alchemy.furnaceLevel', { level: alchemy.furnaceLevel }) }}
+        </div>
+      </header>
+
+      <section class="bg-ink-700/30 border border-ink-300/20 rounded p-3 flex flex-wrap items-center gap-3 text-xs">
+        <div class="flex items-center gap-2">
+          <label class="text-ink-300">{{ t('alchemy.filter.quality') }}</label>
+          <select
+            v-model="qualityFilter"
+            data-testid="alchemy-filter-quality"
+            class="bg-ink-900 border border-ink-300/30 rounded px-2 py-1 text-ink-100"
+          >
+            <option value="all">{{ t('alchemy.filter.all') }}</option>
+            <option value="PHAM">{{ t('alchemy.quality.PHAM') }}</option>
+            <option value="LINH">{{ t('alchemy.quality.LINH') }}</option>
+            <option value="HUYEN">{{ t('alchemy.quality.HUYEN') }}</option>
+            <option value="TIEN">{{ t('alchemy.quality.TIEN') }}</option>
+            <option value="THAN">{{ t('alchemy.quality.THAN') }}</option>
+          </select>
+        </div>
+        <span class="ml-auto text-ink-300" data-testid="alchemy-result-count">
+          {{ t('alchemy.filter.shown', { shown: counts.filtered, total: counts.total }) }}
+        </span>
+      </section>
+
+      <section
+        v-if="!alchemy.loaded"
+        class="bg-ink-700/30 border border-ink-300/20 rounded p-6 text-center text-ink-300"
+        data-testid="alchemy-loading"
+      >
+        {{ t('alchemy.loading') }}
+      </section>
+
+      <section
+        v-else-if="counts.filtered === 0"
+        class="bg-ink-700/30 border border-ink-300/20 rounded p-6 text-center text-ink-300"
+        data-testid="alchemy-empty"
+      >
+        {{ t('alchemy.empty') }}
+      </section>
+
+      <section v-else class="grid grid-cols-1 md:grid-cols-2 gap-3" data-testid="alchemy-list">
+        <article
+          v-for="recipe in filtered"
+          :key="recipe.key"
+          class="bg-ink-700/30 border border-ink-300/20 rounded p-3 space-y-2"
+          :data-testid="`alchemy-card-${recipe.key}`"
+        >
+          <header class="flex items-baseline justify-between gap-2 flex-wrap">
+            <h2 class="text-amber-200 text-base font-semibold">{{ recipe.name }}</h2>
+            <div class="flex items-center gap-1">
+              <span
+                :class="['text-[10px] px-1.5 py-0.5 rounded border', qualityClass(recipe.outputQuality)]"
+                :data-testid="`alchemy-quality-${recipe.key}`"
+              >
+                {{ t(`alchemy.quality.${recipe.outputQuality}`) }}
+              </span>
+              <span
+                class="text-[10px] px-1.5 py-0.5 rounded border bg-ink-700/40 text-ink-200 border-ink-300/30"
+                :data-testid="`alchemy-furnace-${recipe.key}`"
+              >
+                {{ t('alchemy.furnaceReq', { level: recipe.furnaceLevel }) }}
+              </span>
+            </div>
+          </header>
+
+          <p class="text-xs text-ink-300">{{ recipe.description }}</p>
+
+          <div class="text-xs space-y-1">
+            <div>
+              <span class="text-ink-300">{{ t('alchemy.field.output') }}:</span>
+              <span class="text-emerald-200 ml-1" :data-testid="`alchemy-output-${recipe.key}`">
+                {{ recipe.outputItem }} × {{ recipe.outputQty }}
+              </span>
+            </div>
+            <div>
+              <span class="text-ink-300">{{ t('alchemy.field.inputs') }}:</span>
+              <span class="text-ink-100 ml-1" :data-testid="`alchemy-inputs-${recipe.key}`">
+                <template v-for="(input, idx) in recipe.inputs" :key="input.itemKey">
+                  <span v-if="idx > 0">, </span>
+                  <span>{{ input.itemKey }} × {{ input.qty }}</span>
+                </template>
+              </span>
+            </div>
+            <div class="flex flex-wrap gap-x-3">
+              <span>
+                <span class="text-ink-300">{{ t('alchemy.field.cost') }}:</span>
+                <span class="text-amber-200 ml-1" :data-testid="`alchemy-cost-${recipe.key}`">
+                  {{ recipe.linhThachCost }}
+                  {{ t('alchemy.field.linhThach') }}
+                </span>
+              </span>
+              <span>
+                <span class="text-ink-300">{{ t('alchemy.field.successRate') }}:</span>
+                <span class="text-sky-200 ml-1" :data-testid="`alchemy-rate-${recipe.key}`">
+                  {{ Math.round(recipe.successRate * 100) }}%
+                </span>
+              </span>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            :disabled="craftButtonDisabled(recipe)"
+            :data-testid="`alchemy-craft-${recipe.key}`"
+            class="w-full mt-1 px-3 py-1.5 text-sm rounded bg-amber-700 text-amber-50 hover:bg-amber-600 disabled:bg-ink-700/40 disabled:text-ink-300 disabled:cursor-not-allowed"
+            @click="onCraft(recipe)"
+          >
+            {{ craftButtonLabel(recipe) }}
+          </button>
+        </article>
+      </section>
+    </div>
+  </AppShell>
+</template>
