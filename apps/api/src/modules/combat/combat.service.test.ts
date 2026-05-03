@@ -2100,4 +2100,305 @@ describe('CombatService', () => {
       expect(dmg).toBe(19);
     });
   });
+
+  // — Phase 11.7.D Active talent wire (talent cast trong combat action) ----
+  describe('Active talent wire (Phase 11.7.D)', () => {
+    let combatWithTalents: CombatService;
+    let talents: TalentService;
+
+    beforeAll(() => {
+      const realtime = new RealtimeService();
+      const chars = new CharacterService(prisma, realtime);
+      const inventory = new InventoryService(prisma, realtime, chars);
+      const currency = new CurrencyService(prisma);
+      const missions = makeMissionService(prisma);
+      talents = new TalentService(prisma);
+      combatWithTalents = new CombatService(
+        prisma,
+        realtime,
+        chars,
+        inventory,
+        currency,
+        missions,
+        undefined,
+        undefined,
+        talents,
+      );
+    });
+
+    afterEach(() => {
+      vi.restoreAllMocks();
+    });
+
+    it('cast talent_kim_quang_tram (active damage) đã học → monster bị 1-shot, mp deduct 30', async () => {
+      vi.spyOn(Math, 'random').mockReturnValue(0.5);
+      // do_kiep order=9 → talentPointBudget = 3 → đủ học cost=2 talent.
+      const u = await makeUserChar(prisma, {
+        realmKey: 'do_kiep',
+        stamina: 100,
+        power: 20, // damage = 20*2 = 40 → kill son_thu_lon hp=30
+        spirit: 100,
+        hp: 1000,
+        hpMax: 1000,
+        mp: 50,
+        mpMax: 50,
+      });
+      await talents.learnTalent(u.characterId, 'talent_kim_quang_tram');
+
+      const enc = await combatWithTalents.start(u.userId, 'son_coc');
+      const view = await combatWithTalents.action(u.userId, enc.id, {
+        skillKey: 'talent_kim_quang_tram',
+      });
+
+      // son_thu_lon (hp=30) chết — monster index advance.
+      const c = await prisma.character.findUniqueOrThrow({
+        where: { id: u.characterId },
+      });
+      // mp 50 - 30 (kim_quang_tram cost) = 20.
+      expect(c.mp).toBe(20);
+      // exp + linhThach drop từ kill.
+      expect(c.exp).toBeGreaterThanOrEqual(12n);
+      // log có entry "phát động Kim Quang Trảm".
+      expect(view.log.some((l) => l.text.includes('Kim Quang Trảm'))).toBe(true);
+    });
+
+    it('cast talent_moc_chu_lam (active heal) → HP restore + mp deduct 40, monster không bị hit', async () => {
+      vi.spyOn(Math, 'random').mockReturnValue(0.5);
+      // moc_chu_lam talentPointCost=1 → kim_dan(3) đủ.
+      const u = await makeUserChar(prisma, {
+        realmKey: 'kim_dan',
+        stamina: 100,
+        power: 200, // heal = round(200 × 0.3) = 60
+        spirit: 100,
+        hp: 100, // HP thấp để thấy heal
+        hpMax: 1000,
+        mp: 50,
+        mpMax: 50,
+      });
+      await talents.learnTalent(u.characterId, 'talent_moc_chu_lam');
+
+      const enc = await combatWithTalents.start(u.userId, 'son_coc');
+      await combatWithTalents.action(u.userId, enc.id, {
+        skillKey: 'talent_moc_chu_lam',
+      });
+
+      const c = await prisma.character.findUniqueOrThrow({
+        where: { id: u.characterId },
+      });
+      // moc_chu_lam value=0.30 atk → heal = round(200 × 0.30) = 60. HP 100 + 60 = 160 (clamp 1000).
+      expect(c.hp).toBe(160);
+      // mp 50 - 40 (moc_chu_lam cost) = 10.
+      expect(c.mp).toBe(10);
+      // monster không bị hit (heal flow skip monster reply too).
+      const encAfter = await prisma.encounter.findUniqueOrThrow({
+        where: { id: enc.id },
+      });
+      const monsterHp = (encAfter.state as { monsterHp: number }).monsterHp;
+      expect(monsterHp).toBe(30); // son_thu_lon full hp (chưa bị damage).
+    });
+
+    it('cast talent_thuy_yen_nguc (active cc root) → log control + skip monster reply', async () => {
+      vi.spyOn(Math, 'random').mockReturnValue(0.5);
+      const u = await makeUserChar(prisma, {
+        realmKey: 'do_kiep', // 3 points → cost=2 OK
+        stamina: 100,
+        power: 20,
+        spirit: 100,
+        hp: 1000,
+        hpMax: 1000,
+        mp: 50,
+        mpMax: 50,
+      });
+      await talents.learnTalent(u.characterId, 'talent_thuy_yen_nguc');
+
+      const enc = await combatWithTalents.start(u.userId, 'son_coc');
+      const view = await combatWithTalents.action(u.userId, enc.id, {
+        skillKey: 'talent_thuy_yen_nguc',
+      });
+
+      const c = await prisma.character.findUniqueOrThrow({
+        where: { id: u.characterId },
+      });
+      // mp 50 - 25 (thuy_yen_nguc cost) = 25.
+      expect(c.mp).toBe(25);
+      // HP không bị giảm (skip monster reply).
+      expect(c.hp).toBe(1000);
+      // log có entry "phong toả".
+      expect(view.log.some((l) => l.text.includes('phong toả'))).toBe(true);
+    });
+
+    it('cast talent_hoa_long_phun (active dot) → log burn + skip monster reply', async () => {
+      vi.spyOn(Math, 'random').mockReturnValue(0.5);
+      const u = await makeUserChar(prisma, {
+        realmKey: 'do_kiep',
+        stamina: 100,
+        power: 20,
+        spirit: 100,
+        hp: 1000,
+        hpMax: 1000,
+        mp: 50,
+        mpMax: 50,
+      });
+      await talents.learnTalent(u.characterId, 'talent_hoa_long_phun');
+
+      const enc = await combatWithTalents.start(u.userId, 'son_coc');
+      const view = await combatWithTalents.action(u.userId, enc.id, {
+        skillKey: 'talent_hoa_long_phun',
+      });
+
+      const c = await prisma.character.findUniqueOrThrow({
+        where: { id: u.characterId },
+      });
+      // mp 50 - 35 = 15.
+      expect(c.mp).toBe(15);
+      // HP không bị giảm (skip monster reply).
+      expect(c.hp).toBe(1000);
+      expect(view.log.some((l) => l.text.includes('thiêu') || l.text.includes('burn'))).toBe(true);
+    });
+
+    it('cast talent_thien_loi_trung_tri (active true damage) → bypass def + 1-shot', async () => {
+      vi.spyOn(Math, 'random').mockReturnValue(0.5);
+      // thien_loi cost=3, requires hoa_than(5) → do_kiep(9) OK với 3 points.
+      const u = await makeUserChar(prisma, {
+        realmKey: 'do_kiep',
+        stamina: 100,
+        power: 20,
+        spirit: 50, // damage = 50 * 3 = 150 → kill son_thu_lon hp=30
+        hp: 1000,
+        hpMax: 1000,
+        mp: 100,
+        mpMax: 100,
+      });
+      await talents.learnTalent(u.characterId, 'talent_thien_loi_trung_tri');
+
+      const enc = await combatWithTalents.start(u.userId, 'son_coc');
+      await combatWithTalents.action(u.userId, enc.id, {
+        skillKey: 'talent_thien_loi_trung_tri',
+      });
+
+      const c = await prisma.character.findUniqueOrThrow({
+        where: { id: u.characterId },
+      });
+      // mp 100 - 50 = 50.
+      expect(c.mp).toBe(50);
+      // Monster killed → exp + linhThach drop.
+      expect(c.exp).toBeGreaterThanOrEqual(12n);
+    });
+
+    it('cast talent_phong_lui (active utility escape) → encounter ABANDONED', async () => {
+      vi.spyOn(Math, 'random').mockReturnValue(0.5);
+      // phong_lui cost=3, requires luyen_hu(6) → do_kiep(9) OK.
+      const u = await makeUserChar(prisma, {
+        realmKey: 'do_kiep',
+        stamina: 100,
+        power: 20,
+        spirit: 100,
+        hp: 1000,
+        hpMax: 1000,
+        mp: 100,
+        mpMax: 100,
+      });
+      await talents.learnTalent(u.characterId, 'talent_phong_lui');
+
+      const enc = await combatWithTalents.start(u.userId, 'son_coc');
+      const view = await combatWithTalents.action(u.userId, enc.id, {
+        skillKey: 'talent_phong_lui',
+      });
+
+      // Encounter ABANDONED.
+      expect(view.status).toBe(EncounterStatus.ABANDONED);
+      const c = await prisma.character.findUniqueOrThrow({
+        where: { id: u.characterId },
+      });
+      // mp 100 - 60 = 40.
+      expect(c.mp).toBe(40);
+    });
+
+    it('cast active talent CHƯA học → reject TALENT_NOT_LEARNED', async () => {
+      vi.spyOn(Math, 'random').mockReturnValue(0.5);
+      const u = await makeUserChar(prisma, {
+        realmKey: 'do_kiep',
+        stamina: 100,
+        power: 20,
+        spirit: 100,
+        hp: 1000,
+        hpMax: 1000,
+        mp: 100,
+        mpMax: 100,
+      });
+      // KHÔNG learn talent.
+
+      const enc = await combatWithTalents.start(u.userId, 'son_coc');
+      await expect(
+        combatWithTalents.action(u.userId, enc.id, {
+          skillKey: 'talent_kim_quang_tram',
+        }),
+      ).rejects.toThrow('TALENT_NOT_LEARNED');
+    });
+
+    it('cast active talent với MP không đủ → reject MP_LOW', async () => {
+      vi.spyOn(Math, 'random').mockReturnValue(0.5);
+      const u = await makeUserChar(prisma, {
+        realmKey: 'do_kiep',
+        stamina: 100,
+        power: 20,
+        spirit: 100,
+        hp: 1000,
+        hpMax: 1000,
+        mp: 10, // < 30 (kim_quang_tram cost)
+        mpMax: 50,
+      });
+      await talents.learnTalent(u.characterId, 'talent_kim_quang_tram');
+
+      const enc = await combatWithTalents.start(u.userId, 'son_coc');
+      await expect(
+        combatWithTalents.action(u.userId, enc.id, {
+          skillKey: 'talent_kim_quang_tram',
+        }),
+      ).rejects.toThrow('MP_LOW');
+    });
+
+    it('cast passive talent (talent_kim_thien_co) → reject TALENT_NOT_ACTIVE', async () => {
+      vi.spyOn(Math, 'random').mockReturnValue(0.5);
+      const u = await makeUserChar(prisma, {
+        realmKey: 'do_kiep',
+        stamina: 100,
+        power: 20,
+        spirit: 100,
+        hp: 1000,
+        hpMax: 1000,
+        mp: 100,
+        mpMax: 100,
+      });
+      await talents.learnTalent(u.characterId, 'talent_kim_thien_co');
+
+      const enc = await combatWithTalents.start(u.userId, 'son_coc');
+      await expect(
+        combatWithTalents.action(u.userId, enc.id, {
+          skillKey: 'talent_kim_thien_co',
+        }),
+      ).rejects.toThrow('TALENT_NOT_ACTIVE');
+    });
+
+    it('CombatService không inject TalentService → cast active talent reject TALENT_NOT_LEARNED', async () => {
+      vi.spyOn(Math, 'random').mockReturnValue(0.5);
+      const u = await makeUserChar(prisma, {
+        realmKey: 'do_kiep',
+        stamina: 100,
+        power: 20,
+        spirit: 100,
+        hp: 1000,
+        hpMax: 1000,
+        mp: 100,
+        mpMax: 100,
+      });
+      // top-level `combat` (no TalentService) → can't validate ownership → reject.
+      const enc = await combat.start(u.userId, 'son_coc');
+      await expect(
+        combat.action(u.userId, enc.id, {
+          skillKey: 'talent_kim_quang_tram',
+        }),
+      ).rejects.toThrow('TALENT_NOT_LEARNED');
+    });
+  });
 });
