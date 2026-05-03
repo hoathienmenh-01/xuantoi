@@ -194,6 +194,13 @@ async function logout(): Promise<void> {
           />
         </RouterLink>
         <RouterLink
+          to="/talents"
+          class="px-3 py-2 rounded hover:bg-ink-700/60"
+          active-class="bg-ink-700/60 text-ink-50"
+        >
+          技 {{ t('shell.nav.talents') }}
+        </RouterLink>
+        <RouterLink
           to="/missions"
           class="px-3 py-2 rounded hover:bg-ink-700/60 relative"
           active-class="bg-ink-700/60 text-ink-50"

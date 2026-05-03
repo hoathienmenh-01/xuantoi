@@ -210,7 +210,9 @@
     },
     "step3": {
       "title": "Pick Your Starting Sect",
-      "lines": ["Each sect has a distinct starting technique. Pick the one where you want to settle."],
+      "lines": [
+        "Each sect has a distinct starting technique. Pick the one where you want to settle."
+      ],
       "sects": {
         "thanh_van": {
           "name": "Thanh Van Sect",
@@ -255,7 +257,8 @@
       "settings": "Settings",
       "activity": "Activity",
       "admin": "Admin",
-      "toggle": "Toggle navigation menu"
+      "toggle": "Toggle navigation menu",
+      "talents": "Talents"
     },
     "badge": {
       "bossActive": "World boss is live",
@@ -1039,6 +1042,58 @@
       "INVALID_BOSS_KEY": "Boss key not found in catalog.",
       "INVALID_LEVEL": "Level must be an integer 1..10.",
       "UNKNOWN": "Something went wrong."
+    }
+  },
+  "talents": {
+    "title": "Insight · Talents",
+    "subtitle": "Catalog of {total} talents covering all 5 elements",
+    "counts": "{passive} passive · {active} active",
+    "empty": "No talents match the current filter.",
+    "filter": {
+      "type": "Type",
+      "element": "Element",
+      "all": "All",
+      "passive": "Passive",
+      "active": "Active",
+      "shown": "Showing {shown}/{total}"
+    },
+    "type": {
+      "passive": "Passive",
+      "active": "Active"
+    },
+    "element": {
+      "kim": "Metal",
+      "moc": "Wood",
+      "thuy": "Water",
+      "hoa": "Fire",
+      "tho": "Earth",
+      "neutral": "Neutral"
+    },
+    "stat": {
+      "atk": "attack",
+      "def": "defense",
+      "hpMax": "HP",
+      "mpMax": "MP",
+      "spirit": "spirit"
+    },
+    "field": {
+      "realm": "Realm",
+      "cost": "Insight cost",
+      "effect": "Effect"
+    },
+    "effect": {
+      "statMod": "+{pct}% {stat}",
+      "regen": "+{flat} {stat} regen per tick",
+      "dropBonus": "+{pct}% drop rate",
+      "expBonus": "+{pct}% experience",
+      "damageBonus": "+{pct}% damage vs {element}",
+      "aoe": "AoE",
+      "single": "single target",
+      "activeDamage": "×{mul} damage ({aoe}) · {mp} MP · CD {cd} turns",
+      "activeCc": "Control {turns} turns ({aoe}) · {mp} MP · CD {cd} turns",
+      "activeHeal": "Heal ×{mul} HP · {mp} MP · CD {cd} turns",
+      "activeDot": "Burn/poison {turns} turns ({aoe}) · {mp} MP · CD {cd} turns",
+      "activeUtility": "Utility · {mp} MP · CD {cd} turns"
     }
   }
 }

@@ -103,6 +103,7 @@ const i18n = createI18n({
           shop: 'Chợ Tiên',
           sect: 'Tông Môn',
           boss: 'Yêu Vương',
+          talents: 'Ngộ Đạo',
           missions: 'Nhiệm Vụ',
           mail: 'Thư Truyền',
           giftcode: 'Quà Tặng',
