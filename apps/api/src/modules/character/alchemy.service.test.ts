@@ -1,0 +1,430 @@
+import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { PrismaService } from '../../common/prisma.service';
+import { CurrencyService } from './currency.service';
+import { AlchemyService, AlchemyError, ALCHEMY_RECIPE_COUNT } from './alchemy.service';
+import { makeUserChar, wipeAll } from '../../test-helpers';
+import {
+  ALCHEMY_RECIPES,
+  getAlchemyRecipeDef,
+  alchemyRecipesAvailableAtFurnace,
+} from '@xuantoi/shared';
+
+const TEST_DATABASE_URL =
+  process.env.TEST_DATABASE_URL ??
+  process.env.DATABASE_URL ??
+  'postgresql://mtt:mtt@localhost:5432/mtt?schema=public';
+
+let prisma: PrismaService;
+let currency: CurrencyService;
+let svc: AlchemyService;
+
+beforeAll(() => {
+  process.env.DATABASE_URL = TEST_DATABASE_URL;
+  prisma = new PrismaService();
+  currency = new CurrencyService(prisma);
+  svc = new AlchemyService(prisma, currency);
+});
+
+beforeEach(async () => {
+  await wipeAll(prisma);
+});
+
+afterAll(async () => {
+  await prisma.$disconnect();
+});
+
+/** Grant ingredient items to character. */
+async function grantIngredients(
+  characterId: string,
+  items: Array<{ itemKey: string; qty: number }>,
+) {
+  for (const item of items) {
+    await prisma.inventoryItem.create({
+      data: { characterId, itemKey: item.itemKey, qty: item.qty },
+    });
+  }
+}
+
+// ============================================================================
+// attemptCraft
+// ============================================================================
+
+describe('attemptCraft', () => {
+  const RECIPE_KEY = 'recipe_tieu_phuc_dan';
+
+  it('success — output granted + inputs consumed + ledger entries', async () => {
+    const recipe = getAlchemyRecipeDef(RECIPE_KEY)!;
+    const { characterId } = await makeUserChar(prisma, { linhThach: 10000n });
+    await grantIngredients(characterId, [{ itemKey: 'linh_thao', qty: 10 }]);
+
+    const outcome = await svc.attemptCraft(characterId, RECIPE_KEY, () => 0.0);
+
+    expect(outcome.success).toBe(true);
+    expect(outcome.recipeKey).toBe(RECIPE_KEY);
+    expect(outcome.outputItem).toBe(recipe.outputItem);
+    expect(outcome.outputQty).toBe(recipe.outputQty);
+    expect(outcome.linhThachConsumed).toBe(recipe.linhThachCost);
+    expect(outcome.rollValue).toBe(0.0);
+
+    // Output pill granted.
+    const outputRow = await prisma.inventoryItem.findFirst({
+      where: { characterId, itemKey: recipe.outputItem },
+    });
+    expect(outputRow).toBeTruthy();
+    expect(outputRow!.qty).toBe(recipe.outputQty);
+
+    // Input consumed (10 - 2 = 8 remaining).
+    const inputRow = await prisma.inventoryItem.findFirst({
+      where: { characterId, itemKey: 'linh_thao' },
+    });
+    expect(inputRow).toBeTruthy();
+    expect(inputRow!.qty).toBe(10 - recipe.inputs[0].qty);
+
+    // LinhThach deducted.
+    const char = await prisma.character.findUnique({
+      where: { id: characterId },
+      select: { linhThach: true },
+    });
+    expect(Number(char!.linhThach)).toBe(10000 - recipe.linhThachCost);
+
+    // ItemLedger: 1 ALCHEMY_INPUT + 1 ALCHEMY_OUTPUT.
+    const ledgers = await prisma.itemLedger.findMany({
+      where: { characterId },
+      orderBy: { createdAt: 'asc' },
+    });
+    expect(ledgers.length).toBe(2);
+    expect(ledgers[0].reason).toBe('ALCHEMY_INPUT');
+    expect(ledgers[0].qtyDelta).toBe(-recipe.inputs[0].qty);
+    expect(ledgers[1].reason).toBe('ALCHEMY_OUTPUT');
+    expect(ledgers[1].qtyDelta).toBe(recipe.outputQty);
+
+    // CurrencyLedger: 1 ALCHEMY_COST.
+    const cLedgers = await prisma.currencyLedger.findMany({
+      where: { characterId },
+    });
+    expect(cLedgers.length).toBe(1);
+    expect(cLedgers[0].reason).toBe('ALCHEMY_COST');
+    expect(Number(cLedgers[0].delta)).toBe(-recipe.linhThachCost);
+  });
+
+  it('fail — inputs consumed, no output granted', async () => {
+    const recipe = getAlchemyRecipeDef(RECIPE_KEY)!;
+    const { characterId } = await makeUserChar(prisma, { linhThach: 10000n });
+    await grantIngredients(characterId, [{ itemKey: 'linh_thao', qty: 2 }]);
+
+    const outcome = await svc.attemptCraft(characterId, RECIPE_KEY, () => 0.99);
+
+    expect(outcome.success).toBe(false);
+    expect(outcome.outputItem).toBeNull();
+    expect(outcome.outputQty).toBe(0);
+
+    // Input fully consumed (had exactly 2, used 2 → row deleted).
+    const inputRow = await prisma.inventoryItem.findFirst({
+      where: { characterId, itemKey: 'linh_thao' },
+    });
+    expect(inputRow).toBeNull();
+
+    // No output pill.
+    const outputRow = await prisma.inventoryItem.findFirst({
+      where: { characterId, itemKey: recipe.outputItem },
+    });
+    expect(outputRow).toBeNull();
+
+    // LinhThach still deducted.
+    const char = await prisma.character.findUnique({
+      where: { id: characterId },
+      select: { linhThach: true },
+    });
+    expect(Number(char!.linhThach)).toBe(10000 - recipe.linhThachCost);
+
+    // ItemLedger: only ALCHEMY_INPUT (no output).
+    const ledgers = await prisma.itemLedger.findMany({ where: { characterId } });
+    expect(ledgers.length).toBe(1);
+    expect(ledgers[0].reason).toBe('ALCHEMY_INPUT');
+  });
+
+  it('success stacks onto existing output pill qty', async () => {
+    const recipe = getAlchemyRecipeDef(RECIPE_KEY)!;
+    const { characterId } = await makeUserChar(prisma, { linhThach: 10000n });
+    await grantIngredients(characterId, [{ itemKey: 'linh_thao', qty: 10 }]);
+    // Pre-existing pill.
+    await prisma.inventoryItem.create({
+      data: { characterId, itemKey: recipe.outputItem, qty: 3 },
+    });
+
+    await svc.attemptCraft(characterId, RECIPE_KEY, () => 0.0);
+
+    const row = await prisma.inventoryItem.findFirst({
+      where: { characterId, itemKey: recipe.outputItem },
+    });
+    expect(row!.qty).toBe(3 + recipe.outputQty);
+  });
+
+  it('multi-ingredient recipe (huyet_chi_dan) — both inputs consumed', async () => {
+    const key = 'recipe_huyet_chi_dan';
+    const { characterId } = await makeUserChar(prisma, { linhThach: 10000n });
+    await grantIngredients(characterId, [
+      { itemKey: 'linh_thao', qty: 5 },
+      { itemKey: 'huyet_tinh', qty: 3 },
+    ]);
+
+    const outcome = await svc.attemptCraft(characterId, key, () => 0.0);
+    expect(outcome.success).toBe(true);
+    expect(outcome.inputsConsumed.length).toBe(2);
+
+    const linh = await prisma.inventoryItem.findFirst({
+      where: { characterId, itemKey: 'linh_thao' },
+    });
+    expect(linh!.qty).toBe(5 - 1); // recipe needs 1 linh_thao
+
+    const huyet = await prisma.inventoryItem.findFirst({
+      where: { characterId, itemKey: 'huyet_tinh' },
+    });
+    expect(huyet!.qty).toBe(3 - 1); // recipe needs 1 huyet_tinh
+
+    // 2 ALCHEMY_INPUT ledger entries + 1 ALCHEMY_OUTPUT.
+    const ledgers = await prisma.itemLedger.findMany({
+      where: { characterId },
+      orderBy: { createdAt: 'asc' },
+    });
+    expect(ledgers.length).toBe(3);
+    expect(ledgers.filter((l) => l.reason === 'ALCHEMY_INPUT').length).toBe(2);
+    expect(ledgers.filter((l) => l.reason === 'ALCHEMY_OUTPUT').length).toBe(1);
+  });
+
+  // ----- Error cases -----
+
+  it('RECIPE_NOT_FOUND', async () => {
+    const { characterId } = await makeUserChar(prisma);
+    await expect(
+      svc.attemptCraft(characterId, 'nonexistent_recipe', () => 0.0),
+    ).rejects.toThrow(AlchemyError);
+    await expect(
+      svc.attemptCraft(characterId, 'nonexistent_recipe', () => 0.0),
+    ).rejects.toMatchObject({ code: 'RECIPE_NOT_FOUND' });
+  });
+
+  it('CHARACTER_NOT_FOUND', async () => {
+    await expect(
+      svc.attemptCraft('nonexistent_char', RECIPE_KEY, () => 0.0),
+    ).rejects.toMatchObject({ code: 'CHARACTER_NOT_FOUND' });
+  });
+
+  it('FURNACE_LEVEL_TOO_LOW — recipe requires higher furnace', async () => {
+    // recipe_thanh_lam_dan requires furnaceLevel 3.
+    const key = 'recipe_thanh_lam_dan';
+    const recipe = getAlchemyRecipeDef(key)!;
+    expect(recipe.furnaceLevel).toBe(3);
+
+    const { characterId } = await makeUserChar(prisma, { linhThach: 100000n });
+    // Default furnaceLevel = 1 < 3.
+    await grantIngredients(
+      characterId,
+      recipe.inputs.map((i) => ({ itemKey: i.itemKey, qty: i.qty * 2 })),
+    );
+
+    await expect(
+      svc.attemptCraft(characterId, key, () => 0.0),
+    ).rejects.toMatchObject({ code: 'FURNACE_LEVEL_TOO_LOW' });
+  });
+
+  it('REALM_REQUIREMENT_NOT_MET — recipe requires higher realm', async () => {
+    // recipe_tien_phach_dan requires realmRequirement 'hoa_than' (order 5).
+    const key = 'recipe_tien_phach_dan';
+    const recipe = getAlchemyRecipeDef(key)!;
+    expect(recipe.realmRequirement).toBe('hoa_than');
+
+    const { characterId } = await makeUserChar(prisma, {
+      linhThach: 100000n,
+      realmKey: 'luyenkhi', // order 1 < 5
+    });
+    // Bump furnace level to meet requirement.
+    await prisma.character.update({
+      where: { id: characterId },
+      data: { alchemyFurnaceLevel: recipe.furnaceLevel },
+    });
+    await grantIngredients(
+      characterId,
+      recipe.inputs.map((i) => ({ itemKey: i.itemKey, qty: i.qty * 2 })),
+    );
+
+    await expect(
+      svc.attemptCraft(characterId, key, () => 0.0),
+    ).rejects.toMatchObject({ code: 'REALM_REQUIREMENT_NOT_MET' });
+  });
+
+  it('INSUFFICIENT_INGREDIENTS — not enough material', async () => {
+    const { characterId } = await makeUserChar(prisma, { linhThach: 10000n });
+    // Grant only 1 linh_thao (needs 2).
+    await grantIngredients(characterId, [{ itemKey: 'linh_thao', qty: 1 }]);
+
+    await expect(
+      svc.attemptCraft(characterId, RECIPE_KEY, () => 0.0),
+    ).rejects.toMatchObject({ code: 'INSUFFICIENT_INGREDIENTS' });
+
+    // No ledger entries on failure (atomic rollback).
+    const ledgers = await prisma.itemLedger.findMany({ where: { characterId } });
+    expect(ledgers.length).toBe(0);
+  });
+
+  it('INSUFFICIENT_INGREDIENTS — no material at all', async () => {
+    const { characterId } = await makeUserChar(prisma, { linhThach: 10000n });
+    // No items granted.
+
+    await expect(
+      svc.attemptCraft(characterId, RECIPE_KEY, () => 0.0),
+    ).rejects.toMatchObject({ code: 'INSUFFICIENT_INGREDIENTS' });
+  });
+
+  it('INSUFFICIENT_FUNDS — not enough linhThach', async () => {
+    const { characterId } = await makeUserChar(prisma, { linhThach: 1n });
+    await grantIngredients(characterId, [{ itemKey: 'linh_thao', qty: 10 }]);
+
+    await expect(
+      svc.attemptCraft(characterId, RECIPE_KEY, () => 0.0),
+    ).rejects.toMatchObject({ code: 'INSUFFICIENT_FUNDS' });
+
+    // Input items NOT consumed (atomic rollback).
+    const row = await prisma.inventoryItem.findFirst({
+      where: { characterId, itemKey: 'linh_thao' },
+    });
+    expect(row!.qty).toBe(10);
+  });
+
+  it('atomic rollback — insufficient funds after inputs verified', async () => {
+    const recipe = getAlchemyRecipeDef(RECIPE_KEY)!;
+    // Have exact ingredients but almost no linhThach.
+    const { characterId } = await makeUserChar(prisma, {
+      linhThach: BigInt(recipe.linhThachCost - 1),
+    });
+    await grantIngredients(characterId, [{ itemKey: 'linh_thao', qty: recipe.inputs[0].qty }]);
+
+    await expect(
+      svc.attemptCraft(characterId, RECIPE_KEY, () => 0.0),
+    ).rejects.toThrow();
+
+    // Both linhThach and items should be untouched (tx rolled back).
+    const char = await prisma.character.findUnique({
+      where: { id: characterId },
+      select: { linhThach: true },
+    });
+    expect(Number(char!.linhThach)).toBe(recipe.linhThachCost - 1);
+    const row = await prisma.inventoryItem.findFirst({
+      where: { characterId, itemKey: 'linh_thao' },
+    });
+    expect(row!.qty).toBe(recipe.inputs[0].qty);
+  });
+
+  it('realm requirement met — craft succeeds when realm >= required', async () => {
+    const key = 'recipe_tien_phach_dan';
+    const recipe = getAlchemyRecipeDef(key)!;
+    const { characterId } = await makeUserChar(prisma, {
+      linhThach: 100000n,
+      realmKey: 'hoa_than', // order 5 = exact match
+    });
+    await prisma.character.update({
+      where: { id: characterId },
+      data: { alchemyFurnaceLevel: recipe.furnaceLevel },
+    });
+    await grantIngredients(
+      characterId,
+      recipe.inputs.map((i) => ({ itemKey: i.itemKey, qty: i.qty })),
+    );
+
+    const outcome = await svc.attemptCraft(characterId, key, () => 0.0);
+    expect(outcome.success).toBe(true);
+  });
+
+  it('cross-character isolation — one char craft does not affect other', async () => {
+    const { characterId: c1 } = await makeUserChar(prisma, { linhThach: 10000n });
+    const { characterId: c2 } = await makeUserChar(prisma, { linhThach: 10000n });
+    await grantIngredients(c1, [{ itemKey: 'linh_thao', qty: 10 }]);
+    await grantIngredients(c2, [{ itemKey: 'linh_thao', qty: 10 }]);
+
+    await svc.attemptCraft(c1, RECIPE_KEY, () => 0.0);
+
+    // c2 still has all 10 linh_thao.
+    const c2Row = await prisma.inventoryItem.findFirst({
+      where: { characterId: c2, itemKey: 'linh_thao' },
+    });
+    expect(c2Row!.qty).toBe(10);
+  });
+});
+
+// ============================================================================
+// getFurnaceLevel
+// ============================================================================
+
+describe('getFurnaceLevel', () => {
+  it('returns default 1 for new character', async () => {
+    const { characterId } = await makeUserChar(prisma);
+    const level = await svc.getFurnaceLevel(characterId);
+    expect(level).toBe(1);
+  });
+
+  it('returns updated furnace level', async () => {
+    const { characterId } = await makeUserChar(prisma);
+    await prisma.character.update({
+      where: { id: characterId },
+      data: { alchemyFurnaceLevel: 5 },
+    });
+    const level = await svc.getFurnaceLevel(characterId);
+    expect(level).toBe(5);
+  });
+
+  it('CHARACTER_NOT_FOUND', async () => {
+    await expect(svc.getFurnaceLevel('nonexistent')).rejects.toMatchObject({
+      code: 'CHARACTER_NOT_FOUND',
+    });
+  });
+});
+
+// ============================================================================
+// listAvailableRecipes
+// ============================================================================
+
+describe('listAvailableRecipes', () => {
+  it('furnace L1 — returns only PHAM-tier recipes (furnace 1)', async () => {
+    const { characterId } = await makeUserChar(prisma);
+    const recipes = await svc.listAvailableRecipes(characterId);
+    const l1Recipes = alchemyRecipesAvailableAtFurnace(1);
+    expect(recipes.length).toBe(l1Recipes.length);
+    for (const r of recipes) {
+      expect(r.furnaceLevel).toBeLessThanOrEqual(1);
+    }
+  });
+
+  it('furnace L9 — returns all recipes', async () => {
+    const { characterId } = await makeUserChar(prisma);
+    await prisma.character.update({
+      where: { id: characterId },
+      data: { alchemyFurnaceLevel: 9 },
+    });
+    const recipes = await svc.listAvailableRecipes(characterId);
+    expect(recipes.length).toBe(ALCHEMY_RECIPE_COUNT);
+  });
+
+  it('CHARACTER_NOT_FOUND', async () => {
+    await expect(svc.listAvailableRecipes('nonexistent')).rejects.toMatchObject({
+      code: 'CHARACTER_NOT_FOUND',
+    });
+  });
+});
+
+// ============================================================================
+// Sanity
+// ============================================================================
+
+describe('sanity', () => {
+  it('AlchemyError is instanceof Error', () => {
+    const err = new AlchemyError('RECIPE_NOT_FOUND');
+    expect(err).toBeInstanceOf(Error);
+    expect(err.code).toBe('RECIPE_NOT_FOUND');
+    expect(err.message).toBe('RECIPE_NOT_FOUND');
+  });
+
+  it('ALCHEMY_RECIPE_COUNT matches catalog', () => {
+    expect(ALCHEMY_RECIPE_COUNT).toBe(ALCHEMY_RECIPES.length);
+    expect(ALCHEMY_RECIPE_COUNT).toBeGreaterThanOrEqual(12);
+  });
+});

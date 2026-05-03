@@ -18,6 +18,7 @@ import { BuffService } from './buff.service';
 import { TalentService } from './talent.service';
 import { TitleService } from './title.service';
 import { AchievementService } from './achievement.service';
+import { AlchemyService } from './alchemy.service';
 import { PrismaService } from '../../common/prisma.service';
 import { AuthModule } from '../auth/auth.module';
 import { RealtimeModule } from '../realtime/realtime.module';
@@ -68,6 +69,7 @@ const profileLimiterProvider = {
     TalentService,
     TitleService,
     AchievementService,
+    AlchemyService,
     PrismaService,
     profileLimiterProvider,
   ],
@@ -84,6 +86,7 @@ const profileLimiterProvider = {
     TalentService,
     TitleService,
     AchievementService,
+    AlchemyService,
   ],
 })
 export class CharacterModule {}
