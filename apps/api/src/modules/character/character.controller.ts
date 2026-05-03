@@ -33,6 +33,7 @@ import {
   AchievementError,
   AchievementService,
 } from './achievement.service';
+import { TalentError, TalentService } from './talent.service';
 import { AuthService } from '../auth/auth.service';
 import {
   InMemorySlidingWindowRateLimiter,
@@ -96,6 +97,10 @@ const AchievementClaimInput = z.object({
   achievementKey: z.string().min(1).max(64),
 });
 
+const TalentLearnInput = z.object({
+  talentKey: z.string().min(1).max(64),
+});
+
 /**
  * `POST /character/tribulation` body — không có input field. Server-authoritative
  * resolve transition từ `c.realmKey` → `nextRealm(c.realmKey)`. Tránh client
@@ -120,6 +125,7 @@ export class CharacterController {
     @Optional() private readonly refine?: RefineService,
     @Optional() private readonly tribulation?: TribulationService,
     @Optional() private readonly achievement?: AchievementService,
+    @Optional() private readonly talent?: TalentService,
     @Optional() @Inject(PROFILE_RATE_LIMITER) profileLimiter?: RateLimiter,
   ) {
     this.profileLimiter =
@@ -575,6 +581,101 @@ export class CharacterController {
       throw e;
     }
   }
+
+  /**
+   * Phase 11.X.AS Talent state — return server-authoritative state cho user
+   * UI talent catalog: list talent đã học (kèm `def` snapshot từ catalog),
+   * điểm ngộ đạo đã spent + còn lại.
+   *
+   *   - Reuse `TalentService.listLearned` + `TalentService.getRemainingTalentPoints`.
+   *   - Idempotent GET — không thay đổi state. Không có rate-limit riêng vì
+   *     bound theo character của caller (auth required).
+   *   - Catalog metadata-only (server compute từ rows + `getTalentDef`).
+   *   - Frontend filter "đã học / chưa học" + budget badge wire qua endpoint
+   *     này (Phase 11.X.AT future PR).
+   */
+  @Get('talents/state')
+  async talentsState(@Req() req: Request) {
+    const userId = await this.requireUserId(req);
+    if (!this.talent) {
+      fail('TALENT_UNAVAILABLE', HttpStatus.NOT_IMPLEMENTED);
+    }
+    const character = await this.chars.findByUser(userId);
+    if (!character) fail('NO_CHARACTER', HttpStatus.NOT_FOUND);
+    try {
+      const [learned, remaining] = await Promise.all([
+        this.talent.listLearned(character.id),
+        this.talent.getRemainingTalentPoints(character.id),
+      ]);
+      const spent = learned.reduce((s, l) => s + l.def.talentPointCost, 0);
+      return {
+        ok: true,
+        data: {
+          talents: {
+            learned: learned.map((l) => ({
+              talentKey: l.talentKey,
+              learnedAt: l.learnedAt.toISOString(),
+            })),
+            spent,
+            remaining,
+            budget: spent + remaining,
+          },
+        },
+      };
+    } catch (e) {
+      if (e instanceof TalentError) {
+        fail(e.code, mapTalentErrorStatus(e.code));
+      }
+      throw e;
+    }
+  }
+
+  /**
+   * Phase 11.X.AS Talent learn — server-authoritative POST cho frontend
+   * "Học" button trong TalentCatalogView.
+   *
+   *   - Body: `{ talentKey: string }` (Zod validated).
+   *   - Validate auth → resolve character → reuse `TalentService.learnTalent`.
+   *   - Atomic transaction trong service (composite UNIQUE
+   *     `(characterId, talentKey)` chống double-learn race).
+   *   - Trả về row vừa tạo + budget remaining cập nhật để frontend không
+   *     cần round-trip thêm `GET talents/state`.
+   *   - Error mapping qua `mapTalentErrorStatus`.
+   */
+  @Post('talents/learn')
+  @HttpCode(200)
+  async talentsLearn(@Req() req: Request, @Body() body: unknown) {
+    const userId = await this.requireUserId(req);
+    if (!this.talent) {
+      fail('TALENT_UNAVAILABLE', HttpStatus.NOT_IMPLEMENTED);
+    }
+    const parsed = TalentLearnInput.safeParse(body);
+    if (!parsed.success) fail('INVALID_INPUT');
+    const character = await this.chars.findByUser(userId);
+    if (!character) fail('NO_CHARACTER', HttpStatus.NOT_FOUND);
+    try {
+      const result = await this.talent.learnTalent(
+        character.id,
+        parsed.data.talentKey,
+      );
+      const remaining = await this.talent.getRemainingTalentPoints(character.id);
+      return {
+        ok: true,
+        data: {
+          learn: {
+            talentKey: result.talentKey,
+            learnedAt: result.learnedAt.toISOString(),
+          },
+          remaining,
+        },
+      };
+    } catch (e) {
+      if (e instanceof TalentError) {
+        fail(e.code, mapTalentErrorStatus(e.code));
+      }
+      throw e;
+    }
+  }
 }
 
 /** Map GemError code → HTTP status. */
@@ -627,6 +728,24 @@ function mapTribulationErrorStatus(
     case 'COOLDOWN_ACTIVE':
       return HttpStatus.CONFLICT;
     case 'INVALID_RNG':
+      return HttpStatus.INTERNAL_SERVER_ERROR;
+    default:
+      return HttpStatus.BAD_REQUEST;
+  }
+}
+
+/** Map TalentError code → HTTP status. */
+function mapTalentErrorStatus(code: TalentError['code']): HttpStatus {
+  switch (code) {
+    case 'TALENT_NOT_FOUND':
+    case 'CHARACTER_NOT_FOUND':
+      return HttpStatus.NOT_FOUND;
+    case 'ALREADY_LEARNED':
+    case 'REALM_TOO_LOW':
+    case 'INSUFFICIENT_TALENT_POINTS':
+    case 'INVALID_REALM_REQUIREMENT':
+      return HttpStatus.CONFLICT;
+    case 'INVALID_REALM':
       return HttpStatus.INTERNAL_SERVER_ERROR;
     default:
       return HttpStatus.BAD_REQUEST;
