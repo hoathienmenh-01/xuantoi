@@ -7,10 +7,14 @@ import {
   titleForRealmMilestone,
 } from '@xuantoi/shared';
 import { PrismaService } from '../../common/prisma.service';
+import { AchievementService } from './achievement.service';
 import { BuffService } from './buff.service';
+import { CharacterService } from './character.service';
 import { CurrencyService } from './currency.service';
 import { TitleService } from './title.service';
 import { TribulationError, TribulationService } from './tribulation.service';
+import { InventoryService } from '../inventory/inventory.service';
+import { RealtimeService } from '../realtime/realtime.service';
 import { makeUserChar, wipeAll } from '../../test-helpers';
 
 const TEST_DATABASE_URL =
@@ -793,5 +797,100 @@ describe('TribulationService.listAttemptLogs (Phase 11.6.F)', () => {
     expect(rowsA).toHaveLength(1);
     const rowsB = await svc.listAttemptLogs(ctxB.characterId);
     expect(rowsB).toHaveLength(2);
+  });
+});
+
+// ── Phase 11.10.G — TribulationService BREAKTHROUGH achievement track wire ──
+// Symmetric với CultivationProcessor low-tier auto-breakthrough → trackEvent
+// 'BREAKTHROUGH'. Trước đó tribulation success advance realm cao (kim_dan
+// → nguyen_anh, etc.) NHƯNG không track BREAKTHROUGH event → 4 achievement
+// catalog `BREAKTHROUGH` (`first_breakthrough`, `reach_truc_co`, `reach_kim_dan`,
+// `reach_nguyen_anh` — `achievements.ts` line 228..278) de facto bỏ qua khi
+// player clear realm cao qua tribulation. Wire fail-soft post-tx (tribulation
+// reward đã commit; tracking failure chỉ log warn).
+describe('TribulationService BREAKTHROUGH achievement track (Phase 11.10.G)', () => {
+  let achievements: AchievementService;
+  let svcWithAch: TribulationService;
+
+  beforeAll(() => {
+    const realtime = new RealtimeService();
+    const chars = new CharacterService(prisma, realtime);
+    const inventory = new InventoryService(prisma, realtime, chars);
+    achievements = new AchievementService(prisma, currency, titleSvc, inventory);
+    svcWithAch = new TribulationService(
+      prisma,
+      currency,
+      titleSvc,
+      buffSvc,
+      achievements,
+    );
+  });
+
+  it('SUCCESS path → AchievementService.trackEvent BREAKTHROUGH +1 (first_breakthrough progress=1, completedAt set)', async () => {
+    const ctx = await setupCharAtKimDanPeak({ hpMax: 10_000 });
+
+    // Pre-condition: chưa có CharacterAchievement row.
+    const before = await prisma.characterAchievement.findMany({
+      where: { characterId: ctx.characterId },
+    });
+    expect(before).toHaveLength(0);
+
+    const out = await svcWithAch.attemptTribulation(ctx.characterId, () => 0.0);
+    expect(out.success).toBe(true);
+
+    // first_breakthrough (goal=1, BREAKTHROUGH) phải completed.
+    const row = await prisma.characterAchievement.findUnique({
+      where: {
+        characterId_achievementKey: {
+          characterId: ctx.characterId,
+          achievementKey: 'first_breakthrough',
+        },
+      },
+    });
+    expect(row).not.toBeNull();
+    expect(row!.progress).toBe(1);
+    expect(row!.completedAt).not.toBeNull();
+  });
+
+  it('FAIL path → KHÔNG track BREAKTHROUGH (no CharacterAchievement row)', async () => {
+    const ctx = await setupCharAtKimDanPeak({
+      hpMax: 2_000,
+      exp: KIM_DAN_COST_9 + 100_000n,
+    });
+    const out = await svcWithAch.attemptTribulation(
+      ctx.characterId,
+      () => 0.99,
+    );
+    expect(out.success).toBe(false);
+
+    // Không có row achievement nào (BREAKTHROUGH track skip).
+    const rows = await prisma.characterAchievement.findMany({
+      where: { characterId: ctx.characterId },
+    });
+    expect(rows).toHaveLength(0);
+  });
+
+  it('legacy 4-arg constructor (no achievements) → SUCCESS không throw, không có row', async () => {
+    // svcWithBuffs = constructor(prisma, currency, titleSvc, buffSvc) — không
+    // pass achievements. Pre-Phase-11.10.G behavior.
+    const ctx = await setupCharAtKimDanPeak({ hpMax: 10_000 });
+
+    const out = await svcWithBuffs.attemptTribulation(
+      ctx.characterId,
+      () => 0.0,
+    );
+    expect(out.success).toBe(true);
+
+    // Realm vẫn advance (success path đã thực thi).
+    const updated = await prisma.character.findUnique({
+      where: { id: ctx.characterId },
+    });
+    expect(updated?.realmKey).toBe('nguyen_anh');
+
+    // Nhưng không có achievement row (achievements not injected).
+    const rows = await prisma.characterAchievement.findMany({
+      where: { characterId: ctx.characterId },
+    });
+    expect(rows).toHaveLength(0);
   });
 });

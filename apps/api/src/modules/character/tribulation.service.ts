@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Optional } from '@nestjs/common';
 import { CurrencyKind } from '@prisma/client';
 import {
   computeTribulationFailurePenalty,
@@ -12,6 +12,7 @@ import {
   type TribulationDef,
 } from '@xuantoi/shared';
 import { PrismaService } from '../../common/prisma.service';
+import { AchievementService } from './achievement.service';
 import { BuffService } from './buff.service';
 import { CurrencyService } from './currency.service';
 import { TitleService } from './title.service';
@@ -54,6 +55,7 @@ export class TribulationService {
     private readonly currency: CurrencyService,
     private readonly titles?: TitleService,
     private readonly buffs?: BuffService,
+    @Optional() private readonly achievements?: AchievementService,
   ) {}
 
   /**
@@ -70,7 +72,7 @@ export class TribulationService {
     rng: () => number = Math.random,
     now: Date = new Date(),
   ): Promise<TribulationAttemptOutcome> {
-    return this.prisma.$transaction(async (tx) => {
+    const outcome = await this.prisma.$transaction(async (tx) => {
       const character = await tx.character.findUnique({
         where: { id: characterId },
       });
@@ -319,6 +321,26 @@ export class TribulationService {
         logId: log.id,
       };
     });
+
+    // Phase 11.10.G — fail-soft post-tx tracking. Tribulation success advance
+    // realm giống `CultivationProcessor` low-tier breakthrough; pair với
+    // `AchievementService.trackEvent('BREAKTHROUGH', 1)` để 4 achievement
+    // catalog `BREAKTHROUGH` (`achievements.ts` line 228..278) thực sự
+    // increment khi player clear realm cao qua tribulation. Trước đó chỉ
+    // cultivation tick auto-breakthrough được tracked → high-realm tribulation
+    // success de facto bỏ qua. Try/catch fail-soft: tribulation reward đã
+    // commit; tracking failure (vd DB transient) chỉ log warn không undo.
+    if (outcome.success && this.achievements) {
+      try {
+        await this.achievements.trackEvent(characterId, 'BREAKTHROUGH', 1);
+      } catch (e) {
+        this.logger.warn(
+          `tribulation: achievement BREAKTHROUGH track failed for char=${characterId}: ${(e as Error).message}`,
+        );
+      }
+    }
+
+    return outcome;
   }
 
   /**
