@@ -538,6 +538,35 @@ export async function adminSectWarRecalculate(input: {
   return unwrap(data);
 }
 
+// ───────── Phase 13.1.B advanced — admin force-spawn boss ─────────
+
+export interface AdminLiveOpsForceBossInput {
+  regionKey?: string;
+  bossKey?: string;
+  level?: number;
+  force?: boolean;
+  reason?: string;
+}
+
+export interface AdminLiveOpsForceBossResult {
+  id: string;
+  bossKey: string;
+  level: number;
+  maxHp: string;
+  regionKey: string;
+  triggeredAt: string;
+}
+
+export async function adminLiveOpsForceBoss(
+  input: AdminLiveOpsForceBossInput,
+): Promise<AdminLiveOpsForceBossResult> {
+  const { data } = await apiClient.post<Envelope<AdminLiveOpsForceBossResult>>(
+    '/admin/liveops/boss/force-spawn',
+    input,
+  );
+  return unwrap(data);
+}
+
 /**
  * Compute display status từ row fields. Mirror BE logic — `revokedAt` thắng,
  * sau đó `expiresAt < now` → EXPIRED, sau đó `redeemCount >= maxRedeems` → EXHAUSTED,

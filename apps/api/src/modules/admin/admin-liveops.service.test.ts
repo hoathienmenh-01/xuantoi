@@ -13,11 +13,26 @@
  *     từ `SectWarContribution`, ranking sort theo points desc.
  *   - recalculateSectWar: no-op trả `{ noop: true, weekKey }`, log
  *     `ADMIN_SECT_WAR_RECALCULATE` audit, KHÔNG đụng tới contribution rows.
+ *
+ * Phase 13.1.B advanced — bổ sung coverage:
+ *   - forceBossSchedule: admin success → ghi audit `ADMIN_FORCE_BOSS_SCHEDULE`
+ *     + `BOSS_SPAWN` (delegate `BossService.adminSpawn`); validate region/boss;
+ *     INVALID_REGION_KEY, INVALID_BOSS_KEY (mismatch), INVALID_INPUT (level
+ *     out of range), BOSS_ALREADY_ACTIVE (no force) reject + KHÔNG ghi
+ *     `ADMIN_FORCE_BOSS_SCHEDULE` audit.
+ *   - auditSectWarStatusRead: ghi audit `ADMIN_SECT_WAR_STATUS` với
+ *     `weekKey`.
  */
-import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
-import { LIVE_OPS_DEFAULT_TZ, LIVE_OPS_EVENTS } from '@xuantoi/shared';
+import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import {
+  BOSSES,
+  LIVE_OPS_DEFAULT_TZ,
+  LIVE_OPS_EVENTS,
+  WORLD_BOSS_REGION_KEY,
+} from '@xuantoi/shared';
 import { PrismaService } from '../../common/prisma.service';
-import { AdminLiveOpsService } from './admin-liveops.service';
+import { AdminLiveOpsService, AdminLiveOpsError } from './admin-liveops.service';
+import { BossError, type BossService } from '../boss/boss.service';
 import {
   TEST_DATABASE_URL,
   makeUserChar,
@@ -28,14 +43,101 @@ import {
 let prisma: PrismaService;
 let svc: AdminLiveOpsService;
 
+/**
+ * Phase 13.1.B advanced — `BossService` stub. Test target là
+ * `AdminLiveOpsService.forceBossSchedule` — validate input + audit log
+ * + surface `BossError` → `AdminLiveOpsError`. `BossService.adminSpawn`
+ * có suite riêng (`boss.service.test.ts`) cover spawn/race-safe path.
+ *
+ * Stub này:
+ *   - mặc định: spawn success → return shape match `BossService.adminSpawn`,
+ *     ghi audit `BOSS_SPAWN` qua prisma trực tiếp (mirror service thật).
+ *   - per-test override qua `setSpawnImpl` cho error scenarios
+ *     (BOSS_ALREADY_ACTIVE, INVALID_BOSS_KEY, INVALID_LEVEL).
+ */
+interface SpawnOpts {
+  bossKey?: string;
+  level?: number;
+  force?: boolean;
+  regionKey?: string;
+}
+type SpawnResult = Awaited<ReturnType<BossService['adminSpawn']>>;
+let spawnCalls: Array<{ actorId: string; opts: SpawnOpts }> = [];
+let spawnImpl: (actorId: string, opts: SpawnOpts) => Promise<SpawnResult> = async (
+  actorId: string,
+  opts: SpawnOpts,
+) => {
+  // Default success — mirror BossService.adminSpawn return shape + ghi
+  // audit BOSS_SPAWN qua prisma (giúp test verify "2 audit per 1 force-spawn").
+  const bossKey = opts.bossKey ?? BOSSES[0].key;
+  const regionKey = opts.regionKey ?? WORLD_BOSS_REGION_KEY;
+  const level = opts.level ?? 1;
+  const id = `boss-stub-${nextSuffix()}`;
+  await prisma.adminAuditLog.create({
+    data: {
+      actorUserId: actorId,
+      action: 'BOSS_SPAWN',
+      meta: {
+        bossId: id,
+        bossKey,
+        level,
+        forced: !!opts.force,
+        replacedBossId: null,
+        regionKey,
+      },
+    },
+  });
+  return {
+    id,
+    bossKey,
+    level,
+    maxHp: '100000',
+    regionKey,
+  };
+};
+function setSpawnImpl(
+  fn: (actorId: string, opts: SpawnOpts) => Promise<SpawnResult>,
+): void {
+  spawnImpl = fn;
+}
+const bossStub = {
+  adminSpawn: vi.fn(async (actorId: string, opts: SpawnOpts) => {
+    spawnCalls.push({ actorId, opts });
+    return spawnImpl(actorId, opts);
+  }),
+} as unknown as BossService;
+
 beforeAll(() => {
   process.env.DATABASE_URL = TEST_DATABASE_URL;
   prisma = new PrismaService();
-  svc = new AdminLiveOpsService(prisma);
+  svc = new AdminLiveOpsService(prisma, bossStub);
 });
 
 beforeEach(async () => {
   await wipeAll(prisma);
+  // Reset stub state mỗi test (calls + impl) để tránh leak qua case khác.
+  spawnCalls = [];
+  spawnImpl = async (actorId, opts) => {
+    const bossKey = opts.bossKey ?? BOSSES[0].key;
+    const regionKey = opts.regionKey ?? WORLD_BOSS_REGION_KEY;
+    const level = opts.level ?? 1;
+    const id = `boss-stub-${nextSuffix()}`;
+    await prisma.adminAuditLog.create({
+      data: {
+        actorUserId: actorId,
+        action: 'BOSS_SPAWN',
+        meta: {
+          bossId: id,
+          bossKey,
+          level,
+          forced: !!opts.force,
+          replacedBossId: null,
+          regionKey,
+        },
+      },
+    });
+    return { id, bossKey, level, maxHp: '100000', regionKey };
+  };
 });
 
 afterAll(async () => {
@@ -346,5 +448,189 @@ describe('AdminLiveOpsService.recalculateSectWar', () => {
       where: { actorUserId: adminU.userId, action: 'ADMIN_SECT_WAR_RECALCULATE' },
     });
     expect(audits).toHaveLength(2);
+  });
+});
+
+/**
+ * Phase 13.1.B advanced — `forceBossSchedule` coverage. Tách describe riêng
+ * để test runner báo cáo rõ ràng "Phase 13.1.B advanced" coverage.
+ */
+describe('AdminLiveOpsService.forceBossSchedule (advanced)', () => {
+  it('admin success default region: delegate adminSpawn, ghi audit ADMIN_FORCE_BOSS_SCHEDULE + BOSS_SPAWN', async () => {
+    const adminU = await makeUserChar(prisma, { role: 'ADMIN' });
+    const result = await svc.forceBossSchedule(adminU.userId, {
+      reason: 'liveops manual spawn smoke',
+    });
+
+    expect(result.id).toMatch(/^boss-stub-/);
+    expect(result.regionKey).toBe(WORLD_BOSS_REGION_KEY);
+    expect(typeof result.maxHp).toBe('string');
+    expect(typeof result.triggeredAt).toBe('string');
+
+    // Stub ghi BOSS_SPAWN, service ghi ADMIN_FORCE_BOSS_SCHEDULE → 2 audit/1 hành động.
+    const audits = await prisma.adminAuditLog.findMany({
+      where: { actorUserId: adminU.userId },
+      orderBy: { createdAt: 'asc' },
+    });
+    const actions = audits.map((a) => a.action).sort();
+    expect(actions).toContain('ADMIN_FORCE_BOSS_SCHEDULE');
+    expect(actions).toContain('BOSS_SPAWN');
+
+    const liveopsAudit = audits.find((a) => a.action === 'ADMIN_FORCE_BOSS_SCHEDULE');
+    expect(liveopsAudit).toBeTruthy();
+    const meta = liveopsAudit!.meta as Record<string, unknown>;
+    expect(meta.targetType).toBe('WorldBoss');
+    expect(meta.bossId).toBe(result.id);
+    expect(meta.regionKey).toBe(WORLD_BOSS_REGION_KEY);
+    expect(meta.reason).toBe('liveops manual spawn smoke');
+    expect(meta.forced).toBe(false);
+  });
+
+  it('admin success với bossKey + regionKey explicit: pass-through cho adminSpawn, audit ghi đúng meta', async () => {
+    const adminU = await makeUserChar(prisma, { role: 'ADMIN' });
+    const def = BOSSES[0];
+    const result = await svc.forceBossSchedule(adminU.userId, {
+      regionKey: def.regionKey ?? WORLD_BOSS_REGION_KEY,
+      bossKey: def.key,
+      level: 3,
+      force: true,
+      reason: 'test region scope',
+    });
+    expect(result.bossKey).toBe(def.key);
+    expect(result.level).toBe(3);
+    expect(result.regionKey).toBe(def.regionKey ?? WORLD_BOSS_REGION_KEY);
+
+    expect(spawnCalls).toHaveLength(1);
+    expect(spawnCalls[0].opts.bossKey).toBe(def.key);
+    expect(spawnCalls[0].opts.level).toBe(3);
+    expect(spawnCalls[0].opts.force).toBe(true);
+
+    const audit = await prisma.adminAuditLog.findFirstOrThrow({
+      where: { action: 'ADMIN_FORCE_BOSS_SCHEDULE' },
+    });
+    const meta = audit.meta as Record<string, unknown>;
+    expect(meta.bossKey).toBe(def.key);
+    expect(meta.level).toBe(3);
+    expect(meta.forced).toBe(true);
+  });
+
+  it('INVALID_INPUT: level out of range → throw, KHÔNG gọi adminSpawn, KHÔNG ghi audit', async () => {
+    const adminU = await makeUserChar(prisma, { role: 'ADMIN' });
+    await expect(
+      svc.forceBossSchedule(adminU.userId, { level: 99 }),
+    ).rejects.toMatchObject({ code: 'INVALID_INPUT' });
+
+    expect(spawnCalls).toHaveLength(0);
+    const audits = await prisma.adminAuditLog.findMany({
+      where: { action: 'ADMIN_FORCE_BOSS_SCHEDULE' },
+    });
+    expect(audits).toHaveLength(0);
+  });
+
+  it('INVALID_REGION_KEY: region không có catalog boss → throw, KHÔNG gọi adminSpawn', async () => {
+    const adminU = await makeUserChar(prisma, { role: 'ADMIN' });
+    await expect(
+      svc.forceBossSchedule(adminU.userId, { regionKey: 'no_such_region_xyz' }),
+    ).rejects.toMatchObject({ code: 'INVALID_REGION_KEY' });
+
+    expect(spawnCalls).toHaveLength(0);
+    const audits = await prisma.adminAuditLog.findMany({
+      where: { action: 'ADMIN_FORCE_BOSS_SCHEDULE' },
+    });
+    expect(audits).toHaveLength(0);
+  });
+
+  it('INVALID_BOSS_KEY: boss def không tồn tại → throw, KHÔNG gọi adminSpawn', async () => {
+    const adminU = await makeUserChar(prisma, { role: 'ADMIN' });
+    await expect(
+      svc.forceBossSchedule(adminU.userId, { bossKey: 'no_such_boss_xyz' }),
+    ).rejects.toMatchObject({ code: 'INVALID_BOSS_KEY' });
+
+    expect(spawnCalls).toHaveLength(0);
+  });
+
+  it('INVALID_BOSS_KEY: boss def region mismatch với regionKey explicit → throw pre-spawn', async () => {
+    const adminU = await makeUserChar(prisma, { role: 'ADMIN' });
+    const def = BOSSES[0];
+    const wrongRegion =
+      def.regionKey === WORLD_BOSS_REGION_KEY
+        ? BOSSES.find((b) => (b.regionKey ?? WORLD_BOSS_REGION_KEY) !== WORLD_BOSS_REGION_KEY)
+            ?.regionKey
+        : WORLD_BOSS_REGION_KEY;
+    if (!wrongRegion) {
+      // Catalog chỉ có 1 region → skip case này (still passing).
+      return;
+    }
+    await expect(
+      svc.forceBossSchedule(adminU.userId, {
+        bossKey: def.key,
+        regionKey: wrongRegion,
+      }),
+    ).rejects.toMatchObject({ code: 'INVALID_BOSS_KEY' });
+    expect(spawnCalls).toHaveLength(0);
+  });
+
+  it('BOSS_ALREADY_ACTIVE: BossService throw → surface AdminLiveOpsError + KHÔNG ghi ADMIN_FORCE_BOSS_SCHEDULE', async () => {
+    const adminU = await makeUserChar(prisma, { role: 'ADMIN' });
+    setSpawnImpl(async () => {
+      throw new BossError('BOSS_ALREADY_ACTIVE');
+    });
+    await expect(
+      svc.forceBossSchedule(adminU.userId, { reason: 'no-force retry' }),
+    ).rejects.toMatchObject({ code: 'BOSS_ALREADY_ACTIVE' });
+
+    const audits = await prisma.adminAuditLog.findMany({
+      where: { action: 'ADMIN_FORCE_BOSS_SCHEDULE' },
+    });
+    expect(audits).toHaveLength(0);
+  });
+
+  it('BossService INVALID_LEVEL → AdminLiveOpsError INVALID_INPUT (mapping); INVALID_BOSS_KEY pass-through', async () => {
+    const adminU = await makeUserChar(prisma, { role: 'ADMIN' });
+    setSpawnImpl(async () => {
+      throw new BossError('INVALID_LEVEL');
+    });
+    await expect(
+      svc.forceBossSchedule(adminU.userId, {}),
+    ).rejects.toMatchObject({ code: 'INVALID_INPUT' });
+
+    setSpawnImpl(async () => {
+      throw new BossError('INVALID_BOSS_KEY');
+    });
+    await expect(
+      svc.forceBossSchedule(adminU.userId, {}),
+    ).rejects.toMatchObject({ code: 'INVALID_BOSS_KEY' });
+
+    const audits = await prisma.adminAuditLog.findMany({
+      where: { action: 'ADMIN_FORCE_BOSS_SCHEDULE' },
+    });
+    expect(audits).toHaveLength(0);
+  });
+});
+
+describe('AdminLiveOpsService.auditSectWarStatusRead (advanced)', () => {
+  it('ghi audit ADMIN_SECT_WAR_STATUS với targetId = weekKey', async () => {
+    const adminU = await makeUserChar(prisma, { role: 'ADMIN' });
+    const weekKey = '2030-W20';
+    await svc.auditSectWarStatusRead(adminU.userId, weekKey);
+
+    const audit = await prisma.adminAuditLog.findFirstOrThrow({
+      where: { actorUserId: adminU.userId, action: 'ADMIN_SECT_WAR_STATUS' },
+    });
+    const meta = audit.meta as Record<string, unknown>;
+    expect(meta.targetType).toBe('SectWarWeek');
+    expect(meta.targetId).toBe(weekKey);
+  });
+
+  it('gọi nhiều lần → ghi N audit row riêng, không dedupe (mỗi lần admin pull = 1 trace)', async () => {
+    const adminU = await makeUserChar(prisma, { role: 'ADMIN' });
+    const weekKey = '2030-W21';
+    await svc.auditSectWarStatusRead(adminU.userId, weekKey);
+    await svc.auditSectWarStatusRead(adminU.userId, weekKey);
+    await svc.auditSectWarStatusRead(adminU.userId, weekKey);
+    const audits = await prisma.adminAuditLog.findMany({
+      where: { actorUserId: adminU.userId, action: 'ADMIN_SECT_WAR_STATUS' },
+    });
+    expect(audits).toHaveLength(3);
   });
 });

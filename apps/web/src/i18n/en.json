@@ -2443,8 +2443,24 @@
     "errors": {
       "EVENT_NOT_FOUND": "Event not found.",
       "INVALID_INPUT": "Invalid parameters.",
+      "INVALID_REGION_KEY": "Region not found in catalog.",
+      "INVALID_BOSS_KEY": "Boss not found or region mismatch.",
+      "BOSS_ALREADY_ACTIVE": "Boss already active in region — toggle Force to replace.",
       "FORBIDDEN": "Insufficient permissions.",
       "UNKNOWN": "LiveOps action failed — please retry."
+    },
+    "forceBoss": {
+      "title": "Force-spawn Boss",
+      "regionPlaceholder": "Region key (default: world)",
+      "bossPlaceholder": "Boss key (optional)",
+      "levelPlaceholder": "Level 1-10",
+      "forceLabel": "Force replace ACTIVE",
+      "reasonPlaceholder": "Reason (audit)",
+      "submitBtn": "Force spawn",
+      "confirm": "Confirm force-spawn boss in region {region}?",
+      "toast": {
+        "spawned": "Spawned {bossKey} in {region} (level {level})."
+      }
     }
   },
   "homeLiveOps": {

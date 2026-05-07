@@ -1,14 +1,19 @@
-import { Injectable } from '@nestjs/common';
+import { forwardRef, Inject, Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import {
   LIVE_OPS_DEFAULT_TZ,
   LIVE_OPS_EVENTS,
+  WORLD_BOSS_REGION_KEY,
   activeLiveOpsEvents,
+  bossByKey,
+  bossesByRegion,
   getLiveOpsEventDef,
   liveOpsEventsForToday,
+  type BossDef,
   type LiveOpsEventDef,
 } from '@xuantoi/shared';
 import { PrismaService } from '../../common/prisma.service';
+import { BossError, BossService } from '../boss/boss.service';
 
 /**
  * Phase 13.1.B — Admin LiveOps Controls service.
@@ -34,7 +39,10 @@ import { PrismaService } from '../../common/prisma.service';
 
 export type AdminLiveOpsErrorCode =
   | 'EVENT_NOT_FOUND'
-  | 'INVALID_INPUT';
+  | 'INVALID_INPUT'
+  | 'INVALID_REGION_KEY'
+  | 'INVALID_BOSS_KEY'
+  | 'BOSS_ALREADY_ACTIVE';
 
 export class AdminLiveOpsError extends Error {
   readonly code: AdminLiveOpsErrorCode;
@@ -104,9 +112,36 @@ export interface SectWarStatusView {
   }>;
 }
 
+/**
+ * Phase 13.1.B advanced — admin force-spawn boss input. Region scope optional
+ * (default `world` mirror `BossService.adminSpawn` semantics); `bossKey`
+ * optional (default = catalog rotation cho region đó). `force=true` bypass
+ * `BOSS_ALREADY_ACTIVE` (expire current ACTIVE region đó + spawn replacement).
+ */
+export interface ForceBossSchedInput {
+  regionKey?: string | null;
+  bossKey?: string | null;
+  level?: number | null;
+  force?: boolean | null;
+  reason?: string | null;
+}
+
+export interface ForceBossSchedResult {
+  id: string;
+  bossKey: string;
+  level: number;
+  maxHp: string;
+  regionKey: string;
+  triggeredAt: string;
+}
+
 @Injectable()
 export class AdminLiveOpsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    @Inject(forwardRef(() => BossService))
+    private readonly boss: BossService,
+  ) {}
 
   /** Audit helper — mirror `AdminService.audit` private pattern. */
   private async writeAudit(
@@ -324,6 +359,146 @@ export class AdminLiveOpsService {
       noop: true,
     });
     return { noop: true, weekKey };
+  }
+
+  /**
+   * Phase 13.1.B advanced — admin force-spawn boss theo region/schedule.
+   *
+   * Delegate spawn logic vào `BossService.adminSpawn` (race-safe partial
+   * unique flow) rồi ghi thêm audit `ADMIN_FORCE_BOSS_SCHEDULE` riêng để
+   * tách traceability liveops khỏi audit `BOSS_SPAWN` mặc định
+   * (`BossService.adminSpawn` vẫn tự ghi `BOSS_SPAWN`). Hai audit row =
+   * 1 hành động: `ADMIN_FORCE_BOSS_SCHEDULE` ghi nhận intent liveops + reason
+   * + linked `bossId` để dashboard admin trace tuyến vận hành.
+   *
+   * Validation:
+   *   - `regionKey` (nếu truyền) phải là region có catalog boss spawn-able
+   *     (`bossesByRegion(regionKey).length > 0`); empty region → INVALID_REGION_KEY.
+   *   - `bossKey` (nếu truyền) phải tồn tại trong catalog; def.regionKey
+   *     mismatch với `regionKey` truyền in → INVALID_BOSS_KEY.
+   *   - Nếu cả `regionKey` lẫn `bossKey` đều null → default `world` region
+   *     auto-rotation (mirror `BossService.adminSpawn` semantics).
+   *   - `level` (nếu truyền) ∈ [1, 10]; ngoài range → INVALID_INPUT.
+   *
+   * Idempotency:
+   *   - Nếu region đã có ACTIVE và `force=false` → throw `BOSS_ALREADY_ACTIVE`,
+   *     KHÔNG ghi audit (boss admin yêu cầu chưa được tạo).
+   *   - `force=true` → expire ACTIVE region đó + spawn replacement;
+   *     `replacedBossId` ghi vào meta audit nếu flip thành công.
+   */
+  async forceBossSchedule(
+    actorUserId: string,
+    input: ForceBossSchedInput,
+  ): Promise<ForceBossSchedResult> {
+    const regionKey = input.regionKey ?? null;
+    const bossKey = input.bossKey ?? null;
+    const level = input.level ?? null;
+    const force = !!input.force;
+    const reason = input.reason ?? null;
+
+    // Validation tier 1 — level range (giữ song song với `BossService.adminSpawn`
+    // INVALID_LEVEL nhưng surface qua `AdminLiveOpsError.INVALID_INPUT` để FE
+    // toast nhất quán với toggle/recalc errors).
+    if (level !== null) {
+      if (!Number.isInteger(level) || level < 1 || level > 10) {
+        throw new AdminLiveOpsError('INVALID_INPUT', 'level must be integer in [1, 10]');
+      }
+    }
+
+    // Validation tier 2 — regionKey existence trong catalog.
+    let resolvedRegion: string;
+    if (regionKey) {
+      if (regionKey !== WORLD_BOSS_REGION_KEY) {
+        const regionBosses = bossesByRegion(regionKey);
+        if (regionBosses.length === 0) {
+          throw new AdminLiveOpsError('INVALID_REGION_KEY');
+        }
+      }
+      resolvedRegion = regionKey;
+    } else {
+      resolvedRegion = WORLD_BOSS_REGION_KEY;
+    }
+
+    // Validation tier 3 — bossKey existence trong catalog + region match.
+    let def: BossDef | undefined;
+    if (bossKey) {
+      def = bossByKey(bossKey);
+      if (!def) {
+        throw new AdminLiveOpsError('INVALID_BOSS_KEY');
+      }
+      const defRegion = def.regionKey ?? WORLD_BOSS_REGION_KEY;
+      if (regionKey && defRegion !== regionKey) {
+        throw new AdminLiveOpsError('INVALID_BOSS_KEY', 'boss region mismatch');
+      }
+      // Nếu user không truyền regionKey → derive từ def.
+      if (!regionKey) {
+        resolvedRegion = defRegion;
+      }
+    }
+
+    // Delegate spawn vào `BossService.adminSpawn`. Surface BossError →
+    // AdminLiveOpsError tương ứng để FE consistent error mapping.
+    let spawned;
+    try {
+      spawned = await this.boss.adminSpawn(actorUserId, {
+        bossKey: bossKey ?? undefined,
+        level: level ?? undefined,
+        force,
+        regionKey: resolvedRegion,
+      });
+    } catch (e) {
+      if (e instanceof BossError) {
+        switch (e.code) {
+          case 'INVALID_BOSS_KEY':
+            throw new AdminLiveOpsError('INVALID_BOSS_KEY');
+          case 'INVALID_LEVEL':
+            throw new AdminLiveOpsError('INVALID_INPUT', 'INVALID_LEVEL');
+          case 'BOSS_ALREADY_ACTIVE':
+            throw new AdminLiveOpsError('BOSS_ALREADY_ACTIVE');
+        }
+      }
+      throw e;
+    }
+
+    const triggeredAt = new Date().toISOString();
+    await this.writeAudit(actorUserId, 'ADMIN_FORCE_BOSS_SCHEDULE', {
+      targetType: 'WorldBoss',
+      targetId: spawned.id,
+      bossId: spawned.id,
+      bossKey: spawned.bossKey,
+      regionKey: spawned.regionKey,
+      level: spawned.level,
+      forced: force,
+      reason,
+      triggeredAt,
+    });
+
+    return {
+      id: spawned.id,
+      bossKey: spawned.bossKey,
+      level: spawned.level,
+      maxHp: spawned.maxHp.toString(),
+      regionKey: spawned.regionKey,
+      triggeredAt,
+    };
+  }
+
+  /**
+   * Phase 13.1.B advanced — audit hành động admin xem `getSectWarStatus`.
+   * Tách khỏi `getSectWarStatus` để giữ method đó pure (read-only, KHÔNG
+   * side-effect) — controller gọi `auditSectWarStatusRead` SAU khi GET success
+   * cho cả 2 endpoint `/admin/sect-war/status` (sect-war read) + tương lai có
+   * thể reuse cho cron snapshot. Audit row có `weekKey` + actor để admin
+   * dashboard trace ai đã pull leaderboard tuần nào.
+   */
+  async auditSectWarStatusRead(
+    actorUserId: string,
+    weekKey: string,
+  ): Promise<void> {
+    await this.writeAudit(actorUserId, 'ADMIN_SECT_WAR_STATUS', {
+      targetType: 'SectWarWeek',
+      targetId: weekKey,
+    });
   }
 
   /** Helper internal — meta cast cho audit.write. */

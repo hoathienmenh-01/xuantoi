@@ -2443,8 +2443,24 @@
     "errors": {
       "EVENT_NOT_FOUND": "Sự kiện không tồn tại.",
       "INVALID_INPUT": "Tham số không hợp lệ.",
+      "INVALID_REGION_KEY": "Khu vực không có trong catalog.",
+      "INVALID_BOSS_KEY": "Boss không tồn tại hoặc sai khu vực.",
+      "BOSS_ALREADY_ACTIVE": "Boss đang ACTIVE — bật Force để thay thế.",
       "FORBIDDEN": "Không đủ quyền.",
       "UNKNOWN": "Thao tác LiveOps thất bại — thử lại."
+    },
+    "forceBoss": {
+      "title": "Force-spawn Boss",
+      "regionPlaceholder": "Region key (mặc định: world)",
+      "bossPlaceholder": "Boss key (không bắt buộc)",
+      "levelPlaceholder": "Level 1-10",
+      "forceLabel": "Force thay thế ACTIVE",
+      "reasonPlaceholder": "Lý do (audit)",
+      "submitBtn": "Force spawn",
+      "confirm": "Xác nhận force-spawn boss tại khu vực {region}?",
+      "toast": {
+        "spawned": "Đã spawn {bossKey} tại {region} (level {level})."
+      }
     }
   },
   "homeLiveOps": {

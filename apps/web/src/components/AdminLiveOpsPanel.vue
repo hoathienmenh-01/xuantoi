@@ -3,6 +3,7 @@ import { computed, onMounted, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useToastStore } from '@/stores/toast';
 import {
+  adminLiveOpsForceBoss,
   adminLiveOpsStatus,
   adminLiveOpsToggle,
   adminSectWarRecalculate,
@@ -30,6 +31,16 @@ const loading = ref(true);
 const error = ref<string | null>(null);
 const togglingKey = ref<string | null>(null);
 const reasonByKey = ref<Record<string, string>>({});
+
+// Phase 13.1.B advanced — admin force-spawn boss form state.
+const forceBoss = ref({
+  regionKey: '',
+  bossKey: '',
+  level: '' as string,
+  force: false,
+  reason: '',
+});
+const forcingBoss = ref(false);
 
 onMounted(async () => {
   await Promise.all([refreshStatus(), refreshSectWar()]);
@@ -93,6 +104,41 @@ async function onRecalc(): Promise<void> {
   } catch (e) {
     const code = extractApiErrorCodeOrDefault(e, 'UNKNOWN');
     toast.push({ type: 'error', text: t(`adminLiveOps.errors.${code}`, code) });
+  }
+}
+
+async function onForceBoss(): Promise<void> {
+  if (forcingBoss.value) return;
+  const region = forceBoss.value.regionKey.trim() || 'world';
+  if (!confirm(t('adminLiveOps.forceBoss.confirm', { region }))) return;
+  forcingBoss.value = true;
+  try {
+    const levelStr = forceBoss.value.level.trim();
+    const levelParsed = levelStr ? Number.parseInt(levelStr, 10) : undefined;
+    const r = await adminLiveOpsForceBoss({
+      regionKey: forceBoss.value.regionKey.trim() || undefined,
+      bossKey: forceBoss.value.bossKey.trim() || undefined,
+      level:
+        typeof levelParsed === 'number' && Number.isFinite(levelParsed)
+          ? levelParsed
+          : undefined,
+      force: forceBoss.value.force || undefined,
+      reason: forceBoss.value.reason.trim() || undefined,
+    });
+    toast.push({
+      type: 'success',
+      text: t('adminLiveOps.forceBoss.toast.spawned', {
+        bossKey: r.bossKey,
+        region: r.regionKey,
+        level: r.level,
+      }),
+    });
+    forceBoss.value.reason = '';
+  } catch (e) {
+    const code = extractApiErrorCodeOrDefault(e, 'UNKNOWN');
+    toast.push({ type: 'error', text: t(`adminLiveOps.errors.${code}`, code) });
+  } finally {
+    forcingBoss.value = false;
   }
 }
 
@@ -245,6 +291,66 @@ defineExpose({ refreshStatus, refreshSectWar });
             }) }}</span>
           </li>
         </ol>
+      </div>
+
+      <hr class="border-ink-300/20" />
+
+      <div data-test="admin-liveops-force-boss" class="space-y-2">
+        <div class="text-xs uppercase tracking-widest text-ink-300">
+          {{ t('adminLiveOps.forceBoss.title') }}
+        </div>
+        <div class="grid grid-cols-2 md:grid-cols-5 gap-2">
+          <input
+            v-model="forceBoss.regionKey"
+            type="text"
+            :placeholder="t('adminLiveOps.forceBoss.regionPlaceholder')"
+            maxlength="64"
+            class="bg-ink-800 border border-ink-300/30 rounded px-2 py-1 text-xs"
+            data-test="admin-liveops-force-region"
+          />
+          <input
+            v-model="forceBoss.bossKey"
+            type="text"
+            :placeholder="t('adminLiveOps.forceBoss.bossPlaceholder')"
+            maxlength="64"
+            class="bg-ink-800 border border-ink-300/30 rounded px-2 py-1 text-xs"
+            data-test="admin-liveops-force-boss-key"
+          />
+          <input
+            v-model="forceBoss.level"
+            type="number"
+            min="1"
+            max="10"
+            :placeholder="t('adminLiveOps.forceBoss.levelPlaceholder')"
+            class="bg-ink-800 border border-ink-300/30 rounded px-2 py-1 text-xs"
+            data-test="admin-liveops-force-level"
+          />
+          <input
+            v-model="forceBoss.reason"
+            type="text"
+            :placeholder="t('adminLiveOps.forceBoss.reasonPlaceholder')"
+            maxlength="200"
+            class="bg-ink-800 border border-ink-300/30 rounded px-2 py-1 text-xs"
+            data-test="admin-liveops-force-reason"
+          />
+          <label class="flex items-center gap-1 text-xs text-ink-300/80">
+            <input
+              v-model="forceBoss.force"
+              type="checkbox"
+              data-test="admin-liveops-force-replace"
+            />
+            <span>{{ t('adminLiveOps.forceBoss.forceLabel') }}</span>
+          </label>
+        </div>
+        <button
+          type="button"
+          class="px-3 py-1 rounded border border-amber-300/40 text-amber-200 text-xs disabled:opacity-50"
+          :disabled="forcingBoss"
+          data-test="admin-liveops-force-submit"
+          @click="onForceBoss"
+        >
+          {{ t('adminLiveOps.forceBoss.submitBtn') }}
+        </button>
       </div>
     </div>
   </section>

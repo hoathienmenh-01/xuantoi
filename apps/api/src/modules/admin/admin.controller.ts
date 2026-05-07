@@ -914,15 +914,54 @@ export class AdminController {
 
   /**
    * GET /admin/sect-war/status?weekKey=YYYY-Www — read-only snapshot.
-   * `weekKey` optional; default = current ISO week.
+   * `weekKey` optional; default = current ISO week. Phase 13.1.B advanced —
+   * ghi audit `ADMIN_SECT_WAR_STATUS` SAU khi GET success cho admin
+   * dashboard trace ai pull leaderboard tuần nào (read-only nhưng cần audit
+   * cho liveops compliance).
    */
   @Get('sect-war/status')
-  async sectWarStatus(@Query('weekKey') weekKey?: string) {
+  async sectWarStatus(@Req() req: AdminReq, @Query('weekKey') weekKey?: string) {
     const key = weekKey && /^\d{4}-W\d{2}$/.test(weekKey)
       ? weekKey
       : sectWarWeekKey(new Date());
     const data = await this.liveOps.getSectWarStatus(key);
+    await this.liveOps.auditSectWarStatusRead(req.userId, key);
     return { ok: true, data };
+  }
+
+  /**
+   * POST /admin/liveops/boss/force-spawn — admin force-spawn boss qua
+   * liveops panel. Phase 13.1.B advanced.
+   *
+   * Body: { regionKey?, bossKey?, level?, force?, reason? }.
+   * Audit: `ADMIN_FORCE_BOSS_SCHEDULE` (liveops trace) + `BOSS_SPAWN`
+   * (delegate `BossService.adminSpawn`). Hai audit row = 1 hành động.
+   */
+  @Post('liveops/boss/force-spawn')
+  @HttpCode(200)
+  @RequireAdmin()
+  async liveOpsForceBoss(@Req() req: AdminReq, @Body() body: unknown) {
+    const Z = z.object({
+      regionKey: z.string().min(1).max(64).optional(),
+      bossKey: z.string().min(1).max(64).optional(),
+      level: z.number().int().min(1).max(10).optional(),
+      force: z.boolean().optional(),
+      reason: z.string().max(200).optional(),
+    });
+    const parsed = Z.safeParse(body ?? {});
+    if (!parsed.success) fail('INVALID_INPUT');
+    try {
+      const data = await this.liveOps.forceBossSchedule(req.userId, {
+        regionKey: parsed.data.regionKey ?? null,
+        bossKey: parsed.data.bossKey ?? null,
+        level: parsed.data.level ?? null,
+        force: parsed.data.force ?? null,
+        reason: parsed.data.reason ?? null,
+      });
+      return { ok: true, data };
+    } catch (e) {
+      this.handleErr(e);
+    }
   }
 
   /**
