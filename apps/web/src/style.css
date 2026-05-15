@@ -797,3 +797,63 @@ html.xt-silk-disabled .xt-silk-leave-to {
   clip-path: none;
   opacity: 1;
 }
+
+/* ----------------------------------------------------------------------
+   Phase 5 — Bento grid utilities
+   ----------------------------------------------------------------------
+   1 cuộn dọc / view: dùng `.xt-grid-bento` để xếp tile responsive.
+   - 360px..640px: 1 cột (mobile vertical stack).
+   - 640px..1024px: 2 cột.
+   - >= 1024px: 3 cột.
+   - `.xt-grid-bento--two-up`: chỉ tối đa 2 cột (cho view ít tile).
+   - `.xt-grid-bento--dense`: dùng `grid-auto-flow: dense` để khoá lỗ.
+   --------------------------------------------------------------------- */
+
+.xt-grid-bento {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: 1fr;
+}
+
+.xt-grid-bento--two-up {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: 1fr;
+}
+
+.xt-grid-bento--dense {
+  grid-auto-flow: dense;
+}
+
+.xt-grid-bento__span-2 {
+  grid-column: span 2;
+}
+
+.xt-grid-bento__span-3 {
+  grid-column: span 3;
+}
+
+@media (min-width: 640px) {
+  .xt-grid-bento,
+  .xt-grid-bento--two-up {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 20px;
+  }
+}
+
+@media (min-width: 1024px) {
+  .xt-grid-bento {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 24px;
+  }
+  .xt-grid-bento--two-up {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 639px) {
+  .xt-grid-bento__span-2,
+  .xt-grid-bento__span-3 {
+    grid-column: span 1;
+  }
+}

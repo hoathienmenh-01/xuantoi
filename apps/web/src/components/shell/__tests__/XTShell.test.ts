@@ -351,6 +351,62 @@ describe('XTPageHeader', () => {
     await flushPromises();
     expect(document.querySelector('[data-testid="xt-back-button"]')).toBeNull();
   });
+
+  it('eyebrowHan + eyebrowLabel → render xt-page-eyebrow block', async () => {
+    const XTPageHeader = (await import('@/components/shell/XTPageHeader.vue')).default;
+    wrapper = mount(XTPageHeader, {
+      attachTo: document.body,
+      global: { plugins: [i18n] },
+      props: {
+        title: 'Phụng Đạo',
+        eyebrowHan: '奉道使命',
+        eyebrowLabel: 'Phụng Đạo Sứ Mệnh',
+        hideBack: true,
+      },
+    });
+    await flushPromises();
+    const eyebrow = document.querySelector('[data-testid="xt-page-eyebrow"]');
+    expect(eyebrow).not.toBeNull();
+    expect(eyebrow?.textContent).toContain('奉道使命');
+    expect(eyebrow?.textContent).toContain('Phụng Đạo Sứ Mệnh');
+  });
+
+  it('meta slot → render xt-page-meta block', async () => {
+    const XTPageHeader = (await import('@/components/shell/XTPageHeader.vue')).default;
+    wrapper = mount(XTPageHeader, {
+      attachTo: document.body,
+      global: { plugins: [i18n] },
+      props: { title: 'X', hideBack: true },
+      slots: { meta: '<span data-testid="meta-chip">12 / 30</span>' },
+    });
+    await flushPromises();
+    expect(document.querySelector('[data-testid="xt-page-meta"]')).not.toBeNull();
+    expect(document.querySelector('[data-testid="meta-chip"]')).not.toBeNull();
+  });
+
+  it('bento=true → xt-page-header--bento class', async () => {
+    const XTPageHeader = (await import('@/components/shell/XTPageHeader.vue')).default;
+    wrapper = mount(XTPageHeader, {
+      attachTo: document.body,
+      global: { plugins: [i18n] },
+      props: { title: 'X', hideBack: true, bento: true },
+    });
+    await flushPromises();
+    const header = document.querySelector('[data-testid="xt-page-header"]');
+    expect(header?.classList.contains('xt-page-header--bento')).toBe(true);
+  });
+
+  it('minimal=true → xt-page-header--minimal class', async () => {
+    const XTPageHeader = (await import('@/components/shell/XTPageHeader.vue')).default;
+    wrapper = mount(XTPageHeader, {
+      attachTo: document.body,
+      global: { plugins: [i18n] },
+      props: { title: 'X', hideBack: true, minimal: true },
+    });
+    await flushPromises();
+    const header = document.querySelector('[data-testid="xt-page-header"]');
+    expect(header?.classList.contains('xt-page-header--minimal')).toBe(true);
+  });
 });
 
 describe('XTIcon', () => {

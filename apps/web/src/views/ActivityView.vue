@@ -20,6 +20,7 @@ import AppShell from '@/components/shell/AppShell.vue';
 import XTHeroEyebrow from '@/components/xianxia/XTHeroEyebrow.vue';
 import SkeletonBlock from '@/components/ui/SkeletonBlock.vue';
 import MButton from '@/components/ui/MButton.vue';
+import MTabs, { type MTabsItem } from '@/components/ui/MTabs.vue';
 import { extractApiErrorCodeOrDefault } from '@/lib/apiError';
 
 const { t, te } = useI18n();
@@ -117,6 +118,23 @@ const errorMessage = computed(() => {
   const k = `activity.errors.${error.value}`;
   return te(k) ? t(k) : t('activity.errors.UNKNOWN');
 });
+
+const tabItems = computed<MTabsItem[]>(() => [
+  {
+    value: 'currency',
+    label: t('activity.tabs.currency'),
+    testId: 'activity-tab-currency',
+  },
+  {
+    value: 'item',
+    label: t('activity.tabs.item'),
+    testId: 'activity-tab-item',
+  },
+]);
+
+async function onTabChange(next: string): Promise<void> {
+  await selectTab(next as LogType);
+}
 </script>
 
 <template>
@@ -128,34 +146,15 @@ const errorMessage = computed(() => {
         <p class="text-sm text-ink-300">{{ t('activity.subtitle') }}</p>
       </header>
 
-      <nav class="flex gap-2" data-testid="activity-tabs">
-        <button
-          type="button"
-          class="px-3 py-1.5 rounded text-sm border"
-          :class="
-            tab === 'currency'
-              ? 'bg-amber-700/40 border-amber-300/40 text-amber-100'
-              : 'bg-ink-700/30 border-ink-300/20 text-ink-300 hover:text-ink-50'
-          "
-          data-testid="activity-tab-currency"
-          @click="selectTab('currency')"
-        >
-          {{ t('activity.tabs.currency') }}
-        </button>
-        <button
-          type="button"
-          class="px-3 py-1.5 rounded text-sm border"
-          :class="
-            tab === 'item'
-              ? 'bg-amber-700/40 border-amber-300/40 text-amber-100'
-              : 'bg-ink-700/30 border-ink-300/20 text-ink-300 hover:text-ink-50'
-          "
-          data-testid="activity-tab-item"
-          @click="selectTab('item')"
-        >
-          {{ t('activity.tabs.item') }}
-        </button>
-      </nav>
+      <MTabs
+        :items="tabItems"
+        :value="tab"
+        tone="silk"
+        sticky
+        :aria-label="t('activity.title')"
+        test-id="activity-tabs"
+        @update:value="onTabChange"
+      />
 
       <div v-if="loading" class="space-y-2" data-testid="activity-skeleton">
         <SkeletonBlock v-for="i in 6" :key="i" height="h-12" />
