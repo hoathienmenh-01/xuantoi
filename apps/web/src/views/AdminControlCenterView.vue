@@ -58,6 +58,7 @@ import { extractApiErrorCode } from '@/lib/apiError';
 import AppShell from '@/components/shell/AppShell.vue';
 import XTHeroEyebrow from '@/components/xianxia/XTHeroEyebrow.vue';
 import MButton from '@/components/ui/MButton.vue';
+import MTabs, { type MTabsItem } from '@/components/ui/MTabs.vue';
 
 const { t } = useI18n();
 const auth = useAuthStore();
@@ -249,6 +250,18 @@ onMounted(async () => {
 const rewardContentTypes = REWARD_PROFILE_CONTENT_TYPES;
 const dropSourceTypes = DROP_PROFILE_SOURCE_TYPES;
 const contentTypes = CONTENT_STATUS_TYPES;
+
+const tabItems = computed<MTabsItem[]>(() =>
+  tabs.map((tk) => ({
+    value: tk,
+    label: t(`adminControlCenter.tab.${tk}`),
+    testId: `admin-cc-tab-${tk}`,
+  })),
+);
+
+function onTabChange(next: string): void {
+  selectTab(next as Tab);
+}
 </script>
 
 <template>
@@ -264,21 +277,15 @@ const contentTypes = CONTENT_STATUS_TYPES;
         </span>
       </header>
 
-      <nav class="flex gap-1 border-b border-ink-300/30 text-sm overflow-x-auto">
-        <button
-          v-for="tk in tabs"
-          :key="tk"
-          class="px-3 py-2 whitespace-nowrap"
-          :class="
-            tab === tk
-              ? 'border-b-2 border-amber-300 text-ink-50'
-              : 'text-ink-300'
-          "
-          @click="selectTab(tk)"
-        >
-          {{ t(`adminControlCenter.tab.${tk}`) }}
-        </button>
-      </nav>
+      <MTabs
+        :items="tabItems"
+        :value="tab"
+        tone="minimal"
+        sticky
+        :aria-label="t('adminControlCenter.title')"
+        test-id="admin-cc-tabs"
+        @update:value="onTabChange"
+      />
 
       <!-- OVERVIEW -->
       <section v-if="tab === 'overview'" class="space-y-3">

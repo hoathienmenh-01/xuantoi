@@ -11,6 +11,7 @@ import { useI18n } from 'vue-i18n';
 import { realmByKey, fullRealmName } from '@xuantoi/shared';
 import AppShell from '@/components/shell/AppShell.vue';
 import SkeletonTable from '@/components/ui/SkeletonTable.vue';
+import MTabs, { type MTabsItem } from '@/components/ui/MTabs.vue';
 import { extractApiErrorCodeOrDefault } from '@/lib/apiError';
 import {
   fetchLeaderboardPower,
@@ -80,6 +81,16 @@ onMounted(() => {
   // Smart onboarding: đánh dấu user đã ghé bảng xếp hạng (step 5).
   void import('@/lib/onboardingVisits').then((m) => m.markVisited('leaderboard'));
 });
+
+const tabItems: MTabsItem[] = (['power', 'topup', 'sect'] as Tab[]).map((k) => ({
+  value: k,
+  label: t(`leaderboard.tab.${k}`),
+  testId: `leaderboard-tab-${k}`,
+}));
+
+async function onTabChange(next: string): Promise<void> {
+  await switchTab(next as Tab);
+}
 </script>
 
 <template>
@@ -92,29 +103,16 @@ onMounted(() => {
         }}</span>
       </header>
 
-      <nav
-        class="mb-4 flex flex-wrap gap-2"
-        role="tablist"
+      <MTabs
+        class="mb-4"
+        :items="tabItems"
+        :value="tab"
+        tone="silk"
+        sticky
         aria-label="leaderboard tabs"
-      >
-        <button
-          v-for="t0 in (['power', 'topup', 'sect'] as Tab[])"
-          :key="t0"
-          type="button"
-          role="tab"
-          :aria-selected="tab === t0"
-          :data-testid="`leaderboard-tab-${t0}`"
-          class="rounded border px-3 py-1 text-xs uppercase tracking-widest transition"
-          :class="
-            tab === t0
-              ? 'border-amber-400/60 bg-amber-500/10 text-amber-100'
-              : 'border-ink-300/40 text-ink-200 hover:bg-ink-700/50'
-          "
-          @click="switchTab(t0)"
-        >
-          {{ t(`leaderboard.tab.${t0}`) }}
-        </button>
-      </nav>
+        test-id="leaderboard-tabs"
+        @update:value="onTabChange"
+      />
 
       <SkeletonTable
         v-if="loading"

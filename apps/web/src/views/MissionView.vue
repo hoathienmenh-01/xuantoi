@@ -14,6 +14,7 @@ import {
 import AppShell from '@/components/shell/AppShell.vue';
 import XTHeroEyebrow from '@/components/xianxia/XTHeroEyebrow.vue';
 import MButton from '@/components/ui/MButton.vue';
+import MTabs, { type MTabsItem } from '@/components/ui/MTabs.vue';
 import { extractApiErrorCodeOrDefault } from '@/lib/apiError';
 import { formatItemRewardList } from '@/lib/itemName';
 import { applyMissionProgressFrame } from '@/lib/missionProgress';
@@ -159,6 +160,23 @@ function formatCountdown(iso: string | null): string {
   return `${secs}s`;
 }
 
+const tabItems = computed<MTabsItem[]>(() => {
+  const periods: MissionPeriod[] = ['DAILY', 'WEEKLY', 'ONCE'];
+  return periods.map((p) => {
+    const s = summary.value[p];
+    return {
+      value: p,
+      label: t(`mission.tab.${p.toLowerCase()}`),
+      badge: `${s.done}/${s.total}`,
+      testId: `mission-tab-${p.toLowerCase()}`,
+    };
+  });
+});
+
+function onTabChange(next: string): void {
+  tab.value = next as MissionPeriod;
+}
+
 function rewardSummary(m: MissionProgressView): string {
   const parts: string[] = [];
   if (m.rewards.linhThach) parts.push(`${m.rewards.linhThach} ${t('mission.reward.linhThach')}`);
@@ -177,35 +195,18 @@ function rewardSummary(m: MissionProgressView): string {
     <XTHeroEyebrow han="奉道使命" label="Phụng Đạo Sứ Mệnh" />
     <h2 class="text-xl tracking-widest mb-4 mt-1">{{ t('mission.title') }}</h2>
 
-    <div class="flex gap-2 mb-4 flex-wrap">
-      <MButton
-        :class="tab === 'DAILY' ? '!bg-ink-50 !text-ink-900' : ''"
-        @click="tab = 'DAILY'"
-      >
-        {{ t('mission.tab.daily') }}
-        <span class="text-[10px] ml-1 text-ink-300">
-          ({{ summary.DAILY.done }}/{{ summary.DAILY.total }})
-        </span>
-      </MButton>
-      <MButton
-        :class="tab === 'WEEKLY' ? '!bg-ink-50 !text-ink-900' : ''"
-        @click="tab = 'WEEKLY'"
-      >
-        {{ t('mission.tab.weekly') }}
-        <span class="text-[10px] ml-1 text-ink-300">
-          ({{ summary.WEEKLY.done }}/{{ summary.WEEKLY.total }})
-        </span>
-      </MButton>
-      <MButton
-        :class="tab === 'ONCE' ? '!bg-ink-50 !text-ink-900' : ''"
-        @click="tab = 'ONCE'"
-      >
-        {{ t('mission.tab.once') }}
-        <span class="text-[10px] ml-1 text-ink-300">
-          ({{ summary.ONCE.done }}/{{ summary.ONCE.total }})
-        </span>
-      </MButton>
-      <MButton class="ml-auto" :disabled="loading" @click="refresh">
+    <div class="flex items-center gap-2 mb-4 flex-wrap">
+      <MTabs
+        class="flex-1 min-w-0"
+        :items="tabItems"
+        :value="tab"
+        tone="silk"
+        sticky
+        :aria-label="t('mission.title')"
+        test-id="mission-tabs"
+        @update:value="onTabChange"
+      />
+      <MButton :disabled="loading" @click="refresh">
         {{ t('common.reload') }}
       </MButton>
     </div>

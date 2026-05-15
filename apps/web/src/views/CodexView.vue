@@ -7,7 +7,7 @@
  *   - Danh sách: browse entries by type (filter ITEM/MONSTER/MAP/…).
  *   - Chi tiết: detail panel (kèm marketPrice link nếu có).
  */
-import { onMounted, ref, watch } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useToastStore } from '@/stores/toast';
 import {
@@ -20,6 +20,7 @@ import {
 import { extractApiErrorCodeOrDefault } from '@/lib/apiError';
 import AppShell from '@/components/shell/AppShell.vue';
 import XTHeroEyebrow from '@/components/xianxia/XTHeroEyebrow.vue';
+import MTabs, { type MTabsItem } from '@/components/ui/MTabs.vue';
 import { CODEX_ENTRY_TYPES, type CodexEntryType } from '@xuantoi/shared';
 
 const { t } = useI18n();
@@ -59,6 +60,23 @@ async function openDetail(entryKey: string) {
 
 watch(selectedType, () => refresh());
 onMounted(refresh);
+
+const typeTabItems = computed<MTabsItem[]>(() => [
+  { value: '__all__', label: t('common.all'), testId: 'codex-tab-all' },
+  ...CODEX_ENTRY_TYPES.map((ty) => ({
+    value: ty,
+    label: ty,
+    testId: `codex-tab-${ty}`,
+  })),
+]);
+
+const activeTypeTab = computed<string>(() =>
+  selectedType.value === '' ? '__all__' : selectedType.value,
+);
+
+function onTypeTabChange(next: string): void {
+  selectedType.value = next === '__all__' ? '' : (next as CodexEntryType);
+}
 </script>
 
 <template>
@@ -74,25 +92,15 @@ onMounted(refresh);
         <div v-if="progress.isComplete" class="text-green-400 font-bold">{{ t('codex.complete') }}</div>
       </div>
 
-      <!-- Type filter -->
-      <div class="flex gap-2 flex-wrap">
-        <button
-          class="px-2 py-1 rounded text-sm"
-          :class="selectedType === '' ? 'bg-amber-600 text-white' : 'bg-gray-700 text-gray-300'"
-          @click="selectedType = ''"
-        >
-          {{ t('common.all') }}
-        </button>
-        <button
-          v-for="ty in CODEX_ENTRY_TYPES"
-          :key="ty"
-          class="px-2 py-1 rounded text-sm"
-          :class="selectedType === ty ? 'bg-amber-600 text-white' : 'bg-gray-700 text-gray-300'"
-          @click="selectedType = ty"
-        >
-          {{ ty }}
-        </button>
-      </div>
+      <!-- Type filter (pill MTabs) -->
+      <MTabs
+        :items="typeTabItems"
+        :value="activeTypeTab"
+        tone="pill"
+        :aria-label="t('codex.title')"
+        test-id="codex-tabs"
+        @update:value="onTypeTabChange"
+      />
 
       <!-- Entry list -->
       <div v-if="loading" class="text-gray-400">{{ t('common.loading') }}</div>
