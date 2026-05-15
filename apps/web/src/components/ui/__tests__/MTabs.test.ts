@@ -127,4 +127,27 @@ describe('MTabs', () => {
     expect(detail.attributes('id')).toBe('sect-tabs-tab-detail');
     expect(detail.attributes('aria-controls')).toBe('sect-tabs-panel-detail');
   });
+
+  it('selectAdjacent(1) → emit update:value tab kế tiếp (skip disabled)', async () => {
+    const items = [
+      { value: 'a', label: 'A' },
+      { value: 'b', label: 'B', disabled: true },
+      { value: 'c', label: 'C' },
+    ];
+    const w = mount(MTabs, { props: { items, defaultValue: 'a' } });
+    type WithExpose = { selectAdjacent: (dir: 1 | -1) => void };
+    (w.vm as unknown as WithExpose).selectAdjacent(1);
+    expect(w.emitted('update:value')?.[0]).toEqual(['c']);
+  });
+
+  it('selectAdjacent(-1) → wraparound về tab cuối', async () => {
+    const items = [
+      { value: 'a', label: 'A' },
+      { value: 'b', label: 'B' },
+    ];
+    const w = mount(MTabs, { props: { items, defaultValue: 'a' } });
+    type WithExpose = { selectAdjacent: (dir: 1 | -1) => void };
+    (w.vm as unknown as WithExpose).selectAdjacent(-1);
+    expect(w.emitted('update:value')?.[0]).toEqual(['b']);
+  });
 });

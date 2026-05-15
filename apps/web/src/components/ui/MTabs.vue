@@ -112,6 +112,20 @@ function nextEnabledIndex(start: number, direction: 1 | -1): number {
   return start;
 }
 
+function selectAdjacent(direction: 1 | -1): void {
+  const list = props.items;
+  if (list.length === 0) return;
+  const currentIdx = list.findIndex((t) => t.value === activeValue.value);
+  const startIdx = currentIdx === -1 ? 0 : currentIdx;
+  const nextIdx = nextEnabledIndex(startIdx, direction);
+  const next = list[nextIdx];
+  if (next && next.value !== activeValue.value) {
+    selectTab(next.value);
+  }
+}
+
+defineExpose({ selectAdjacent });
+
 function onKey(ev: KeyboardEvent, idx: number): void {
   const isHorizontal = true;
   switch (ev.key) {
