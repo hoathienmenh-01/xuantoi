@@ -21,6 +21,9 @@ import { extractApiErrorCodeOrDefault } from '@/lib/apiError';
 import AppShell from '@/components/shell/AppShell.vue';
 import XTHeroEyebrow from '@/components/xianxia/XTHeroEyebrow.vue';
 import MTabs, { type MTabsItem } from '@/components/ui/MTabs.vue';
+import MBottomSheet from '@/components/ui/MBottomSheet.vue';
+import MSkeleton from '@/components/ui/MSkeleton.vue';
+import { useIsLgUp } from '@/composables/useMediaQuery';
 import { CODEX_ENTRY_TYPES, type CodexEntryType } from '@xuantoi/shared';
 
 const { t } = useI18n();
@@ -77,6 +80,14 @@ const activeTypeTab = computed<string>(() =>
 function onTypeTabChange(next: string): void {
   selectedType.value = next === '__all__' ? '' : (next as CodexEntryType);
 }
+
+// Phase 5 mobile gesture: bottom-sheet modal trên mobile (< lg). Desktop
+// (>= lg) giữ inline modal cũ để không phá vỡ snapshot/keyboard flow.
+const lgUp = useIsLgUp();
+
+function closeDetail(): void {
+  selectedDetail.value = null;
+}
 </script>
 
 <template>
@@ -102,13 +113,15 @@ function onTypeTabChange(next: string): void {
         @update:value="onTypeTabChange"
       />
 
-      <!-- Entry list -->
-      <div v-if="loading" class="text-gray-400">{{ t('common.loading') }}</div>
+      <!-- Entry list (skeleton wire vào loading) -->
+      <div v-if="loading" class="grid grid-cols-1 md:grid-cols-2 gap-2" data-testid="codex-skeleton">
+        <MSkeleton v-for="i in 6" :key="i" variant="tile" :animation="i === 1 ? 'shimmer' : 'pulse'" />
+      </div>
       <div v-else class="grid grid-cols-1 md:grid-cols-2 gap-2">
         <div
           v-for="e in entries"
           :key="e.entryKey"
-          class="bg-gray-800 rounded p-3 cursor-pointer hover:bg-gray-700 transition"
+          class="xt-press-feedback xt-hover-lift xt-tappable bg-gray-800 rounded p-3 cursor-pointer hover:bg-gray-700 transition"
           @click="openDetail(e.entryKey)"
         >
           <div class="font-semibold">{{ e.displayName }}</div>
@@ -124,16 +137,16 @@ function onTypeTabChange(next: string): void {
         {{ t('codex.showingOf', { shown: entries.length, total }) }}
       </div>
 
-      <!-- Detail panel (modal-like overlay) -->
+      <!-- Detail panel desktop (>= lg): inline modal cổ điển -->
       <div
-        v-if="selectedDetail"
+        v-if="selectedDetail && lgUp"
         class="fixed inset-0 bg-black/60 flex items-center justify-center z-50"
-        @click.self="selectedDetail = null"
+        @click.self="closeDetail"
       >
         <div class="bg-gray-900 rounded-lg p-6 max-w-lg w-full max-h-[90vh] overflow-auto space-y-3">
           <div class="flex justify-between items-center">
             <h2 class="text-lg font-bold">{{ selectedDetail.entry.displayName }}</h2>
-            <button class="text-gray-400 hover:text-white" @click="selectedDetail = null">✕</button>
+            <button class="text-gray-400 hover:text-white" @click="closeDetail">✕</button>
           </div>
           <p class="text-sm text-gray-300">{{ selectedDetail.entry.description }}</p>
           <div class="text-xs text-gray-500 space-y-1">
@@ -149,6 +162,33 @@ function onTypeTabChange(next: string): void {
           </div>
         </div>
       </div>
+
+      <!-- Detail panel mobile (< lg): bottom sheet (Phase 5 mobile gesture) -->
+      <MBottomSheet
+        v-if="!lgUp"
+        :open="selectedDetail !== null"
+        :title="selectedDetail?.entry.displayName ?? ''"
+        height="tall"
+        test-id="codex-detail-sheet"
+        @update:open="(v: boolean) => { if (!v) closeDetail(); }"
+      >
+        <template v-if="selectedDetail" #body>
+          <div class="space-y-3">
+            <p class="text-sm text-gray-300">{{ selectedDetail.entry.description }}</p>
+            <div class="text-xs text-gray-500 space-y-1">
+              <div>{{ t('codex.type') }}: {{ selectedDetail.entry.type }}</div>
+              <div v-if="selectedDetail.entry.quality">{{ t('codex.quality') }}: {{ selectedDetail.entry.quality }}</div>
+              <div v-if="selectedDetail.entry.tier">{{ t('codex.tier') }}: {{ selectedDetail.entry.tier }}</div>
+            </div>
+            <div v-if="selectedDetail.marketPrice" class="bg-gray-800 rounded p-3 text-sm space-y-1">
+              <div class="font-semibold text-amber-300">{{ t('codex.marketPriceTitle') }}</div>
+              <div>{{ t('codex.avg24h') }}: {{ selectedDetail.marketPrice.avgPrice24h }}</div>
+              <div>{{ t('codex.avg7d') }}: {{ selectedDetail.marketPrice.avgPrice7d }}</div>
+              <div>{{ t('codex.vol24h') }}: {{ selectedDetail.marketPrice.volume24h }}</div>
+            </div>
+          </div>
+        </template>
+      </MBottomSheet>
     </div>
   </AppShell>
 </template>

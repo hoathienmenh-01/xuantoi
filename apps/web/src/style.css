@@ -857,3 +857,109 @@ html.xt-silk-disabled .xt-silk-leave-to {
     grid-column: span 1;
   }
 }
+
+/* ----------------------------------------------------------------------
+   Phase 5 — Micro-interactions (press / hover / pulse)
+   ----------------------------------------------------------------------
+   Universal utilities để bất kỳ component nào (MButton, card, link...)
+   cũng có thể opt-in feedback nhanh:
+   - `.xt-press-feedback`: scale-down nhẹ khi active (≥120ms ease-out).
+   - `.xt-hover-lift`: nâng card 1px khi hover + bóng sâu hơn.
+   - `.xt-tappable`: touch-feedback ring cho mobile.
+   --------------------------------------------------------------------- */
+
+.xt-press-feedback {
+  transition:
+    transform 160ms var(--xt-ease-spring, ease-out),
+    box-shadow 160ms var(--xt-ease-out, ease-out),
+    filter 160ms var(--xt-ease-out, ease-out);
+}
+.xt-press-feedback:active:not(:disabled) {
+  transform: translate3d(0, 1px, 0) scale(0.985);
+  filter: brightness(0.96);
+}
+
+.xt-hover-lift {
+  transition:
+    transform 220ms var(--xt-ease-out, ease-out),
+    box-shadow 220ms var(--xt-ease-out, ease-out);
+}
+.xt-hover-lift:hover:not(:disabled):not([aria-disabled='true']) {
+  transform: translate3d(0, -1px, 0);
+  box-shadow: 0 10px 24px -12px rgba(8, 9, 11, 0.5);
+}
+
+.xt-tappable {
+  -webkit-tap-highlight-color: rgba(201, 164, 90, 0.25);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .xt-press-feedback,
+  .xt-hover-lift {
+    transition: none;
+  }
+  .xt-press-feedback:active:not(:disabled),
+  .xt-hover-lift:hover:not(:disabled) {
+    transform: none;
+    filter: none;
+    box-shadow: none;
+  }
+}
+
+/* ----------------------------------------------------------------------
+   Phase 5 — Pull-to-refresh indicator
+   ----------------------------------------------------------------------
+   Banner mỏng phía trên content khi user kéo xuống. Pair với
+   composable `usePullToRefresh`: bind `--ptr-pull` (px) + class
+   `.xt-ptr--refreshing` khi đang refresh.
+   --------------------------------------------------------------------- */
+
+.xt-ptr-host {
+  position: relative;
+  overflow: visible;
+}
+
+.xt-ptr-indicator {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translate3d(-50%, -100%, 0);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: var(--xt-bg-surface);
+  border: 1px solid var(--xt-border-jade);
+  font-size: var(--xt-text-caption, 12px);
+  color: var(--xt-gold-soft, #c9a45a);
+  opacity: 0;
+  transition: opacity 160ms var(--xt-ease-out, ease-out);
+  pointer-events: none;
+  z-index: 4;
+}
+
+.xt-ptr-indicator--armed {
+  opacity: 1;
+}
+
+.xt-ptr-indicator__spin {
+  width: 14px;
+  height: 14px;
+  border: 2px solid currentColor;
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: xt-ptr-spin 800ms linear infinite;
+}
+
+@keyframes xt-ptr-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .xt-ptr-indicator__spin {
+    animation: none;
+  }
+}

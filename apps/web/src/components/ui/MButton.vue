@@ -29,7 +29,7 @@ function onClick(): void {
   <button
     :type="type ?? 'button'"
     :disabled="disabled || loading"
-    class="px-5 py-2 rounded border border-ink-300 bg-ink-700/40 text-ink-50 hover:bg-ink-700/70 disabled:opacity-50 disabled:cursor-not-allowed transition"
+    class="xt-press-feedback xt-tappable px-5 py-2 rounded border border-ink-300 bg-ink-700/40 text-ink-50 hover:bg-ink-700/70 disabled:opacity-50 disabled:cursor-not-allowed transition"
     @click="onClick"
   >
     <slot v-if="!loading" />

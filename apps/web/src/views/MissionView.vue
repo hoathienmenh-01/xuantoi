@@ -15,6 +15,9 @@ import AppShell from '@/components/shell/AppShell.vue';
 import XTHeroEyebrow from '@/components/xianxia/XTHeroEyebrow.vue';
 import MButton from '@/components/ui/MButton.vue';
 import MTabs, { type MTabsItem } from '@/components/ui/MTabs.vue';
+import MSkeleton from '@/components/ui/MSkeleton.vue';
+import XTScrollReveal from '@/components/xianxia/XTScrollReveal.vue';
+import { useSwipe } from '@/composables/useSwipe';
 import { extractApiErrorCodeOrDefault } from '@/lib/apiError';
 import { formatItemRewardList } from '@/lib/itemName';
 import { applyMissionProgressFrame } from '@/lib/missionProgress';
@@ -177,6 +180,14 @@ function onTabChange(next: string): void {
   tab.value = next as MissionPeriod;
 }
 
+const tabsRef = ref<InstanceType<typeof MTabs> | null>(null);
+const swipeTarget = ref<HTMLElement | null>(null);
+useSwipe(swipeTarget, {
+  threshold: 60,
+  onSwipeLeft: () => tabsRef.value?.selectAdjacent(1),
+  onSwipeRight: () => tabsRef.value?.selectAdjacent(-1),
+});
+
 function rewardSummary(m: MissionProgressView): string {
   const parts: string[] = [];
   if (m.rewards.linhThach) parts.push(`${m.rewards.linhThach} ${t('mission.reward.linhThach')}`);
@@ -197,6 +208,7 @@ function rewardSummary(m: MissionProgressView): string {
 
     <div class="flex items-center gap-2 mb-4 flex-wrap">
       <MTabs
+        ref="tabsRef"
         class="flex-1 min-w-0"
         :items="tabItems"
         :value="tab"
@@ -211,74 +223,79 @@ function rewardSummary(m: MissionProgressView): string {
       </MButton>
     </div>
 
-    <div v-if="loading && missions.length === 0" class="text-ink-300 text-sm">
-      {{ t('common.loadingData') }}
-    </div>
+    <div ref="swipeTarget" data-testid="mission-swipe-area">
+      <div v-if="loading && missions.length === 0" class="space-y-3" data-testid="mission-skeleton">
+        <MSkeleton v-for="i in 4" :key="i" variant="card" :animation="i === 1 ? 'shimmer' : 'pulse'" />
+      </div>
 
-    <div v-else-if="filtered.length === 0" class="text-ink-300 text-sm">
-      {{ t('mission.empty') }}
-    </div>
+      <div v-else-if="filtered.length === 0" class="text-ink-300 text-sm">
+        {{ t('mission.empty') }}
+      </div>
 
-    <ul v-else class="space-y-3">
-      <li
-        v-for="m in filtered"
-        :key="m.key"
-        class="border border-ink-300/40 rounded p-4 bg-ink-700/30"
-      >
-        <div class="flex items-start gap-3 flex-wrap">
-          <div class="flex-1 min-w-0">
-            <div class="flex items-center gap-2 flex-wrap">
-              <span class="text-ink-50 font-bold">{{ m.name }}</span>
-              <span
-                class="text-[10px] px-1.5 py-0.5 rounded bg-ink-900/60 text-ink-300"
-              >
-                {{ t(`mission.quality.${m.quality}`) }}
-              </span>
-              <span
-                v-if="m.claimed"
-                class="text-[10px] px-1.5 py-0.5 rounded bg-emerald-700/40 text-emerald-200"
-              >
-                {{ t('mission.status.claimed') }}
-              </span>
-              <span
-                v-else-if="m.completable"
-                class="text-[10px] px-1.5 py-0.5 rounded bg-amber-700/40 text-amber-200"
-              >
-                {{ t('mission.status.ready') }}
-              </span>
+      <ul v-else class="space-y-3">
+        <XTScrollReveal
+          v-for="(m, idx) in filtered"
+          :key="m.key"
+          as="li"
+          :delay="Math.min(idx * 40, 240)"
+          class="border border-ink-300/40 rounded p-4 bg-ink-700/30 xt-hover-lift"
+          :test-id="`mission-row-${m.key}`"
+        >
+          <div class="flex items-start gap-3 flex-wrap">
+            <div class="flex-1 min-w-0">
+              <div class="flex items-center gap-2 flex-wrap">
+                <span class="text-ink-50 font-bold">{{ m.name }}</span>
+                <span
+                  class="text-[10px] px-1.5 py-0.5 rounded bg-ink-900/60 text-ink-300"
+                >
+                  {{ t(`mission.quality.${m.quality}`) }}
+                </span>
+                <span
+                  v-if="m.claimed"
+                  class="text-[10px] px-1.5 py-0.5 rounded bg-emerald-700/40 text-emerald-200"
+                >
+                  {{ t('mission.status.claimed') }}
+                </span>
+                <span
+                  v-else-if="m.completable"
+                  class="text-[10px] px-1.5 py-0.5 rounded bg-amber-700/40 text-amber-200"
+                >
+                  {{ t('mission.status.ready') }}
+                </span>
+              </div>
+              <div class="text-xs text-ink-300 mt-1">{{ m.description }}</div>
+              <div class="text-[11px] text-ink-300 mt-2">
+                {{ t('mission.reward.label') }}: {{ rewardSummary(m) }}
+              </div>
             </div>
-            <div class="text-xs text-ink-300 mt-1">{{ m.description }}</div>
-            <div class="text-[11px] text-ink-300 mt-2">
-              {{ t('mission.reward.label') }}: {{ rewardSummary(m) }}
-            </div>
-          </div>
-          <div class="flex flex-col items-end gap-2 min-w-[10rem]">
-            <div class="text-[11px] text-ink-300">
-              {{ m.currentAmount }} / {{ m.goalAmount }}
-            </div>
-            <div class="w-40 h-1.5 rounded bg-ink-900/60 overflow-hidden">
+            <div class="flex flex-col items-end gap-2 min-w-[10rem]">
+              <div class="text-[11px] text-ink-300">
+                {{ m.currentAmount }} / {{ m.goalAmount }}
+              </div>
+              <div class="w-40 h-1.5 rounded bg-ink-900/60 overflow-hidden">
+                <div
+                  class="h-full transition-all"
+                  :class="m.claimed ? 'bg-emerald-600' : m.completable ? 'bg-amber-400' : 'bg-ink-300'"
+                  :style="{ width: progressPct(m) + '%' }"
+                />
+              </div>
               <div
-                class="h-full transition-all"
-                :class="m.claimed ? 'bg-emerald-600' : m.completable ? 'bg-amber-400' : 'bg-ink-300'"
-                :style="{ width: progressPct(m) + '%' }"
-              />
+                v-if="m.windowEnd && !m.claimed"
+                class="text-[10px] text-ink-300"
+              >
+                {{ t('mission.resetIn') }}: {{ formatCountdown(m.windowEnd) }}
+              </div>
+              <MButton
+                v-if="!m.claimed"
+                :disabled="!m.completable || claiming === m.key"
+                @click="onClaim(m)"
+              >
+                {{ claiming === m.key ? t('common.loading') : t('mission.claim') }}
+              </MButton>
             </div>
-            <div
-              v-if="m.windowEnd && !m.claimed"
-              class="text-[10px] text-ink-300"
-            >
-              {{ t('mission.resetIn') }}: {{ formatCountdown(m.windowEnd) }}
-            </div>
-            <MButton
-              v-if="!m.claimed"
-              :disabled="!m.completable || claiming === m.key"
-              @click="onClaim(m)"
-            >
-              {{ claiming === m.key ? t('common.loading') : t('mission.claim') }}
-            </MButton>
           </div>
-        </div>
-      </li>
-    </ul>
+        </XTScrollReveal>
+      </ul>
+    </div>
   </AppShell>
 </template>
