@@ -217,16 +217,19 @@ test.describe('Golden path — full stack required', () => {
     });
 
     // 3 tab daily/weekly/once — daily mặc định active.
-    await expect(page.getByRole('button', { name: /Hằng Ngày/i }).first()).toBeVisible();
-    await expect(page.getByRole('button', { name: /Hằng Tuần/i }).first()).toBeVisible();
-    await expect(page.getByRole('button', { name: /Thiên Kiếp/i }).first()).toBeVisible();
+    // Phase 5 Bundle 2: tabs hiện dùng MTabs primitive với role="tab" (ARIA
+    // chuẩn). Dù underlying là <button>, role="tab" override role mặc định
+    // → Playwright phải query role: 'tab' cho semantically-correct match.
+    await expect(page.getByRole('tab', { name: /Hằng Ngày/i }).first()).toBeVisible();
+    await expect(page.getByRole('tab', { name: /Hằng Tuần/i }).first()).toBeVisible();
+    await expect(page.getByRole('tab', { name: /Thiên Kiếp/i }).first()).toBeVisible();
 
     // Tab "Hằng Tuần" click không crash.
-    await page.getByRole('button', { name: /Hằng Tuần/i }).first().click();
+    await page.getByRole('tab', { name: /Hằng Tuần/i }).first().click();
     // Tab "Thiên Kiếp" click không crash.
-    await page.getByRole('button', { name: /Thiên Kiếp/i }).first().click();
+    await page.getByRole('tab', { name: /Thiên Kiếp/i }).first().click();
     // Quay lại Hằng Ngày.
-    await page.getByRole('button', { name: /Hằng Ngày/i }).first().click();
+    await page.getByRole('tab', { name: /Hằng Ngày/i }).first().click();
 
     // Page vẫn ở /missions, không bị redirect /auth.
     await expect(page).toHaveURL(/\/missions/);
