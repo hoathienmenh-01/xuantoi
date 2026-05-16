@@ -18,6 +18,7 @@ import { useRouter } from 'vue-router';
 import { XT_NAV_GROUPS } from '@/lib/xtNav';
 import { useGameStore } from '@/stores/game';
 import { useBadgesStore } from '@/stores/badges';
+import { useFeatureFlagsStore } from '@/stores/featureFlags';
 import XTIcon from '@/components/xianxia/XTIcon.vue';
 
 const props = defineProps<{ open: boolean }>();
@@ -27,6 +28,7 @@ const { t, te } = useI18n();
 const router = useRouter();
 const game = useGameStore();
 const badges = useBadgesStore();
+const featureFlags = useFeatureFlagsStore();
 
 function tSafe(key: string): string {
   return te(key) ? t(key) : key;
@@ -47,6 +49,7 @@ const groups = computed(() => {
     accent: group.accent,
     items: group.items
       .filter((it) => !it.staffOnly || isStaff.value)
+      .filter((it) => !it.featureFlag || featureFlags.isEnabled(it.featureFlag))
       .map((it) => ({
         ...it,
         label: tSafe(`shell.nav.${it.key}`),

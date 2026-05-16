@@ -1,4 +1,10 @@
-import { createRouter, createWebHistory, type RouteRecordRaw } from 'vue-router';
+import {
+  createRouter,
+  createWebHistory,
+  type NavigationGuardWithThis,
+  type RouteRecordRaw,
+} from 'vue-router';
+import type { FeatureFlagKey } from '@xuantoi/shared';
 
 const celestialPlaceholder = (
   path: string,
@@ -12,6 +18,31 @@ const celestialPlaceholder = (
   component: () => import('@/views/XianxiaPlaceholderView.vue'),
   meta: { title, description, icon },
 });
+
+/**
+ * Phase 45.0 — Feature-flag entry-point gate cho route.
+ *
+ * Khi flag OFF, route bị chặn và redirect sang fallback (mặc định `/home`).
+ * Fail-open khi store chưa hydrate — tránh chặn nhầm user hợp lệ. Import
+ * động vì router là module-scoped, không tự gọi `useStore()` ngoài setup.
+ */
+function flagGuard(
+  flagKey: FeatureFlagKey,
+  fallback = '/home',
+): NavigationGuardWithThis<undefined> {
+  return async (_to, _from, next) => {
+    try {
+      const mod = await import('@/stores/featureFlags');
+      const store = mod.useFeatureFlagsStore();
+      if (!store.isEnabled(flagKey)) {
+        return next(fallback);
+      }
+    } catch {
+      // Store chưa khả dụng — fail-open, route vẫn cho qua.
+    }
+    return next();
+  };
+}
 
 const routes: RouteRecordRaw[] = [
   { path: '/', redirect: '/home' },
@@ -116,6 +147,7 @@ const routes: RouteRecordRaw[] = [
     path: '/auction',
     name: 'auction',
     redirect: '/market',
+    beforeEnter: flagGuard('AUCTION_HOUSE_ENABLED', '/market'),
   },
   {
     path: '/shop',
@@ -384,9 +416,13 @@ const routes: RouteRecordRaw[] = [
   },
   {
     // Phase 33.2 — Story V2 (Tu Tiên Lộ Quyển II–IV) StoryV2View.
+    // Phase 45.0 — Gated qua STORY_V2_ENABLED. Khi flag OFF, redirect
+    // /home thay vì render trắng — không phá UX, không phá test cũ
+    // vì test mock featureFlags store với cờ ON.
     path: '/story-v2',
     name: 'story-v2',
     component: () => import('@/views/StoryV2View.vue'),
+    beforeEnter: flagGuard('STORY_V2_ENABLED', '/home'),
   },
   {
     // Phase 34.0 — 7-Day Onboarding Questline.

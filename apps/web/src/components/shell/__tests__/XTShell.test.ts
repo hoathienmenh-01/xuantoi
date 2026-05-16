@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { mount, flushPromises } from '@vue/test-utils';
 import { createI18n } from 'vue-i18n';
+import { createPinia, setActivePinia } from 'pinia';
 
 
 /**
@@ -135,6 +136,13 @@ const i18n = createI18n({
 });
 
 let wrapper: ReturnType<typeof mount> | null = null;
+
+// Phase 45.0 — XTMenuDrawer reads feature flags store (STORY_V2 / AUCTION
+// gating). Cần Pinia active. Fail-open mặc định ON → các test cũ giữ nguyên
+// kỳ vọng "render >3 items".
+beforeEach(() => {
+  setActivePinia(createPinia());
+});
 
 afterEach(() => {
   wrapper?.unmount();

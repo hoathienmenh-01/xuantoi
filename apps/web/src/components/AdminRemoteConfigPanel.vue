@@ -18,11 +18,13 @@ import { computed, onMounted, reactive, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 import type {
   RemoteConfigAdminView,
+  RemoteConfigHistoryEntry,
   RemoteConfigKey,
 } from '@xuantoi/shared';
 import { useToastStore } from '@/stores/toast';
 import {
   adminClearRemoteConfigCache,
+  adminListRemoteConfigHistory,
   adminListRemoteConfigs,
   adminRefreshRemoteConfigDefaults,
   adminUpdateRemoteConfig,
@@ -59,6 +61,17 @@ interface PendingSave {
   reason: string;
 }
 const pendingSave = ref<PendingSave | null>(null);
+
+const historyOpen = ref(false);
+const historyLoading = ref(false);
+const historyError = ref<string | null>(null);
+const historyEntries = ref<RemoteConfigHistoryEntry[]>([]);
+const historyFilterKey = ref<'' | RemoteConfigKey>('');
+const HISTORY_LIMIT = 20;
+
+const historyKeyOptions = computed<RemoteConfigKey[]>(() =>
+  configs.value.map((c) => c.key),
+);
 
 const filtered = computed(() => {
   const q = search.value.trim().toLowerCase();
@@ -280,6 +293,53 @@ function fmtUpdatedAt(iso: string | null): string {
   if (Number.isNaN(d.getTime())) return iso;
   return d.toLocaleString();
 }
+
+function fmtHistoryAt(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return iso;
+  return d.toLocaleString();
+}
+
+function fmtHistoryValue(v: unknown): string {
+  if (v === null || v === undefined) {
+    return t('adminRemoteConfig.history.valueEmpty');
+  }
+  if (typeof v === 'string') {
+    return v === '' ? t('adminRemoteConfig.history.valueEmpty') : v;
+  }
+  if (typeof v === 'number' || typeof v === 'boolean') {
+    return String(v);
+  }
+  try {
+    return JSON.stringify(v);
+  } catch {
+    return String(v);
+  }
+}
+
+async function loadHistory(): Promise<void> {
+  if (historyLoading.value) return;
+  historyLoading.value = true;
+  historyError.value = null;
+  try {
+    const filter = historyFilterKey.value || undefined;
+    historyEntries.value = await adminListRemoteConfigHistory({
+      key: filter,
+      limit: HISTORY_LIMIT,
+    });
+  } catch (e) {
+    historyError.value = extractApiErrorCodeOrDefault(e, 'UNKNOWN');
+  } finally {
+    historyLoading.value = false;
+  }
+}
+
+function toggleHistory(): void {
+  historyOpen.value = !historyOpen.value;
+  if (historyOpen.value && historyEntries.value.length === 0) {
+    void loadHistory();
+  }
+}
 </script>
 
 <template>
@@ -466,6 +526,170 @@ function fmtUpdatedAt(iso: string | null): string {
         </div>
       </li>
     </ul>
+
+    <section
+      class="space-y-2 border-t border-ink-300/20 pt-3"
+      data-testid="admin-remote-config-history"
+    >
+      <header class="flex flex-wrap items-center justify-between gap-2">
+        <div>
+          <h3 class="text-sm text-amber-200">
+            {{ t('adminRemoteConfig.history.title') }}
+          </h3>
+          <p class="text-xs text-ink-300">
+            {{ t('adminRemoteConfig.history.hint') }}
+          </p>
+        </div>
+        <div class="flex flex-wrap items-center gap-2">
+          <MButton
+            data-testid="admin-remote-config-history-toggle"
+            @click="toggleHistory"
+          >
+            {{
+              historyOpen
+                ? t('adminRemoteConfig.history.hide')
+                : t('adminRemoteConfig.history.show')
+            }}
+          </MButton>
+          <MButton
+            v-if="historyOpen"
+            :disabled="historyLoading"
+            data-testid="admin-remote-config-history-refresh"
+            @click="loadHistory"
+          >
+            {{ t('adminRemoteConfig.history.refresh') }}
+          </MButton>
+        </div>
+      </header>
+
+      <div v-if="historyOpen" class="space-y-2">
+        <div class="flex flex-wrap items-center gap-2 text-xs">
+          <label
+            class="text-ink-300"
+            for="admin-remote-config-history-filter"
+          >
+            {{ t('adminRemoteConfig.history.filterKey') }}
+          </label>
+          <select
+            id="admin-remote-config-history-filter"
+            v-model="historyFilterKey"
+            class="bg-ink-700/40 border border-ink-300/30 rounded px-2 py-1"
+            data-testid="admin-remote-config-history-filter"
+            @change="loadHistory"
+          >
+            <option value="">{{ t('adminRemoteConfig.history.filterAll') }}</option>
+            <option
+              v-for="opt in historyKeyOptions"
+              :key="opt"
+              :value="opt"
+            >
+              {{ opt }}
+            </option>
+          </select>
+        </div>
+
+        <div
+          v-if="historyLoading"
+          class="text-ink-300 text-xs"
+          data-testid="admin-remote-config-history-loading"
+        >
+          {{ t('adminRemoteConfig.history.loading') }}
+        </div>
+        <div
+          v-else-if="historyError"
+          class="text-rose-400 text-xs"
+          data-testid="admin-remote-config-history-error"
+        >
+          {{
+            t(
+              `adminRemoteConfig.errors.${historyError}`,
+              '__missing__',
+            ) === '__missing__'
+              ? t('adminRemoteConfig.errors.UNKNOWN')
+              : t(`adminRemoteConfig.errors.${historyError}`)
+          }}
+        </div>
+        <div
+          v-else-if="historyEntries.length === 0"
+          class="text-ink-300 text-xs italic"
+          data-testid="admin-remote-config-history-empty"
+        >
+          {{ t('adminRemoteConfig.history.empty') }}
+        </div>
+        <div
+          v-else
+          class="overflow-x-auto"
+          data-testid="admin-remote-config-history-table-wrap"
+        >
+          <table
+            class="w-full text-xs border border-ink-300/20"
+            data-testid="admin-remote-config-history-table"
+          >
+            <thead class="bg-ink-700/40 text-ink-300">
+              <tr>
+                <th class="text-left px-2 py-1 whitespace-nowrap">
+                  {{ t('adminRemoteConfig.history.columns.changedAt') }}
+                </th>
+                <th class="text-left px-2 py-1 whitespace-nowrap">
+                  {{ t('adminRemoteConfig.history.columns.key') }}
+                </th>
+                <th class="text-left px-2 py-1 whitespace-nowrap">
+                  {{ t('adminRemoteConfig.history.columns.actor') }}
+                </th>
+                <th class="text-left px-2 py-1">
+                  {{ t('adminRemoteConfig.history.columns.oldValue') }}
+                </th>
+                <th class="text-left px-2 py-1">
+                  {{ t('adminRemoteConfig.history.columns.newValue') }}
+                </th>
+                <th class="text-left px-2 py-1">
+                  {{ t('adminRemoteConfig.history.columns.reason') }}
+                </th>
+                <th class="text-left px-2 py-1 whitespace-nowrap">
+                  {{ t('adminRemoteConfig.history.columns.action') }}
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr
+                v-for="entry in historyEntries"
+                :key="entry.id"
+                class="border-t border-ink-300/20 align-top"
+                :data-testid="`admin-remote-config-history-row-${entry.id}`"
+              >
+                <td class="px-2 py-1 whitespace-nowrap text-ink-200">
+                  {{ fmtHistoryAt(entry.changedAt) }}
+                </td>
+                <td
+                  class="px-2 py-1 font-mono text-ink-100 whitespace-nowrap"
+                >
+                  {{ entry.key ?? '—' }}
+                </td>
+                <td class="px-2 py-1 text-ink-200 whitespace-nowrap">
+                  {{
+                    entry.actorName
+                      ?? entry.actorUserId
+                      ?? t('adminRemoteConfig.history.actorUnknown')
+                  }}
+                </td>
+                <td class="px-2 py-1 font-mono break-all text-ink-300">
+                  {{ fmtHistoryValue(entry.oldValue) }}
+                </td>
+                <td class="px-2 py-1 font-mono break-all text-emerald-200">
+                  {{ fmtHistoryValue(entry.newValue) }}
+                </td>
+                <td class="px-2 py-1 break-words text-ink-200">
+                  {{ entry.reason ?? '' }}
+                </td>
+                <td class="px-2 py-1 text-ink-300 whitespace-nowrap">
+                  {{ entry.action }}
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
 
     <ConfirmModal
       :open="pendingSave !== null"

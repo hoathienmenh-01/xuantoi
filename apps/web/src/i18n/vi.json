@@ -5080,6 +5080,28 @@
     "hint": "Cấu hình vận hành (giới hạn claim ngày, message bảo trì, mức hiệu ứng…) sửa runtime không cần deploy.",
     "loading": "Đang tải remote config…",
     "empty": "Không tìm thấy config nào khớp bộ lọc.",
+    "history": {
+      "title": "Lịch sử thay đổi",
+      "hint": "20 thay đổi gần nhất qua admin (ADMIN_REMOTE_CONFIG_*) — đọc-only, không expose secret.",
+      "show": "Xem lịch sử",
+      "hide": "Ẩn lịch sử",
+      "refresh": "Tải lại",
+      "loading": "Đang tải lịch sử…",
+      "empty": "Chưa có thay đổi remote config nào.",
+      "filterKey": "Lọc theo key",
+      "filterAll": "Tất cả key",
+      "columns": {
+        "changedAt": "Thời điểm",
+        "key": "Key",
+        "actor": "Admin",
+        "oldValue": "Giá trị cũ",
+        "newValue": "Giá trị mới",
+        "reason": "Lý do",
+        "action": "Hành động"
+      },
+      "actorUnknown": "(không rõ)",
+      "valueEmpty": "(rỗng)"
+    },
     "filter": {
       "searchPlaceholder": "Tìm theo key / mô tả…"
     },

@@ -21,12 +21,14 @@ import { apiClient } from './client';
 import type {
   FeatureFlagPublicView,
   RemoteConfigAdminView,
+  RemoteConfigHistoryEntry,
   RemoteConfigKey,
   RemoteConfigPublicView,
 } from '@xuantoi/shared';
 
 export type {
   RemoteConfigAdminView,
+  RemoteConfigHistoryEntry,
   RemoteConfigKey,
   RemoteConfigPublicView,
 } from '@xuantoi/shared';
@@ -119,4 +121,26 @@ export async function adminClearRemoteConfigCache(): Promise<{
     {},
   );
   return unwrap(data);
+}
+
+/**
+ * Phase 45.0 — `GET /admin/remote-config/history?key=&limit=`. Trả danh
+ * sách audit history (UPDATE / REFRESH_DEFAULTS / CLEAR_CACHE) cho remote
+ * config. Caller có thể filter theo `key` để xem từng config.
+ */
+export async function adminListRemoteConfigHistory(opts?: {
+  key?: RemoteConfigKey;
+  limit?: number;
+}): Promise<RemoteConfigHistoryEntry[]> {
+  const params = new URLSearchParams();
+  if (opts?.key) params.set('key', opts.key);
+  if (opts?.limit !== undefined) params.set('limit', String(opts.limit));
+  const qs = params.toString();
+  const url = qs
+    ? `/admin/remote-config/history?${qs}`
+    : '/admin/remote-config/history';
+  const { data } = await apiClient.get<
+    Envelope<{ entries: RemoteConfigHistoryEntry[] }>
+  >(url);
+  return unwrap(data).entries;
 }

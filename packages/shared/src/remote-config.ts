@@ -412,3 +412,26 @@ export interface RemoteConfigPublicView {
   readonly valueType: RemoteConfigValueType;
   readonly value: unknown;
 }
+
+/**
+ * Phase 45.0 — Remote Config audit history entry exposed cho admin UI.
+ *
+ * Derived từ `AdminAuditLog` rows với action `ADMIN_REMOTE_CONFIG_UPDATE`
+ * (cùng `*_REFRESH_DEFAULTS` / `*_CLEAR_CACHE` ở category metadata).
+ *
+ * `oldValue` lấy từ `value` cũ tại thời điểm patch nếu có (controller
+ * snapshot trước khi service ghi); fallback `null` cho rows lịch sử chưa
+ * có snapshot. UI sẽ render placeholder cho `null`.
+ */
+export interface RemoteConfigHistoryEntry {
+  readonly id: string;
+  readonly action: string;
+  readonly actorUserId: string;
+  readonly actorName: string | null;
+  readonly key: RemoteConfigKey | null;
+  readonly valueType: RemoteConfigValueType | null;
+  readonly oldValue: unknown;
+  readonly newValue: unknown;
+  readonly reason: string | null;
+  readonly changedAt: string;
+}

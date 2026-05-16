@@ -5080,6 +5080,28 @@
     "hint": "Operational knobs (daily claim cap, maintenance message, effect level…) editable at runtime without redeploy.",
     "loading": "Loading remote config…",
     "empty": "No remote config matches the filter.",
+    "history": {
+      "title": "Change history",
+      "hint": "Last 20 admin changes (ADMIN_REMOTE_CONFIG_*) — read-only, no secret exposed.",
+      "show": "Show history",
+      "hide": "Hide history",
+      "refresh": "Refresh",
+      "loading": "Loading history…",
+      "empty": "No remote config changes yet.",
+      "filterKey": "Filter by key",
+      "filterAll": "All keys",
+      "columns": {
+        "changedAt": "When",
+        "key": "Key",
+        "actor": "Admin",
+        "oldValue": "Old value",
+        "newValue": "New value",
+        "reason": "Reason",
+        "action": "Action"
+      },
+      "actorUnknown": "(unknown)",
+      "valueEmpty": "(empty)"
+    },
     "filter": {
       "searchPlaceholder": "Search by key / description…"
     },

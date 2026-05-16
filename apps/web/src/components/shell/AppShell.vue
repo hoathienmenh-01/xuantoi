@@ -54,8 +54,27 @@ import {
 import { formatFeatureLabel } from '@/lib/xianxiaFormat';
 import { useIsLgUp } from '@/composables/useMediaQuery';
 import { useSceneTheme } from '@/composables/useSceneTheme';
+import { useVisualEffectsAllowed } from '@/composables/useVisualEffectsAllowed';
+import { useFeatureFlagsStore } from '@/stores/featureFlags';
 
 const { tone: sceneTone } = useSceneTheme();
+// Phase 45.0 — VISUAL_EFFECTS_ENABLED flag gate.
+// Khi flag OFF: ambient layer xuống level OFF (giảm DOM/CPU). Heavy canvas
+// FX vẫn có thể được component khác tự gate qua composable này.
+const visualEffectsAllowed = useVisualEffectsAllowed();
+const ambientLevel = computed<'OFF' | 'LOW' | 'MEDIUM' | 'HIGH'>(() =>
+  visualEffectsAllowed.value ? 'MEDIUM' : 'OFF',
+);
+
+// Phase 45.0 — STORY_V2 / AUCTION_HOUSE gating tại entry-point.
+// Item nào có `featureFlag` mà store trả false thì ẩn khỏi sidebar (mobile
+// drawer cũng làm tương tự ở XTMenuDrawer). Fail-open mặc định ON khi store
+// chưa load — tránh ẩn nhầm UI hợp lệ.
+const featureFlags = useFeatureFlagsStore();
+function isNavItemFlagAllowed(item: XTNavItem): boolean {
+  if (!item.featureFlag) return true;
+  return featureFlags.isEnabled(item.featureFlag);
+}
 
 const maintenance = useMaintenanceStore();
 const isLgUp = useIsLgUp();
@@ -213,9 +232,17 @@ onBeforeUnmount(() => {
 
 <template>
   <div class="relative min-h-screen overflow-hidden text-[var(--xt-text-primary)]">
-    <XTAmbientCanvas :tone="sceneTone" intensity="lux" />
-    <XTParallaxBackground :tone="sceneTone" />
-    <SpiritualAmbientLayer visual-effect-level="MEDIUM" :tone="sceneTone" />
+    <XTAmbientCanvas
+      v-if="visualEffectsAllowed"
+      :tone="sceneTone"
+      intensity="lux"
+    />
+    <XTParallaxBackground v-if="visualEffectsAllowed" :tone="sceneTone" />
+    <SpiritualAmbientLayer
+      :visual-effect-level="ambientLevel"
+      :tone="sceneTone"
+      data-testid="shell-spiritual-ambient"
+    />
     <MaintenanceBanner
       v-if="
         maintenance.active &&
@@ -321,7 +348,9 @@ onBeforeUnmount(() => {
             <div v-show="!isGroupCollapsed(group.key) || sidebarSearch.trim()" class="space-y-0.5">
               <RouterLink
                 v-for="item in group.items.filter(
-                  (entry) => !entry.staffOnly || isStaff,
+                  (entry) =>
+                    (!entry.staffOnly || isStaff)
+                    && isNavItemFlagAllowed(entry),
                 )"
                 :key="item.to"
                 :to="item.to"

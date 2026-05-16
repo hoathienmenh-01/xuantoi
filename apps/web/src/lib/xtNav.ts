@@ -37,6 +37,16 @@ export type XTNavAccent =
   | 'market'
   | 'admin';
 
+/**
+ * Phase 45.0 — feature-flag gated nav entry.
+ *
+ * Khi flag tắt, item sẽ bị ẩn khỏi cả mobile drawer + desktop sidebar.
+ * Route phía dưới vẫn registered (không xoá để link cũ không 404 trắng).
+ * Đây là entry-point gate cấp nhẹ, không động vào runtime logic
+ * — đúng scope finish Phase 45.0.
+ */
+export type XTNavFeatureFlag = 'STORY_V2_ENABLED' | 'AUCTION_HOUSE_ENABLED';
+
 export interface XTNavItem {
   /** i18n key under `shell.nav.<key>` */
   key: string;
@@ -46,6 +56,8 @@ export interface XTNavItem {
   to: string;
   /** When true, only render for ADMIN/MOD users. */
   staffOnly?: boolean;
+  /** When set, the item is only rendered when the feature flag is enabled. */
+  featureFlag?: XTNavFeatureFlag;
   /** Optional badge key to attach store-driven badges. */
   badge?: XTNavBadgeKind;
   /** Optional per-item testid (used by AppShell tests + Playwright). */
@@ -194,7 +206,12 @@ export const XT_NAV_GROUPS: XTNavGroup[] = [
     accent: 'market',
     items: [
       { key: 'market', icon: 'market', to: '/market' },
-      { key: 'auction', icon: 'auction', to: '/auction' },
+      {
+        key: 'auction',
+        icon: 'auction',
+        to: '/auction',
+        featureFlag: 'AUCTION_HOUSE_ENABLED',
+      },
       { key: 'shop', icon: 'market', to: '/shop' },
       { key: 'topup', icon: 'jade', to: '/topup', badge: 'topup' },
     ],
